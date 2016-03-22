@@ -464,10 +464,6 @@ typedef struct kbutton_s {
 	qboolean	wasPressed;		// set when down, not cleared when up
 } kbutton_t;
 
-extern	kbutton_t	in_mlook, in_klook;
-extern 	kbutton_t 	in_strafe;
-extern 	kbutton_t 	in_speed;
-
 void CL_InitInput (void);
 void CL_ShutdownInput(void);
 void CL_SendCmd (void);
@@ -475,7 +471,6 @@ void CL_ClearState (void);
 void CL_ReadPackets (void);
 
 void CL_WritePacket( void );
-void IN_CenterView (void);
 
 void CL_VerifyCode( void );
 
