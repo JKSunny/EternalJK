@@ -5999,6 +5999,12 @@ qboolean BG_IsSprinting(const playerState_t *ps, const usercmd_t *cmd, qboolean 
 		return qfalse;
 	}
 
+	//Can't sprint while cooking grenade
+	if ((ps->weapon == WP_THERMAL || ps->weapon == WP_TRIP_MINE || ps->weapon == WP_DET_PACK) && (cmd->buttons & BUTTON_ATTACK))
+	{
+		return qfalse;
+	}
+
 	if (ps->weaponstate == WEAPON_RELOADING)
 	{
 		return false; // Cannot sprint while reloading.
