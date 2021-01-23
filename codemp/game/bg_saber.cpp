@@ -2535,7 +2535,15 @@ int PM_DoFeint(int curmove, int stance)
 	//add faking flag
 	pm->ps->saberActionFlags |= ( 1 << SAF_FEINT );
 	// drain the force power
-	pm->ps->forcePower -= 30;	// drains force power, not BP. my mistake --eez
+	// NOTE: at this point in development Force power == stamina
+	if (pm->ps->forcePower >= 30) // otherwise it could go into the negatives and overflow
+	{
+		pm->ps->forcePower -= 30;	// drains force power, not BP. my mistake --eez
+	}
+	else
+	{
+		pm->ps->forcePower = 0;
+	}
 	return transitionMove[SaberStances[stance].moves[curmove].endQuadrant][newQuad];
 }
 //Stoiss add
