@@ -837,7 +837,7 @@ local function List(ply, argc, argv)
 					ply:SendPrint(AdminHelp_ListPowers( rank, true, true ))
 				end
 			else
-				SystemReply(ply, "^3Unknown admlist mode. Valid modes are online, admins, ranks, powers")
+				SystemReply(ply, "^3Unknown admlist mode. Valid modes are online, accounts, ranks, powers")
 			end
 		end
 	else
