@@ -294,6 +294,29 @@ static int GLua_Player_SendCenterPrint(lua_State *L) {
 	return 0;
 }
 
+static int GLua_Player_SendCenterPrintAll(lua_State *L) {
+	char buff[980] = { 0 }; // (not 1024, to keep the command from being oversize (cmd included)
+	GLua_Data_Player_t *ply = GLua_CheckPlayer(L, 1);
+	int args = lua_gettop(L);
+	const char *res;
+	int i;
+	if (!ply) return 0;
+	// Lets do this a lil different, concat all args and use that as the message ^^
+	GLua_Push_ToString(L); // Ref to tostring (instead of a global lookup, in case someone changes it)
+	for (i = 2; i <= args; i++) {
+		lua_pushvalue(L, -1);
+		lua_pushvalue(L, i);
+		lua_call(L, 1, 1); // Assume this will never error out
+		res = lua_tostring(L, -1);
+		if (res) {
+			Q_strcat(&buff[0], 980, res);
+		}
+		lua_pop(L, 1);
+	}
+	trap->SendServerCommand(-1, va("cp \"%s\n\"", &buff[0]));
+	return 0;
+}
+
 static int GLua_Player_SendPrint(lua_State *L) {
 	char buff[980] = {0}; // (not 1024, to keep the command from being oversize (cmd included)
 	GLua_Data_Player_t *ply = GLua_CheckPlayer(L, 1);
@@ -1665,6 +1688,7 @@ static const struct luaL_reg player_m [] = {
 	{"SendChat", GLua_Player_SendChat},
 	{"SendFadedChat", GLua_Player_SendFadedChat},
 	{"SendCenterPrint", GLua_Player_SendCenterPrint},
+	{"SendCenterPrintAll", GLua_Player_SendCenterPrintAll},
 	{"SendPrint", GLua_Player_SendPrint},
 	{"SendCommand", GLua_Player_SendCommand},
 	{"Kill", GLua_Player_Kill},

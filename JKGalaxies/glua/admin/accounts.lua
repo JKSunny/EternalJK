@@ -72,6 +72,7 @@ local function InitPermissions( )
 	AddPermission( "can-say", 			1, "admsay", 			"^5" )
 	AddPermission( "can-tell", 			1, "admtell", 			"^5" )
 	AddPermission( "can-speak", 			1, "admspeak", 			"^5" )
+	AddPermission( "can-announce",			0, "admannounce",       "^8" )
 	AddPermission( "can-puppet", 			0, "admpuppet", 		"^8" )
 	AddPermission( "can-place", 			0, "bPlace", 			"^4" )
 	AddPermission( "can-delent", 			0, "bDelent", 			"^4" )
@@ -675,11 +676,14 @@ end
 
 local function Profile(ply, argc, argv)
 	if ply.isLoggedIn then
-		local account = ply:GetAccount()
-		SystemReply(ply, "^4You are logged in as "^7 .. account .. " [^5Rank: " .. accounts[account]["rank"] .. "]")
+		local plyselaccountname = ply:GetAccount()
+		local plyselaccount = accounts[plyselaccountname]
+		SystemReply(ply, "^2You are logged in as ^4" .. plyselaccountname .. "^5 [Rank: " .. plyselaccount["rank"] .. "]")
 		return
+	else
+		SystemReply(ply, "^1You are not logged in.")
 	end
-	chatcmds.Ignore()
+		chatcmds.Ignore()
 end
 
 local function AddAccount(ply, argc, argv)
@@ -766,7 +770,7 @@ end
 local function List(ply, argc, argv)
 	if ply.isLoggedIn then
 		if argc < 2 then
-			SystemReply(ply, "^3Syntax: /admlist <online/admins/ranks/powers>")
+			SystemReply(ply, "^3Syntax: /admlist <online/accounts/ranks/powers>")
 		else
 			local rank = GetRank(ply)
 			if argv[1] == "online" then
@@ -784,7 +788,7 @@ local function List(ply, argc, argv)
 								local plyselaccountname = plysel:GetAccount()
 								local plyselaccount = accounts[plyselaccountname]
 								if plyselaccount ~= nil then
-									printstring = printstring .. plysel:GetName() .. " [" .. plyselaccountname .. "--" .. plyselaccount["rank"] .. "], "
+									printstring = printstring .. plysel:GetName() .. " ^7[" .. plyselaccountname .. "--" .. plyselaccount["rank"] .. "], "
 								end
 							end
 						end
@@ -1024,7 +1028,7 @@ local function Status(ply, argc, argv)
 						local plyselaccountname = plysel:GetAccount()
 						local plyselaccount = accounts[plyselaccountname]
 						
-						printstring = printstring .. " ^7(^2Logged in as ^4" .. plyselaccountname .. " ^5[Rank: " .. plyselaccount["rank"] .. "]^7)"
+						printstring = printstring .. " ^7(^2Logged in as ^4" .. plyselaccountname .. " ^5[Rank: " .. plyselaccount["rank"] .. "]^7)\n"
 					end
 				end
 				k = k + 1
@@ -1036,15 +1040,16 @@ local function Status(ply, argc, argv)
 	end
 end
 
-local function Say(ply, argc, argv)
+local function Speak(ply, argc, argv)
 	if ply.isLoggedIn then
 		local rank = GetRank(ply)
-		if rank["can-say"] ~= true then
+		if rank["can-speak"] ~= true then
 			SystemReply(ply, "^1You do not have permission to perform this action.")
 		else
 			local accountname = ply:GetAccount()
 			local message = table.concat(argv," ",1, argc-1)
-			chatmsg( "^7[^5" .. accountname .. "^7] <" .. rank["name"] .. "> " .. message )
+			--chatmsg( "^7[^5" .. accountname .. "^7] <" .. rank["name"] .. "> " .. message )
+			chatmsg( "^7[^x39cAdmin^7] ^5" .. "^7<" .. rank["name"] .. "^7> ".. ply:GetName() .. ": ^3" .. message )
 		end
 	else
 		SystemReply(ply, "^1You are not logged in.")
@@ -1072,7 +1077,7 @@ local function Tell(ply, argc, argv)
 				plytarg:SendChat( "^5Admin " .. account["username"] .. " whispers: " .. message )
 
 				if plytarg.lastadmtell == nil then
-					plytarg:SendChat( "^8Reply to this message using /SystemReply <msg>" )
+					plytarg:SendChat( "^8Reply to this message using /Reply <msg>" )
 				end
 				plytarg.lastadmtell = account["username"]
 			end
@@ -1110,16 +1115,16 @@ local function Reply(ply, argc, argv)
 	ply:SendChat( "^5You reply: " .. message )
 end
 
-local function Speak(ply, argc, argv)
+local function Say(ply, argc, argv)
 	if ply.isLoggedIn then
 		local rank = GetRank(ply)
-		if rank["can-speak"] ~= true then
+		if rank["can-say"] ~= true then
 			SystemReply(ply, "^1You do not have permission to perform this action.")
 			return
 		end
 
 		if argc < 2 then
-			SystemReply(ply, "^3Syntax: /admspeak <message>")
+			SystemReply(ply, "^3Syntax: /admsay <message>")
 			return
 		end
 
@@ -1131,12 +1136,42 @@ local function Speak(ply, argc, argv)
 			local plytarg = players.GetByID(k)
 
 			if plytarg.isLoggedIn then
-				plytarg:SendChat( "^7[^4Admins^7] ^5" .. ourAccount["username"] .. "^7: " .. message )
+				plytarg:SendChat( "^7[^x39cAdmin^7] ^5" .. plytarg:GetName() .. "^7: " .. message )
+				--ourAccount["username"] --consider using actual account name?
 			end
 
 			k = k + 1
 		end
 		
+	else
+		SystemReply(ply, "^1You are not logged in.")
+	end
+end
+
+local function Announce(ply, argc, argv)
+	if ply.isLoggedIn then
+		local rank = GetRank(ply)
+		if rank["can-announce"] ~= true then
+			SystemReply(ply, "^1You do not have permission to perform this action.")
+			return
+		end
+
+		if argc < 2 then
+			SystemReply(ply, "^3Syntax: /admannounce <message>")
+			return
+		end
+
+		local message = table.concat(argv," ",1, argc-1)
+		local len = string.len(message)
+		
+		if  len > 75 then
+			SystemReply(ply, "^3Syntax: Announcements must be 75 characters or less.")
+			return
+		end
+
+		chatmsg( "^7System: " .. message )
+		ply:SendCenterPrintAll(message)
+
 	else
 		SystemReply(ply, "^1You are not logged in.")
 	end
@@ -1208,6 +1243,22 @@ local function Puppet(ply, argc, argv)
 	end
 end
 
+local function Help(ply, argc, argv)
+	if ply.isLoggedIn then
+		local printstring = ""
+		SystemReply(ply, "See console for cmdlist.")
+		ply:SendPrint("Commands:")
+		printstring = "^3login ^7- allows user to sign into an account.\n^3logout ^7- signs out of the current account.\n^3changepassword ^7- change current account password.\n^3register ^7- register for a new client account.\n"
+		printstring = printstring .. "^3admkick ^7- kick a user off the server.\n^3admchangeddetails ^7- edit account details.\n^3admprofile ^7- check what account you're logged in with.\n^3admnewaccount ^7- create a new account as an admin.\n"
+		printstring = printstring .. "^3admdeleteaccount ^7- delete an account as an admin.\n^3admlist ^7- query for info about accounts.\n^3admrank ^7- query for permission held by a rank\n^3admalter ^7- alter an accounts rank or password.\n"
+		printstring = printstring .. "^3admstatus ^7- list logged in users and status.\n^3admsay ^7- imitates the /say cmd for admins.\n^3admtell ^7- imitates the /tell cmd for admins.\n^3admspeak ^7- imitates the /sayglobal cmd for admins.\n"
+		printstring = printstring .. "^3admannounce ^7- make a server announcement.\n^3admpuppet ^7- allows admins to masquerade messages as other users.\n^3admhelp^7/^3admcmds ^7- list admin cmds."
+		ply:SendPrint(printstring)
+	else
+		SystemReply(ply, "^1You are not logged in.  ^7To login, use the login cmd. eg: ^3/login <username> <password>")
+	end	
+end
+
 --[[ ------------------------------------------------
 	InitAccountCmds
 	This is what links all the commands into chat/console.
@@ -1227,10 +1278,13 @@ local function InitAccountCmds()
 	chatcmds.Add("admrank", Rank)
 	chatcmds.Add("admalter", Alter)
 	chatcmds.Add("admstatus", Status)
-	chatcmds.Add("admsay", Say)
-	chatcmds.Add("admtell", Tell)
 	chatcmds.Add("admspeak", Speak)
+	chatcmds.Add("admtell", Tell)
+	chatcmds.Add("admsay", Say)
+	chatcmds.Add("admannounce", Announce)
 	chatcmds.Add("admpuppet", Puppet)
+	chatcmds.Add("admhelp", Help)
+	chatcmds.Add("admcmds", Help)
 
 	-- For replying to /admtells..this isn't an admin command, it can be used by any client
 	chatcmds.Add("SystemReply", Reply)
@@ -1249,10 +1303,14 @@ local function InitAccountCmds()
 	cmds.Add("admrank", Rank)
 	cmds.Add("admalter", Alter)
 	cmds.Add("admstatus", Status)
-	cmds.Add("admsay", Say)
-	cmds.Add("admtell", Tell)
 	cmds.Add("admspeak", Speak)
+	cmds.Add("admtell", Tell)
+	cmds.Add("admsay", Say)
+	cmds.Add("admannounce", Announce)
 	cmds.Add("admpuppet", Puppet)
+	cmds.Add("admhelp", Help)
+	cmds.Add("admcmds", Help)
+	
 
 	-- For replying to /admtells..this isn't an admin command, it can be used by any client
 	cmds.Add("Reply", Reply)
