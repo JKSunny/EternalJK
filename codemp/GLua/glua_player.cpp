@@ -340,6 +340,26 @@ static int GLua_Player_SendPrint(lua_State *L) {
 	return 0;
 }
 
+//incomplete function, need to probably request the map list from the server itself with a cmd (function does nothing atm)
+/*static int GLua_Player_GetMapList(lua_State *L) 
+{
+	GLua_Data_Player_t *ply = GLua_CheckPlayer(L, 1);
+	if (!ply) return 0;
+	char map[24] = "";
+	std::string maplist = "";
+	for (int i = 0; i < level.arenas.num; i++)
+	{
+		Q_strncpyz(map, Info_ValueForKey(level.arenas.infos[i], "map"), sizeof(map));
+		Q_StripColor(map);
+		maplist.append(map);
+		maplist.append(",");
+	}
+
+	const char *maps = maplist.c_str();
+	lua_pushstring(L, maps);
+	return 1;
+}*/
+
 static int GLua_Player_SendCommand(lua_State *L) { // Use with caution!
 	char buff[980] = {0}; // (not 1024, to keep the command from being oversize (cmd included)
 	GLua_Data_Player_t *ply = GLua_CheckPlayer(L, 1);
@@ -1294,6 +1314,10 @@ static int GLua_Player_SetAnimHoldTime(lua_State *L) {
 	if (!section || section == 2) {
 		BG_SetLegsAnimTimer(&ent->client->ps, time);
 	}
+	if (!section || section == 3) {
+		BG_SetTorsoAnimTimer(&ent->client->ps, time);
+		BG_SetLegsAnimTimer(&ent->client->ps, time);
+	}
 	return 0;
 }
 
@@ -1690,6 +1714,7 @@ static const struct luaL_reg player_m [] = {
 	{"SendCenterPrint", GLua_Player_SendCenterPrint},
 	{"SendCenterPrintAll", GLua_Player_SendCenterPrintAll},
 	{"SendPrint", GLua_Player_SendPrint},
+	//{"GetMapList", GLua_Player_GetMapList},
 	{"SendCommand", GLua_Player_SendCommand},
 	{"Kill", GLua_Player_Kill},
 	{"Disintegrate", GLua_Player_Disintegrate},

@@ -12,6 +12,7 @@ JKG.Running = true
 
 print("Loading main functions...")
 include("admin/accounts.lua") -- Accounts and Admin commands
+include("emotes.lua")	-- Emote system
 print("Loading entity spawning commands...")
 include("entcmds.lua")
 
@@ -51,4 +52,4 @@ else
 end
 
 print("Loading miscellaneous functions")
-include("misc.lua")
+include("misc.lua")  --This includes new test functions including stuff like pzktest and slctest
