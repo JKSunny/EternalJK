@@ -67,32 +67,6 @@ end
 
 cmds.AddRcon("signaltest", signaltest)
 
-local function teleport(ply, argc, argv)
-	if not ply.IsAdmin then
-		ply:SendChat("^1Admin ^5- ^7You are not allowed to use this command")
-		return
-	end
-	if argc < 2 then
-		local trace = ply:GetEyeTrace()
-		ply:Teleport(trace.EndPos + trace.HitNormal * 25)
-	else
-		local ply2
-		if (type(argv[1]) == "number") then
-			ply2 = players.GetByID(tonumber(argv[1]))
-		else 
-			ply2 = players.GetByName(argv[1])
-		end
-		if not ply2 then
-			ply:SendPrint("Target player not found")
-			return
-		end
-		local trace = ply:GetEyeTrace()
-		ply2:Teleport(trace.EndPos + trace.HitNormal * 25)
-	end
-end
-
-cmds.Add("teleport", teleport)
-
 local function usetarg(ply, argc, argv)
 	if not ply.IsAdmin then
 		ply:SendChat("^1Admin ^5- ^7You are not allowed to use this command")

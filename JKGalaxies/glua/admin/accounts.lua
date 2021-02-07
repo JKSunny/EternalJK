@@ -75,6 +75,7 @@ local function InitPermissions( )
 	AddPermission( "can-announce",			0, "admannounce",       "^8" )
 	AddPermission( "can-puppet", 			0, "admpuppet", 		"^8" )
 	AddPermission( "can-changemap",			0, "admchangemap",		"^8" )
+	AddPermission( "can-teleport", 			0, "teleport", 			"^8" )
 	AddPermission( "can-place", 			0, "bPlace", 			"^4" )
 	AddPermission( "can-delent", 			0, "bDelent", 			"^4" )
 	AddPermission( "can-entcount", 			1, "bEntCount", 		"^4" )
@@ -1297,6 +1298,39 @@ local function ChangeMap(ply, argc, argv)
 	end
 end
 
+local function teleport(ply, argc, argv)
+	if ply.isLoggedIn then
+		local rank = GetRank(ply)
+		if rank["can-teleport"] ~= true then
+			SystemReply(ply, "^1You do not have permission to perform this action.")
+			return
+		end
+
+		if argc < 2 then
+			local trace = ply:GetEyeTrace()
+			ply:Teleport(trace.EndPos + trace.HitNormal * 25)
+		
+		else
+			local ply2
+			if (type(argv[1]) == "number") then
+				ply2 = players.GetByID(tonumber(argv[1]))
+			else 
+				ply2 = players.GetByName(argv[1])
+			end
+			
+			if not ply2 then
+				ply:SendPrint("^1Target player not found")
+				return
+			end
+		
+			local trace = ply:GetEyeTrace()
+			ply2:Teleport(trace.EndPos + trace.HitNormal * 25)
+		end
+	else
+		SystemReply(ply, "^1You are not logged in.")
+	end
+end
+
 local function Help(ply, argc, argv)
 	if ply.isLoggedIn then
 		local printstring = ""
@@ -1306,8 +1340,9 @@ local function Help(ply, argc, argv)
 		printstring = printstring .. "^3admkick ^7- kick a user off the server.\n^3admchangeddetails ^7- edit account details.\n^3admprofile ^7- check what account you're logged in with.\n^3admnewaccount ^7- create a new account as an admin.\n"
 		printstring = printstring .. "^3admdeleteaccount ^7- delete an account as an admin.\n^3admlist ^7- query for info about accounts.\n^3admrank ^7- query for permission held by a rank\n^3admalter ^7- alter an accounts rank or password.\n"
 		printstring = printstring .. "^3admstatus ^7- list logged in users and status.\n^3admsay ^7- imitates the /say cmd for admins.\n^3admtell ^7- imitates the /tell cmd for admins.\n^3admspeak ^7- imitates the /sayglobal cmd for admins."
-		ply:SendPrint(printstring) --help getting too long, gotta break it up
-		printstring = "^3admannounce ^7- make a server announcement.\n^3admchangemap ^7- change the current map (not implemented).\n^3admpuppet ^7- allows admins to masquerade messages as other users.\n^3admhelp^7/^3admcmds ^7- list admin cmds."
+		ply:SendPrint(printstring) 	 --getting too long, gotta break it up
+		printstring = "^3admannounce ^7- make a server announcement.\n^3admpuppet ^7- allows admins to masquerade messages as other users.\n^3admchangemap ^7- change the current map (not implemented).\n^3teleport ^7- teleport to location or player.\n"
+		printstring = printstring .. "^3admhelp^7/^3admcmds ^7- list admin cmds."
 		ply:SendPrint(printstring)
 	else
 		SystemReply(ply, "^1You are not logged in.  ^7To login, use the login cmd. eg: ^3/login <username> <password>")
@@ -1339,6 +1374,7 @@ local function InitAccountCmds()
 	chatcmds.Add("admannounce", Announce)
 	chatcmds.Add("admpuppet", Puppet)
 	chatcmds.Add("admchangemap", ChangeMap)
+	chatcmds.Add("teleport", teleport)
 	chatcmds.Add("admhelp", Help)
 	chatcmds.Add("admcmds", Help)
 
@@ -1365,6 +1401,7 @@ local function InitAccountCmds()
 	cmds.Add("admannounce", Announce)
 	cmds.Add("admpuppet", Puppet)
 	cmds.Add("admchangemap", ChangeMap)
+	cmds.Add("teleport", teleport)
 	cmds.Add("admhelp", Help)
 	cmds.Add("admcmds", Help)
 	
