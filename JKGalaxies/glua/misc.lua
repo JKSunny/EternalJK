@@ -7,18 +7,6 @@
 	Written by BobaFett
 --------------------------------------------------]]
 
-local function givenoclip(ply, argc, argv)
-	
-	if argc < 2 then
-		ply.NoClip = !ply.NoClip
-	else
-		local ply2 = players.GetByID(argv[1])
-		ply2.NoClip = !ply2.NoClip
-	end
-end
-
-cmds.Add("donoclip", givenoclip)
-
 
 local debugmask = ""
 

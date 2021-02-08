@@ -3,10 +3,11 @@
 	Accounts and admin system
 		
 	written by eezstreet
+	improved by Futuza
 --------------------------------------------------]]
 
 --[[ ------------------------------------------------
-	Accounts
+	Accounts / Data Structures
 --------------------------------------------------]]
 
 accounts = { }
@@ -19,6 +20,20 @@ sortedRanks = { }
 permissions = { }
 sortedpermissions = { }
 local numPermissions = 0
+
+
+--[[ ------------------------------------------------
+	Generic Functions
+ ------------------------------------------------]]
+
+--used to count the total elements in a table
+function tablelength(T)
+	local count = 0
+	for _ in pairs(T) do count = count + 1 end
+	return count
+  end
+
+
 
 --[[ ------------------------------------------------
 	AddPermission( permissionname, permissiondefault, friendlyname, color )
@@ -53,36 +68,37 @@ end
 
 local function InitPermissions( )
 	AddPermission( "can-changedetails", 		1, "admchangedetails", 		"^3" )
-	AddPermission( "can-addaccounts", 		0, "admnewaccount", 		"^6" )
+	AddPermission( "can-addaccounts", 			0, "admnewaccount", 		"^6" )
 	AddPermission( "can-deleteaccounts", 		0, "admdeleteaccount", 		"^6" )
-	AddPermission( "can-kick", 		1, "admkick", 		"^6" )
-	AddPermission( "can-list-online", 		1, "admlist online", 		"^2" )
-	AddPermission( "can-list-admins", 		1, "admlist admins", 		"^2" )
-	AddPermission( "can-list-powers", 		1, "admlist ranks", 		"^2" )
-	AddPermission( "can-list-ranks", 		1, "admlist powers", 		"^2" )
+	AddPermission( "can-kick", 					1, "admkick", 		"^6" )
+	AddPermission( "can-list-online", 			1, "admlist online", 		"^2" )
+	AddPermission( "can-list-admins", 			1, "admlist admins", 		"^2" )
+	AddPermission( "can-list-powers", 			1, "admlist ranks", 		"^2" )
+	AddPermission( "can-list-ranks", 			1, "admlist powers", 		"^2" )
 	AddPermission( "can-list-permissions", 		0, "admlist permissions", 	"^2" )
-	AddPermission( "can-rank-inspect", 		1, "admrank inspect", 		"^2" )
-	AddPermission( "can-rank-create", 		0, "admrank create", 		"^1" )
-	AddPermission( "can-rank-delete", 		0, "admrank delete", 		"^1" )
+	AddPermission( "can-rank-inspect", 			1, "admrank inspect", 		"^2" )
+	AddPermission( "can-rank-create", 			0, "admrank create", 		"^1" )
+	AddPermission( "can-rank-delete", 			0, "admrank delete", 		"^1" )
 	AddPermission( "can-rank-addpermission", 	0, "admrank addpermission", 	"^1" )
 	AddPermission( "can-rank-deletepermission", 	0, "admrank deletepermission", 	"^1" )
 	AddPermission( "can-alter-rank", 		0, "admalter rank", 		"^6" )
-	AddPermission( "can-alter-password", 		0, "admalter password", 	"^6" )
-	AddPermission( "can-status", 			1, "admstatus", 		"^2" )
-	AddPermission( "can-say", 			1, "admsay", 			"^5" )
-	AddPermission( "can-tell", 			1, "admtell", 			"^5" )
-	AddPermission( "can-speak", 			1, "admspeak", 			"^5" )
-	AddPermission( "can-announce",			0, "admannounce",       "^8" )
-	AddPermission( "can-puppet", 			0, "admpuppet", 		"^8" )
-	AddPermission( "can-changemap",			0, "admchangemap",		"^8" )
-	AddPermission( "can-teleport", 			0, "teleport", 			"^8" )
-	AddPermission( "can-place", 			0, "bPlace", 			"^4" )
-	AddPermission( "can-delent", 			0, "bDelent", 			"^4" )
-	AddPermission( "can-entcount", 			1, "bEntCount", 		"^4" )
-	AddPermission( "can-showspawnvars", 		0, "bShowSpawnVars", 		"^4" )
-	AddPermission( "can-rotate", 			0, "bRotate", 			"^4" )
-	AddPermission( "use-cheats", 			0, "Use Cheats", 		"^8" )
-	AddPermission( "can-cinbuild", 		1, "cinbuild", 		"^6" )
+	AddPermission( "can-alter-password", 	0, "admalter password", 	"^6" )
+	AddPermission( "can-status", 			1, "admstatus", 			"^2" )
+	AddPermission( "can-say", 				1, "admsay", 				"^5" )
+	AddPermission( "can-tell", 				1, "admtell", 				"^5" )
+	AddPermission( "can-speak", 			1, "admspeak", 				"^5" )
+	AddPermission( "can-announce",			0, "admannounce",       	"^8" )
+	AddPermission( "can-puppet", 			0, "admpuppet", 			"^8" )
+	AddPermission( "can-changemap",			0, "admchangemap",			"^8" )
+	AddPermission( "can-teleport", 			0, "teleport", 				"^8" )
+	AddPermission( "can-setclip", 			0, "setclip",				"^8" )
+	AddPermission( "use-cheats", 			0, "Use Cheats", 			"^8" )
+	AddPermission( "can-place", 			0, "bPlace", 				"^4" )
+	AddPermission( "can-delent", 			0, "bDelent", 				"^4" )
+	AddPermission( "can-entcount", 			1, "bEntCount", 			"^4" )
+	AddPermission( "can-showspawnvars", 	0, "bShowSpawnVars", 		"^4" )
+	AddPermission( "can-rotate", 			0, "bRotate", 				"^4" )
+	AddPermission( "can-cinbuild", 			1, "cinbuild", 				"^6" )
 end
 
 --[[ ------------------------------------------------
@@ -1306,30 +1322,82 @@ local function teleport(ply, argc, argv)
 			return
 		end
 
+		--teleport to your cursor
 		if argc < 2 then
 			local trace = ply:GetEyeTrace()
 			ply:Teleport(trace.EndPos + trace.HitNormal * 25)
-		
 		else
-			local ply2
-			if (type(argv[1]) == "number") then
-				ply2 = players.GetByID(tonumber(argv[1]))
-			else 
-				ply2 = players.GetByName(argv[1])
-			end
-			
-			if not ply2 then
+			local target = players.GetByArg(argv[1])
+			if not target then
 				ply:SendPrint("^1Target player not found")
 				return
 			end
-		
-			local trace = ply:GetEyeTrace()
-			ply2:Teleport(trace.EndPos + trace.HitNormal * 25)
+			if argc == 2 then
+				local trace = ply:GetEyeTrace()
+				target:Teleport(trace.EndPos + trace.HitNormal * 25)
+				return
+			end
+
+			if argc > 2 then
+				local destination = {}
+				local request = table.concat(argv," ",2, argc-1)
+
+				for i in (request .. " "):gmatch("%S+") do
+					if(tonumber(i)) then --make sure it can convert to a number
+						table.insert(destination, tonumber(i))
+					else
+						SystemReply(ply, "^3Syntax: /teleport - self to cursor, /teleport <playername/clientnumber> - target to cursor, /teleport <playername/clientnumber> <x> <y> <z> <yaw> - target to coords")
+						return
+					end
+				end
+
+				if tablelength(destination) == 4 then --check to make sure table is appropriate length
+					target:SetPos(Vector( tostring(destination[1]) .. " " .. tostring(destination[2]) .. " " .. tostring(destination[3]) ))
+					target:SetAngles(Vector("0 " .. tostring(destination[4]) .. " 0"))
+					return
+				end
+
+				SystemReply(ply, "^3Syntax: /teleport - self to cursor, /teleport <playername/clientnumber> - target to cursor, /teleport <playername/clientnumber> <x> <y> <z> <yaw> - target to coords")
+				return
+			end
 		end
 	else
 		SystemReply(ply, "^1You are not logged in.")
 	end
 end
+
+local function setclip(ply, argc, argv)
+	if ply.isLoggedIn then
+		local rank = GetRank(ply)
+		if rank["can-setclip"] ~= true then
+			SystemReply(ply, "^1You do not have permission to perform this action.")
+			return
+		end
+		
+		--toggle noclip on our self
+		if argc < 2 then
+			ply.NoClip = !ply.NoClip
+		else
+			local target = players.GetByArg(argv[1])
+			if not target then
+				SystemReply(ply, "^1Invalid player specified")
+				return
+			else --toggle noclip on specified player
+				target.NoClip = !target.NoClip
+			end
+		end
+	else
+		SystemReply(ply, "^1You are not logged in.")
+	end
+end
+
+--local target =  players.GetByArg(argv[1])
+--if not target then
+	--SystemReply(ply, "^1Invalid player specified")
+	--return
+--end
+
+
 
 local function Help(ply, argc, argv)
 	if ply.isLoggedIn then
@@ -1341,8 +1409,8 @@ local function Help(ply, argc, argv)
 		printstring = printstring .. "^3admdeleteaccount ^7- delete an account as an admin.\n^3admlist ^7- query for info about accounts.\n^3admrank ^7- query for permission held by a rank\n^3admalter ^7- alter an accounts rank or password.\n"
 		printstring = printstring .. "^3admstatus ^7- list logged in users and status.\n^3admsay ^7- imitates the /say cmd for admins.\n^3admtell ^7- imitates the /tell cmd for admins.\n^3admspeak ^7- imitates the /sayglobal cmd for admins."
 		ply:SendPrint(printstring) 	 --getting too long, gotta break it up
-		printstring = "^3admannounce ^7- make a server announcement.\n^3admpuppet ^7- allows admins to masquerade messages as other users.\n^3admchangemap ^7- change the current map (not implemented).\n^3teleport ^7- teleport to location or player.\n"
-		printstring = printstring .. "^3admhelp^7/^3admcmds ^7- list admin cmds."
+		printstring = "^3admannounce ^7- make a server announcement.\n^3admpuppet ^7- allows admins to masquerade messages as other users.\n^3admchangemap ^7- change the current map (not implemented).\n"
+		printstring = printstring .. "^3teleport ^7- teleport to location or send player to location.\n^3toggleclip ^7- toggle noclip on/off self or specified player.\n^3admhelp^7/^3admcmds ^7- list admin cmds."
 		ply:SendPrint(printstring)
 	else
 		SystemReply(ply, "^1You are not logged in.  ^7To login, use the login cmd. eg: ^3/login <username> <password>")
@@ -1375,6 +1443,7 @@ local function InitAccountCmds()
 	chatcmds.Add("admpuppet", Puppet)
 	chatcmds.Add("admchangemap", ChangeMap)
 	chatcmds.Add("teleport", teleport)
+	chatcmds.Add("toggleclip", setclip)
 	chatcmds.Add("admhelp", Help)
 	chatcmds.Add("admcmds", Help)
 
@@ -1402,6 +1471,7 @@ local function InitAccountCmds()
 	cmds.Add("admpuppet", Puppet)
 	cmds.Add("admchangemap", ChangeMap)
 	cmds.Add("teleport", teleport)
+	cmds.Add("toggleclip", setclip)
 	cmds.Add("admhelp", Help)
 	cmds.Add("admcmds", Help)
 	
