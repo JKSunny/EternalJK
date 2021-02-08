@@ -1329,7 +1329,7 @@ local function teleport(ply, argc, argv)
 		else
 			local target = players.GetByArg(argv[1])
 			if not target then
-				ply:SendPrint("^1Target player not found")
+				SystemReply(ply,"^1Target player not found")
 				return
 			end
 			if argc == 2 then
