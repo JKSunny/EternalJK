@@ -677,7 +677,7 @@ typedef enum {
 #define	EF_FROZEN			(1<<16)		// JKG: Damage types - frozen
 
 #define	EF_CUSTOMBB				(1<<17)		// Ent uses custom bounding box
-#define	EF_STUNNED			(1<<18)		// JKG: Damage types - stunned
+#define	EF_STUNNED				(1<<18)		// JKG: Damage types - stunned
 
 #define	EF_BODYPUSH				(1<<19)		//rww - claiming this for fullbody push effect
 

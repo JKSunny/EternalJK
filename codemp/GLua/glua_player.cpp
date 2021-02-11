@@ -587,28 +587,28 @@ static int GLua_Player_MaxHealth_Set(lua_State *L) {
 }
 
 
-static int GLua_Player_MaxArmor_Get(lua_State *L) {
+static int GLua_Player_MaxShield_Get(lua_State *L) {
 	GLua_Data_Player_t *ply = GLua_CheckPlayer(L, 1);
 	if (!ply) return 0;
 	lua_pushinteger(L,level.clients[ply->clientNum].ps.stats[STAT_MAX_SHIELD]);
 	return 1;
 }
 
-static int GLua_Player_MaxArmor_Set(lua_State *L) {
+static int GLua_Player_MaxShield_Set(lua_State *L) {
 	GLua_Data_Player_t *ply = GLua_CheckPlayer(L, 1);
 	if (!ply) return 0;
 	level.clients[ply->clientNum].ps.stats[STAT_MAX_SHIELD] = luaL_checkinteger(L, 2);
 	return 0;
 }
 
-static int GLua_Player_Armor_Get(lua_State *L) {
+static int GLua_Player_Shield_Get(lua_State *L) {
 	GLua_Data_Player_t *ply = GLua_CheckPlayer(L, 1);
 	if (!ply) return 0;
 	lua_pushinteger(L,level.clients[ply->clientNum].ps.stats[STAT_SHIELD]);
 	return 1;
 }
 
-static int GLua_Player_Armor_Set(lua_State *L) {
+static int GLua_Player_Shield_Set(lua_State *L) {
 	GLua_Data_Player_t *ply = GLua_CheckPlayer(L, 1);
 	if (!ply) return 0;
 	level.clients[ply->clientNum].ps.stats[STAT_SHIELD] = luaL_checkinteger(L, 2);
@@ -978,6 +978,37 @@ static int GLua_Player_HasNoKnockback(lua_State *L) {
 	if (!ply) return 0;
 	ent = &g_entities[ply->clientNum];
 	if (ent->flags & FL_NO_KNOCKBACK) {
+		lua_pushboolean(L, 1);
+	}
+	else {
+		lua_pushboolean(L, 0);
+	}
+	return 1;
+}
+
+static int GLua_Player_SetNoDebuff(lua_State *L)
+{
+	GLua_Data_Player_t *ply = GLua_CheckPlayer(L, 1);
+	int active = lua_toboolean(L, 2);
+	gentity_t *ent;
+	if (!ply) return 0;
+	ent = &g_entities[ply->clientNum];
+	if (active) {
+		ent->flags |= FL_NO_DEBUFF;
+	}
+	else {
+		ent->flags &= ~FL_NO_DEBUFF;
+	}
+	return 0;
+}
+
+static int GLua_Player_HasNoDebuff(lua_State *L)
+{
+	GLua_Data_Player_t *ply = GLua_CheckPlayer(L, 1);
+	gentity_t *ent;
+	if (!ply) return 0;
+	ent = &g_entities[ply->clientNum];
+	if (ent->flags & FL_NO_DEBUFF) {
 		lua_pushboolean(L, 1);
 	}
 	else {
@@ -1731,12 +1762,12 @@ static const struct luaL_reg player_m [] = {
 	{"Spawn", GLua_Player_Spawn},
 	//{"Health", GLua_Player_Health},
 	//{"MaxHealth", GLua_Player_MaxHealth},
-	//{"MaxArmor", GLua_Player_MaxArmor},
-	//{"Armor", GLua_Player_Armor},
+	//{"MaxShield", GLua_Player_MaxShield},
+	//{"Shield", GLua_Player_Shield},
 	//{"SetHealth", GLua_Player_SetHealth},
 	//{"SetMaxHealth", GLua_Player_SetMaxHealth},
-	//{"SetMaxArmor", GLua_Player_SetMaxArmor},
-	//{"SetArmor", GLua_Player_SetArmor},
+	//{"SetMaxShield", GLua_Player_SetMaxShield},
+	//{"SetShield", GLua_Player_SetShield},
 	{"GetEyeTrace", GLua_Player_GetEyeTrace},
 	{"GetEntity", GLua_Player_GetEntity},
 	{"GetWeapon", GLua_Player_GetWeapon},
@@ -1764,7 +1795,7 @@ static const struct luaL_reg player_m [] = {
 	{"AddVelocity", GLua_Player_AddVelocity},
 	{"GetVelocity", GLua_Player_GetVelocity},
 	{"GetUserInfo", GLua_Player_GetUserInfo},
-	//{"IsHacking", GLua_Player_IsHacking},
+	//{"IsHacking", GLua_Player_IsHacking},  //use ply.Hacking now instead (part of player class instead of function)
 	{"FinishedHacking", GLua_Player_FinishedHacking},
 	{"StartHacking", GLua_Player_StartHacking},	
 	{"SetAmmo", GLua_Player_SetAmmo},
@@ -1815,9 +1846,9 @@ static const struct luaL_reg player_m [] = {
 
 static const struct GLua_Prop player_p [] = {
 	{"Health",	GLua_Player_Health_Get,		GLua_Player_Health_Set},
-	{"Armor",	GLua_Player_Armor_Get,		GLua_Player_Armor_Set},
+	{"Shield",	GLua_Player_Shield_Get,		GLua_Player_Shield_Set},
 	{"MaxHealth", GLua_Player_MaxHealth_Get, GLua_Player_MaxHealth_Set},
-	{"MaxArmor", GLua_Player_MaxArmor_Get, GLua_Player_MaxArmor_Set},
+	{"MaxShield", GLua_Player_MaxShield_Get, GLua_Player_MaxShield_Set},
 	{"ID",		GLua_Player_GetID,			NULL},
 	{"Name",	GLua_Player_GetName,		NULL},
 	{"IP",		GLua_Player_GetIP,			NULL},
@@ -1832,6 +1863,7 @@ static const struct GLua_Prop player_p [] = {
 	{"GodMode", GLua_Player_HasGodMode,		GLua_Player_SetGodMode},
 	{"NoClip",	GLua_Player_HasNoClip,		GLua_Player_SetNoClip},
 	{"NoKnockback", GLua_Player_HasNoKnockback, GLua_Player_SetNoKnockback },		//futuza: adding NoKnockback for players
+	{"NoDebuff", GLua_Player_HasNoDebuff,	GLua_Player_SetNoDebuff },
 	{"NoTarget",GLua_Player_HasNoTarget,	GLua_Player_SetNoTarget},
 	{"Gravity", GLua_Player_GetGravity,		GLua_Player_SetGravity},
 	{"Undying", GLua_Player_GetUndying,		GLua_Player_SetUndying},

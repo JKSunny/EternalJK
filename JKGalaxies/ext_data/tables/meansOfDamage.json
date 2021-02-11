@@ -649,6 +649,33 @@
 		}
 	},
 
+	"MOD_EMP": { 
+		// electromagnetic pulse shorts out electronics
+		"inventoryName": "@JKG_INVENTORY_MOD_ION",
+
+		"modifiers": {
+			"isEMP": true,
+			"armor": 0.6,
+			"organic": 1.0,
+			"shield": 1.7,
+			"droid": 1.8
+		},
+
+		"killFeed": {
+			"killMessage": "@JKG_INGAME_KILLED_ELECTRICAL",
+			"deathmessage": "@JKG_INGAME_DIED_ELECTRICAL",
+			"suicideMessageMale": "@JKG_INGAME_SUICIDE_ELECTRICAL_MALE",
+			"suicideMessageFemale": "@JKG_INGAME_SUICIDE_ELECTRICAL_FEMALE",
+			"suicideMessageNeuter": "@JKG_INGAME_SUICIDE_ELECTRICAL_GENDERLESS"
+		},
+
+		"plums": {
+			"damageColor": [ "157", "125", "255" ],
+			"lowDamageColor": [ "157", "100", "255" ],
+			"shieldDamageColor": [ "22", "168", "220" ]
+		}
+	},
+
 	"MOD_IGNITED": {
 		// Lit on fire
 		"inventoryName": "@JKG_INVENTORY_MOD_IGNITED",

@@ -3985,8 +3985,16 @@ void G_Knockdown( gentity_t *self, gentity_t *attacker, const vec3_t pushDir, fl
 	{
 		return;
 	}
-	if ( (self->flags & FL_GODMODE) || (self->client->noclip) || (self->client->ps.eFlags & EF_JETPACK_ACTIVE)) {
-		return;	// Dont knock down when havin godmode or noclip, or when usin a jetpack
+	if ( (self->flags & FL_GODMODE) || (self->client->noclip)) {
+		return;	// Dont knock down when havin godmode or noclip
+	}
+	
+	//75% chance to knock jetpacks out of the air
+	if (self->client->ps.eFlags & EF_JETPACK_ACTIVE)
+	{
+		if(Q_irand(1,4) > 1)
+			Jetpack_Off(self);
+		//return;  //jetpacks used to be immune to knockback
 	}
 
 	if ( PM_LockedAnim( self->client->ps.legsAnim ) )
@@ -4671,10 +4679,10 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 			Jetpack_Off(targ);
 
 		/*put other electronic effects here
-		  eg: make HUD or radar go fuzzy, short out other equipment/tech, etc.*/
+		  eg: make HUD or radar go fuzzy, short out other equipment/tech, etc.?*/
 
-		//G_Sound(targ, CHAN_AUTO, G_SoundIndex(va("sound/effects/spark_small0%i.wav", Q_irand(0, 3)))); //emp shorting out sound --futuza fix me, y u no play?
-		//should add an electric spark on player model here somewhere
+		//--Futuza: note that a better version of EMP is available through the standard-emp debuff, this only shorts stuff out once
+		//see how it interacts with jetpacks in jkg_equip.cpp ItemUse_Jetpack()
 	}
 
 	if (take > 0 && !(dflags&DAMAGE_NO_HIT_LOC))

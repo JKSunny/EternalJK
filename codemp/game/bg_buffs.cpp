@@ -274,6 +274,9 @@ static qboolean JKG_ParseBuffPassiveData(cJSON* json, jkgBuff_t* pBuff)
 		pBuff->passive.stacks = 0; //initialize stacks
 	}
 
+	child = cJSON_GetObjectItem(json, "empstaggered");
+	pBuff->passive.empstaggered = cJSON_ToBooleanOpt(child, 1.0);
+
 	return qtrue;
 }
 

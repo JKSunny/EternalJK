@@ -143,6 +143,7 @@ void G_RemoveBuff(gentity_t* ent, int index)
 	}
 	pBuff->passive.stacks = 0;
 	pBuff->passive.movemodifier_cur = 1.0;
+	pBuff->passive.empstaggered = false;
 }
 
 /*
@@ -231,6 +232,11 @@ void G_BuffEntity(gentity_t* ent, gentity_t* buffer, int buffID, float intensity
 			ent->buffData[i].endTime = level.time + duration;
 			ent->buffData[i].lastDamageTime = level.time;
 
+
+
+			//don't forget to undo anything you add here in the G_RemoveBuff() function
+
+			//override movement type
 			if (pBuff->passive.overridePmoveType.first)
 			{
 				if (pBuff->passive.overridePmoveType.second == PM_FREEZE)
@@ -246,6 +252,7 @@ void G_BuffEntity(gentity_t* ent, gentity_t* buffer, int buffID, float intensity
 				}
 			}
 
+			//override movement speed
 			if (pBuff->passive.movemodifier && pBuff->passive.maxstacks)
 			{
 				if (pBuff->passive.maxstacks > pBuff->passive.stacks) //if we can fit more stacks, increase the effect
@@ -272,6 +279,15 @@ void G_BuffEntity(gentity_t* ent, gentity_t* buffer, int buffID, float intensity
 					pBuff->passive.stacks++;
 				}
 			}
+
+			if (pBuff->passive.empstaggered)
+			{
+				if (ent->client->ps.eFlags & EF_JETPACK_ACTIVE)
+					Jetpack_Off(ent);
+
+				//todo: tell client to display jetpack is disabled icon
+			}
+
 			return;
 		}
 	}
@@ -376,6 +392,11 @@ static void DebuffPlayer( gentity_t *player, const damageArea_t *area, int damag
     }
 
 	if (!JKG_ClientAlive(player)) {	// Don't allow us to be debuffed if we are dead
+		return;
+	}
+
+	if (player->flags & FL_NO_DEBUFF)  //check for no debuff flag
+	{
 		return;
 	}
 

@@ -64,10 +64,14 @@ struct jkgBuffVisuals_t
 struct jkgBuffPassive_t
 {
 	std::pair<qboolean, int>	overridePmoveType;
+
 	float movemodifier;			// Affects how your movement is affected by the debuff (1.0 is standard, 0.5 is half speed, 2.0 is double speed)
 	float movemodifier_cur;		// Increases/decreases with additional stacks
 	unsigned int maxstacks;		// How many times the movemodifier effect can stack (0 means it doesn't stack and occurs only once)
 	unsigned int stacks;		// How many stacks we currently have
+
+	qboolean empstaggered;		//are your electronics shorted out? (prevents jetpack activation/other things not yet implemented, like maybe hud shutoff?)
+
 };
 
 /*

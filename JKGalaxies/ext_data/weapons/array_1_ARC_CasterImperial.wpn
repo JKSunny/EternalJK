@@ -77,7 +77,15 @@
     },
     
     "firemode0": {
-        "damage":       12,
+        "damage": {
+                    "damage":       12,
+            		"buffs": [
+					{
+						"buff": "standard-emp",
+						"duration": 4000
+					}
+				    ]
+        },
         "ammocost":     1,
         "maxchargetime": 1250,
         "chargedamage": 1.5,
@@ -103,7 +111,16 @@
     },
 
     "firemode1": {
-        "damage":       5,
+        "damage": {
+                            "damage":       5,
+            				"buffs": [
+					{
+						"buff": "standard-emp",
+						"duration": 4000
+					}
+				]
+        },
+        
         "ammocost":     1,
         "collisionsize": 5.0,
         "firedelay":    50,

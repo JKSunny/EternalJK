@@ -188,6 +188,42 @@
 		}
 	},
 
+	//emp gear restriction, prevents activation of jetpacks (and more to come later, maybe disable hud?)
+	"standard-emp":
+	{
+		"category": "electric",
+
+		"canceling": {
+			"noBuffStack": true,
+			"noCategoryStack": true
+		},
+
+		"passive": {
+			"empstaggered": true
+		},
+
+		"damage": {
+			"damage": 1,
+			"means": "MOD_EMP",
+			"damageRate": 1000,
+			"deadly": false
+		},
+
+		"visuals": {
+			"efx": 
+			{
+				"effect": "effects/sparks/spark",
+				"bolt": "upper_lumbar",
+				"debounce": 1000
+			},
+			"shader": {
+				"shader": "gfx/PlayerOverlays/electricity",
+				"shaderRGBA": [ 205, 112, 205, 180 ],
+				"shaderLen": 2501
+			}
+		}
+	},
+
 	"standard-carbonite": {
 		"category": "carbonite",
 

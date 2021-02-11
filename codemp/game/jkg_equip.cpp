@@ -391,6 +391,24 @@ void ItemUse_Jetpack(gentity_t *ent)
 		return;
 	}
 
+	//can't activate jetpack if empstaggered by debuff
+	if (ent->client->ps.buffsActive)
+	{
+		jkgBuff_t* pBuff;
+		for (int i = 0; i < PLAYERBUFF_BITS; i++)
+		{
+			if (ent->client->ps.buffsActive & (1 << i))
+			{
+				pBuff = &buffTable[i];
+				if(pBuff->passive.empstaggered)
+				{
+					G_Sound(ent, CHAN_AUTO, G_SoundIndex("sound/effects/energy_crackle.wav"));
+					return;
+				}
+			}
+		}
+	}
+
 	if (ent->client->ps.eFlags & EF_JETPACK_ACTIVE)
 	{
 		Jetpack_Off(ent);

@@ -72,6 +72,14 @@
     "firemode0": {
 		"damage": 
 			{
+            "buffs": [
+					{
+						"buff": "standard-emp",
+						"duration": 4000
+					}
+                    ],
+            "damage": 55
+		    },
 			"damageradius": 
 				{ 
 				"start": 420,
@@ -80,8 +88,6 @@
 				},
 				"duration": "1",
 				"delay": "1000",
-				"damage": 45
-		},
 //        "damage": 50,//100,//{
 //                          "damageradius": { "start": 128 },
 //                          "delay": 0,
@@ -123,7 +129,16 @@
     
     "firemode1": {
 //        "hitscan":      true,
-        "damage":       50,//80,
+        "damage":
+        {
+            "damage":       65,//80,
+            "buffs": [
+			{
+			    "buff": "standard-emp",
+			    "duration": 4000
+			}
+            ]
+        },
         "ammocost":     1,
         "maxchargetime":1500,
         "chargedamage": 1.6,

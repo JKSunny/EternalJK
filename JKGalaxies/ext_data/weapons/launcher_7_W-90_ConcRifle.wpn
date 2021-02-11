@@ -62,7 +62,16 @@
     },
     
     "firemode0": {
-        "damage":       60,//100,
+        "damage":
+        {
+            "damage":       65,//50,
+            "buffs": [
+			{
+			    "buff": "standard-emp",
+			    "duration": 4000
+			}
+            ]
+        },
         "ballistic":    true,
         "collisionsize":1.0,
         "ammocost":     1,
