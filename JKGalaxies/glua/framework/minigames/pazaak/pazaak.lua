@@ -145,8 +145,10 @@ function PazaakGame:SetPlayers(ply1, ply2)
 	if ply2 then
 	self.Players[1].Player.GodMode = true
 	self.Players[1].Player.NoKnockback = true
+	self.Players[1].Player.NoDebuff = true
 	self.Players[2].Player.GodMode = true
 	self.Players[2].Player.NoKnockback = true
+	self.Players[2].Player.NoDebuff = true
 	print( tostring(self.Players[1].Player:GetName()) .. " and " .. tostring(self.Players[2].Player:GetName()) .. " have been made invulnerable for a Pazaak match." )
 	end
 end
@@ -1087,13 +1089,12 @@ function PazaakGame:CleanUp()
 	--remove player invincibility: futuza
 	self.Players[1].Player.GodMode = false
 	self.Players[1].Player.NoKnockback = false
+	self.Players[1].Player.NoDebuff = false
 	self.Players[2].Player.GodMode = false
 	self.Players[2].Player.NoKnockback = false
+	self.Players[2].Player.NoDebuff = false
+	print( "Invulnerability disabled for " .. tostring(self.Players[1].Player:GetName()) .. " and " .. tostring(self.Players[2].Player:GetName()) )
 
-	--only bother announcing invulnerability being disabled if both are players
-	if not self.Players[2].IsAI then
-		print( "Invulnerability disabled for " .. tostring(self.Players[1].Player:GetName()) .. " and " .. tostring(self.Players[2].Player:GetName()) )
-	end
 	
 	-- Close the pazaak board and we're finished
 	self.Players[1].Player:SendCommand("pzk stop")

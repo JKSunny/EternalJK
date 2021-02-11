@@ -92,6 +92,7 @@ local function InitPermissions( )
 	AddPermission( "can-changemap",			0, "admchangemap",			"^8" )
 	AddPermission( "can-teleport", 			0, "teleport", 				"^8" )
 	AddPermission( "can-setclip", 			0, "setclip",				"^8" )
+	AddPermission( "can-usetarg",			1, "usetarg",				"^8" )
 	AddPermission( "use-cheats", 			0, "Use Cheats", 			"^8" )
 	AddPermission( "can-place", 			0, "bPlace", 				"^4" )
 	AddPermission( "can-delent", 			0, "bDelent", 				"^4" )
@@ -1391,12 +1392,30 @@ local function setclip(ply, argc, argv)
 	end
 end
 
---local target =  players.GetByArg(argv[1])
---if not target then
-	--SystemReply(ply, "^1Invalid player specified")
-	--return
---end
+local function usetarg(ply, argc, argv)
+	if ply.isLoggedIn then
+		local rank = GetRank(ply)
+		if rank["can-usetarg"] ~= true then
+			SystemReply(ply, "^1You do not have permission to perform this action.")
+			return
+		end
 
+		if argc < 2 then
+			SystemReply(ply, "^3Please specify a target.")
+		else
+			local target = argv[1]
+			local plyent = ply:GetEntity()
+			local entlist = ents.GetByName(target)
+			local k,v
+			for k,v in pairs(entlist) do
+				v:Use(plyent, plyent)
+			end
+		end
+	else
+		SystemReply(ply, "^1You are not logged in.")
+	end
+end
+--if not ply.IsAdmin then  --old way of verifying admins?
 
 
 local function Help(ply, argc, argv)
@@ -1444,6 +1463,7 @@ local function InitAccountCmds()
 	chatcmds.Add("admchangemap", ChangeMap)
 	chatcmds.Add("teleport", teleport)
 	chatcmds.Add("toggleclip", setclip)
+	chatcmds.Add("usetarg", usetarg)
 	chatcmds.Add("admhelp", Help)
 	chatcmds.Add("admcmds", Help)
 
@@ -1472,6 +1492,7 @@ local function InitAccountCmds()
 	cmds.Add("admchangemap", ChangeMap)
 	cmds.Add("teleport", teleport)
 	cmds.Add("toggleclip", setclip)
+	cmds.Add("usetarg", usetarg)
 	cmds.Add("admhelp", Help)
 	cmds.Add("admcmds", Help)
 	
