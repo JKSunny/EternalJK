@@ -12,7 +12,7 @@ function NPC:OnSpawn()
 	--self:GiveWeapon(WP_MELEE)  --futuza: these no longer work, investigate why
 	--self:SetWeapon(WP_MELEE)
 	-- Godmode it, so they dont get killed
-		self.GodMode = false
+		self.GodMode = true
 	-- No knockback
 	self.NoKnockback = true
 	-- Explicitly tell it to walk and not run
@@ -45,6 +45,10 @@ function NPC:OnUse(other, activator)
 		return
 	end
 	dlg:RunDialogue(self, ply)
+end
+
+function NPC:OnPain(ply, dmg)
+	--if you do damage to the npc
 end
 
 function NPC:OnRemove()

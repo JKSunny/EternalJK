@@ -187,11 +187,13 @@ static int GLua_Sys_StripColorcodes(lua_State *L) {
 
 	if( input && *input )
 	{
-		char *output = {};
-		strcpy( output, input );
+		char *output = nullptr;
+		output = (char *)malloc(strlen(input) + 1);
+		strcpy( output, input ); 
 		Q_StripColor( output );
 
 		lua_pushstring(L, output);
+		free(output);
 		return 1;
 	}
 	lua_pushnil(L);

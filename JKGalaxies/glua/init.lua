@@ -19,6 +19,9 @@ include("entcmds.lua")
 print("Loading item functions...")
 include "resources/items/init.lua"
 
+print("Loading quests manager...")
+include ("resources/quests/questManager.lua")
+
 entmanager.Init()
 -- Load the global entities
 entmanager.RegisterDir("glua/resources/entities")
