@@ -225,8 +225,6 @@ Makes an NPC into a vendor (with the designated treasure class)
 void JKG_MakeNPCVendor(gentity_t* ent, char* szTreasureClassName)
 {
 	szTreasureClassName = Q_strlwr(szTreasureClassName);
-	if (ent->targetname == nullptr)
-		ent->targetname = "";
 	Q_strncpyz(ent->treasureclass, szTreasureClassName, sizeof(ent->treasureclass));
 
 	//--Futuza: FIXME spawned vendors, need to add thinking to spawned vendors to get them to refresh - this crashes right now
