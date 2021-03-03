@@ -223,6 +223,23 @@ static int GLua_NPC_RefreshStock(lua_State *L)
 	return 0;
 }
 
+static int GLua_NPC_UseVendor(lua_State *L)
+{
+	gentity_t* npc = GLua_CheckNPC(L, 1);
+	GLua_Data_Player_t *ply = GLua_CheckPlayer(L, 2);
+	
+	if (!npc) return 0;
+	if (!ply) return 0;
+
+	if (npc->health <= 0)
+		return 0;
+
+	gentity_t* player;
+	player = &g_entities[ply->clientNum];
+
+	JKG_target_vendor_use(npc, player, player);
+}
+
 static int GLua_NPC_GetPos(lua_State *L) {
 	gentity_t *npc = GLua_CheckNPC(L, 1);
 	vec3_t orig;
@@ -1843,6 +1860,7 @@ static const struct luaL_reg npc_m [] = {
 	{"Kill", GLua_NPC_Kill},
 	{"MakeVendor", GLua_NPC_MakeVendor},
 	{"RefreshVendorStock", GLua_NPC_RefreshStock},
+	{"UseVendor", GLua_NPC_UseVendor},
 	{"SetPos", GLua_NPC_SetPos},
 	{"GetPos", GLua_NPC_GetPos},
 	{"SetOrigin", GLua_NPC_SetPos},

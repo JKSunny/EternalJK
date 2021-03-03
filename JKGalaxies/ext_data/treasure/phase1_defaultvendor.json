@@ -258,6 +258,26 @@
 				"Mine_LaserTrip2": 4
 			}
 		},
+		"ammovendor":
+		{
+			"numberPicksMin": 2,
+			"numberPicksMax": 4,
+			"uniquePicks": true,
+			"picks":
+			{
+				"ammo_bouncingQuarrels_40": 3,
+				"ammo_explosiveQuarrel_40": 1,
+				"ammo_splittingQuarrels_40": 2,
+				"ammo_explosiveSlugs_60": 2,
+				"ammo_shotgunSlugs_30": 3,
+				"ammo_incendiarySlugs_45": 6,
+				"ammo_incendiarySlugs_100": 5,
+				"ammo_medicBeads_60": 8,
+				"ammo_poison_gas_50": 4,
+				"ammo_ionPwrPakLrg_60": 2,
+				"ammo_ionPwrPackELG_60": 3
+			}
+		},
 		"medicvendor":
 		{
 			"numberPicksMin": 3,
