@@ -238,6 +238,7 @@ static int GLua_NPC_UseVendor(lua_State *L)
 	player = &g_entities[ply->clientNum];
 
 	JKG_target_vendor_use(npc, player, player);
+	return 1;
 }
 
 static int GLua_NPC_GetPos(lua_State *L) {
@@ -425,14 +426,14 @@ static int GLua_NPC_MaxHealth(lua_State *L) {
 	return 1;
 }
 
-static int GLua_NPC_MaxArmor(lua_State *L) {
+static int GLua_NPC_MaxShield(lua_State *L) {
 	gentity_t *npc = GLua_CheckNPC(L, 1);
 	if (!npc) return 0;
 	lua_pushinteger(L,npc->client->ps.stats[STAT_MAX_SHIELD]);
 	return 1;
 }
 
-static int GLua_NPC_Armor(lua_State *L) {
+static int GLua_NPC_Shield(lua_State *L) {
 	gentity_t *npc = GLua_CheckNPC(L, 1);
 	if (!npc) return 0;
 	lua_pushinteger(L,npc->client->ps.stats[STAT_SHIELD]);
@@ -453,14 +454,14 @@ static int GLua_NPC_SetMaxHealth(lua_State *L) {
 	return 0;
 }
 
-static int GLua_NPC_SetArmor(lua_State *L) {
+static int GLua_NPC_SetShield(lua_State *L) {
 	gentity_t *npc = GLua_CheckNPC(L, 1);
 	if (!npc) return 0;
 	npc->client->ps.stats[STAT_SHIELD] = luaL_checkinteger(L, 2);
 	return 0;
 }
 
-static int GLua_NPC_SetMaxArmor(lua_State *L) {
+static int GLua_NPC_SetMaxShield(lua_State *L) {
 	gentity_t *npc = GLua_CheckNPC(L, 1);
 	if (!npc) return 0;
 	npc->client->ps.stats[STAT_MAX_SHIELD] = luaL_checkinteger(L, 2);
@@ -1871,12 +1872,12 @@ static const struct luaL_reg npc_m [] = {
 	{"SetNavGoal", GLua_NPC_SetNavGoal},
 	{"Health", GLua_NPC_Health},
 	{"MaxHealth", GLua_NPC_MaxHealth},
-	{"MaxArmor", GLua_NPC_MaxArmor},
-	{"Armor", GLua_NPC_Armor},
+	{"MaxArmor", GLua_NPC_MaxShield},
+	{"Armor", GLua_NPC_Shield},
 	{"SetHealth", GLua_NPC_SetHealth},
 	{"SetMaxHealth", GLua_NPC_SetMaxHealth},
-	{"SetArmor", GLua_NPC_SetArmor},
-	{"SetMaxArmor", GLua_NPC_SetMaxArmor},
+	{"SetShield", GLua_NPC_SetShield},
+	{"SetMaxShield", GLua_NPC_SetMaxShield},
 	{"GetEyeTrace", GLua_NPC_GetEyeTrace},
 	{"GetEntity", GLua_NPC_GetEntity},
 	{"Damage", GLua_NPC_Damage},
@@ -1969,8 +1970,8 @@ static const struct luaL_reg npc_m [] = {
 static const struct GLua_Prop npc_p [] = {
 	{"Health", GLua_NPC_Health, GLua_NPC_SetHealth},
 	{"MaxHealth", GLua_NPC_MaxHealth, GLua_NPC_SetMaxHealth},
-	{"Armor", GLua_NPC_Armor, GLua_NPC_SetArmor},
-	{"MaxArmor", GLua_NPC_MaxArmor, GLua_NPC_SetMaxArmor},
+	{"Shield", GLua_NPC_Shield, GLua_NPC_SetShield},
+	{"MaxShield", GLua_NPC_MaxShield, GLua_NPC_SetMaxShield},
 	{"Entity", GLua_NPC_GetEntity, NULL},
 	{"Pos", GLua_NPC_GetPos, GLua_NPC_SetPos},
 	{"Origin", GLua_NPC_GetPos, GLua_NPC_SetPos},

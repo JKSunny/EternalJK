@@ -21,8 +21,9 @@ function NPC:OnSpawn()
 	-- Prevent him from targetting anyone
 	self.LookForEnemies = false
 	self.ChaseEnemies = false
+	self.Enemy = nil 	--no enemies please
 	-- Raise our use range so we can be used across a counter
-	self.UseRange = 150
+	self.UseRange = 120
 	-- Set up local variables
 	self.LastUse = 0
 end
@@ -37,7 +38,22 @@ function NPC:OnUse(other, activator)
 		return		-- Only talk to players, nothin else
 	end
 	
+	self.Enemy = nil 	--no enemies please
+	self:SetViewTarget(activator) 	--look at me, I am the captain now
+	
+	-- Voice lines
+	local randosnd = math.random(0,2)
+	if  randosnd == 0 then
+		other:PlaySound(4, "sound/chars/st1/misc/look1.mp3")
+	elseif randosnd == 1 then
+		other:PlaySound(4, "sound/chars/st2/misc/suspicious1.mp3")
+	else
+		other:PlaySound(4, "sound/chars/st1/misc/sight3.mp3")
+	end
+	
+	
 	local ply = activator:ToPlayer()
+	ply.EntPtr = other --give us access to ent functions if necessary (like playing sounds)
 	
 	local dlg = dialogue.CreateDialogueObject("lost_trooper")
 	if not dlg then
@@ -45,6 +61,16 @@ function NPC:OnUse(other, activator)
 		return
 	end
 	dlg:RunDialogue(self, ply)
+	
+	--if npc needs to open a shop
+	--[[
+	if self.OpenShop then
+		print("We reached open shop.")
+		self:UseVendor(ply)
+		self.OpenShop = false
+	end
+	]]--
+	
 end
 
 function NPC:OnPain(ply, dmg)

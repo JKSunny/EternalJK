@@ -34,7 +34,7 @@ DLG.Nodes = {
 		Type = 2,
 		SubNode = "T6",
 		Text = "So...cold...",
-		Duration = 1500,
+		Duration = 2000,
 		HasCondition = false,
 		HasResolver = false,
 	},
@@ -54,6 +54,11 @@ DLG.Nodes = {
 			ply.Quests["losttrooper"].stage = 1
 			ply:SendCenterPrint("Started: " .. ply.Quests["losttrooper"].title)
 			ply:SendPrint("Started " .. ply.Quests["losttrooper"].title)
+			ply.EntPtr:PlaySound(11, "sound/interface/quest/QuestStartReveal00.mp3")
+			
+			--allow him to sell us stuff too
+			owner:MakeVendor("basicvendor")
+			owner:RefreshVendorStock()
 		end,
 		HasCondition = false,
 	},
@@ -157,7 +162,7 @@ DLG.Nodes = {
 	T24 = {
 		Type = 2,
 		SubNode = "S25",
-		Text = "...damn hallucinations have names now...",
+		Text = "...the blasted hallucinations have names now...",
 		Duration = 2000,
 		HasCondition = false,
 		HasResolver = false,
@@ -184,7 +189,7 @@ DLG.Nodes = {
 	T27 = {
 		Type = 2,
 		SubNode = "T28",
-		Text = "Why do these damn hallucinations make so much sense...",
+		Text = "Why do these blasted hallucinations make so much sense...",
 		Duration = 3000,
 		HasCondition = false,
 		HasResolver = false,
@@ -192,7 +197,7 @@ DLG.Nodes = {
 	T28 = {
 		Type = 2,
 		SubNode = "D29",
-		Text = "Oh...hahaha very funny brain.  \nYou won't trick me, I can imagine pain well enough.",
+		Text = "Oh...hahaha very funny.  \nWon't trick me, I can imagine pain well enough.",
 		Duration = 3000,
 		HasCondition = false,
 		HasResolver = false,
@@ -409,12 +414,15 @@ DLG.Nodes = {
 			owner.NoKnockback = false
 			owner.Walking = false
 			owner.Running = true
+			local player = ply.Name
+			owner.Enemy = player
 			owner.LookForEnemies = true
 			owner.ChaseEnemies = true
 			--fail the quest and notify user they failed
 			ply.Quests["losttrooper"].stage = -1
 			ply:SendCenterPrint("Failed: " .. ply.Quests["losttrooper"].title)
 			ply:SendPrint("Failed " .. ply.Quests["losttrooper"].title)
+			ply.EntPtr:PlaySound(11, "sound/interface/quest/QuestFailed.mp3")
 		end,
 		HasCondition = false,
 	},
@@ -439,8 +447,8 @@ DLG.Nodes = {
 	},
 	T54 = {
 		Type = 2,
-		SubNode = "O55",
-		Text = "Oh it's you $name$.  You're just part of my imagination, right?\nWhat do you want now?",
+		SubNode = "T76",
+		Text = "Oh it's you $name$.  You're just part of my imagination, right?",
 		Duration = 4000,
 		HasCondition = false,
 		HasResolver = true,
@@ -451,18 +459,504 @@ DLG.Nodes = {
 			return "<name-error>"
 		end,
 	},
-	O55 = {
+	T76 = {
+		Type = 2,
+		SubNode = "O84",
+		Text = "What do you want now?",
+		Duration = 3000,
+		HasCondition = false,
+		HasResolver = false,
+	},
+	O84 = {
 		Type = 3,
-		SubNode = "D56",
+		SubNode = "T85",
+		NextNode = "O79",
+		Text = "You play pazaak?",
+		HasCondition = false,
+		HasResolver = false,
+	},
+	T85 = {
+		Type = 2,
+		SubNode = "W86",
+		Text = "You imaginary types aren't all bad, you're on!",
+		Duration = 3000,
+		HasCondition = false,
+		HasResolver = false,
+	},
+	W86 = {
+		Type = 7,
+		SubNode = "T87",
+		ScriptFunc = function(owner, ply, resumefunc, data)
+			local function pzkFinish(winner)
+			    if(winner == nil) then
+			        owner.WonMatch = true
+			    else
+			        owner.WonMatch = false
+			    end
+			    
+				resumefunc()
+			end
+						
+			local pzk = sys.CreatePazaakGame()
+			local cards = JKG.Pazaak.Cards
+			pzk:SetPlayers(ply, nil)
+			if not opp then
+				pzk:SetAILevel(1)
+				pzk:SetAIName("Lost Stormtrooper")
+			end
+						
+			pzk:SetFinishCallback(pzkFinish)
+						
+			pzk:SetCards(1, {10,10,10,10,10,10,
+			                10,10,10,10,10,10,
+			                10,10,10,10,10,10,
+			                10,10,10,10,10 } )
+			
+			pzk:SetCards(2, {10,10,10,10,10,10,
+			                10,10,10,10,10,10,
+			                10,10,10,10,10,10,
+			                10,10,10,10,10 } )
+			
+			pzk:SetSideDeck(2, {cards.PZCARD_FLIP_1,
+								cards.PZCARD_FLIP_2,
+			                    cards.PZCARD_FLIP_3,
+			                    cards.PZCARD_FLIP_4,
+			                    cards.PZCARD_FLIP_5,
+			                    cards.PZCARD_FLIP_6,
+			                    cards.PZCARD_FLIP_2,
+			                    cards.PZCARD_FLIP_3,
+			                    cards.PZCARD_FLIP_4,
+			                    cards.PZCARD_FLIP_5	
+			                    } )
+										
+			pzk:ShowCardSelection(true)
+						
+			timer.Simple(50, function()
+				local success, reason = pzk:StartGame()
+				if not success then
+					resumefunc()
+				end
+			end)
+			return true
+		end,
+		HasCondition = false,
+	},
+	T87 = {
+		Type = 2,
+		SubNode = "L89",
+		NextNode = "T88",
+		Text = "Hahaha another win for me. You didn't put up much of a fight.\nBetter luck next time scrub.",
+		Duration = 7000,
+		HasCondition = true,
+		ConditionFunc = function(owner, ply, data)
+			--[[-----------------------------------------------
+				Conditional Script
+			
+				Available Variables:
+				owner - Entity that runs this conversation
+				ply - Player the owner is talking to
+				data - Local storage table
+			
+				Wanted return value: Bool (true/false)
+			--]]-----------------------------------------------
+			if owner.WonMatch == true then
+			    return true
+			else
+			    return false
+			end
+		end,
+		HasResolver = false,
+	},
+	L89 = {
+		Type = 4,
+		Target = "T76",
+	},
+	T88 = {
+		Type = 2,
+		SubNode = "L90",
+		Text = "Dank farrik. You had some real lucky draws.  \nWon't happen next time.  Well played.",
+		Duration = 5000,
+		HasCondition = true,
+		ConditionFunc = function(owner, ply, data)
+			--[[-----------------------------------------------
+				Conditional Script
+			
+				Available Variables:
+				owner - Entity that runs this conversation
+				ply - Player the owner is talking to
+				data - Local storage table
+			
+				Wanted return value: Bool (true/false)
+			--]]-----------------------------------------------
+			if owner.WonMatch == false then
+			    return true
+			else
+			    return false
+			end
+		end,
+		HasResolver = false,
+	},
+	L90 = {
+		Type = 4,
+		Target = "T76",
+	},
+	O79 = {
+		Type = 3,
+		SubNode = "T80",
+		NextNode = "O77",
+		Text = "Can I buy something off of you?",
+		HasCondition = false,
+		HasResolver = false,
+	},
+	T80 = {
+		Type = 2,
+		SubNode = "W81",
+		Text = "Not like I need any of this.  And you're not real anyway so what does it matter?\nUnless you have food?  No?  Well, take a look then.",
+		Duration = 6000,
+		HasCondition = false,
+		HasResolver = false,
+	},
+	W81 = {
+		Type = 7,
+		SubNode = "D94",
+		ScriptFunc = function(owner, ply, resumefunc, data)
+			timer.Simple(50, function()
+				local success = owner:UseVendor(ply)
+			    ply:SendCommand("cin de")
+			    ply:SendCommand("cin stop")
+			    --ply:SendCommand("conv stop") --exclude this cause it'll break the waitfunction
+			    ply:SetCinematicMode(false)
+				--if success then
+			    --[[
+			    if success == 1 then
+					resumefunc()
+				end]]
+			end)
+			return true
+		end,
+		HasCondition = false,
+	},
+	D94 = {
+		Type = 5,
+	},
+	O77 = {
+		Type = 3,
+		SubNode = "S95",
+		NextNode = "O97",
 		Text = "Nevermind.",
 		HasCondition = false,
 		HasResolver = false,
 	},
-	D56 = {
+	S95 = {
+		Type = 6,
+		SubNode = "D96",
+		ScriptFunc = function(owner, ply, data)
+			--[[-----------------------------------------------
+				Dialogue Script
+			
+				Available Variables:
+				owner - Entity that runs this conversation
+				ply	  - Player the owner is talking to
+				data - Local storage table
+			--]]-----------------------------------------------
+			ply.EntPtr:PlaySound(4, "sound/chars/stofficer1/misc/giveup4.mp3")
+		end,
+		HasCondition = false,
+	},
+	D96 = {
 		Type = 5,
+	},
+	O97 = {
+		Type = 3,
+		SubNode = "T98",
+		Text = "I know why you keep seeing things...",
+		HasCondition = true,
+		ConditionFunc = function(owner, ply, data)
+			if ply.Quests["losttrooper"].foundSpice then
+			    return true
+			else
+			    return false
+			end
+		end,
+		HasResolver = false,
+	},
+	T98 = {
+		Type = 2,
+		SubNode = "O99",
+		Text = "...",
+		Duration = 2000,
+		HasCondition = false,
+		HasResolver = false,
+	},
+	O99 = {
+		Type = 3,
+		SubNode = "T105",
+		NextNode = "O100",
+		Text = "There's a spice mine here.  [Show spice.]",
+		HasCondition = false,
+		HasResolver = false,
+	},
+	T105 = {
+		Type = 2,
+		SubNode = "D138",
+		Text = "Here?  On this frozen wasteland.  No wonder I'm losing it.\nThe rebels must've been selling it on the blackmarket to fund their ops.\nThat also explains this horrid twitch!  But why would?\nWait...then who are you?  Are you a rebel?",
+		Duration = 5000,
+		HasCondition = false,
+		HasResolver = false,
+	},
+	D138 = {
+		Type = 5,
+	},
+	O100 = {
+		Type = 3,
+		SubNode = "T106",
+		NextNode = "O101",
+		Text = "[Lie]You were always crazy.",
+		HasCondition = false,
+		HasResolver = false,
+	},
+	T106 = {
+		Type = 2,
+		SubNode = "O107",
+		Text = "I...I think I've always known.",
+		Duration = 3000,
+		HasCondition = false,
+		HasResolver = false,
+	},
+	O107 = {
+		Type = 3,
+		SubNode = "T108",
+		NextNode = "O109",
+		Text = "You ate them, didn't you?  Your fellow troopers?",
+		HasCondition = false,
+		HasResolver = false,
+	},
+	T108 = {
+		Type = 2,
+		SubNode = "T117",
+		Text = "I...we...they were already dead...\nWe were out of rations...",
+		Duration = 3000,
+		HasCondition = false,
+		HasResolver = false,
+	},
+	T117 = {
+		Type = 2,
+		SubNode = "O118",
+		Text = "I...we didn't have a choice!  You know that, you were there.\nI would have died!",
+		Duration = 4000,
+		HasCondition = false,
+		HasResolver = false,
+	},
+	O118 = {
+		Type = 3,
+		SubNode = "T122",
+		NextNode = "O119",
+		Text = "It's alright.  Anyone would do the same in your position.",
+		HasCondition = false,
+		HasResolver = false,
+	},
+	T122 = {
+		Type = 2,
+		SubNode = "D132",
+		Text = "No!  No it's not alright, it's eating me up.",
+		Duration = 3000,
+		HasCondition = false,
+		HasResolver = false,
+	},
+	D132 = {
+		Type = 5,
+	},
+	O119 = {
+		Type = 3,
+		SubNode = "T123",
+		NextNode = "O120",
+		Text = "Why should you deserve to live?  Monster.",
+		HasCondition = false,
+		HasResolver = false,
+	},
+	T123 = {
+		Type = 2,
+		SubNode = "O124",
+		Text = "You're right.  I should just end it.",
+		Duration = 3000,
+		HasCondition = false,
+		HasResolver = false,
+	},
+	O124 = {
+		Type = 3,
+		SubNode = "T126",
+		NextNode = "O125",
+		Text = "It'll bring you peace at last.",
+		HasCondition = false,
+		HasResolver = false,
+	},
+	T126 = {
+		Type = 2,
+		SubNode = "T128",
+		Text = "I'm...I'm so sorry everyone.",
+		Duration = 3000,
+		HasCondition = false,
+		HasResolver = false,
+	},
+	T128 = {
+		Type = 2,
+		SubNode = "S130",
+		Text = "[He reaches for his e-11 and points it at his face.]",
+		Duration = 3000,
+		HasCondition = false,
+		HasResolver = false,
+	},
+	S130 = {
+		Type = 6,
+		SubNode = "D131",
+		ScriptFunc = function(owner, ply, data)
+			--[[-----------------------------------------------
+				Dialogue Script
+			
+				Available Variables:
+				owner - Entity that runs this conversation
+				ply	  - Player the owner is talking to
+				data - Local storage table
+			--]]-----------------------------------------------
+			owner.GodMode = false
+			owner.Health = 0
+		end,
+		HasCondition = false,
+	},
+	D131 = {
+		Type = 5,
+	},
+	O125 = {
+		Type = 3,
+		SubNode = "T127",
+		Text = "Die like a coward.",
+		HasCondition = false,
+		HasResolver = false,
+	},
+	T127 = {
+		Type = 2,
+		SubNode = "L129",
+		Text = "I...",
+		Duration = 3000,
+		HasCondition = false,
+		HasResolver = false,
+	},
+	L129 = {
+		Type = 4,
+		Target = "T128",
+	},
+	O120 = {
+		Type = 3,
+		SubNode = "D133",
+		NextNode = "O121",
+		Text = "And you'd do it again wouldn't you?",
+		HasCondition = false,
+		HasResolver = false,
+	},
+	D133 = {
+		Type = 5,
+	},
+	O121 = {
+		Type = 3,
+		SubNode = "D134",
+		Text = "You need help, I can save you.",
+		HasCondition = false,
+		HasResolver = false,
+	},
+	D134 = {
+		Type = 5,
+	},
+	O109 = {
+		Type = 3,
+		SubNode = "T113",
+		NextNode = "O110",
+		Text = "You're talking to me aren't you? Doesn't that make you crazy?",
+		HasCondition = false,
+		HasResolver = false,
+	},
+	T113 = {
+		Type = 2,
+		SubNode = "O114",
+		Text = "I...don't know anymore.",
+		Duration = 3000,
+		HasCondition = false,
+		HasResolver = false,
+	},
+	O114 = {
+		Type = 3,
+		SubNode = "D135",
+		NextNode = "O115",
+		Text = "Being crazy isn't so bad.",
+		HasCondition = false,
+		HasResolver = false,
+	},
+	D135 = {
+		Type = 5,
+	},
+	O115 = {
+		Type = 3,
+		SubNode = "D136",
+		NextNode = "O116",
+		Text = "How can you be so weak?",
+		HasCondition = false,
+		HasResolver = false,
+	},
+	D136 = {
+		Type = 5,
+	},
+	O116 = {
+		Type = 3,
+		SubNode = "D137",
+		Text = "I can help you.",
+		HasCondition = false,
+		HasResolver = false,
+	},
+	D137 = {
+		Type = 5,
+	},
+	O110 = {
+		Type = 3,
+		SubNode = "T111",
+		Text = "I'm joking!  You just need some company.",
+		HasCondition = false,
+		HasResolver = false,
+	},
+	T111 = {
+		Type = 2,
+		SubNode = "D112",
+		Text = "Why do these hallucinations torment me so?\nGo...go away.",
+		Duration = 3000,
+		HasCondition = false,
+		HasResolver = false,
+	},
+	D112 = {
+		Type = 5,
+	},
+	O101 = {
+		Type = 3,
+		SubNode = "D139",
+		NextNode = "O102",
+		Text = "You lost all your friends, anyone would go crazy...",
+		HasCondition = false,
+		HasResolver = false,
+	},
+	D139 = {
+		Type = 5,
+	},
+	O102 = {
+		Type = 3,
+		SubNode = "L104",
+		Text = "Nevermind.  Let's talk about something else.",
+		HasCondition = false,
+		HasResolver = false,
+	},
+	L104 = {
+		Type = 4,
+		Target = "T76",
 	},
 	E4 = {
 		Type = 1,
+		SubNode = "D67",
 		HasCondition = true,
 		ConditionFunc = function(owner, ply, data)
 			--Has done next step
@@ -474,5 +968,8 @@ DLG.Nodes = {
 			
 			return stage == 3
 		end,
+	},
+	D67 = {
+		Type = 5,
 	},
 }
