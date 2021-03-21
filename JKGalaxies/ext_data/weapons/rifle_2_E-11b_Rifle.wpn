@@ -111,8 +111,7 @@
 			"walkModifier": 1.3,
 			"inAirModifier": 1.7
         },
-	"heatGenerated": 2,
-	"maxHeat": 50
+	"heatGenerated": 4
     },
     
     "firemode1": {
@@ -169,8 +168,7 @@
         	"maxAccuracyAdd": 60,
         	"sightsModifier": 0.35
         },
-	"heatGenerated": 2,
-	"maxHeat": 50
+	"heatGenerated": 7
     },
     
     "playeranims": {

@@ -67,12 +67,12 @@
     },
     
     "firemode0": {
-        "damage":       24,
+        "damage":       25,
         "ammocost":     1,
 	    "burstshotdelay": 80,
-        "firedelay":    400,
+        "firedelay":    375,
         "firingtype":   "burst",
-        "range":        4600.0,
+        "range":        4900.0,
         "recoil":       0.7,
 //        "splashrange":  8.0,
 		"shotsperburst": 3,
@@ -84,16 +84,16 @@
 		"ammobase": "AMMO_POWERPACK_L",
 		"ammodefault": "AMMO_POWERPACK_M",
         "clipSize":              45,
-		"heatGenerated": 1.8,
-		"maxHeat": 50
+		"heatGenerated": 2.8,
+		"maxHeat": 75
     },
 	
     "firemode1": {
-        "damage":       26,
+        "damage":       31,
         "ammocost":     1,
-        "firedelay":    125,
+        "firedelay":    100,
         "firingtype":   "semi",
-        "range":        4800.0,
+        "range":        5200.0,
         "recoil":       0.7,
         "spread":       0.2,
         "projectilespeed": 6000.0,
@@ -103,8 +103,20 @@
 		"ammobase": "AMMO_POWERPACK_L",
 		"ammodefault": "AMMO_POWERPACK_M",
         "clipSize":              45,
-		"heatGenerated": 1.8,
-		"maxHeat": 50
+		"accuracy": 
+		{
+			"accuracyRating": 15,
+			"accuracyRatingPerShot": 2,
+			"msToDrainAccuracy": 75,
+			"maxAccuracyAdd": 70,
+			"crouchModifier": 0.7,
+			"runModifier": 1.5,
+			"sightsModifier": 0.1,
+			"walkModifier": 1.25,
+			"inAirModifier": 1.7
+        },
+		"heatGenerated": 3,
+		"maxHeat": 75
     },
     
 	"playeranims": {

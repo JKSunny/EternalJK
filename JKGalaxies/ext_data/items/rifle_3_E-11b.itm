@@ -5,7 +5,7 @@
 	"weapon":		"WP_DISRUPTOR",
 	"variation":		"2",
 	"weight":		"7",
-	"cost":		"1200",
+	"cost":		"1400",
 	"xml":			"",
 	"itemIcon":		"models/weapons/E-11b_Rifle/icon_default"
 }
