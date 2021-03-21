@@ -93,6 +93,7 @@ extern jkgBuff_t buffTable[MAX_BUFFS];
 
 void JKG_InitializeBuffs();
 qboolean JKG_HasFreezingBuff(entityState_t* es);
+qboolean JKG_HasFreezingBuff(playerState_t* ps);
 void JKG_RemoveBuffCategory(const char* buffCategory, playerState_t* ps);
 void JKG_CheckWaterRemoval(playerState_t* ps);
 void JKG_CheckRollRemoval(playerState_t* ps);

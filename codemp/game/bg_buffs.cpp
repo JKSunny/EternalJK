@@ -38,6 +38,27 @@ qboolean JKG_HasFreezingBuff(entityState_t* es)
 	return qfalse;
 }
 
+//ps version
+qboolean JKG_HasFreezingBuff(playerState_t* ps)
+{
+	for (int i = 0; i < PLAYERBUFF_BITS; i++)
+	{
+		if (ps->buffsActive & (1 << i))
+		{
+			jkgBuff_t* pBuff = &buffTable[ps->buffs[i].buffID];
+			if (pBuff->passive.overridePmoveType.first)
+			{
+				if (pBuff->passive.overridePmoveType.second == PM_FREEZE ||
+					pBuff->passive.overridePmoveType.second == PM_LOCK)
+				{
+					return qtrue;
+				}
+			}
+		}
+	}
+	return qfalse;
+}
+
 // Removes all buffs of a certain category on a playerstate
 void JKG_RemoveBuffCategory(const char* buffCategory, playerState_t* ps)
 {
@@ -86,9 +107,10 @@ void JKG_CheckRollRemoval(playerState_t* ps)
 	}
 }
 
-//Removes all buffs that have the shieldRemoval flag set
+//Removes all buffs that have the shieldRemoval flag set, returns true if has stunlock, false if normal
 bool JKG_CheckShieldRemoval(playerState_t* ps)
 {
+	qboolean stunlocked = false;
 	for (int i = 0; i < PLAYERBUFF_BITS; i++)
 	{
 		if (ps->buffsActive & (1 << i))
@@ -96,12 +118,19 @@ bool JKG_CheckShieldRemoval(playerState_t* ps)
 			jkgBuff_t* pBuff = &buffTable[ps->buffs[i].buffID];
 			if (pBuff->cancel.shieldRemoval)
 			{
+				if (pBuff->passive.overridePmoveType.first)
+				{
+					if (pBuff->passive.overridePmoveType.second == PM_FREEZE ||
+						pBuff->passive.overridePmoveType.second == PM_LOCK)
+					{
+						stunlocked = true;
+					}
+				}
 				ps->buffsActive &= ~(1 << i); // remove this buff
-				return true;
 			}
 		}
 	}
-	return false;
+	return stunlocked;
 }
 
 //Removes all buffs that have the filterRemoval flag set
