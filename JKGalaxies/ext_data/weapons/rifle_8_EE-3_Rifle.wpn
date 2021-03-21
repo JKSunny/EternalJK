@@ -74,7 +74,6 @@
         "firingtype":   "burst",
         "range":        4900.0,
         "recoil":       0.7,
-//        "splashrange":  8.0,
 		"shotsperburst": 3,
         "spread":       0.4,
         "projectilespeed": 5500.0,
@@ -84,8 +83,15 @@
 		"ammobase": "AMMO_POWERPACK_L",
 		"ammodefault": "AMMO_POWERPACK_M",
         "clipSize":              45,
-		"heatGenerated": 2.8,
-		"maxHeat": 75
+		"accuracy": {
+        	"accuracyRating": 30,
+        	"accuracyRatingPerShot": 1.8,
+        	"msToDrainAccuracy": 256,
+        	"maxAccuracyAdd": 55,
+        	"sightsModifier": 0.25
+        },
+		"heatGenerated": 3,
+		"maxHeat": 50
     },
 	
     "firemode1": {
@@ -115,8 +121,8 @@
 			"walkModifier": 1.25,
 			"inAirModifier": 1.7
         },
-		"heatGenerated": 3,
-		"maxHeat": 75
+		"heatGenerated": 1.9,
+		"maxHeat": 50
     },
     
 	"playeranims": {
