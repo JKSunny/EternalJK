@@ -96,7 +96,7 @@ qboolean JKG_HasFreezingBuff(entityState_t* es);
 void JKG_RemoveBuffCategory(const char* buffCategory, playerState_t* ps);
 void JKG_CheckWaterRemoval(playerState_t* ps);
 void JKG_CheckRollRemoval(playerState_t* ps);
-void JKG_CheckShieldRemoval(playerState_t* ps);
+bool JKG_CheckShieldRemoval(playerState_t* ps);
 void JKG_CheckFilterRemoval(playerState_t* ps);
 int JKG_ResolveBuffName(const char* szBuffName);
 void JKG_GetBuffNames(std::vector<std::string>& outBuffNames);

@@ -87,7 +87,7 @@ void JKG_CheckRollRemoval(playerState_t* ps)
 }
 
 //Removes all buffs that have the shieldRemoval flag set
-void JKG_CheckShieldRemoval(playerState_t* ps)
+bool JKG_CheckShieldRemoval(playerState_t* ps)
 {
 	for (int i = 0; i < PLAYERBUFF_BITS; i++)
 	{
@@ -97,9 +97,11 @@ void JKG_CheckShieldRemoval(playerState_t* ps)
 			if (pBuff->cancel.shieldRemoval)
 			{
 				ps->buffsActive &= ~(1 << i); // remove this buff
+				return true;
 			}
 		}
 	}
+	return false;
 }
 
 //Removes all buffs that have the filterRemoval flag set

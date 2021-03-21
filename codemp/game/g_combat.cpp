@@ -4075,6 +4075,87 @@ void G_Knockdown( gentity_t *self, gentity_t *attacker, const vec3_t pushDir, fl
 }
 
 /*
+===================================
+//Evasion Mechanics
+JKG_EvaluateEvasion()
+===================================
+*/
+void G_EvaluateEvasion(gentity_s* targ, gentity_s* attacker, int take)
+{
+	/*
+			Note:
+			Would like to make this sort of thing a skill (bounty hunter tree or something), can use rolling to evade attacks.
+			Chances for successfully dodging with a roll would depend on player's skill level.  Some stuff shouldn't be evadeable.
+			Probably should lower damage, instead of evading entirely as well.  Right now this is just an outline idea that is still fun.
+			--Futuza
+	*/
+
+		//sample skill calculation:
+		int dodgeSkill_level = 3;	//get player's skill level - we'll default to level 3 for now
+		float dmgReduction;
+
+		switch (dodgeSkill_level)
+		{
+		case 0:
+			dmgReduction = 0;	//no skill, no dodge allowed
+			break;
+		case 1:
+			dmgReduction = 0.1f;
+			break;
+		case 2:
+			dmgReduction = 0.125f;
+			break;
+		case 3:
+			dmgReduction = 0.15f;	//maximum reduction
+			break;
+		default:
+			dmgReduction = 0;
+		}
+
+
+		bool rolled = false;
+		if (dmgReduction > 0)
+		{
+			switch (targ->client->ps.legsAnim)	//check for roll & dmgReduction exists
+			{
+			case BOTH_ROLL_F: case BOTH_ROLL_B:
+			case BOTH_ROLL_R: case BOTH_ROLL_L:
+			case BOTH_GETUP_BROLL_B: case BOTH_GETUP_BROLL_F:
+			case BOTH_GETUP_BROLL_L: case BOTH_GETUP_BROLL_R:
+			case BOTH_GETUP_FROLL_B: case BOTH_GETUP_FROLL_F:
+			case BOTH_GETUP_FROLL_L: case BOTH_GETUP_FROLL_R:
+				if (targ->playerState->legsTimer > 0)	//they're rolling in time
+				{
+					int timing = bgAllAnims[targ->localAnimIndex].anims[targ->client->ps.legsAnim].numFrames * fabs((float)(bgHumanoidAnimations[targ->client->ps.legsAnim].frameLerp));	//get animation timing length
+					timing *= 0.5f; //cut in two
+					if ((timing + 300 > targ->playerState->legsTimer) && (targ->playerState->legsTimer > timing - 300))		//perfect timing
+					{
+						trap->SendServerCommand(targ - g_entities, va("notify 1 \"Flawless Dodge!\""));
+						take > 2 ? take *= (1 - (dmgReduction * 2)) : take = 1;	//double , or set it to 1
+						G_Sound(targ, CHAN_AUTO, G_SoundIndex("sound/weapons/melee/swing4.mp3"));		//play flawless dodge sound
+					}
+					else
+					{
+						take > 2 ? take *= (1 - dmgReduction) : take = 1;	//reduce damage by 1/4
+						trap->SendServerCommand(targ - g_entities, va("notify 1 \"Dodge!\""));
+					}
+					rolled = true;
+				}
+				break;
+			}
+		}
+		if (rolled)
+		{
+			//do dodge efx/plum here
+
+			if (attacker != targ || !attacker->client || attacker->s.number >= MAX_CLIENTS) //notify other players we dodged
+				trap->SendServerCommand(attacker - g_entities, va("notify 1 \"%s ^7dodged!\"", targ->client->pers.netname));
+		}
+}
+
+
+
+/*
  *	Determines whether damage from attacker to target should trigger a hitmarker
  */
 static QINLINE qboolean ShouldHitmarker( const gentity_t *attacker, const gentity_t *target, const int mod )
@@ -4539,86 +4620,11 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 	}
 	take = damage;
 
-
-	///////////////////////////////////////
-	//
-	//Evasion Mechanics
-	//
-
 	//if roll dodges are allowed (on by default)
 	if (jkg_allowDodge.integer > 0 && take > 0 && means->modifiers.dodgeable && targ->client)
 	{
-		/*
-			Note:
-			Would like to make this sort of thing a skill (bounty hunter tree or something), can use rolling to evade attacks.
-			Chances for successfully dodging with a roll would depend on player's skill level.  Some stuff shouldn't be evadeable.
-			Probably should lower damage, instead of evading entirely as well.  Right now this is just an outline idea that is still fun.
-			--Futuza
-		*/
-		
-		//sample skill calculation:
-		int dodgeSkill_level = 3;	//get player's skill level
-		float dmgReduction;
-
-		switch (dodgeSkill_level)
-		{
-		case 0:
-			dmgReduction = 0;	//no skill, no dodge allowed
-			break;
-		case 1:
-			dmgReduction = 0.1f;
-			break;
-		case 2:
-			dmgReduction = 0.125f;
-			break;
-		case 3:
-			dmgReduction = 0.15f;	//maximum reduction
-			break;
-		default:
-			dmgReduction = 0;
-		}
-
-
-		bool rolled = false;
-		if(dmgReduction > 0)
-		{
-			switch (targ->client->ps.legsAnim)	//check for roll & dmgReduction exists
-			{
-				case BOTH_ROLL_F: case BOTH_ROLL_B:
-				case BOTH_ROLL_R: case BOTH_ROLL_L:
-				case BOTH_GETUP_BROLL_B: case BOTH_GETUP_BROLL_F:
-				case BOTH_GETUP_BROLL_L: case BOTH_GETUP_BROLL_R:
-				case BOTH_GETUP_FROLL_B: case BOTH_GETUP_FROLL_F:
-				case BOTH_GETUP_FROLL_L: case BOTH_GETUP_FROLL_R:
-				if (targ->playerState->legsTimer > 0)	//they're rolling in time
-				{
-					int timing = bgAllAnims[targ->localAnimIndex].anims[targ->client->ps.legsAnim].numFrames * fabs((float)(bgHumanoidAnimations[targ->client->ps.legsAnim].frameLerp));	//get animation timing length
-					timing *= 0.5f; //cut in two
-					if ( (timing+300 > targ->playerState->legsTimer) && (targ->playerState->legsTimer > timing-300) )		//perfect timing
-					{
-						trap->SendServerCommand(targ - g_entities, va("notify 1 \"Flawless Dodge!\""));
-						take > 2 ? take *= (1 - (dmgReduction * 2)) : take = 1;	//double , or set it to 1
-						G_Sound(targ, CHAN_AUTO, G_SoundIndex("sound/weapons/melee/swing4.mp3"));		//play flawless dodge sound
-					}
-					else
-					{
-						take > 2 ? take *= (1-dmgReduction) : take = 1;	//reduce damage by 1/4
-						trap->SendServerCommand(targ - g_entities, va("notify 1 \"Dodge!\""));
-					}
-					rolled = true;
-				}
-				break;
-			}
-		}
-		if (rolled)
-		{	
-			//do dodge efx/plum here
-
-			if (attacker != targ || !attacker->client || attacker->s.number >= MAX_CLIENTS) //notify other players we dodged
-				trap->SendServerCommand(attacker - g_entities, va("notify 1 \"%s ^7dodged!\"", targ->client->pers.netname));
-		}
+		G_EvaluateEvasion(targ, attacker, take); //calculate roll dodge reduction
 	}
-
 
 	///////////////////////////////////////
 	//

@@ -1,6 +1,6 @@
 # JEDI KNIGHT GALAXIES: ext_data
 
-Jedi Knight Galaxies is easily the most moddable mod for Jedi Academy in existence. Part of this is due to the new systems we implemented with the ext_data files. Almost of them follow JSON-like syntax (you can use c-style comments).
+Jedi Knight Galaxies is easily the most moddable mod for Jedi Academy in existence. Part of this is due to the new systems we implemented with the ext_data files. Almost all of them follow JSON-like syntax (you can use c-style comments).
 
 ## TABLE OF CONTENTS
 
@@ -86,6 +86,8 @@ Each object, whose name is the buff linkage (example, "standard-fire": {} can be
   - noCategoryStack (boolean): If true, this buff will not stack against another buff in the same category. It will remove all buffs in the same category who have lower priority.
   - waterRemoval (boolean): If true, swimming in water will remove the buff.
   - rollRemoval (boolean): If true, rolling removes this buff.
+  - shieldRemoval (boolean): If true, if an active shield is equipped (with at least 1 charge) will remove this buff.
+  - filterRemoval (boolean): If true, if armor with the filter property is equipped will remove this buff.
   - cancelOther (array of objects): Cancels out buffs in other categories when this buff is applied. Each object in this array contains the following data:
    - category (string): The category to cancel out.
    - priority (integer): Won't cancel anything in this category unless this priority number is >= that buff's priority number.
@@ -252,6 +254,7 @@ Each .arm file contains data for one piece of armor. They have the following fie
  - ehp (integer): "Effective Hit Points" for this piece of armor. Example, if the player's base health pool is 100 hit points, and this piece of armor provides 100 ehp, it is equivalent to a 50% reduction in damage. If EHP is 200, it's equivalent to a 66% reduction in damage.
  - hp (integer): How much to increase the player's total health pool by when this piece of armor is equipped.
  - stamina (interger): How much to increase the player's total stamina/forcePower pool by when this piece of armor is equipped (note this feature is incomplete).
+ - filter (boolean): If true, the armor has a filter that protects the wearer from toxins.
  - movemodifier (float): How much to modify a player's movement speed by with their equipped armor. This is subject to movement modifiers (see constants.json, above)
  - visuals (object): Contains the following fields:
   - equippedSound (string): The sound that is played when the piece of armor is equipped.

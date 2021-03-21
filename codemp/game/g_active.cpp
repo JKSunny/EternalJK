@@ -2183,7 +2183,14 @@ void ClientThink_real( gentity_t *ent ) {
 	// remove fire and other debuffs that shields protect from
 	if(ent->client->shieldEquipped && ent->client->ps.stats[STAT_SHIELD] > 0 && JKG_ClientAlive(ent))
 	{
-		JKG_CheckShieldRemoval(&ent->client->ps);	
+		//if eligible for removal
+		if (JKG_CheckShieldRemoval(&ent->client->ps)) //remove the buff
+		{
+			//and also lingering stun effects
+			ent->client->pmfreeze = qfalse;
+			ent->client->pmlock = qfalse;
+		}
+
 	}
 
 	// remove toxins and other debuffs that filters protects
