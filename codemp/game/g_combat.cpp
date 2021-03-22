@@ -3857,34 +3857,36 @@ void G_CheckForBlowingUp(gentity_t *ent, gentity_t *enemy, vec3_t point, int dam
 
 /*
  *	Modifies the damage based on the location where it hit and also the armor equipped at that location (if any)
+    Returns true if a headshot, false if anything else.
  */
-void G_LocationBasedDamageModifier(gentity_t *ent, vec3_t point, int mod, int dflags, int *damage, meansOfDamage_t* means)
+bool G_LocationBasedDamageModifier(gentity_t *ent, vec3_t point, int mod, int dflags, int *damage, meansOfDamage_t* means)
 {
 	int hitLoc = -1;
 	int armorSlot = 0;
+	qboolean headshot = false;
 
 	if (!g_locationBasedDamage.integer)
 	{ //then leave it alone
-		return;
+		return false;
 	}
 
 	if (means == nullptr) {
-		return;
+		return false;
 	}
 
 	if ( (dflags&DAMAGE_NO_HIT_LOC) )
 	{ //then leave it alone
-		return;
+		return false;
 	}
 
 	if (mod == MOD_SABER && *damage <= 1)
 	{ //don't bother for idle damage
-		return;
+		return false;
 	}
 
 	if (!point)
 	{
-		return;
+		return false;
 	}
 
 	if ((ent->client && ent->client->g2LastSurfaceTime == level.time && mod == MOD_SABER) || //using ghoul2 collision? Then if the mod is a saber we should have surface data from the last hit (unless thrown).
@@ -3943,6 +3945,7 @@ void G_LocationBasedDamageModifier(gentity_t *ent, vec3_t point, int mod, int df
 	case HL_HEAD:
 		armorSlot = ARMSLOT_HEAD;
 		*damage *= bgConstants.damageModifiers.headModifier;
+		headshot = true;
 		break;
 	default:
 		break; //do nothing then
@@ -3961,6 +3964,11 @@ void G_LocationBasedDamageModifier(gentity_t *ent, vec3_t point, int mod, int df
 			*damage *= modifier;
 		}
 	}
+
+	if (headshot)
+		return true;
+	else
+		return false;
 }
 /*
 ===================================
@@ -4178,7 +4186,7 @@ static QINLINE qboolean ShouldHitmarker( const gentity_t *attacker, const gentit
 	}
 	if( !target->client )
 	{
-		if ( target->s.eType == ET_GENERAL && target->s.eType == WP_TURRET )
+		if ( target->s.eType == ET_GENERAL || target->s.eType == WP_TURRET )	//futuza: shouldn't this be || instead of &&?
 			return qtrue;
 		return qfalse;
 	}
@@ -4308,7 +4316,9 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 	int			take;
 	int			ssave;
 	int			knockback;
+	qboolean	isHeadShot = false;
 	meansOfDamage_t* means = JKG_GetMeansOfDamage(mod);
+
 
 	if (!targ || !targ->inuse)
 	{
@@ -4684,9 +4694,6 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 		if (targ->client->ps.eFlags & EF_JETPACK_ACTIVE)
 			Jetpack_Off(targ);
 
-		/*put other electronic effects here
-		  eg: make HUD or radar go fuzzy, short out other equipment/tech, etc.?*/
-
 		//--Futuza: note that a better version of EMP is available through the standard-emp debuff, this only shorts stuff out once
 		//see how it interacts with jetpacks in jkg_equip.cpp ItemUse_Jetpack()
 	}
@@ -4696,7 +4703,7 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 		if (targ->client &&
 			attacker->inuse && attacker->client)
 		{ //check for location based damage stuff.
-			G_LocationBasedDamageModifier(targ, point, mod, dflags, &take, means);
+			isHeadShot = G_LocationBasedDamageModifier(targ, point, mod, dflags, &take, means);
 		}
 	}
 
@@ -4862,6 +4869,13 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 				//if our movement was frozen unfreeze at death
 				client->pmfreeze = qfalse;
 				client->pmlock = qfalse;
+
+				//if they killed with a headshot
+				if (isHeadShot)
+				{
+					trap->SendServerCommand(targ - g_entities, va("notify 1 \"Killed by headshot!\""));
+					trap->SendServerCommand(attacker - g_entities, va("notify 1 \"Headshot!\""));
+				}
 			}
 			else if (targ->s.eType == ET_NPC)
 			{ //g2animent

@@ -221,6 +221,8 @@
 				"shaderRGBA": [ 205, 112, 205, 180 ],
 				"shaderLen": 2501
 			}
+			/*put other electronic effects here
+		  	eg: make HUD or radar go fuzzy, short out other equipment/tech, etc.?*/
 		}
 	},
 
