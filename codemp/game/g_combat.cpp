@@ -1685,7 +1685,7 @@ qboolean JKG_HandleUnclaimedBounties(gentity_t* deadguy)
 		{
 			trap->SendServerCommand(player->s.number, va("notify 1 \"Team Bounty Claimed: +%i Credits\"", reward));
 			player->client->ps.credits += reward;
-			//consider doing some sort of sound to hint at reward here  --futuza
+			trap->SendServerCommand(player->s.number, "hitmarker");
 		}
 	}
 	return true;
@@ -2303,22 +2303,6 @@ void player_die( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, int
 		static int i;
 
 		anim = G_PickDeathAnim(self, self->pos1, damage, meansOfDeath, HL_NONE);
-		
-		/*--Futuza
-		To Do: Fix, so we can get headshot information.  Get_HitLocation(self, self->pos1) should work to determine hit location, but gives wrong locations, might be broken everywhere not just here?
-
-		int hitLoc = Get_HitLocation(self, self->pos1);
-		if (hitLoc == HL_HEAD) //--futuza: notify of headshots
-		{
-			if (inflictor != attacker)
-			{
-				trap->SendServerCommand(attacker - g_entities, va("notify 1 \"Headshot!\""));
-				trap->SendServerCommand(self - g_entities, va("notify 1 \"Head blow!\""));
-			}
-
-			else
-				trap->SendServerCommand(self - g_entities, va("notify 1 \"Head blow!\""));
-		}*/
 		
 		if (anim >= 1)
 		{ //Some droids don't have death anims
@@ -4866,15 +4850,28 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 					VectorCopy(targ->client->ps.origin, targ->pos1);
 				}
 
-				//if our movement was frozen unfreeze at death
+				//if our movement was frozen unfreeze at death - this should happen on player_die - shouldn't be necessary here?
+				/*client->pmfreeze = qfalse;
 				client->pmfreeze = qfalse;
 				client->pmlock = qfalse;
+				client->pmnomove = qfalse;
 
-				//if they killed with a headshot
+				client->ps.freezeLegsAnim = 0;
+				client->ps.freezeTorsoAnim = 0;
+				targ->s.freezeLegsAnim = 0;
+				targ->s.freezeTorsoAnim = 0;*/
+				
+
+				//notify of headshot --futuza
 				if (isHeadShot)
 				{
-					trap->SendServerCommand(targ - g_entities, va("notify 1 \"Killed by headshot!\""));
-					trap->SendServerCommand(attacker - g_entities, va("notify 1 \"Headshot!\""));
+					if (attacker != inflictor)
+					{
+						trap->SendServerCommand(targ - g_entities, va("chat 100 \"Killed by %s^7's head blow!\"", attacker->client->pers.netname));
+						trap->SendServerCommand(attacker - g_entities, va("notify 1 \"Head blow!\""));
+					}
+					else
+						trap->SendServerCommand(targ - g_entities, va("chat 100 \"Killed by your own head blow!\""));
 				}
 			}
 			else if (targ->s.eType == ET_NPC)

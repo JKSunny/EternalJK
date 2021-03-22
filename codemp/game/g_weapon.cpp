@@ -2918,7 +2918,7 @@ int WP_GetWeaponMOD( gentity_t *ent, int firemode )
 /**************************************************
 * WP_GetWeaponSplashMOD
 *
-* Gets the splash means of deathe for the currently 
+* Gets the splash means of death for the currently 
 * selected weapon with the appropriate mode. This 
 * references the weapon table for this information.
 **************************************************/
