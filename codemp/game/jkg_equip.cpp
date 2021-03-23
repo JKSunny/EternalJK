@@ -16,6 +16,11 @@ void JKG_ShieldEquipped(gentity_t* ent, int shieldItemNumber, qboolean playSound
 		return;
 	}
 
+	if (JKG_HasFreezingBuff(ent->playerState)) //no changing equipment while stunned/frozen etc
+	{
+		return;
+	}
+
 	if (ent->client->shieldEquipped) {
 		// Already have a shield equipped. Mark the other shield as not being equipped.
 		for (auto it = ent->inventory->begin(); it != ent->inventory->end(); ++it) {
@@ -51,6 +56,10 @@ Cmd_ShieldUnequipped
 */
 void Cmd_ShieldUnequipped(gentity_t* ent)
 {
+	if (JKG_HasFreezingBuff(ent->playerState)) //no changing equipment while stunned/frozen etc
+	{
+		return;
+	}
 
 	if (ent->client->shieldEquipped) {
 		for (auto it = ent->inventory->begin(); it != ent->inventory->end(); ++it) {
@@ -70,6 +79,11 @@ void Cmd_ShieldUnequipped(gentity_t* ent)
 //overloaded version - if you know the shield's index start there
 void Cmd_ShieldUnequipped(gentity_t* ent, unsigned int index)
 {
+	if (JKG_HasFreezingBuff(ent->playerState)) //no changing equipment while stunned/frozen etc
+	{
+		return;
+	}
+
 	if (index > ent->inventory->size())
 	{
 		trap->SendServerCommand(ent - g_entities, "Cmd_ShieldUnequipped() called with out of bounds index! Defaulting to 0.\n");
@@ -103,6 +117,11 @@ void JKG_JetpackEquipped(gentity_t* ent, int jetpackItemNumber) {
 		return;
 	}
 
+	if (JKG_HasFreezingBuff(ent->playerState)) //no changing equipment while stunned/frozen etc
+	{
+		return;
+	}
+
 	itemInstance_t* item = &(*ent->inventory)[jetpackItemNumber];
 	if (item->id->itemType != ITEM_JETPACK) {
 		trap->SendServerCommand(ent - g_entities, "print \"That item is not a jetpack.\n\"");
@@ -126,6 +145,10 @@ Cmd_JetpackUnequipped
 */
 void Cmd_JetpackUnequipped(gentity_t* ent)
 {
+	if (JKG_HasFreezingBuff(ent->playerState)) //no changing equipment while stunned/frozen etc
+	{
+		return;
+	}
 	// Iterate through the inventory and remove the jetpack that is equipped
 	for (auto it = ent->inventory->begin(); it != ent->inventory->end(); it++) {
 		if (it->equipped && it->id->itemType == ITEM_JETPACK) {
@@ -141,6 +164,11 @@ void Cmd_JetpackUnequipped(gentity_t* ent)
 //overloaded version - if you know the jetpack's index start there
 void Cmd_JetpackUnequipped(gentity_t* ent, unsigned int index)
 {
+	if (JKG_HasFreezingBuff(ent->playerState)) //no changing equipment while stunned/frozen etc
+	{
+		return;
+	}
+
 	if (index > ent->inventory->size())
 	{
 		trap->SendServerCommand(ent - g_entities, "Cmd_ShieldUnequipped() called with out of bounds index! Defaulting to 0.\n");

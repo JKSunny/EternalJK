@@ -1512,6 +1512,12 @@ void JKG_CG_FillACISlot(int itemNum, int slot)
 		return;
 	}
 
+	if (JKG_HasFreezingBuff(cg.predictedPlayerState)) //no changing equipment while stunned/frozen etc
+	{
+		Com_Printf("You cannot change your equipment right now.\n");
+		return;
+	}
+
 	// Find out if we have the item already in our ACI
 	for (int i = 0; i < MAX_ACI_SLOTS; i++) {
 		if (cg.playerACI[i] == itemNum) {
@@ -1586,6 +1592,12 @@ void JKG_CG_ClearACISlot(int slot)
 {
 	if (slot < 0 || slot >= MAX_ACI_SLOTS)
 	{
+		return;
+	}
+
+	if (JKG_HasFreezingBuff(cg.predictedPlayerState)) //no changing equipment while stunned/frozen etc
+	{
+		Com_Printf("You cannot change your equipment right now.\n");
 		return;
 	}
 

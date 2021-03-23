@@ -38,14 +38,33 @@ qboolean JKG_HasFreezingBuff(entityState_t* es)
 	return qfalse;
 }
 
-//ps version
-qboolean JKG_HasFreezingBuff(playerState_t* ps)
+qboolean JKG_HasFreezingBuff(playerState_t* ps) //ps version
 {
 	for (int i = 0; i < PLAYERBUFF_BITS; i++)
 	{
 		if (ps->buffsActive & (1 << i))
 		{
 			jkgBuff_t* pBuff = &buffTable[ps->buffs[i].buffID];
+			if (pBuff->passive.overridePmoveType.first)
+			{
+				if (pBuff->passive.overridePmoveType.second == PM_FREEZE ||
+					pBuff->passive.overridePmoveType.second == PM_LOCK)
+				{
+					return qtrue;
+				}
+			}
+		}
+	}
+	return qfalse;
+}
+
+qboolean JKG_HasFreezingBuff(playerState_t &ps) //ps ref version
+{
+	for (int i = 0; i < PLAYERBUFF_BITS; i++)
+	{
+		if (ps.buffsActive & (1 << i))
+		{
+			jkgBuff_t* pBuff = &buffTable[ps.buffs[i].buffID];
 			if (pBuff->passive.overridePmoveType.first)
 			{
 				if (pBuff->passive.overridePmoveType.second == PM_FREEZE ||
