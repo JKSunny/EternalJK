@@ -200,6 +200,12 @@ void JKG_EquipItem(gentity_t *ent, int iNum)
 		return;
 	}
 
+	if (JKG_HasFreezingBuff(ent->playerState)) //no changing equipment while stunned/frozen etc
+	{
+		trap->SendServerCommand(ent->client->ps.clientNum, "print \"You cannot change your equipment right now.\n\"");
+		return;
+	}
+
 	auto item = (*ent->inventory)[iNum];
 	if (item.id->itemType == ITEM_WEAPON)
 	{
@@ -267,6 +273,12 @@ void JKG_UnequipItem(gentity_t *ent, int iNum)
 	{
 		trap->SendServerCommand(ent->client->ps.clientNum, "print \"Invalid inventory slot.\n\"");
 	    return;
+	}
+
+	if (JKG_HasFreezingBuff(ent->playerState)) //no changing equipment while stunned/frozen etc
+	{
+		trap->SendServerCommand(ent->client->ps.clientNum, "print \"You cannot change your equipment right now.\n\"");
+		return;
 	}
 
 	item = &(*ent->inventory)[iNum];
