@@ -71,6 +71,7 @@ struct jkgBuffPassive_t
 	unsigned int stacks;		// How many stacks we currently have
 
 	qboolean empstaggered;		//are your electronics shorted out? (prevents jetpack activation/other things not yet implemented, like maybe hud shutoff?)
+	qboolean resistant;			//does the buff give you resistance? (reduces incoming damage by 50%)
 
 };
 
@@ -95,6 +96,7 @@ void JKG_InitializeBuffs();
 qboolean JKG_HasFreezingBuff(entityState_t* es);
 qboolean JKG_HasFreezingBuff(playerState_t* ps);
 qboolean JKG_HasFreezingBuff(playerState_t& ps);
+qboolean JKG_HasResistanceBuff(playerState_t* ps);
 void JKG_RemoveBuffCategory(const char* buffCategory, playerState_t* ps);
 void JKG_CheckWaterRemoval(playerState_t* ps);
 void JKG_CheckRollRemoval(playerState_t* ps);

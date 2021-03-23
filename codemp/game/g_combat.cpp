@@ -4703,6 +4703,14 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 		}
 	}
 
+	// save some from being resistant (eg: carbonite protects us)
+	if (targ->client && take > 0 && JKG_HasResistanceBuff(targ->playerState))
+	{
+		take = take / 2; //reduce damage by 1/2
+		if (take < 1)
+			take = 1;
+	}
+
 #ifndef FINAL_BUILD
 	if ( g_debugDamage.integer ) {
 		trap->Print( "%i: client:%i health:%i damage:%i armor:%i\n", level.time, targ->s.number,

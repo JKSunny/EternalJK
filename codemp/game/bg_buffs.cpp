@@ -78,6 +78,22 @@ qboolean JKG_HasFreezingBuff(playerState_t &ps) //ps ref version
 	return qfalse;
 }
 
+qboolean JKG_HasResistanceBuff(playerState_t* ps)
+{
+	for (int i = 0; i < PLAYERBUFF_BITS; i++)
+	{
+		if (ps->buffsActive & (1 << i))
+		{
+			jkgBuff_t* pBuff = &buffTable[ps->buffs[i].buffID];
+			if (pBuff->passive.resistant)
+			{
+				return qtrue;
+			}
+		}
+	}
+	return qfalse;
+}
+
 // Removes all buffs of a certain category on a playerstate
 void JKG_RemoveBuffCategory(const char* buffCategory, playerState_t* ps)
 {
@@ -325,7 +341,10 @@ static qboolean JKG_ParseBuffPassiveData(cJSON* json, jkgBuff_t* pBuff)
 	}
 
 	child = cJSON_GetObjectItem(json, "empstaggered");
-	pBuff->passive.empstaggered = cJSON_ToBooleanOpt(child, 1.0);
+	pBuff->passive.empstaggered = cJSON_ToBooleanOpt(child, false);
+
+	child = cJSON_GetObjectItem(json, "resistant");
+	pBuff->passive.resistant = cJSON_ToBooleanOpt(child, false);
 
 	return qtrue;
 }

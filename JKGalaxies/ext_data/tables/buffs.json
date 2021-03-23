@@ -242,7 +242,8 @@
 		},
 
 		"passive": {
-			"pmove": "PM_FREEZE"
+			"pmove": "PM_FREEZE",
+			"resistant": true
 		},
 
 		"visuals": {
