@@ -2407,6 +2407,8 @@ static void PM_JetpackMove(void) {
 		wishvel[i] = scale * pml.forward[i] * pm->cmd.forwardmove + scale * pml.right[i] * pm->cmd.rightmove;
 
 		// Modify the wishvel based on the values in the .jet files
+
+		//are we thrusting?
 		if (forwardThrust) {
 			wishvel[i] *= jet->move.fwdThrustAmt;
 		}
@@ -2423,24 +2425,31 @@ static void PM_JetpackMove(void) {
 				wishvel[i] *= jet->move.thrustSide;
 			}
 		}
-		else if (i) {
-			if (pm->cmd.forwardmove > 0) {
+		else //no special movement?  Regular movement then.
+		{
+			if (pm->cmd.forwardmove > 0) 
+			{
 				wishvel[i] *= jet->move.forwardMove;
 			}
-			else {
+			else 
+			{
 				wishvel[i] *= jet->move.backMove;
 			}
-		}
-		else {
-			wishvel[i] *= jet->move.sideMove;
+
+			if (pm->cmd.rightmove > 0)
+			{
+				wishvel[i] *= jet->move.sideMove;
+			}
 		}
 	}
 
 	if (!forwardThrust) {
 		if (pm->ps->eFlags & EF_JETPACK_FLAMING)
 			wishvel[2] = JETPACK_FLOAT_SPEED * jet->move.thrustUp;
+
 		else if (pm->cmd.upmove < 0)
 			wishvel[2] = -JETPACK_SINK_SPEED * jet->move.downMove;
+
 		else
 			wishvel[2] = jet->move.hoverGravity;
 	}
