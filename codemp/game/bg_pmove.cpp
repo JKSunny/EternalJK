@@ -5476,6 +5476,7 @@ void PM_AdjustAttackStates( pmove_t *pmove )
 //-------------------------------------------
 {
 	int amount = 0;
+	qboolean overheated = qfalse;
 	weaponData_t *weapon = GetWeaponData (pmove->ps->weapon, pmove->ps->weaponVariation);
 	qboolean primFireDown;// = (pmove->cmd.buttons & BUTTON_ATTACK);
 	
@@ -5619,14 +5620,31 @@ void PM_AdjustAttackStates( pmove_t *pmove )
 	    if ( pmove->ps->weaponTime <= 0 )
 	    {
 	    	if ( weapon->firemodes[pmove->ps->firingMode].firingType == FT_BURST )
-            	{
-			pmove->ps->shotsRemaining = weapon->firemodes[pmove->ps->firingMode].shotsPerBurst & ~SHOTS_TOGGLEBIT;
-            	}
+            {
+				//if we overheat/are overheated
+				if (pmove->ps->heat >= weapon->firemodes[pmove->ps->firingMode].maxHeat || pm->ps->overheated)
+				{
+					// Overheated, we can't fire
+					if (!pm->ps->overheated)
+						PM_AddEvent(EV_OVERHEATED);  //do a sound event
+
+					pm->ps->overheated = true;
+
+					pmove->ps->eFlags &= ~EF_FIRING;
+					pm->cmd.buttons &= ~BUTTON_ATTACK;
+					primFireDown = qfalse;
+				}
+
+				else
+				{
+					pmove->ps->shotsRemaining = weapon->firemodes[pmove->ps->firingMode].shotsPerBurst & ~SHOTS_TOGGLEBIT;
+				}
+            }
         }
         else
         {
-		pm->cmd.buttons &= ~BUTTON_ATTACK;
-            	primFireDown = qfalse;
+			pm->cmd.buttons &= ~BUTTON_ATTACK;
+			primFireDown = qfalse;
         }
 	}
 	// set the firing flag for continuous beam weapons, saber will fire even if out of ammo
@@ -5635,7 +5653,9 @@ void PM_AdjustAttackStates( pmove_t *pmove )
 			primFireDown && 
 			( amount >= 0 || pmove->ps->weapon == WP_SABER ) &&
 			// JKG: No firing while sprinting
-			!BG_IsSprinting (pmove->ps, &pm->cmd, qtrue) )
+			!BG_IsSprinting (pmove->ps, &pm->cmd, qtrue) &&
+			!(pmove->ps->heat >= weapon->firemodes[pmove->ps->firingMode].maxHeat || pm->ps->overheated)
+		)
 	{
 		pmove->ps->eFlags &= ~EF_ALT_FIRING;
 
@@ -5657,6 +5677,11 @@ void PM_AdjustAttackStates( pmove_t *pmove )
     {
         pmove->cmd.buttons &= ~BUTTON_ATTACK;
     }
+
+	/*if (pmove->ps->heat >= weapon->firemodes[pmove->ps->firingMode].maxHeat || pmove->ps->overheated)
+	{
+		pmove->cmd.buttons &= ~BUTTON_ATTACK;
+	}*/
 	
 	if ( weapon->zoomType != ZOOM_NONE )
 	{
