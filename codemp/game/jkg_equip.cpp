@@ -26,7 +26,6 @@ void JKG_ShieldEquipped(gentity_t* ent, int shieldItemNumber, qboolean playSound
 		for (auto it = ent->inventory->begin(); it != ent->inventory->end(); ++it) {
 			if (it->equipped && it->id->itemType == ITEM_SHIELD) {
 				it->equipped = qfalse;
-				ent->client->shieldEquipped = qfalse;
 			}
 		}
 	}
