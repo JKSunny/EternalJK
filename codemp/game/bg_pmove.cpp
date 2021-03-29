@@ -5677,11 +5677,6 @@ void PM_AdjustAttackStates( pmove_t *pmove )
     {
         pmove->cmd.buttons &= ~BUTTON_ATTACK;
     }
-
-	/*if (pmove->ps->heat >= weapon->firemodes[pmove->ps->firingMode].maxHeat || pmove->ps->overheated)
-	{
-		pmove->cmd.buttons &= ~BUTTON_ATTACK;
-	}*/
 	
 	if ( weapon->zoomType != ZOOM_NONE )
 	{

@@ -1607,6 +1607,10 @@ void JKG_CG_ClearACISlot(int slot)
 			// inform the server that we've unequipped our shield
 			trap->SendClientCommand("unequipShield");
 		}
+		if (item->id->itemType == ITEM_JETPACK) {
+			// inform the server that we've unequipped our jetpack
+			trap->SendClientCommand("unequipJetpack");
+		}
 	}
 
 	cg.playerACI[slot] = -1;

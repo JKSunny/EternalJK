@@ -5180,12 +5180,9 @@ void ClientCommand( int clientNum ) {
 		return;
 	}
 	else if ( (command->flags & CMD_ONLYALIVE)
-		&& (ent->health <= 0
-			|| ent->client->tempSpectate >= level.time
-			|| ent->client->deathcamTime ) )
+		&& !JKG_ClientAlive(ent))
 	{
 		// This command requires us to be alive and we aren't.
-		// FIXME: When `develop` gets merged, use JKG_ClientAlive !!!
 		trap->SendServerCommand(clientNum, va("print \"%s\n\"", G_GetStringEdString("MP_SVGAME", "MUSTBEALIVE")));
 		return;
 	}

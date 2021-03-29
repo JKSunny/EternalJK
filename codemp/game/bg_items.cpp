@@ -800,6 +800,7 @@ void BG_GiveItemNonNetworked(itemInstance_t item)
 			{
 				//we found another special item equipped - remove it
 				cg.playerACI[i] = -1;
+				nFreeACISlot = i;
 				continue;
 			}
 			if(bInACIAlready && nFreeACISlot >= 0) 
