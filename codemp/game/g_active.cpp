@@ -2108,7 +2108,7 @@ void ClientThink_real( gentity_t *ent ) {
 		if (ent->lastHealTime < level.time && (ent->damagePlumTime + jkg_healthRegenDelay.value) < level.time)
 		{
 			int maxHealth = ent->client->ps.stats[STAT_MAX_HEALTH];
-			int pctage = (maxHealth < 100) ? jkg_healthRegen.value : (maxHealth / 100) * jkg_healthRegen.value;		// Add 1% (of 1 HP, whichever is higher)
+			int pctage = (maxHealth < 100) ? jkg_healthRegen.value : (maxHealth / 100) * jkg_healthRegen.value;		// Add 1% (or 1 HP, whichever is higher)
 			ent->health = ent->client->ps.stats[STAT_HEALTH] = (((ent->health + pctage) > maxHealth) ? maxHealth : ent->health + pctage);
 			ent->lastHealTime = level.time + jkg_healthRegenSpeed.value;
 		}

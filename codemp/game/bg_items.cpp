@@ -353,10 +353,9 @@ void BG_ReceivedItemPacket(itemPacketType_t packetType) {
 				{
 					if (i != invID && (*cg.playerInventory)[i].id->itemType == ITEM_ARMOR)
 					{
-						if ((*cg.playerInventory)[i].id->armorData.pArm->slot == (*cg.playerInventory)[invID].id->armorData.pArm->slot)
+						if ((*cg.playerInventory)[i].id->armorData.pArm->slot == (*cg.playerInventory)[invID].id->armorData.pArm->slot) //if its equipped and takes up the same slot type, we can only have one per slot
 						{
 							(*cg.playerInventory)[i].equipped = qfalse;
-							break;
 						}
 					}
 				}

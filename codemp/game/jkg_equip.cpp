@@ -254,7 +254,7 @@ void JKG_EquipItem(gentity_t *ent, int iNum)
 		int previousArmor = ent->client->ps.armor[pArm->slot] - 1;
 		ent->client->ps.armor[pArm->slot] = pArm - armorTable + 1;
 
-		(*ent->inventory)[iNum].equipped = true; // set this armor piece to "equipped" so we know that we can unequip it later
+		
 
 		if (previousArmor >= 0)
 		{
@@ -262,13 +262,13 @@ void JKG_EquipItem(gentity_t *ent, int iNum)
 			// We need to iterate through the inventory and remove the old equipped item.
 			for (auto it = ent->inventory->begin(); it != ent->inventory->end(); ++it)
 			{
-				if (it->equipped && it->id->armorData.pArm == &armorTable[previousArmor])
+				if (it->equipped && it->id->armorData.pArm->slot == armorTable[previousArmor].slot) //if its equipped and takes up the same slot type, we can only have one per slot
 				{
 					it->equipped = qfalse;
-					break;
 				}
 			}
 		}
+		(*ent->inventory)[iNum].equipped = true; // set this armor piece to "equipped" so we know that we can unequip it later
 		JKG_ArmorChanged(ent);
 	}
 	else if (item.id->itemType == ITEM_SHIELD) {
