@@ -18,14 +18,15 @@ The most update links are available on the download page on the website, under t
 [Map Bundle #1](http://jkhub.org/files/file/2652-jedi-knight-galaxies-map-bundle-1/) , [Map Bundle #2](https://uvu.box.com/shared/static/kb0wvyqtz0sarzs0kn1c8h03wrpjgb7c.zip)
 
 
-## What is Jedi Knight Galaxies? ##
-Jedi Knight Galaxies is a competitive and innovative multiplayer shooter, played out in the Star Wars universe. Currently a full conversion mod, the project was originally based on and modified from Raven Software’s [Jedi Knight: Jedi Academy](https://en.wikipedia.org/wiki/Star_Wars_Jedi_Knight:_Jedi_Academy).  Jedi Knight Galaxies is open source and available completely free of charge; however, you will need the original game in order to play.  Jedi Academy is frequently available on [Steam](http://store.steampowered.com/app/6020/STAR_WARS_Jedi_Knight__Jedi_Academy/) and [GoG](https://www.gog.com/game/star_wars_jedi_knight_jedi_academy) during sales for less than $4. We aim to develop the project into a Large Multiplayer Online game, crossing traditional RPG (role playing game) elements with the fast paced excitement of an FPS (first person shooter).
+### What is Jedi Knight Galaxies? ###
+Jedi Knight Galaxies is a competitive and innovative multiplayer shooter, played out in the Star Wars universe. Currently a full conversion mod, the project was originally based on and modified from Raven Software’s [Jedi Knight: Jedi Academy](https://en.wikipedia.org/wiki/Star_Wars_Jedi_Knight:_Jedi_Academy). Jedi Knight Galaxies is open source and available completely free of charge; however, you will need the original game in order to play. (Jedi Academy is frequently available on [Steam](http://store.steampowered.com/app/6020/STAR_WARS_Jedi_Knight__Jedi_Academy/) and [GoG](https://www.gog.com/game/star_wars_jedi_knight_jedi_academy) during sales for less than $4). We aim to develop the project into a Large Multiplayer Online game, crossing traditional RPG (role playing game) elements with the fast paced excitement of an FPS (first person shooter).
 
-The project will be released in phases, each building on to the previous one with more aspects of the final goal. The current Phase, JKG: Versus, was first released September 17th, 2012 as a public beta, showcasing the primary FPS elements of the game.  Subsequent updates and versions have been produced since then.  As development progresses, sandbox environments will be added, initial RPG elements will appear, and player vs. enemy combat will be implemented into the faction oriented gameplay. Improved dialog and cinematic features along with skills, powers, and more aspects that belong in a Role-Play Game will be developed, set between the events of Episode IV: A New Hope and Episode III: Revenge of the Sith. Finally, the full-fledged JKG: LMO takes the experience to a much grander level.
+The project will be released in phases, each building on to the previous one with more aspects of the final goal. The current Phase, JKG: Versus, was first released September 17th, 2012 as a public beta, showcasing the primary FPS elements of the game. Subsequent updates and versions have been produced since then. As development progresses, sandbox environments will be added, initial RPG elements will appear, and player vs. enemy combat will be implemented into the faction oriented gameplay. Improved dialog and cinematic features along with skills, powers, and more aspects that belong in a Role-Playing Game will be developed, set between the events of Episode IV: A New Hope and Episode III: Revenge of the Sith. Finally, the full-fledged JKG: LMO takes the experience to a much grander level.
 
-The game is a much loved hobby project supported by its community and developers who work on it in their freetime, contribution is encouraged and newbies are welcome.  Originally founded by a group of Jedi Academy modders led by Jake (now retired), the project has since been in and out of development since 2008. The project is currently headed by our hardworking, lead programmer: eezstreet.  The current development team comes from a variety of backgrounds, countries, and age, united by our desire to make a great game. 
+The game is a much loved hobby project supported by its [community and developers](https://www.jkgalaxies.net/contributors.html) who work on it in their freetime, contribution is encouraged and newbies are welcome. Originally founded by a group of Jedi Academy modders led by Jake (now retired), the project has since been in and out of development since 2008. The current development team comes from a variety of backgrounds, countries, and age, united by our desire to make a great game.
 
 Welcome to Jedi Knight Galaxies, where we break the limits!
+
 
 ### Trailer ###
 [![JKG v1.3.22 Trailer](http://img.youtube.com/vi/X63qy7lONyo/0.jpg)](http://www.youtube.com/watch?v=X63qy7lONyo "JKG v1.3.22 Trailer")
@@ -106,6 +107,7 @@ JKG uses the following version schema: Phase.Major.Minor with an optional suffix
 ## Contributors ##
 ### Active Developers ###
 * Darth Futuza
+* Noodle
 * Silverfang
 
 
