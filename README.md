@@ -38,7 +38,7 @@ Welcome to Jedi Knight Galaxies, where we break the limits!
 [Flate's Ubuntu/Debian Guide](https://github.com/JKGDevs/JediKnightGalaxies/wiki/Flate%27s-Debian-Ubuntu-Compiling-Guide)
 
 ## Installation of Game ##
-JKG is available for Windows, but it will compile with linux and OSX and has been briefly tested to run on Ubuntu.
+JKG is available for Windows, but it will compile with most Linux distributions and MacOS; however it is only briefly tested on Ubuntu.
 
 To install, you will first need Jedi Academy installed. If you don't already own the game you can buy it from online stores such as [Steam](http://store.steampowered.com/app/6020/), [Amazon](http://www.amazon.com/Star-Wars-Jedi-Knight-Academy-Pc/dp/B0000A2MCN), or [GOG](https://www.gog.com/game/star_wars_jedi_knight_jedi_academy).
 
@@ -70,23 +70,24 @@ JKG is licensed under GPLv2 as free software. You are free to use, modify and re
 Please be aware of the implications of the GPLv2 licence. In short, be prepared to share your code under the same GPLv2 licence.  
 
 ### If you wish to contribute to JKGalaxies, please do the following ###
-* [Fork](https://github.com/JKGDevs/JediKnightGalaxies/fork) the project on Github
-* Create a new branch and make your changes
+* [Fork](https://github.com/JKGDevs/JediKnightGalaxies/fork) the project on Github.
+* Create a new branch and make your changes.  Please note that master branch represents the current stable release, while the develop branch represents new changes that will be made public during the next release.  It is usually best to start new changes by creating a new branch based on develop.
 * Send a [pull request](https://help.github.com/articles/creating-a-pull-request) to upstream (JKGDevs/JediKnightGalaxies)
 
 ### If you wish to base your work off JKGalaxies (mod or engine) ###
 * [Fork](https://github.com/JKGDevs/JediKnightGalaxies/fork) the project on Github
 * Change the GAMEVERSION define in codemp/game/g_local.h from "jkgalaxies" to your project name
-* If you make a nice change, please consider back-porting to upstream via pull request as described above. This is so everyone benefits without having to reinvent the wheel for every project.  
+* If you make a nice change, please consider back-porting to upstream via pull request as described above. This is so everyone benefits without having to reinvent the wheel for every project.  The developers are usually more than willing to collaborate with other projects for everyone's benefits.
+* While it is not a requirement to notify us of new projects based on JKG, you must follow the rules of the GPLv2 Licence (see above).  Typically this means making your source code available to the public.  We also enjoy checking out cool new projects based on JKG, so we'd love to hear about what you're doing with it.
 
-Please use discretion when making issue requests on GitHub. The [forum](https://jkhub.org/forum/117-jedi-knight-galaxies/) is a better place for larger discussions on changes that aren't actually bugs.
+Please use discretion when making issue requests on GitHub. The [forum](https://jkhub.org/forum/117-jedi-knight-galaxies/) is a better place for larger discussions on changes that aren't actually bugs.  If you're unsure of how something works or need clarification, it is best to ask the developers on the [Discord](https://discord.gg/YuG8Zks) in the #development channel.
 
 
 ## Current Project Goals ##
 These are very much subject to change, especially phases later than Versus.
 
 ### Phase 1:  Versus (current iteration). ###
-* The goal here is to have a functioning arena based shooter (similar to games such as Call of Duty or Unreal Tournament) with the beginnings of some later RPG elements such as armor, pazaak card game, etc.  There are three major milestones currently being worked on: [Milestone 3](https://github.com/JKGDevs/JediKnightGalaxies/issues?q=issue+milestone%3A%22Versus+Revision+3%22) and [Milestone 4](https://github.com/JKGDevs/JediKnightGalaxies/issues?q=is%3Aopen+is%3Aissue+milestone%3A%22Versus+Revision+4%22).  Milestone 3 includes new features like better melee, armor, shields, jetpacks, debuff system etc. in addition to some bug fixes not addressed in Milestone 2. Milestone 4 primarily focuses on the all new saber system and related features such as duel mode.  Later on other milestones will be worked on.  In Milestone 5, the Force will be reworked and greatly expanded on.  Later milestones will introduce the skill trees and a rudimentary system for spending xp in preparation for the eventual leveling system in Phase 2 and 3.
+* The goal here is to have a functioning arena based shooter (similar to games such as Call of Duty or Unreal Tournament) with the beginnings of some later RPG elements such as armor, pazaak card game, etc.  There are three major milestones currently being worked on: [Milestone 3](https://github.com/JKGDevs/JediKnightGalaxies/issues?q=issue+milestone%3A%22Versus+Revision+3%22) and [Milestone 4](https://github.com/JKGDevs/JediKnightGalaxies/issues?q=is%3Aopen+is%3Aissue+milestone%3A%22Versus+Revision+4%22).  Milestone 3 includes new features like better melee, armor, shields, jetpacks, debuff system etc. in addition to some bug fixes not addressed in Milestone 2. Milestone 4 primarily focuses on the all new saber system and related features such as duel mode.  Later on other milestones will be worked on.  In Milestone 5, the Force will be reworked and greatly expanded on.  Later possible milestones will introduce the skill trees and a rudimentary system for spending xp in preparation for the eventual leveling system in Phase 2 and 3.
 
 #### Phase 2: Coop ####
 * The main features that are added here include the NPC system and fleshing out of the dialogue system. They also include overhauls to the chat systems, fonts, UI, and more.  Prep work for the leveling system and quest system to be introduced here.  Gameplay will primarily consist of teams of players (or individuals) completing simple 'quest' objectives, while being opposed by NPCs, or other teams of players.  The game will revolve around a major central city hub (likely Mos Eisley) from which player's can interact with NPCs and other players to start quests, form teams, and explore the world.  Most quests that do not take part in the central city, will load a team of player's into an 'instance' where they will complete their quest objectives while isolated from other players.  We may also attempt some MoBA like features (still needs discussion) in larger Phase 1 style matches.
@@ -186,7 +187,6 @@ Thank you to the following for your support of JKG and your efforts in contribut
 * Krattle (Chalmun’s Cantina)
 * MountainDew
 * Nightcrawler
-* Noodle
 * Obliviion
 * Ori'Ramikad
 * Orj (Mosquito Vibroblade)
