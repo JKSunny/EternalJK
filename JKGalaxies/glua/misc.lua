@@ -279,3 +279,67 @@ local function MethodDump()
 end
 
 cmds.AddRcon("methoddump", MethodDump)
+
+--Diceroller
+local function DiceRoll(ply, argc, argv)
+
+	if argc < 3 or argc > 4 then
+		SystemReply(ply, "^3Syntax: /roll <number of sides>^7, ^3/roll <groups of dice> <number of sides>")
+		return
+	end
+
+	local result
+	local diceargs = {}
+	local request = table.concat(argv," ",2, argc-1)
+
+	for i in (request .. " "):gmatch("%S+") do
+		if(tonumber(i)) then
+			if(tonumber(i) > 1 and tonumber(i) < 9999999) then --make sure it can convert to a number, and between 2 and 9,999,999
+				table.insert(diceargs, tonumber(i))
+			else
+				SystemReply(ply, "^3Error: Range of sides: 2 - 9999999.")
+				return
+			end	
+		else
+			SystemReply(ply, "^3Syntax: /roll <number of sides>^7, ^3/roll <groups of dice> <number of sides>")
+			return
+		end
+	end
+
+	math.randomseed(os.clock()*100000000000) --seed random
+
+	if tablelength(diceargs) == 1 then --if rolling one die
+		result = math.random(1, diceargs[1])
+		chatmsg( "^3System: Rolling a " .. diceargs[1] .. "-sided dice for " .. ply:GetName() .. "^3, got a: " .. result);
+		return
+	end
+
+	if tablelength(diceargs) == 2 then --if rolling several dice
+		local dice = {}
+		local sum = 0
+		if(diceargs[1] > 20) then
+			diceargs[1] = 20
+			SystemReply(ply, "^3Error: Can only roll 20 dice at a time, defaulting to 20.")
+		end
+
+		for i=1,diceargs[1] do
+			table.insert(dice, math.random(1, diceargs[2]))
+		end
+
+		chatmsg( "^3System: Rolling " .. diceargs[1] .. " " .. diceargs[2]"-sided dice for " .. ply:GetName() .. "^3, got: ");
+		for i in dice do
+			sum = sum + dice[i]
+			chatmsg("^3System: " .. dice[i])
+		end
+
+		chatmsg("^3System: Total: " .. sum .. ", Avg: " .. sum/tablength(dice))
+
+		return
+	end
+
+	SystemReply(ply, "^3Syntax: /roll <number of sides>^7, ^3/roll <groups of dice> <number of sides>")
+	return
+end
+
+cmds.Add("roll", DiceRoll)
+chatcmds.Add("roll", DiceRoll)

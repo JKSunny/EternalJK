@@ -11,8 +11,9 @@
 JKG.Running = true
 
 print("Loading main functions...")
-include("admin/accounts.lua") -- Accounts and Admin commands
-include("emotes.lua")	-- Emote system
+include("admin/accounts.lua") 	--Accounts and Admin commands
+include("emotes.lua")	--Emote system
+include("dice.lua") 	--Dice Roller
 print("Loading entity spawning commands...")
 include("entcmds.lua")
 

@@ -1069,7 +1069,7 @@ local function Speak(ply, argc, argv)
 			local accountname = ply:GetAccount()
 			local message = table.concat(argv," ",1, argc-1)
 			--chatmsg( "^7[^5" .. accountname .. "^7] <" .. rank["name"] .. "> " .. message )
-			chatmsg( "^7[^x39cAdmin^7] ^5" .. "^7<" .. rank["name"] .. "^7> ".. ply:GetName() .. ": ^3" .. message )
+			chatmsg( "^7[^x39cAdmin^7] ^5" .. "^7<" .. rank["name"] .. "^7> ".. ply:GetName() .. "^7: ^3" .. message )
 		end
 	else
 		SystemReply(ply, "^1You are not logged in.")
@@ -1094,7 +1094,7 @@ local function Tell(ply, argc, argv)
 				local account = accounts[ply:GetAccount()]
 				local message = table.concat(argv," ",1, argc-1)
 
-				plytarg:SendChat( "^5Admin " .. account["username"] .. " whispers: " .. message )
+				plytarg:SendChat( "^5Admin " .. account["username"] .. " ^5whispers: ^7" .. message )
 
 				if plytarg.lastadmtell == nil then
 					plytarg:SendChat( "^8Reply to this message using /Reply <msg>" )
