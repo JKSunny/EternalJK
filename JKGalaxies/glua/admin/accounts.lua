@@ -1066,8 +1066,8 @@ local function Speak(ply, argc, argv)
 		if rank["can-speak"] ~= true then
 			SystemReply(ply, "^1You do not have permission to perform this action.")
 		else
-			local accountname = ply:GetAccount()
 			local message = table.concat(argv," ",1, argc-1)
+			--local accountname = ply:GetAccount()
 			--chatmsg( "^7[^5" .. accountname .. "^7] <" .. rank["name"] .. "> " .. message )
 			chatmsg( "^7[^x39cAdmin^7] ^5" .. "^7<" .. rank["name"] .. "^7> ".. ply:GetName() .. "^7: ^3" .. message )
 		end
