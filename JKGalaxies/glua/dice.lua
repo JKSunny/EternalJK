@@ -1,7 +1,7 @@
 --Dice Roller System
 --Written by Futuza (2021)
 --[[
-    Simple dice rolling system.  Currently it only rolls dice locally in a small range by default, but you can specify a chat channel.
+    Simple dice rolling system.  Currently it rolls dice locally in a small range by default (same as /say's range), but you can specify a chat channel.
     eg: 
         /roll 20, rolls a 20 sided dice.
         /roll 75 338, rolls 75 338 sided dice.
@@ -11,41 +11,109 @@
 
 
 -- [[ General Functions() ]] --
+
+--System replies to player
 local function SystemReply(ply, message)
 	ply:SendChat("^7System: " .. message)
 end
 
+--returns a vector/object containing the players object, (vec[1] == x, vec[2] == y, vec[3] == z)
+local function ObtainPlyVector(player)
+    local vec = {}
+    local svector = tostring(player:GetOrigin(player))
+    svector = svector:gsub('Vector( ', '')
+    svector = svector:gsub('[%(%)]', '')
+    for i in (svector .. " "):gmatch("%S+") do
+        if(tonumber(i)) then --make sure it can convert to a number
+            table.insert(vec, tonumber(i))
+        else
+            print("Could not obtain requested origin vector!")
+            return false
+        end
+    end
+
+    return vec
+end
+
+--returns a vector/object containing the diff between two vectors (vec1 - vec2) without modifying either
+local function VectorSubtract(vec1, vec2)
+    local vec = {}
+    for i=1,3 do
+        vec[i] = vec1[i] - vec2[i]
+    end
+    return vec
+end
+
+--return normalized vectorlength
+local function VectorLength(vec)
+    return math.sqrt( (vec[1] * vec[1])+(vec[2] * vec[2])+(vec[3] * vec[3]) )
+end
+
+local function GetChatFadeLevel(distance, range)
+    --see G_Say_GetFadeLevel()
+    local cutoff = range*0.75
+    local cutoffrange = range*0.25
+    local cutoffarea = 0
+    local fadelevel = 0
+
+    if distance > range then
+        return 15
+    end
+
+    if distance < cutoff then
+        return 100
+    end
+
+    cutoffarea = distance - cutoff
+    fadelevel = 1 - cutoffarea/cutoffrange
+
+    if fadelevel < 0.15 then
+        fadelevel = 0.15
+    elseif fadelevel > 1 then
+        fadelevel = 1
+    end
+
+    return fadelevel*100
+end
+
 local function RollOneDice(ply, sides, chan, targ)
+    local result = sys.GetRandomInt(1, sides)    --using GetRandomInt(), because built in lua random functions suck
     if chan == 1 then --/say
         local k = 0
-        local ourAccount = accounts[ply:GetAccount()]
+        local normalRadius = 1281
+        local plyVec = ObtainPlyVector(ply)
 
         while players.GetByID(k) ~= nil do
             local plytarg = players.GetByID(k)
-            --do some sort of check to see if within range, as this is still sending to everyone atm
-            plytarg:SendChat("^3Dice: ^7" .. ply:GetName() .. "^7 rolls a " .. math.floor(sides) .. "-sided dice: ^3" .. sys.GetRandomInt(1, sides)) --using GetRandomInt(), because built in lua random functions suck
+            local vecResult = VectorSubtract(plyVec, ObtainPlyVector(plytarg))       --subtract player's origin from target's origin
+
+            if VectorLength(vecResult) < normalRadius then      --if the length is inside the radius
+                local fadelevel = GetChatFadeLevel(VectorLength(vecResult), normalRadius)
+                plytarg:SendFadedChat(fadelevel, "^3Dice: ^7" .. ply:GetName() .. "^7 rolls a " .. math.floor(sides) .. "-sided dice: ^3" .. result)
+            end
             k = k + 1
         end
     elseif chan == 2 then --/team
         local k = 0
-        local ourAccount = accounts[ply:GetAccount()]
-
         while players.GetByID(k) ~= nil do
             local plytarg = players.GetByID(k)
         
             if ply.GetTeam(plytarg) == ply.GetTeam(ply) then
-                plytarg:SendChat("^3Dice[^5Team^3]: ^5" .. ply:GetName() .. "^5 rolls a " .. math.floor(sides) .. "-sided dice: ^3" .. sys.GetRandomInt(1, sides))
+                plytarg:SendChat("^3Dice[^5Team^3]: ^5" .. ply:GetName() .. "^5 rolls a " .. math.floor(sides) .. "-sided dice: ^3" .. result)
             end
             k = k + 1
         end
     elseif chan == 3 then --/global
-        chatmsg("^3Dice[^2Global^3]: ^2" .. ply:GetName() .. "^2 rolls a " .. math.floor(sides) .. "-sided dice: ^3" .. sys.GetRandomInt(1, sides));  
+        chatmsg("^3Dice[^2Global^3]: ^2" .. ply:GetName() .. "^2 rolls a " .. math.floor(sides) .. "-sided dice: ^3" .. result);
     elseif chan == 4 then --/tell
         if targ == nil then
 			SystemReply(ply, "^1Invalid player specified.")
 			return
 		end
-        targ:SendChat("^3Dice[^6Tell^3]: ^6" .. ply:GetName() .. "^6 rolls a " .. math.floor(sides) .. "-sided dice: ^3" .. sys.GetRandomInt(1, sides))
+        if targ != ply then
+            ply:SendChat("^3Dice[^6Tell^3]: ^6" .. ply:GetName() .. "^6 rolls a " .. math.floor(sides) .. "-sided dice: ^3" .. result) --send to self, if we're not the target
+        end
+        targ:SendChat("^3Dice[^6Tell^3]: ^6" .. ply:GetName() .. "^6 rolls a " .. math.floor(sides) .. "-sided dice: ^3" .. result) --send to target
     else
         print("^3Error - aborting dice roll, invalid channel specified.")
     end
@@ -60,10 +128,8 @@ local function DiceRoller(ply, argc, argv)
         return
 	end
 
-    --print("argc: " .. tostring(argc) .. ", argv[2]: " .. tostring(argv[2]))
-
 	local diceargs = {}     --contains dice/sides request 
-    local channel = 3       --used to determine chat channel
+    local channel = 1       --used to determine chat channel
     local loops = 1         --used to determine how many numbers we need to iterate through
     local plytarg = nil     --target player, for tell cmd
 
@@ -122,6 +188,7 @@ local function DiceRoller(ply, argc, argv)
         local dice = {}
         local sum = 0
         local highest = 0
+        local lowest = 0
 
         if(diceargs[1] > 100) then
             diceargs[1] = 100
@@ -135,11 +202,16 @@ local function DiceRoller(ply, argc, argv)
         end
 
         chatmsg( "^3Dice[^2Global^3]: ^7Rolling " .. diceargs[1] .. ", " .. diceargs[2] .. "-sided dice for " .. ply:GetName() .. "^7:");
+        lowest = diceargs[2] --initialize lowest roll
         for i=1,diceargs[1] do
             table.insert(dice, sys.GetRandomInt(1, diceargs[2]))
             sum = sum + dice[i]
             if highest < dice[i] then
                 highest = dice[i]
+            end
+
+            if lowest > dice[i] then 
+                lowest = dice[i]
             end
 
             if i < 5 then
@@ -153,7 +225,7 @@ local function DiceRoller(ply, argc, argv)
             ply:SendChat("^3Dice: ^7Too many dice.  See console to view more dice rolls.")
         end
 
-        chatmsg("^3Dice[Global]:^7 Sum: ^3" .. tostring(sum) .. "^7, Avg: ^3" .. tostring( math.floor( (sum / tablelength(dice))*100 )/100 ) .. "^7, High Roll: ^3" .. tostring(highest) .. "^7.") -- math.floor(x*100)/100
+        chatmsg("^3Dice[^2Global]:^7 Sum: ^3" .. tostring(sum) .. "^7, Avg: ^3" .. tostring( math.floor( (sum / tablelength(dice))*100 )/100 ) .. "^7, High Roll: ^2" .. tostring(highest) .. "^7, Low Roll: ^1" .. tostring(lowest) .. "^7.") -- display summary
         return
     end
 
