@@ -11,69 +11,11 @@
 
 
 -- [[ General Functions() ]] --
+local vector = vectorfnc --making vector access more clear
 
 --System replies to player
 local function SystemReply(ply, message)
 	ply:SendChat("^7System: " .. message)
-end
-
---returns a vector/object containing the players object, (vec[1] == x, vec[2] == y, vec[3] == z)
-local function ObtainPlyVector(player)
-    local vec = {}
-    local svector = tostring(player:GetOrigin(player))
-    svector = svector:gsub('Vector( ', '')
-    svector = svector:gsub('[%(%)]', '')
-    for i in (svector .. " "):gmatch("%S+") do
-        if(tonumber(i)) then --make sure it can convert to a number
-            table.insert(vec, tonumber(i))
-        else
-            print("Could not obtain requested origin vector!")
-            return false
-        end
-    end
-
-    return vec
-end
-
---returns a vector/object containing the diff between two vectors (vec1 - vec2) without modifying either
-local function VectorSubtract(vec1, vec2)
-    local vec = {}
-    for i=1,3 do
-        vec[i] = vec1[i] - vec2[i]
-    end
-    return vec
-end
-
---return normalized vectorlength
-local function VectorLength(vec)
-    return math.sqrt( (vec[1] * vec[1])+(vec[2] * vec[2])+(vec[3] * vec[3]) )
-end
-
-local function GetChatFadeLevel(distance, range)
-    --see G_Say_GetFadeLevel()
-    local cutoff = range*0.75
-    local cutoffrange = range*0.25
-    local cutoffarea = 0
-    local fadelevel = 0
-
-    if distance > range then
-        return 15
-    end
-
-    if distance < cutoff then
-        return 100
-    end
-
-    cutoffarea = distance - cutoff
-    fadelevel = 1 - cutoffarea/cutoffrange
-
-    if fadelevel < 0.15 then
-        fadelevel = 0.15
-    elseif fadelevel > 1 then
-        fadelevel = 1
-    end
-
-    return fadelevel*100
 end
 
 local function RollOneDice(ply, sides, chan, targ)
@@ -81,14 +23,14 @@ local function RollOneDice(ply, sides, chan, targ)
     if chan == 1 then --/say
         local k = 0
         local normalRadius = 1281
-        local plyVec = ObtainPlyVector(ply)
+        local plyVec = vector.ObtainPlyVector(ply)
 
         while players.GetByID(k) ~= nil do
             local plytarg = players.GetByID(k)
-            local vecResult = VectorSubtract(plyVec, ObtainPlyVector(plytarg))       --subtract player's origin from target's origin
+            local vecResult = vector.VectorSubtract(plyVec, vector.ObtainPlyVector(plytarg))       --subtract player's origin from target's origin
 
-            if VectorLength(vecResult) < normalRadius then      --if the length is inside the radius
-                local fadelevel = GetChatFadeLevel(VectorLength(vecResult), normalRadius)
+            if vector.VectorLength(vecResult) < normalRadius then      --if the length is inside the radius
+                local fadelevel = vector.GetChatFadeLevel(vector.VectorLength(vecResult), normalRadius)
                 plytarg:SendFadedChat(fadelevel, "^3Dice: ^7" .. ply:GetName() .. "^7 rolls a " .. math.floor(sides) .. "-sided dice: ^3" .. result)
             end
             k = k + 1

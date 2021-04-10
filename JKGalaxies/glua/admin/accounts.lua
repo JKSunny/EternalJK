@@ -1151,13 +1151,19 @@ local function Say(ply, argc, argv)
 		local k = 0
 		local message = table.concat(argv," ",1, argc-1)
 		local ourAccount = accounts[ply:GetAccount()]
+		local normalRadius = 1281 --how far away other players can hear us
+		local plyVec = vectorfnc.ObtainPlyVector(ply)
 
 		while players.GetByID(k) ~= nil do
-			local plytarg = players.GetByID(k)
+            local plytarg = players.GetByID(k)
 
 			if plytarg.isLoggedIn then
-				plytarg:SendChat( "^7[^x39cAdmin^7] ^5" .. plytarg:GetName() .. "^7: " .. message )
-				--ourAccount["username"] --consider using actual account name?
+            	local vecResult = vectorfnc.VectorSubtract(plyVec, vectorfnc.ObtainPlyVector(plytarg))       --subtract player's origin from target's origin
+            	if vectorfnc.VectorLength(vecResult) < normalRadius then      --if the length is inside the radius
+                	local fadelevel = vectorfnc.GetChatFadeLevel(vectorfnc.VectorLength(vecResult), normalRadius)
+					plytarg:SendFadedChat(fadelevel, "^7[^x39cAdmin^7] ^5" .. ply:GetName() .. "^7: " .. message )
+					--ourAccount["username"] --consider using actual account name?
+				end
 			end
 
 			k = k + 1
