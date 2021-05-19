@@ -39,6 +39,7 @@ void JKG_Inventory_UnequipArmor(char** args);
 void JKG_Inventory_Open(char** args);
 void JKG_ConstructInventoryList();
 void JKG_ConstructItemDescription(itemInstance_t* pItem, std::vector<std::string>& vDescLines);
+void JKG_SplitDescriptionLines(std::string& s, std::vector<std::string>& vDescLines);
 qboolean JKG_Inventory_HandleKey(int key);
 
 
