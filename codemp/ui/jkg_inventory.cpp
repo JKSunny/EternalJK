@@ -384,8 +384,8 @@ void JKG_SplitDescriptionLines(std::string& s, std::vector<std::string>& vDescLi
 	}
 
 	//these 'consts' might need to be calculated based on inventory width of the current screen
-	const int MAXLENGTH = 38; //max length of a line
-	const int MAXFIRSTLINE = 35; //max length with "info: " preceeding the text
+	const int MAXLENGTH = 39; //max length of a line
+	const int MAXFIRSTLINE = 33; //max length with "info: " preceeding the text
 
 	int length = s.length();
 

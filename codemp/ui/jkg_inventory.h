@@ -3,6 +3,7 @@
 #include "game/bg_items.h"
 #include "game/bg_weapons.h"
 #include "qcommon/q_shared.h"
+#include <cwctype>
 
 typedef enum {
 	JKGIFILTER_ALL,
