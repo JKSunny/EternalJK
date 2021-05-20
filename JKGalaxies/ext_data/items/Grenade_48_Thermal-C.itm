@@ -8,5 +8,5 @@
 	"cost":		"200",
 	"maxStack":		3,
 	"itemIcon":		"models/weapons/grenade_thermal/icon_gold",
-	"itemDescription": "Merr-Sonn Munitions manufactures several different thermal detonators. Each implements use of baradium as fuel to cause a small thermonuclear explosion. The Class C is the standard yield suitable for most use cases while still being affordable."
+	"itemDescription": "Merr-Sonn Munitions manufactures several different thermal detonators. Each implements use of baradium as fuel to cause a small thermonuclear explosion. Class C is a military grade yield producing a large explosion for moderate cost."
 }
