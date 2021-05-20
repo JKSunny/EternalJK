@@ -378,6 +378,9 @@ static void JKG_ConstructConsumableDescription(itemInstance_t* pItem, std::vecto
 //a stupid simple line splitter for descriptions
 void JKG_SplitDescriptionLines(std::string& s, std::vector<std::string>& vDescLines)
 {
+	#include <cctype> //for std::isalnum
+
+
 	if (s.length() > 250)
 	{
 		s = s.substr(0, 249); //truncate the description as a precaution
