@@ -14,5 +14,5 @@
 	"equippedSoundEffect":	"sound/shield/shield_equipped3",
 	"chargedSoundEffect":	"sound/shield/shield_charged4",
 	
-	"itemDescription": "A successor to the Golan DS-1, engineers have further optimized its fast regeneration rate while also increase its capacity. It can quickly recover after being overloaded without becoming unstable."
+	"itemDescription": "A successor to the Golan DS-1, engineers have further optimized its fast regeneration rate and increased its capacity. It can quickly recover after being overloaded without becoming unstable."
 }
