@@ -8,5 +8,5 @@
 	"cost":		"500",
 	"maxStack":		3,
 	"itemIcon":		"models/weapons/grenade_thermal/icon_silver",
-	"Merr-Sonn Munitions manufactures several different thermal detonators. Each implements use of baradium as fuel to cause a small thermonuclear explosion. The Class A is the largest yield available to date, both extremely destructive and expensive."
+	"itemDescription": "Merr-Sonn Munitions manufactures several different thermal detonators. Each implements use of baradium as fuel to cause a small thermonuclear explosion. The Class A is the largest yield available to date, both extremely destructive and expensive."
 }

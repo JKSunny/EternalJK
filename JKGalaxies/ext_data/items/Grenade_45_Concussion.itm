@@ -8,5 +8,5 @@
 	"cost":		"30",
 	"maxStack":		10,
 	"itemIcon":		"models/weapons/Grenade_Concussion/icon_default",
-	"itemDiscussion": "A generic concussion grenade model, used to incapacitate and stun targets.  It makes use of a concussive explosive force combined with sonic emissions to affect targets."
+	"itemDescription": "A generic concussion grenade model, used to incapacitate and stun targets.  It makes use of a concussive explosive force combined with sonic emissions to affect targets."
 }

@@ -1196,6 +1196,12 @@ static bool BG_LoadItem(const char *itemFilePath, itemData_t *itemData)
 	else
 		itemData->itemType = ITEM_UNKNOWN;
 
+	jsonNode = cJSON_GetObjectItem(json, "itemDescription");
+	str = cJSON_ToStringOpt(jsonNode, "No description available.");
+	std::string temp = str;
+	if (temp.length() > 250) { temp = temp.substr(0, 249); } //if string exceeds 500 chars, truncate
+	itemData->itemDescription = temp;
+
 	jsonNode = cJSON_GetObjectItem(json, "weight");
 	item = cJSON_ToNumber(jsonNode);
 	itemData->weight = item;

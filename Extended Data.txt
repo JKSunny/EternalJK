@@ -209,6 +209,7 @@ Each .itm file contains one item, which can have the following fields:
  - weight (float): Not used.
  - cost (integer): How much the item costs from the vendor.
  - maxStack (integer): How many of this item can be carried in a stack.
+ - itemDescription (string): A description of the item up to 250 characters in length.  Longer descriptions are forcibly truncated.
 
 The following contains information specific to WEAPON items:
 

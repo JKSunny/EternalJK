@@ -155,7 +155,8 @@ typedef struct {
 	int itemID;
 	jkgItemType_t itemType;
 	unsigned int weight;
-	int maxStack;
+	unsigned int maxStack;
+	std::string itemDescription;
 
 	// Visual Data
 #ifndef _GAME

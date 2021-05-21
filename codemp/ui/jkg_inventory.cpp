@@ -375,6 +375,57 @@ static void JKG_ConstructConsumableDescription(itemInstance_t* pItem, std::vecto
 	vDescLines.push_back(UI_GetStringEdString2("@JKG_INVENTORY_ITYPE_CONSUMABLE"));
 }
 
+//a stupid simple line splitter for descriptions
+void JKG_SplitDescriptionLines(std::string& s, std::vector<std::string>& vDescLines)
+{
+	if (s.length() > 250)
+	{
+		s = s.substr(0, 249); //truncate the description as a precaution
+	}
+
+	//these 'consts' might need to be calculated based on inventory width of the current screen
+	const int MAXLENGTH = 39; //max length of a line
+	const int MAXFIRSTLINE = 33; //max length with "info: " preceeding the text
+
+	int length = s.length();
+
+	//if the last part of the line is not a alphanumeric, don't add a dash
+	if (!std::isalnum(s[MAXFIRSTLINE-1]))
+		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_DESCRIPTION"), s.substr(0, MAXFIRSTLINE).c_str()));
+	else
+		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_DESCRIPTION"), (s.substr(0, MAXFIRSTLINE) + "-").c_str()));
+	
+	if (length - MAXFIRSTLINE < MAXLENGTH)
+	{
+		vDescLines.push_back(s.substr(MAXFIRSTLINE).c_str());
+	}
+	else
+	{
+		length = length - MAXFIRSTLINE; //subtrack first line from length
+		int start = MAXFIRSTLINE; //where to start the line
+
+		//loop through the description and break it up into lines
+		while (length > 0)
+		{
+			if( (length - MAXLENGTH) < 1)
+			{
+				vDescLines.push_back(s.substr(start, MAXLENGTH).c_str()); //if it is the last line
+			}
+			else
+			{
+				//no dash please, it's not a number or letter
+				if (!std::isalnum(s[start+MAXLENGTH-1]))
+					vDescLines.push_back(s.substr(start, MAXLENGTH).c_str()); 
+				else
+					vDescLines.push_back((s.substr(start, MAXLENGTH) + "-").c_str()); //add dash
+			}
+			
+			start = start + MAXLENGTH;
+			length = length - MAXLENGTH;
+		}
+	}
+}
+
 // Construct each type of item description
 void JKG_ConstructItemDescription(itemInstance_t* pItem, std::vector<std::string>& vDescLines) {
 	vDescLines.clear();
@@ -402,6 +453,17 @@ void JKG_ConstructItemDescription(itemInstance_t* pItem, std::vector<std::string
 		default:
 			break;
 	}
+
+	vDescLines.push_back(""); // Push a blank line because we like nice formatting
+	if(pItem->id->itemDescription.length() > 35)
+	{ 
+		JKG_SplitDescriptionLines(pItem->id->itemDescription, vDescLines);
+	}
+	else
+	{
+		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_DESCRIPTION"), pItem->id->itemDescription.c_str()));
+	}
+	
 }
 
 // Returns the string that should appear on nLineNum of an item description
