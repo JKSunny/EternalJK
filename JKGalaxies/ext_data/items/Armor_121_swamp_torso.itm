@@ -6,5 +6,5 @@
 	"weight":		"2",
 	"cost":			"800",
 	"itemIcon":		"gfx/item_icons/default.tga",
-	"itemDescription": "One of the highest armors used by Imperial forces. The camouflage coloring was designed for special operatives placed in hazardous environments for months at a time. Due to these risk factors, this full torso armor was vacuum sealed and reinforced."
+	"itemDescription": "One of the highest armors used by Imperial forces. The camouflage coloring was designed for special operatives placed in hazardous environments for months at a time. Due to these risk factors, this full torso armor is vacuum sealed and reinforced."
 }
