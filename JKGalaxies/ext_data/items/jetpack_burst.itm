@@ -4,5 +4,6 @@
 	"itemtype":	"jetpack",
 	"cost":		525,
 	"itemIcon":	"gfx/hud/i_icon_jetpack.tga",
-	"jetpack":	"jetpack_burst"
+	"jetpack":	"jetpack_burst",
+	"itemDescription": "The Merr-Sonn Basic Burst Jetpack creates a primarily vertical thrust in short 'bursts' to enable its user to take full advantage of terrain and reach ledges otherwise inaccessible."
 }

@@ -4,5 +4,6 @@
 	"itemtype":	"jetpack",
 	"cost":		775,
 	"itemIcon":	"gfx/hud/i_icon_jetpack.tga",
-	"jetpack":	"jetpack_burst2"
+	"jetpack":	"jetpack_burst2",
+	"itemDescription": "The Adv Burst Jetpack features a greatly enhanced fuel capacity, recharge rate and thrust capacity over the Basic Burst model. Creates primarily vertical thrusts in short 'bursts'. While useful in the hands of an expert, it is difficult to use."
 }
