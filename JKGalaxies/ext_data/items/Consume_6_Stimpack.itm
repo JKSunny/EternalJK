@@ -6,5 +6,7 @@
 	"maxStack":		3,
 	"consumeScript":	"item_bacta_medium",
 	"partHealthReq": true,
-	"itemIcon":		"gfx/item_icons/bacta_big.tga"
+	"weight":		"2",
+	"itemIcon":		"gfx/item_icons/bacta_big.tga",
+	"itemDescription": "A canister containing a treatment of bacta which when injected can regenerate damaged tissue and promote healing."
 }
