@@ -84,7 +84,7 @@
         "range":        45000.0,
         "recoil":       11.0,
         "spread":       0.1,
-        "splashrange":  700,//210,
+        "splashrange":  600,//210,
         "projectilespeed":13000.0,
         "projectileclass":"conc_proj",
         "meansofdeath": "MOD_SONIC",
