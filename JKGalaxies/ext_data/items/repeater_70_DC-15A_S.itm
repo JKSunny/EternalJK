@@ -4,7 +4,7 @@
 	"itemtype":             "weapon",
 	"weapon":		"WP_REPEATER",
 	"variation":		"1",
-	"weight":		"18",
+	"weight":		"19",
 	"cost":		"1575",
 	"xml":			"xml/items/DC-15A_AA.xml",
 	"itemIcon":		"models/weapons/dc-15a_rifle/icon_scope",
