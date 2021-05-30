@@ -17,8 +17,8 @@
             "firemode":     "models/weapons/DLT-19_HeavyBlaster/firemode"
         },
         
-        "gunposition":      "6.0 -3.0 -6.6",
-        "ironsightsposition": "6.0 0.0 -5.3",
+        "gunposition":      "6.0 -4.5 -7.5",
+        "ironsightsposition": "6.0 0.0 -6.35",
         "ironsightsfov": "70",
 		"barrelCount": "3",
     
