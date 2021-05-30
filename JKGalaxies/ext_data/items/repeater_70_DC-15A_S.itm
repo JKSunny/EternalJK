@@ -8,5 +8,5 @@
 	"cost":		"1575",
 	"xml":			"xml/items/DC-15A_AA.xml",
 	"itemIcon":		"models/weapons/dc-15a_rifle/icon_scope",
-	"itemDescription": "Once the weapon of choice for the Galactic Republic's clone troopers, it's high rate of fire makes use of ionized plasma effective against droids and shielding. This model includes an a sniper scope and has been optimized for longer range."
+	"itemDescription": "Once the weapon of choice for the Galactic Republic's clone troopers, its high rate of fire makes use of ionized plasma effective against droids and shielding. This model includes a sniper scope and has been optimized for longer range."
 }
