@@ -200,6 +200,22 @@ static int GLua_Sys_StripColorcodes(lua_State *L) {
 	return 1;
 }
 
+static int GLua_Sys_GetRandomInt(lua_State* L)
+{
+	int min = 0, max = 1, result = 0;
+	if (luaL_checkinteger(L, 1) && luaL_checkinteger(L, 2))
+	{
+		min = lua_tointeger(L, 1), max = lua_tointeger(L, 2);
+		result = Q_irandSafe(min, max);
+		lua_pushinteger(L, result);
+		return 1;
+	}
+
+	else
+		return 0;
+}
+
+
 static const struct luaL_reg sys_f [] = {
 	{"GetCvarString", GLua_Sys_GetCvarString},
 	{"GetCvarInt", GLua_Sys_GetCvarInt},
@@ -222,6 +238,7 @@ static const struct luaL_reg sys_f [] = {
 	{"MapName", GLua_Sys_MapName},
 	{"SpotWouldTelefrag", GLua_Sys_SpotWouldTelefrag},
 	{"StripColorcodes", GLua_Sys_StripColorcodes},
+	{"GetRandomInt", GLua_Sys_GetRandomInt},
 	{NULL, NULL},
 };
 

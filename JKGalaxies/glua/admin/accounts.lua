@@ -1066,10 +1066,10 @@ local function Speak(ply, argc, argv)
 		if rank["can-speak"] ~= true then
 			SystemReply(ply, "^1You do not have permission to perform this action.")
 		else
-			local accountname = ply:GetAccount()
 			local message = table.concat(argv," ",1, argc-1)
+			--local accountname = ply:GetAccount()
 			--chatmsg( "^7[^5" .. accountname .. "^7] <" .. rank["name"] .. "> " .. message )
-			chatmsg( "^7[^x39cAdmin^7] ^5" .. "^7<" .. rank["name"] .. "^7> ".. ply:GetName() .. ": ^3" .. message )
+			chatmsg( "^7[^x39cAdmin^7] ^5" .. "^7<" .. rank["name"] .. "^7> ".. ply:GetName() .. "^7: ^3" .. message )
 		end
 	else
 		SystemReply(ply, "^1You are not logged in.")
@@ -1094,7 +1094,7 @@ local function Tell(ply, argc, argv)
 				local account = accounts[ply:GetAccount()]
 				local message = table.concat(argv," ",1, argc-1)
 
-				plytarg:SendChat( "^5Admin " .. account["username"] .. " whispers: " .. message )
+				plytarg:SendChat( "^5Admin " .. account["username"] .. " ^5whispers: ^7" .. message )
 
 				if plytarg.lastadmtell == nil then
 					plytarg:SendChat( "^8Reply to this message using /Reply <msg>" )
@@ -1151,13 +1151,19 @@ local function Say(ply, argc, argv)
 		local k = 0
 		local message = table.concat(argv," ",1, argc-1)
 		local ourAccount = accounts[ply:GetAccount()]
+		local normalRadius = 1281 --how far away other players can hear us
+		local plyVec = vectorfnc.ObtainPlyVector(ply)
 
 		while players.GetByID(k) ~= nil do
-			local plytarg = players.GetByID(k)
+            local plytarg = players.GetByID(k)
 
 			if plytarg.isLoggedIn then
-				plytarg:SendChat( "^7[^x39cAdmin^7] ^5" .. plytarg:GetName() .. "^7: " .. message )
-				--ourAccount["username"] --consider using actual account name?
+            	local vecResult = vectorfnc.VectorSubtract(plyVec, vectorfnc.ObtainPlyVector(plytarg))       --subtract player's origin from target's origin
+            	if vectorfnc.VectorLength(vecResult) < normalRadius then      --if the length is inside the radius
+                	local fadelevel = vectorfnc.GetChatFadeLevel(vectorfnc.VectorLength(vecResult), normalRadius)
+					plytarg:SendFadedChat(fadelevel, "^7[^x39cAdmin^7] ^5" .. ply:GetName() .. "^7: " .. message )
+					--ourAccount["username"] --consider using actual account name?
+				end
 			end
 
 			k = k + 1

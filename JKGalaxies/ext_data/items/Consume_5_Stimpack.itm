@@ -6,5 +6,7 @@
 	"maxStack":		5,
 	"consumeScript":	"item_bacta_small",
 	"partHealthReq": true,
-	"itemIcon":		"gfx/item_icons/bacta.tga"
+	"weight":		"1",
+	"itemIcon":		"gfx/item_icons/bacta.tga",
+	"itemDescription": "A small canister containing an emergency injection of bacta used to regenerate damaged tissue and promote healing."
 }
