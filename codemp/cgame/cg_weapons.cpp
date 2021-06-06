@@ -1730,7 +1730,7 @@ void CG_Weapon_f( void ) {
 			trap->SendClientCommand("togglesaber");
 		}
 		// Set our holster state
-		cg.holsterState = (cg.holsterState) ? qfalse : qtrue;
+		(*cg.playerInventory)[cg.playerACI[num]].id->weaponData.holsterState = ((*cg.playerInventory)[cg.playerACI[num]].id->weaponData.holsterState) ? qfalse : qtrue;
 		doWeaponNotify = qfalse;
 	}
 

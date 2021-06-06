@@ -94,6 +94,7 @@ typedef struct {
 	unsigned int weapon;
 	unsigned int variation;
 	int varID;
+	bool holsterState; //is the weapon holstered? (melee mode vs weapon mode)
 } itemWeaponData_t;
 
 // Armor
@@ -180,8 +181,8 @@ typedef struct {
 // The item instance is what is kept in a player's inventory.
 typedef struct {
 	itemData_t* id;
-	int quantity;
-	bool equipped;
+	int quantity;		//how many do we have?
+	bool equipped;		//is the item assigned to aci/equipped?
 } itemInstance_t;
 
 extern itemData_t* itemLookupTable;

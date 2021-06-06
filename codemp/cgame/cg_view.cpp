@@ -2404,7 +2404,7 @@ void CG_DrawActiveFrame( int serverTime, stereoFrame_t stereoView, qboolean demo
 		}
 		if((*cg.playerInventory)[cg.playerACI[cg.weaponSelect]].id && (*cg.playerInventory)[cg.playerACI[cg.weaponSelect]].id->itemType == ITEM_WEAPON)
 		{
-			if(cg.holsterState && 
+			if((*cg.playerInventory)[cg.playerACI[cg.weaponSelect]].id->weaponData.holsterState &&
 				(*cg.playerInventory)[cg.playerACI[cg.weaponSelect]].id->weaponData.weapon != WP_SABER)
 			{
 				// Set us up using Melee if our holstered weapon is not a saber (and we're holstered)

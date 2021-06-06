@@ -972,8 +972,6 @@ typedef struct cg_s {
 	char			testModelName[MAX_QPATH];
 	qboolean		testGun;
 
-	qboolean		holsterState;
-
 	int			VHUDFlashTime;
 	qboolean	VHUDTurboFlag;
 
