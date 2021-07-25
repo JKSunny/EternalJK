@@ -79,7 +79,14 @@
         "meansofdeath": "MOD_BLASTER",
         "clipSize":              16,
 	    "ammobase": "AMMO_POWERCELL_L",
-	    "ammodefault": "AMMO_POWERCELL_S"
+	    "ammodefault": "AMMO_POWERCELL_S",
+		"accuracy": 
+		{
+			"accuracyRating": 20,
+			"accuracyRatingPerShot": 3,
+			"msToDrainAccuracy": 55,
+			"maxAccuracyAdd": 75
+        }
     },
     
     "firemode1": {
@@ -100,7 +107,14 @@
         "splashmeansofdeath": "MOD_BLASTER",
         "clipSize":              16,
 	    "ammobase": "AMMO_POWERCELL_L",
-	    "ammodefault": "AMMO_POWERCELL_S"
+	    "ammodefault": "AMMO_POWERCELL_S",
+		"accuracy": 
+		{
+			"accuracyRating": 20,
+			"accuracyRatingPerShot": 3,
+			"msToDrainAccuracy": 55,
+			"maxAccuracyAdd": 75
+        }
     },
     
     "playeranims": {
