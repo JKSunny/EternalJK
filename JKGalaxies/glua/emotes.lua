@@ -18,7 +18,11 @@
 
 local function EmoteHelp(ply, argc, argv)
 	ply:SendChat("See console for list of available emotes.")
-	ply:SendPrint("Emotes available: /salute, /signalYes, /signalNo, /signalRally, /signalFallIn, /signalConfusion, /signalFlashbang, /signalFreeze, /danceTwist, /danceMufa, /danceBofa, /danceFreestyle, /sitMeditate, /sitLounge, /sadPanda")
+	ply:SendPrint("Emotes available: /salute, /thumbsUp, /yes, /no, /signalRally, /signalFallIn, /signalConfusion, /signalFlashbang, /signalFreeze, /danceTwist, /danceMufa, /danceBofa, /danceFreestyle, /sitMeditate, /sitLounge, /sadPanda")
+end
+
+local function EmoteThumbsUp(ply, argc, argv)
+	ply:SetAnimBoth("BOTH_THUMB_UP")
 end
 
 local function EmoteSalute(ply, argc, argv)
@@ -104,6 +108,8 @@ end
 
 --add to chat cmdlist
 chatcmds.Add("salute", EmoteSalute)
+chatcmds.Add("signalThumbsUp", EmoteThumbsUp)
+chatcmds.Add("thumbsUp", EmoteThumbsUp)
 chatcmds.Add("signalYes", EmoteSignalYes)
 chatcmds.Add("yes", EmoteSignalYes)
 chatcmds.Add("no", EmoteSignalNo)
@@ -127,6 +133,8 @@ chatcmds.Add("emotehelp", EmoteHelp)
 
 --add to console cmdlist as well
 cmds.Add("salute", EmoteSalute)
+cmds.Add("signalThumbsUp", EmoteThumbsUp)
+cmds.Add("thumbsUp", EmoteThumbsUp)
 cmds.Add("signalYes", EmoteSignalYes)
 cmds.Add("signalNo", EmoteSignalNo)
 cmds.Add("signalFreeze", EmoteSignalFreeze)
