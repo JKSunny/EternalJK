@@ -253,7 +253,7 @@ void G_BuffEntity(gentity_t* ent, gentity_t* buffer, int buffID, float intensity
 			}
 
 			//override movement speed
-			if (pBuff->passive.movemodifier && pBuff->passive.maxstacks)
+			if (pBuff->passive.maxstacks && pBuff->passive.movemodifier != 1.0)
 			{
 				if (pBuff->passive.maxstacks > pBuff->passive.stacks) //if we can fit more stacks, increase the effect
 				{

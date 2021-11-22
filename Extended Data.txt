@@ -97,8 +97,8 @@ Each object, whose name is the buff linkage (example, "standard-fire": {} can be
   - means (string/special): The means of damage/damage type of the damage to do.
   - damageRate (integer): How many milliseconds between damage applications.
  - passive (object): Defines data about passive stat bonuses that this buff provides. Contains the following fields:
-  - movemodifier(float): How much the debuff should modifiy overall movement speed by.  eg: 0.8 slows down by 20%, while 1.5 increaes speed by 50%.  Default is 1.0.
-  - maxstacks(unsigned int): If greater than 0, the movemodifier can stack.  eg: setting it to 3, would allow the movemodifier to be stackable up to 3x.  Default is 0.
+  - maxstacks(unsigned int): If greater than 0, the movemodifier can be changed.  eg: setting it to 3, would allow the movemodifier to be stackable up to 3x.  Setting to 1 allows the effect to apply only once.  Default is 0.
+  - movemodifier(float): How much the debuff should modifiy overall movement speed by.  eg: 0.8 slows down by 20%, while 1.5 increaes speed by 50%.  Default is 1.0.  maxstacks must be greater than 0, for movemodifier to be applied. 
   - pmove (string/special): Overrides the movement type while this buff is applied. Can be one of the following:
    * PM_NORMAL - Regular movement
    * PM_JETPACK - Jetpack movement
