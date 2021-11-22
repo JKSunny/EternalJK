@@ -336,10 +336,8 @@ static qboolean JKG_ParseBuffPassiveData(cJSON* json, jkgBuff_t* pBuff)
 	if (pBuff->passive.movemodifier < 0)
 		pBuff->passive.movemodifier = 0.0;
 
-	if (pBuff->passive.maxstacks > 0 && pBuff->passive.movemodifier != 1.0)
-	{
-		pBuff->passive.movemodifier_cur = pBuff->passive.movemodifier;  //set initial movemodifier
-	}
+	pBuff->passive.movemodifier_cur = pBuff->passive.movemodifier;  //set initial movemodifier
+
 
 	child = cJSON_GetObjectItem(json, "empstaggered");
 	pBuff->passive.empstaggered = cJSON_ToBooleanOpt(child, false);
