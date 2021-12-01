@@ -1063,6 +1063,10 @@ static int GLua_Player_SetIsolate(lua_State *L) {
 	if (!ply2) {
 		return luaL_error(L, "Bad player provided");
 	}
+	if (ply->clientNum == ply2->clientNum) {
+		return luaL_error(L, "Must be different clients");
+	}
+
 	if (isolate) {
 		JKG_PlayerIsolate(ply->clientNum, ply2->clientNum);
 	} else {
