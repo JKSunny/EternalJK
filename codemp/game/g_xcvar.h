@@ -45,7 +45,7 @@ XCVAR_DEF( d_noroam,					"0",			NULL,				CVAR_CHEAT,										qfalse )
 XCVAR_DEF( d_npcai,						"0",			NULL,				CVAR_CHEAT,										qfalse )
 XCVAR_DEF( d_npcaiming,					"0",			NULL,				CVAR_CHEAT,										qfalse )
 XCVAR_DEF( d_npcfreeze,					"0",			NULL,				CVAR_CHEAT,										qfalse )
-XCVAR_DEF( d_noIntermissionWait,		"0",			NULL,				CVAR_NONE,										qfalse ) //0 == wait for players to readyup, 1==don't wait, 2==wait 2 minutes
+XCVAR_DEF( d_noIntermissionWait,		"0",			NULL,				CVAR_NONE,										qfalse ) //0 == wait for players to readyup, 1==don't wait, 2==wait 2 minutes, 3==wait 3 minutes etc
 XCVAR_DEF( d_patched,					"0",			NULL,				CVAR_CHEAT,										qfalse )
 XCVAR_DEF( d_perPlayerGhoul2,			"0",			NULL,				CVAR_CHEAT,										qtrue )
 XCVAR_DEF( d_powerDuelPrint,			"0",			NULL,				CVAR_NONE,										qtrue )
