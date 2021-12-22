@@ -198,6 +198,26 @@ typedef struct {
 	gentity_t* buffer;
 } buffInfo_t;
 
+typedef struct {
+	int dNum { 0 };	//negative: isolated from all, 0: global/default, 1+: isolated instance
+	std::vector<bool> properties{ 0, 0, 0, 0, 0, 0}; //controls which property to isolate
+	/*
+	  0 = damage,
+	  1 = collision (knockback, movement, etc),
+	  2 = interact (pazaak, trading, etc), 
+	  3 = visual (draw, efx, etc),
+	  4 = audio (footsteps, pain etc),
+	  5 = chat (local chat)
+
+	  usage example: 
+
+	  for(int i = 0; i<5; i++)
+		properties.at(i) = 1; //isolates all known properties
+
+	  Note that vector<bool> is bitpacked and not really a vector of 'bools'.
+	*/
+} dimension_t;
+
 #ifdef _GAME
 class TreasureClass;
 #endif
@@ -456,6 +476,7 @@ struct gentity_s {
 	int			lastHealTime;
 	int			lastBBTime;		// Determines when the last buyback time for inventory items is.
 	buffInfo_t	buffData[PLAYERBUFF_BITS];
+	dimension_t dimension;		// Used by player isolation to determine if player's can interact with each other (see jkg_playerisolation.cpp)
 
 	int			grenadeCookTime;	// For cookable grenades.
 	int			grenadeWeapon;		// The cookable grenade type that has been set (it can explode in your pocket).

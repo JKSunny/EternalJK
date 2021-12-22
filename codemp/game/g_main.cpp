@@ -1992,8 +1992,15 @@ void CheckIntermissionExit( void ) {
 		return;
 	}
 
-	if (d_noIntermissionWait.integer)
+	if (d_noIntermissionWait.integer == 1)
 	{ //don't care who wants to go, just go.
+		ExitLevel();
+		return;
+	}
+
+	//if we've waited 2+ minutes don't wait forever, just go
+	if (d_noIntermissionWait.integer == 2 && level.time > level.intermissiontime + 120000)
+	{
 		ExitLevel();
 		return;
 	}
