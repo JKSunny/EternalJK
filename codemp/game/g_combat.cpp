@@ -4072,7 +4072,7 @@ void G_Knockdown( gentity_t *self, gentity_t *attacker, const vec3_t pushDir, fl
 JKG_EvaluateEvasion()
 ===================================
 */
-void G_EvaluateEvasion(gentity_s* targ, gentity_s* attacker, int take)
+int G_EvaluateEvasion(gentity_s* targ, gentity_s* attacker, int take)
 {
 	/*
 			Note:
@@ -4143,6 +4143,7 @@ void G_EvaluateEvasion(gentity_s* targ, gentity_s* attacker, int take)
 			if (attacker != targ || !attacker->client || attacker->s.number >= MAX_CLIENTS) //notify other players we dodged
 				trap->SendServerCommand(attacker - g_entities, va("notify 1 \"%s ^7dodged!\"", targ->client->pers.netname));
 		}
+		return take;
 }
 
 
@@ -4612,12 +4613,12 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 	if ( damage < 1 ) {
 		damage = 1;
 	}
-	take = damage;
+	take = damage;  //from this point on want to know diff between damage received and what is actually taken (things like shields, armor, evasion all will reduce it)
 
 	//if roll dodges are allowed (on by default)
 	if (jkg_allowDodge.integer > 0 && take > 0 && means->modifiers.dodgeable && targ->client)
 	{
-		G_EvaluateEvasion(targ, attacker, take); //calculate roll dodge reduction
+		take = G_EvaluateEvasion(targ, attacker, take); //calculate roll dodge reduction
 	}
 
 	///////////////////////////////////////
