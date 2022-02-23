@@ -2297,15 +2297,15 @@ void Cmd_ShowInv_f(gentity_t *ent)
 		}
 
 		//buffer is about to fill - spit out what we got so far
-		if (buffer[MAX_STRING_CHARS-60] != '\0')
+		if (buffer[MAX_STRING_CHARS-100] != '\0')
 		{
-			trap->SendServerCommand(ent->s.number, va("print \"%s\n\"", buffer));
+			trap->SendServerCommand(ent->s.number, va("print \"%s\"", buffer));
 			memset(buffer, '\0', sizeof(buffer)); //reset
 		}
 	}
 
 	//add totals on the end
-	Q_strcat(buffer, sizeof(buffer), va("\nArmor weight: %.2f\n", armorweight));  //--Futuza: an ACI weight would be nice, but we can't access cg from here (yet) to see if weapons are equipped or not
+	Q_strcat(buffer, sizeof(buffer), va("\nEquipped weight: %.2f\n", armorweight));  //--Futuza: including ACI weight would be nice, but we can't access cg from here (yet) to see if weapons are equipped or not
 	Q_strcat (buffer, sizeof (buffer), va( "Total weight: %.2f\n", weight));
 	Q_strcat (buffer, sizeof (buffer), va( "Total items: %i", ent->inventory->size()));
 	trap->SendServerCommand (ent->s.number, va ("print \"%s\n\"", buffer)); 
