@@ -155,7 +155,7 @@ typedef struct {
 	char internalName[MAX_ITEM_NAME];
 	int itemID;
 	jkgItemType_t itemType;
-	unsigned int weight;
+	float weight;
 	unsigned int maxStack;
 	std::string itemDescription;
 

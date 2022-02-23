@@ -286,6 +286,9 @@ static void SV_MapRestart_f( void ) {
 
 	SV_StopAutoRecordDemos();
 
+
+	//todo: clear out any armor so it doesn't stick around like skins do
+
 	// toggle the server bit so clients can detect that a
 	// map_restart has happened
 	svs.snapFlagServerBit ^= SNAPFLAG_SERVERCOUNT;
@@ -301,6 +304,7 @@ static void SV_MapRestart_f( void ) {
 	// if a map_restart occurs while a client is changing maps, we need
 	// to give them the correct time so that when they finish loading
 	// they don't violate the backwards time check in cl_cgame.c
+
 	for (i=0 ; i<sv_maxclients->integer ; i++) {
 		if (svs.clients[i].state == CS_PRIMED) {
 			svs.clients[i].oldServerTime = sv.restartTime;

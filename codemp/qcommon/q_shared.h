@@ -214,12 +214,12 @@ typedef int32_t qhandle_t, thandle_t, fxHandle_t, sfxHandle_t, fileHandle_t, cli
 // the game guarantees that no string from the network will ever
 // exceed MAX_STRING_CHARS
 #define	MAX_STRING_CHARS	1024	// max length of a string passed to Cmd_TokenizeString
-#define	MAX_STRING_TOKENS	1024	// max tokens resulting from Cmd_TokenizeString
-#define	MAX_TOKEN_CHARS		1024	// max length of an individual token
-
-#define	MAX_INFO_STRING		1024
-#define	MAX_INFO_KEY		1024
-#define	MAX_INFO_VALUE		1024
+#define	MAX_STRING_TOKENS	MAX_STRING_CHARS	// max tokens resulting from Cmd_TokenizeString
+#define	MAX_TOKEN_CHARS		MAX_STRING_CHARS	// max length of an individual token
+												//--futuza: These are all based off of MAX_STRING_CHARS - in general no need to define each one seperately - just match MAX_STRING_CHARS
+#define	MAX_INFO_STRING		MAX_STRING_CHARS
+#define	MAX_INFO_KEY		MAX_STRING_CHARS
+#define	MAX_INFO_VALUE		MAX_STRING_CHARS
 
 #define	BIG_INFO_STRING		8192  // used for system info key only
 #define	BIG_INFO_KEY		  8192

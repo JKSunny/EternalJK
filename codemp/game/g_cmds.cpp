@@ -337,7 +337,7 @@ void DeathmatchScoreboardMessage( gentity_t *ent ) {
 			cl->sess.sessionTeam == TEAM_SPECTATOR ? 0 : cl->ps.persistant[PERS_SCORE], ping, (level.time - cl->pers.enterTime)/60000,
 			scoreFlags, g_entities[level.sortedClients[i]].s.powerups);
 		j = strlen(entry);
-		if (stringlength + j > 1022)
+		if (stringlength + j > MAX_STRING_CHARS-2) //formerly 1022
 			break;
 		strcpy (string + stringlength, entry);
 		stringlength += j;
@@ -2276,21 +2276,40 @@ JKG_Cmd_ShowInv_f
 */
 void Cmd_ShowInv_f(gentity_t *ent)
 {
-    char buffer[MAX_STRING_CHARS] = { 0 };
-	int i = 0;
+    char buffer[MAX_STRING_CHARS] = { 0 };  //--Futuza: note this will run out of space for most inventories, so we have to break it up (as below)
+	float weight = 0;
+	float armorweight = 0;
 	if(!ent->client)
 		return;
 
-	Q_strncpyz (buffer, "Inventory ID | Item Num | Instance Name                       | Weight\n", sizeof (buffer));
-	Q_strcat (buffer, sizeof (buffer), "-------------+----------+-----------------------------------------------+--------\n");
+	Q_strncpyz (buffer, "Inventory ID | Item Num | Instance Name                                 | Quantity | Weight\n", sizeof (buffer));
+	Q_strcat (buffer, sizeof (buffer), "-------------+----------+----------------------------------------------------------+--------\n");
+	trap->SendServerCommand(ent->s.number, va("print \"%s\n\"", buffer)); //print out
+	memset(buffer, '\0', sizeof(buffer));
+
 
 	for (auto it = ent->inventory->begin(); it != ent->inventory->end(); ++it) {
-		Q_strcat(buffer, sizeof(buffer), va(S_COLOR_WHITE "%12i | %8i | %-45s | %i\n", i, it->id->itemID, it->id->displayName, it->quantity));
+		Q_strcat(buffer, sizeof(buffer), va(S_COLOR_WHITE "%12i | %8i | %-45s | %8i | %6.2f\n", it - ent->inventory->begin(), it->id->itemID, it->id->displayName, it->quantity, it->id->weight));
+		weight = weight + (it->id->weight * it->quantity);
+		if (it->equipped)
+		{
+			armorweight = armorweight + (it->id->weight * it->quantity);
+		}
+
+		//buffer is about to fill - spit out what we got so far
+		if (buffer[MAX_STRING_CHARS-60] != '\0')
+		{
+			trap->SendServerCommand(ent->s.number, va("print \"%s\n\"", buffer));
+			memset(buffer, '\0', sizeof(buffer)); //reset
+		}
 	}
 
-	Q_strcat (buffer, sizeof (buffer), va( "%i total items", i));
+	//add totals on the end
+	Q_strcat(buffer, sizeof(buffer), va("\nArmor weight: %.2f\n", armorweight));  //--Futuza: an ACI weight would be nice, but we can't access cg from here (yet) to see if weapons are equipped or not
+	Q_strcat (buffer, sizeof (buffer), va( "Total weight: %.2f\n", weight));
+	Q_strcat (buffer, sizeof (buffer), va( "Total items: %i", ent->inventory->size()));
+	trap->SendServerCommand (ent->s.number, va ("print \"%s\n\"", buffer)); 
 
-	trap->SendServerCommand (ent->s.number, va ("print \"%s\n\"", buffer));
 }
 
 /*

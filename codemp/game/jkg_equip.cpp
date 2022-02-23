@@ -249,7 +249,8 @@ void JKG_EquipItem(gentity_t *ent, int iNum)
 
 		(*ent->inventory)[iNum].equipped = true;
 	}
-	else if (item.id->itemType == ITEM_ARMOR){
+	else if (item.id->itemType == ITEM_ARMOR)
+	{
 		armorData_t* pArm = item.id->armorData.pArm;
 		int previousArmor = ent->client->ps.armor[pArm->slot] - 1;
 		ent->client->ps.armor[pArm->slot] = pArm - armorTable + 1;

@@ -206,8 +206,8 @@ Each .itm file contains one item, which can have the following fields:
  - id (integer): Assigns a specific internal item ID number to this item. Not recommended to use this except in special circumstances.
  - itemIcon (string): The item icon shader as it appears in the inventory
  - itemtype (special): The type of the item. Can be the following: armor, weapon, clothing, consumable, shield, jetpack, ammo.
- - weight (float): Not used.
- - cost (integer): How much the item costs from the vendor.
+ - weight (float): Unused, cannot be less than 0.    Default: 1.0
+ - cost (integer): How much the item costs from the vendor.  Default: 100
  - maxStack (integer): How many of this item can be carried in a stack.
  - itemDescription (string): A description of the item up to 250 characters in length.  Longer descriptions are forcibly truncated.
 

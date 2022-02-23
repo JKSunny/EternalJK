@@ -665,7 +665,7 @@ void BG_GiveItemNonNetworked(gentity_t* ent, itemInstance_t item) {
 	// Add the new item stack to the inventory
 	ent->inventory->push_back(item);
 
-	//do special checks for shields and jetpacks
+	//do special checks for shields and jetpacks (autoequipping)
 	if ((item.id->itemType == ITEM_SHIELD || item.id->itemType == ITEM_JETPACK) && ent->s.eType == ET_PLAYER) //for now don't give anyone except players autoequip shields/jetpacks
 	{
 		bool alreadyEquipped = false; int equipLoc = -1;
@@ -685,7 +685,7 @@ void BG_GiveItemNonNetworked(gentity_t* ent, itemInstance_t item) {
 		//we already have a shield/jetpack equipped, we need to remove the old one first
 		if (alreadyEquipped)
 		{
-			auto toRemove = ent->inventory->at(equipLoc);
+			const auto& toRemove = ent->inventory->at(equipLoc);
 			int itemSlot = ent->inventory->size() - 1;
 
 			//remove old shield/jetpack and equip new one
@@ -712,6 +712,7 @@ void BG_GiveItemNonNetworked(gentity_t* ent, itemInstance_t item) {
 		//if a shield/jetpack isn't already equipped, equip the new one
 		else
 		{
+
 			int itemSlot = ent->inventory->size()-1;
 			if (specialType == ITEM_SHIELD)
 			{
@@ -724,7 +725,11 @@ void BG_GiveItemNonNetworked(gentity_t* ent, itemInstance_t item) {
 		}
 	}
 	
-
+	//handle weapons - sometime?  Currently weapons only exist in ACI and don't have an 'equipped state'
+	/*if (ent->s.eType == ET_PLAYER && item.id->itemType == ITEM_WEAPON)
+	{
+		JKG_EquipItem(ent, ent->inventory->size() - 1);
+	}*/
 }
 #elif _CGAME
 void BG_GiveItemNonNetworked(itemInstance_t item)
@@ -812,6 +817,13 @@ void BG_GiveItemNonNetworked(itemInstance_t item)
 		{
 			cg.playerACI[nFreeACISlot] = cg.playerInventory->size() - 1;
 		}
+
+		//all slots are taken - replace the 0th slot
+		else
+		{
+			cg.playerACI[0] = cg.playerInventory->size() - 1;
+		}
+
 	}
 	
 }
@@ -1199,11 +1211,12 @@ static bool BG_LoadItem(const char *itemFilePath, itemData_t *itemData)
 	jsonNode = cJSON_GetObjectItem(json, "itemDescription");
 	str = cJSON_ToStringOpt(jsonNode, "No description available.");
 	std::string temp = str;
-	if (temp.length() > 250) { temp = temp.substr(0, 249); } //if string exceeds 500 chars, truncate
+	if (temp.length() > 250) { temp = temp.substr(0, 249); } //if string exceeds 250 chars, truncate
 	itemData->itemDescription = temp;
 
 	jsonNode = cJSON_GetObjectItem(json, "weight");
-	item = cJSON_ToNumber(jsonNode);
+	item = cJSON_ToNumberOpt(jsonNode, 1.0f);
+	if (item < 0) { item = 0.0f; } // no negative weight
 	itemData->weight = item;
 
 	jsonNode = cJSON_GetObjectItem(json, "cost");

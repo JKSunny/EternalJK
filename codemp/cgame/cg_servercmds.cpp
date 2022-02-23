@@ -1070,7 +1070,7 @@ static void CG_RemoveChatEscapeChar( char *text ) {
 	text[l] = '\0';
 }
 
-#define MAX_STRINGED_SV_STRING 1024	// this is an quake-engine limit, not a StringEd limit
+#define MAX_STRINGED_SV_STRING MAX_STRING_CHARS	// this is an quake-engine limit, not a StringEd limit
 
 void CG_CheckSVStringEdRef(char *buf, const char *str)
 { //I don't really like doing this. But it utilizes the system that was already in place.
