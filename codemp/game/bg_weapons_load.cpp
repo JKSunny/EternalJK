@@ -442,6 +442,9 @@ static void BG_ParseWeaponStats ( weaponData_t *weaponData, cJSON *statsNode )
         
     node = cJSON_GetObjectItem (statsNode, "reloadmodifier");
     weaponData->reloadModifier = (float)cJSON_ToNumberOpt (node, 1.0);
+
+    node = cJSON_GetObjectItem(statsNode, "swaptime");
+    weaponData->swapTime = cJSON_ToNumberOpt(node, 300);
     
     node = cJSON_GetObjectItem (statsNode, "startzoomfov");
     weaponData->startZoomFov = (float)cJSON_ToNumberOpt (node, 50.0);

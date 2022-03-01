@@ -5167,6 +5167,7 @@ void CG_GetTagWorldPosition( refEntity_t *model, char *tag, vec3_t pos, vec3_t a
 
 #define	MAX_MARK_FRAGMENTS	128
 #define	MAX_MARK_POINTS		384
+#define CG_MAX_SABER_COMP_TIME 400 //last registered saber entity hit must match within this many ms for the client effect to take place.
 extern markPoly_t *CG_AllocMark();
 
 void CG_CreateSaberMarks( vec3_t start, vec3_t end, vec3_t normal )
@@ -5396,6 +5397,12 @@ void CG_G2SaberEffects(vec3_t start, vec3_t end, centity_t *owner)
 	qboolean backWards = qfalse;
 	qboolean doneWithTraces = qfalse;
 
+	//no efx spam
+	if ((cg.time - owner->serverSaberHitTime) >= CG_MAX_SABER_COMP_TIME)
+	{
+		return;
+	}
+
 	while (!doneWithTraces)
 	{
 		if (!backWards)
@@ -5433,7 +5440,7 @@ void CG_G2SaberEffects(vec3_t start, vec3_t end, centity_t *owner)
 	}
 }
 
-#define CG_MAX_SABER_COMP_TIME 400 //last registered saber entity hit must match within this many ms for the client effect to take place.
+
 
 void CG_AddGhoul2Mark(int shader, float size, vec3_t start, vec3_t end, int entnum,
 					  vec3_t entposition, float entangle, void *ghoul2, vec3_t scale, int lifeTime)

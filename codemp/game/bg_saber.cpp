@@ -3090,7 +3090,7 @@ weapChecks:
 		if (pm->ps->weaponTime <= 0 && pm->ps->torsoTimer <= 0)
 		{
 			if ( pm->cmd.weapon != pm->ps->weaponId ) {
-				PM_BeginWeaponChange( pm->cmd.weapon );
+				PM_BeginWeaponChange( pm->cmd.weapon, GetWeaponData(pm->ps->weapon, pm->ps->weaponVariation));
 			}
 		}
 	}

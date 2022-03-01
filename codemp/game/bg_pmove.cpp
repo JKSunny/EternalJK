@@ -4472,11 +4472,10 @@ PM_BeginWeaponChange
 void G_PM_SwitchWeaponClip(playerState_t *ps, int newweapon, int newvariation, usercmd_t& cmd);
 void G_PM_SwitchWeaponFiringMode(playerState_t *ps, int newweapon, int newvariation);
 #endif
-void PM_BeginWeaponChange( int weaponId ) {
+void PM_BeginWeaponChange( int weaponId, const weaponData_t* weaponData) {
     int weapon, variation;
 	if(!BG_GetWeaponByIndex(pm->cmd.weapon, &weapon, &variation))
 		return;
-
 
 	/*if( pm->ps->clientNum >= MAX_CLIENTS )
 	{
@@ -4538,7 +4537,7 @@ void PM_BeginWeaponChange( int weaponId ) {
 	{
 		if( pm->ps->saberHolstered == 2 && weapon == WP_SABER )
 		{
-			pm->ps->weaponTime += 150;
+			pm->ps->weaponTime += (weaponData->swapTime / 2); //150 by default
 		}
 		else if( pm->ps->saberHolstered == 2 && weapon == WP_MELEE )
 		{
@@ -4547,17 +4546,31 @@ void PM_BeginWeaponChange( int weaponId ) {
 		}
 		else if( pm->ps->saberHolstered == 2 && weapon != WP_SABER )
 		{
-			pm->ps->weaponTime += 300;
+			pm->ps->weaponTime += weaponData->swapTime; //300 by default
 		}
 		else
 		{
-			pm->ps->weaponTime += 600;
+			pm->ps->weaponTime += (weaponData->swapTime * 2); //600 by default
 			PM_SetAnim(SETANIM_TORSO, TORSO_DROPWEAP1, SETANIM_FLAG_OVERRIDE);
 		}
 	}
+
+	//if switching from a pistol or grenade, move faster
+	else if (pm->ps->weapon == WP_BRYAR_PISTOL || pm->ps->weapon == WP_THERMAL)
+	{
+		pm->ps->weaponTime += (0.6 * weaponData->swapTime); //60% (180 default)
+		PM_SetAnim(SETANIM_TORSO, TORSO_DROPWEAP1, SETANIM_FLAG_OVERRIDE);
+
+	}
+
 	else
 	{
-		pm->ps->weaponTime += 300;
+		pm->ps->weaponTime += weaponData->swapTime;
+		
+		if (weapon == WP_MELEE || weapon == WP_BRYAR_PISTOL || weapon == WP_THERMAL) //if switching to melee, a pistol, or grenade reduce switch time
+		{
+			pm->ps->weaponTime -= (0.25 * weaponData->swapTime); //25% (-75 default)
+		}
 		PM_SetAnim(SETANIM_TORSO, TORSO_DROPWEAP1, SETANIM_FLAG_OVERRIDE);
 	}
 }
@@ -4887,7 +4900,7 @@ static void PM_Weapon(void)
 	}
 
 	amount = GetWeaponData(pm->ps->weapon, pm->ps->weaponVariation)->firemodes[pm->ps->firingMode].cost;
-
+	weaponData = GetWeaponData(pm->ps->weapon, pm->ps->weaponVariation);
 	// take an ammo away if not infinite
 
 	// Jedi Knight Galaxies - Dont bitch about ammo unless we try to fire our weapon
@@ -4904,12 +4917,11 @@ static void PM_Weapon(void)
 				;
 			else
 			{
-				PM_BeginWeaponChange(pm->cmd.weapon);
+				PM_BeginWeaponChange(pm->cmd.weapon, weaponData);
 			}
 		}
 	}
 
-	weaponData = GetWeaponData(pm->ps->weapon, pm->ps->weaponVariation);
 
 	if (pm->ps->weaponstate == WEAPON_FIRING && pm->ps->weapon >= WP_BRYAR_PISTOL && pm->ps->weapon <= WP_ROCKET_LAUNCHER) {
 		// Ultra super duper special case - we are changing from a firing animation to transition into sights
