@@ -283,6 +283,7 @@ Each .wpn file contains the following fields:
   - flags (array of special): Can contain the following: cookable, knockback, roll, zoom, and togglezoom. Cookable means that the weapon is cookable like a grenade. Knockback means that the weapon does knockback. Roll means that the player can roll while holding this weapon. Zoom means that the ADS uses a scopemask to zoom in continuously, like the base JA disruptor. Togglezoom means that the ADS does not have variable zoom.
   - speed (float): How much to multiply the speed by while this weapon is equipped.
   - reloadmodifier (float): How much to multiply the speed by while this weapon is reloading.
+  - swaptime (integer): How many milliseconds it takes to stow this weapon away while switching weapons.  Default: 300.
   - startzoomfov (float): The beginning FOV of the zoom.
   - endzoomfov (float): The ending FOV of the zoom.
   - zoomtime (integer): If continuous zoom is used, this is how long in milliesconds it takes to go from start to end FOV.

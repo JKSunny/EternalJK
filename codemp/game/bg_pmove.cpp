@@ -4558,7 +4558,7 @@ void PM_BeginWeaponChange( int weaponId, const weaponData_t* weaponData) {
 	//if switching from a pistol or grenade, move faster
 	else if (pm->ps->weapon == WP_BRYAR_PISTOL || pm->ps->weapon == WP_THERMAL)
 	{
-		pm->ps->weaponTime += (0.6 * weaponData->swapTime); //60% (180 default)
+		pm->ps->weaponTime += (0.75 * weaponData->swapTime); //25% faster (225 default)
 		PM_SetAnim(SETANIM_TORSO, TORSO_DROPWEAP1, SETANIM_FLAG_OVERRIDE);
 
 	}
