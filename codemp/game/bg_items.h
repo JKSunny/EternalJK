@@ -94,7 +94,7 @@ typedef struct {
 	unsigned int weapon;
 	unsigned int variation;
 	int varID;
-	bool holsterState; //is the weapon holstered? (melee mode vs weapon mode)
+	qboolean holsterState; //is the weapon holstered? (melee mode vs weapon mode)
 } itemWeaponData_t;
 
 // Armor

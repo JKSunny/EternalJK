@@ -813,19 +813,25 @@ void BG_GiveItemNonNetworked(itemInstance_t item)
 			}
 		}
 
-		if (!bInACIAlready && nFreeACISlot != -1) 
+		//not already in aci
+		if (!bInACIAlready) 
 		{
-			cg.playerACI[nFreeACISlot] = cg.playerInventory->size() - 1;
-		}
+			//all slots are taken - replace the 0th slot
+			if (nFreeACISlot == -1)
+			{
+				nFreeACISlot = 0;
+			}
+			//otherwise we found a free slot (since nFreeACISLot != -1)
+			
+			cg.playerACI[nFreeACISlot] = cg.playerInventory->size() - 1; //assign the aci slot to the inventory just added
 
-		//all slots are taken - replace the 0th slot
-		else
-		{
-			cg.playerACI[0] = cg.playerInventory->size() - 1;
+			if (item.id->itemType == ITEM_WEAPON)
+			{
+				(*cg.playerInventory)[cg.playerACI[nFreeACISlot]].id->weaponData.holsterState = false; //set default holsterstate
+			}
 		}
-
 	}
-	
+
 }
 #endif
 
