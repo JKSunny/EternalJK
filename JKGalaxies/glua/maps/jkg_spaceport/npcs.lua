@@ -1,6 +1,6 @@
 --[[ ------------------------------------------------
 	Jedi Knight Galaxies Lua Code
-	JK Spaceport backend: npcs
+	JKG Spaceport backend: npcs
 	
 	Written by Futuza
 --------------------------------------------------]]

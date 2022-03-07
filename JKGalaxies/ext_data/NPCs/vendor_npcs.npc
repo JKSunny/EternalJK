@@ -122,3 +122,33 @@ vendor_grenades
 	dismemberProbHands	10
 	dismemberProbWaist	0
 }
+
+vendor_ammo
+{
+	playerModel	rodian
+	weapon		WP_MELEE
+	rank		crewman
+	altFire		1
+	reactions	1
+	aim		2
+	move		1
+	aggression	1
+	evasion		1
+	intelligence	1
+	rank		crewman
+	playerTeam	TEAM_NEUTRAL
+	enemyTeam	TEAM_NEUTRAL
+
+	class		CLASS_GENERAL_VENDOR
+	snd		rodian
+	sndcombat	rodian
+	sndextra	rodian
+	yawspeed	60
+	walkSpeed	40
+	runSpeed	200
+	dismemberProbHead	5
+	dismemberProbArms	20
+	dismemberProbHands	10
+	dismemberProbLegs	5
+	dismemberProbWaist	0
+}

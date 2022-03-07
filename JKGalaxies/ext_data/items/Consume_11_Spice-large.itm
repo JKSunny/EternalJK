@@ -1,7 +1,7 @@
 {
 	"name":             	"Spice - Large Dosage",
 	"internal":             "spice_large",
-	"cost":					"250",
+	"cost":					"550",
 	"itemtype":             "consumable",
 	"maxStack":				5,
 	"weight": 				5,

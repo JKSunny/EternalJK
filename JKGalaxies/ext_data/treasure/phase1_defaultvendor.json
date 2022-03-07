@@ -292,6 +292,19 @@
 				"ammo_medicBeads_60": 4
 			}
 		},
+		"spicevendor":
+		{
+			"numberPicksMin": 1,
+			"numberPicksMax": 3,
+			"uniquePicks": true,
+			"picks":
+			{
+				"spice_small": 5,
+				"shield_knockoff1": 2,
+				"shield_knockoff2": 1,
+				"spice_large": 3
+			}
+		},
 		"genericvendor": {
 			"numberPicksMin": 17,
 			"numberPicksMax": 23,

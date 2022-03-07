@@ -1,7 +1,7 @@
 {
 	"name":             	"Spice - Small Dosage",
 	"internal":             "spice_small",
-	"cost":					"100",
+	"cost":					"300",
 	"itemtype":             "consumable",
 	"weight": 				2,
 	"maxStack":				10,

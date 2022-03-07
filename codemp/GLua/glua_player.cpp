@@ -1017,6 +1017,45 @@ static int GLua_Player_HasNoDebuff(lua_State *L)
 	return 1;
 }
 
+extern void G_BuffEntity(gentity_t* ent, gentity_t* buffer, int buffID, float intensity, int duration);
+static int GLua_Player_AddBuff(lua_State* L) 
+{
+	//L1 = Player (required), L2 = Buffname (required), L3 = duration, L4 = intensity
+	if (lua_isnoneornil(L, 3)) return luaL_error(L, "No buff name provided");
+	GLua_Data_Player_t* ply = GLua_CheckPlayer(L, 2);
+	if (!ply) return 0;
+	gentity_t* ent;
+	ent = &g_entities[ply->clientNum];
+
+	int duration = 5000; // default to 5 seconds
+	float intensity = 1.0f; // default to normal intensity
+	int buffID = -1;
+	
+	const char *buffName = luaL_checkstring(L, 3);
+	if(sizeof(buffName) > BUFF_NAME_LEN)
+	{
+		return luaL_error(L, "Invalid buff name provided");
+	}
+
+	buffID = JKG_ResolveBuffName(buffName);
+	if (buffID < 0)
+	{
+		return luaL_error(L, "Invalid buff name provided");
+	}
+
+	//grab duration and intensity values (if present)
+	if (lua_gettop(L) > 3)
+	{
+		duration = lua_tointeger(L, 4);
+
+		if(lua_gettop(L) > 4)
+			intensity = lua_tonumber(L, 5);
+	}
+
+	G_BuffEntity(ent, ent, buffID, intensity, duration);
+	return 0;
+}
+
 static int GLua_Player_SetNoTarget(lua_State *L) {
 	GLua_Data_Player_t *ply = GLua_CheckPlayer(L, 1);
 	int active = lua_toboolean(L,2);
@@ -1777,6 +1816,7 @@ static const struct luaL_reg player_m [] = {
 	{"GetWeapon", GLua_Player_GetWeapon},
 	{"SetWeapon", GLua_Player_SetWeapon},
 	{"Damage", GLua_Player_Damage},
+	{"AddBuff", GLua_Player_AddBuff},
 	{"GiveForce", GLua_Player_GiveForce},
 	{"TakeForce", GLua_Player_TakeForce},
 	{"HasForce", GLua_Player_HasForce},
