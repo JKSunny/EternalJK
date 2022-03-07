@@ -17,6 +17,8 @@ function NPC:OnSpawn()
 	self:MakeVendor("ammovendor")
 	self:RefreshVendorStock()
 	self.UseRange = 150 -- make us easier to use
+	self.TimeToRestock = 1000 * sys.GetCvarInt("jkg_shop_replenish_time") -- how often (milliseconds) to restock?
+	self.RestockTimer = sys.Time()
 	
 	--local vars
 	self.LastUse = 0
@@ -39,6 +41,14 @@ end
 
 function NPC:OnTouch(other)
 	self:SetAnimBoth("BOTH_STAND10TOSTAND1") --if we get bumped into, react
+end
+
+function NPC:OnThink()
+	--refresh stocks
+	if sys.Time() - self.RestockTimer > self.TimeToRestock then
+		self:RefreshVendorStock()
+		self.RestockTimer = sys.Time()
+	end
 end
 
 function NPC:OnRemove()

@@ -17,6 +17,8 @@ function NPC:OnSpawn()
 	self:MakeVendor("grenadevendor")
 	self:RefreshVendorStock()
 	self.UseRange = 150 -- make us easier to use
+	self.TimeToRestock = 1000 * sys.GetCvarInt("jkg_shop_replenish_time") -- how often (milliseconds) to restock?
+	self.RestockTimer = sys.Time()
 	
 	--local vars
 	self.LastUse = 0
@@ -51,6 +53,12 @@ function NPC:OnThink(other)
 	else
 		self:SetAnimBoth("BOTH_TUSKENTAUNT1")
 		self.LastAdvertisement = (sys.Time() + math.random(1150,3550))
+	end
+
+	--refresh stocks
+	if sys.Time() - self.RestockTimer > self.TimeToRestock then
+		self:RefreshVendorStock()
+		self.RestockTimer = sys.Time()
 	end
 end
 
