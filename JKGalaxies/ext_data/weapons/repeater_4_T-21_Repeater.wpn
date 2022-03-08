@@ -95,7 +95,7 @@
 			"walkModifier": 1.3,
 			"inAirModifier": 1.8
         },
-	"heatGenerated": 2.5,
+	"heatGenerated": 1.25,
 	"maxHeat": 75
     },
     
@@ -126,7 +126,7 @@
         	"walkModifier": 1.3,
         	"inAirModifier": 1.9
         },
-	"heatGenerated": 40
+	"heatGenerated": 20
     },
     
     "playeranims": {

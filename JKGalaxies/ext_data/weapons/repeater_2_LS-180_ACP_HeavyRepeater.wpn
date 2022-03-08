@@ -96,7 +96,7 @@
         	"walkModifier": 1.3,
         	"inAirModifier": 2
         },
-	"heatGenerated": 1.75
+	"heatGenerated": 1.05
     },
 
     "firemode1": {
@@ -136,7 +136,7 @@
         	"walkModifier": 1.6,
         	"inAirModifier": 2.5
         },
-	"maxHeat": 150
+	"maxHeat": 75
     },
     
     "playeranims": {
