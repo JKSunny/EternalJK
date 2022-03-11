@@ -455,13 +455,13 @@ void JKG_ConstructItemDescription(itemInstance_t* pItem, std::vector<std::string
 	}
 
 	vDescLines.push_back(""); // Push a blank line because we like nice formatting
-	if(pItem->id->itemDescription.length() > 35)
+	if(sizeof(pItem->id->itemDescription) > 35)
 	{ 
-		JKG_SplitDescriptionLines(pItem->id->itemDescription, vDescLines);
+		JKG_SplitDescriptionLines(std::string(pItem->id->itemDescription), vDescLines);
 	}
 	else
 	{
-		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_DESCRIPTION"), pItem->id->itemDescription.c_str()));
+		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_DESCRIPTION"), pItem->id->itemDescription));
 	}
 	
 }

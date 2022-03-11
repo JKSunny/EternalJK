@@ -15,6 +15,7 @@ typedef struct gentity_s gentity_t;
 #define MAX_ITEM_TABLE_SIZE     (65535)
 #define MAX_ITEM_FILE_LENGTH    (16384)
 #define MAX_ITEM_NAME			(64)
+#define MAX_ITEM_DESCRIPTION	(250)
 #define MAX_INVENTORY_ITEMS		(256)
 
 #define MAX_ACI_SLOTS			(10)
@@ -157,7 +158,8 @@ typedef struct {
 	jkgItemType_t itemType;
 	float weight;
 	unsigned int maxStack;
-	std::string itemDescription;
+	//std::string itemDescription;
+	char itemDescription[MAX_ITEM_DESCRIPTION];
 
 	// Visual Data
 #ifndef _GAME
