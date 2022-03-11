@@ -158,7 +158,6 @@ typedef struct {
 	jkgItemType_t itemType;
 	float weight;
 	unsigned int maxStack;
-	//std::string itemDescription;
 	char itemDescription[MAX_ITEM_DESCRIPTION];
 
 	// Visual Data
