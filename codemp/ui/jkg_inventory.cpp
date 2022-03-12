@@ -376,13 +376,8 @@ static void JKG_ConstructConsumableDescription(itemInstance_t* pItem, std::vecto
 }
 
 //a stupid simple line splitter for descriptions
-void JKG_SplitDescriptionLines(std::string& s, std::vector<std::string>& vDescLines)
+void JKG_SplitDescriptionLines(const std::string& s, std::vector<std::string>& vDescLines)
 {
-	if (s.length() > 250)
-	{
-		s = s.substr(0, 249); //truncate the description as a precaution
-	}
-
 	//these 'consts' might need to be calculated based on inventory width of the current screen
 	const int MAXLENGTH = 39; //max length of a line
 	const int MAXFIRSTLINE = 33; //max length with "info: " preceeding the text
