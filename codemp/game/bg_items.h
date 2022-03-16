@@ -188,7 +188,7 @@ typedef struct {
 
 //todo: make itemLookupTable into a singleton object with properties like size/capacity, etc so we can dynamically allocate additional space if the item table needs to be bigger
 //      currently it relies on MAX_ITEM_TABLE_SIZE to determine it's size
-extern itemData_t itemLookupTable[MAX_ITEM_TABLE_SIZE];
+extern itemData_t* itemLookupTable;
 extern int lastUsedItemID;
 
 /*
