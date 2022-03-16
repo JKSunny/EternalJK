@@ -8,7 +8,8 @@
 #endif
 #include <json/cJSON.h>
 
-itemData_t* itemLookupTable;
+itemData_t itemLookupTable[MAX_ITEM_TABLE_SIZE]; //total list of items
+
 
 const stringID_table_s itemPacketNames[] = {
 	ENUM2STRING(IPT_ADD),
@@ -1354,6 +1355,13 @@ static bool BG_LoadItems(void)
 
 	Com_Printf("------- Constructing Item Table -------\n");
 
+	if (numFiles > MAX_ITEM_TABLE_SIZE)
+	{
+		Com_Printf(S_COLOR_RED "ERROR: Not enough memory reserved for item table.\nIncrease MAX_ITEM_TABLE_SIZE.  Capacity: (%i / %i)\n", numFiles, MAX_ITEM_TABLE_SIZE);
+		return false;
+	}
+		
+
 	for (i = 0; i < numFiles; i++)
 	{
 		itemData_t dummy;
@@ -1408,6 +1416,10 @@ Starts the loading process
 ====================
 */
 void BG_InitItems() {
+
+	//--Futuza: For now, don't do this dynamically - it should fit on the heap fine.
+	//In the future consider refactoring itemLookupTable into a object or using vector etc
+	/*
 	itemLookupTable = (itemData_t*)malloc(sizeof(itemData_t) * MAX_ITEM_TABLE_SIZE);
 	if (itemLookupTable == nullptr)
 	{
@@ -1416,9 +1428,10 @@ void BG_InitItems() {
 	}
 
 	memset(itemLookupTable, 0, sizeof(itemData_t) * MAX_ITEM_TABLE_SIZE);
+	*/
 
 	if (BG_LoadItems() == false) {
-		Com_Error(ERR_DROP, "could not load items...");
+		Com_Error(ERR_DROP, "Unable to load items...");
 		return;
 	}
 }
@@ -1431,8 +1444,12 @@ Frees the memory associated with items
 =====================
 */
 void BG_ShutdownItems() {
+	//--Futuza: until BG_InitItems() is implemented dynamically, just let the stack clean up after itself
+
+	/*
 	if (itemLookupTable != nullptr)
 	{
 		free(itemLookupTable);
 	}
+	*/
 }

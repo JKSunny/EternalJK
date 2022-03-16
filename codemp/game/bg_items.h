@@ -12,14 +12,14 @@
 typedef struct gentity_s gentity_t;
 #endif
 
-#define MAX_ITEM_TABLE_SIZE     (65535)
+#define MAX_ITEM_TABLE_SIZE     (1024)		//how many unique items the game can support (originally: 65553) --Futuza: lol not making that many items
 #define MAX_ITEM_FILE_LENGTH    (16384)
 #define MAX_ITEM_NAME			(64)
 #define MAX_ITEM_DESCRIPTION	(250)
 #define MAX_INVENTORY_ITEMS		(256)
 
 #define MAX_ACI_SLOTS			(10)
-#define MAX_ARMOR_PIECES		1024
+#define MAX_ARMOR_PIECES		(512)		//unused
 
 /*
  * Enumerations
@@ -186,7 +186,9 @@ typedef struct {
 	bool equipped;		//is the item assigned to aci/equipped?
 } itemInstance_t;
 
-extern itemData_t* itemLookupTable;
+//todo: make itemLookupTable into a singleton object with properties like size/capacity, etc so we can dynamically allocate additional space if the item table needs to be bigger
+//      currently it relies on MAX_ITEM_TABLE_SIZE to determine it's size
+extern itemData_t itemLookupTable[MAX_ITEM_TABLE_SIZE];
 extern int lastUsedItemID;
 
 /*
