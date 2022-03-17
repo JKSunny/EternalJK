@@ -8,7 +8,7 @@
 [YouTube](https://www.youtube.com/channel/UCnnAUSngUk8l3fycYMVXkKQ/featured)  
 [Twitch](https://www.twitch.tv/jkgalaxies)  
 [ModDB Page](http://www.moddb.com/mods/jkgalaxies) (not updated frequently)  
-[Lbry.tv](https://lbry.tv/@JediKnightGalaxies:c?view=about) (not updated frequently)  
+[Odysee.com](https://odysee.com/@JediKnightGalaxies:c?view=about) (not updated frequently)  
 
 
 ### Downloads ###
@@ -33,7 +33,6 @@ Welcome to Jedi Knight Galaxies, where we break the limits!
 
 
 ## Build Guide ##
-[Old Guide](https://jkhub.org/topic/5600-compilation-guide/)  
 [OpenJK Compilation Guide](https://github.com/JACoders/OpenJK/wiki/Compilation-guide)  
 [Flate's Ubuntu/Debian Guide](https://github.com/JKGDevs/JediKnightGalaxies/wiki/Flate%27s-Debian-Ubuntu-Compiling-Guide)
 
@@ -52,7 +51,7 @@ If you're stuck, you can also watch [this video](https://www.youtube.com/watch?v
 
 ## Dependencies ##
 
-* SDL2 (2.0.3+) (included on Windows)
+* SDL2 (2.0.14+) (included on Windows)
 * OpenGL
 * OpenAL (included on Windows)
 * libpng (included on Windows)
@@ -101,7 +100,18 @@ These are very much subject to change, especially phases later than Versus.
 
 
 ## Version Information ##
-JKG uses the following version schema: Phase.Major.Minor with an optional suffix (or "patch")letter following the minor version for hotfixes (these are unplanned versions that address server side only fixes and do not require client updates to play).  Phases represent collosal changes to the game (these are often called 'expansions' in other games) that include major new features and gameplay changes and even engine changes!  Phases should be considered seperate games.  Major versions represent completions of milestones that include several key new features and bug fixes.  Minor versions represent small incremental changes within a milestone and usually represent a single new feature or small set of features and/or bug fixes.  Other software produced by the developers (such as the launcher) uses its own versioning scheme and is not covered in this readme.
+JKG uses the following version schema: Phase.Major.Minor with an optional suffix (or "patch")letter following the minor version for hotfixes (these are unplanned versions that address server side only fixes and do not require client updates to play).  For example, the current version of the game is v`1.3.23`.  Phases represent collosal changes to the game (these are often called 'expansions' in other games) that include major new features and gameplay changes and even engine changes!  Phases should be considered seperate games.  Major versions represent completions of milestones that include several key new features and bug fixes.  Minor versions represent small incremental changes within a milestone and usually represent a single new feature or small set of features and/or bug fixes.  Other software produced by the developers (such as the launcher) uses its own versioning scheme and is not covered in this readme.
+
+
+
+## How can I help? ##
+If you want to help contribute to JKG there's a lot of ways you can do so, here are some examples:
+* Participate: Joining the [Discord](https://discord.gg/YuG8Zks) and chatting with the developers or community in the #development channel is the most important way to get involved.  You can also find other players here to schedule matches with.
+* Get the word out: Tell your friends about JKG, invite them to join scrimmage matches - the more the merrier.
+* Server Hosting: Host a JKG game server.
+* Coding: Compile the project and get it running on your own machine first (as outlined in this readme), then take a look at the [issues](https://github.com/JKGDevs/JediKnightGalaxies/issues) list for one that interests you.  (The pinned issue for the next patch covers the most critical issues needed for the next patch).
+* Modelling, Mapping etc: Join the [Discord](https://discord.gg/YuG8Zks), and ask in the #development channel if you can help contribute.  Providing us examples of your work is appreciated and we can usually suggest things that we need help with.  One of the best ways to show you can help is to mod JKG and show off the results (ie: make a new weapon or new map for the game).  A video is a good way to showcase something like this.
+* Audio/Music: Offer to help in the Discord and post samples of your work, the developers can usually put your talent to good use!
 
 
 
