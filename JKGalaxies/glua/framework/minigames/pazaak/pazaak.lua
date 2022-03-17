@@ -149,7 +149,7 @@ function PazaakGame:SetPlayers(ply1, ply2)
 	self.Players[2].Player.GodMode = true
 	self.Players[2].Player.NoKnockback = true
 	self.Players[2].Player.NoDebuff = true
-	print( tostring(self.Players[1].Player:GetName()) .. " and " .. tostring(self.Players[2].Player:GetName()) .. " have been made invulnerable for a Pazaak match." )
+	print( tostring(self.Players[1].Player:GetName()) .. "^7 and " .. tostring(self.Players[2].Player:GetName()) .. "^7 have been made invulnerable for a Pazaak match." )
 	end
 end
 
@@ -1093,7 +1093,9 @@ function PazaakGame:CleanUp()
 	self.Players[2].Player.GodMode = false
 	self.Players[2].Player.NoKnockback = false
 	self.Players[2].Player.NoDebuff = false
-	print( "Invulnerability disabled for " .. tostring(self.Players[1].Player:GetName()) .. " and " .. tostring(self.Players[2].Player:GetName()) )
+	if not self.Players[2].IsAI then
+		print( "Invulnerability disabled for " .. tostring(self.Players[1].Player:GetName()) .. "^7 and " .. tostring(self.Players[2].Player:GetName()) .. "^7." )
+	end
 
 	
 	-- Close the pazaak board and we're finished
