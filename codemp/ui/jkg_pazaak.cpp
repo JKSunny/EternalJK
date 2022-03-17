@@ -869,7 +869,8 @@ void JKG_Pazaak_DrawHandSlot(int slot, float x, float y, float w, float h) {
 	width = (float)trap->R_Font_StrLenPixels(text, MenuFontToHandle(1), 1) * 0.5;
 
 	x = x + (w/4) + ((w / 4) - (width / 2));
-	trap->R_Font_DrawString(	x, y + (h*0.25f), text, colorWhite, MenuFontToHandle(1), -1, 0.5);
+	trap->R_Font_DrawString(x, y + (h  *0.25f), text, colorWhite, MenuFontToHandle(1), -1, 0.5);
+
 }
 
 void JKG_Pazaak_DrawNames(int player, float x, float y, float w, float h) {
@@ -889,7 +890,14 @@ void JKG_Pazaak_DrawNames(int player, float x, float y, float w, float h) {
 		width = (float)trap->R_Font_StrLenPixels(text, MenuFontToHandle(1), 1) * 0.5;	
 		x=x-width;
 	}
-	trap->R_Font_DrawString(x, y, text, colorWhite, MenuFontToHandle(1), -1, 0.5);	//--futuza note: ^xRGB code will make certain blue colors hard to see, needs a different outline or something
+
+	//draw a simple text shadow outline
+	char cleanText[MAX_NETNAME];
+	vec4_t textShadowColor = { 0.15, 0.15, 0.15, 1 };
+	Q_strncpyz(cleanText, text, sizeof(cleanText));
+	Q_StripColor(cleanText);
+	trap->R_Font_DrawString(x-0.6, y-0.75, cleanText, textShadowColor, MenuFontToHandle(1), -1, 0.51); //draw 'shadow' slightly off center, with a larger scale and dark grey color
+	trap->R_Font_DrawString(x, y, text, colorWhite, MenuFontToHandle(1), -1, 0.5);	//full color name
 }
 
 void JKG_Pazaak_DrawPoints(int player, float x, float y, float w, float h) {

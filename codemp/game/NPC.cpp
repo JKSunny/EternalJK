@@ -2345,7 +2345,7 @@ void NPC_Think ( gentity_t *self)//, int msec )
 {
 	vec3_t	oldMoveDir;
 	int i = 0;
-	gentity_t *player;
+	//gentity_t *player; //unused
 
 	self->nextthink = level.time + FRAMETIME;
 

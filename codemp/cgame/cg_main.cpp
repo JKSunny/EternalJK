@@ -1229,7 +1229,7 @@ static void CG_RegisterGraphics( void ) {
 	cgs.effects.mShipDestDestroyed = trap->FX_RegisterEffect("effects/ships/dest_destroyed.efx");
 	cgs.effects.mShipDestBurning = trap->FX_RegisterEffect("effects/ships/dest_burning.efx");
 	
-	cgs.effects.mJetpack = trap->FX_RegisterEffect("effects/player/jetpack.efx"); //("effects/rockettrooper/flamenew.efx");
+	cgs.effects.mJetpack = trap->FX_RegisterEffect("effects/player/jetpack.efx"); //("effects/rockettrooper/flamenew.efx");  
 
 
 	cgs.effects.itemCone = trap->FX_RegisterEffect("mp/itemcone.efx");
@@ -1242,7 +1242,7 @@ static void CG_RegisterGraphics( void ) {
 	cgs.effects.mSaberBloodSparksMid = trap->FX_RegisterEffect("saber/blood_sparks_50_mp.efx");
 	cgs.effects.mBlasterDeflect = trap->FX_RegisterEffect("blaster/deflect.efx");
 	cgs.effects.mBlasterSmoke = trap->FX_RegisterEffect("blaster/smoke_bolton");
-	cgs.effects.mForceConfusionOld = trap->FX_RegisterEffect("force/confusion_old.efx");
+	cgs.effects.mForceConfusionOld = trap->FX_RegisterEffect("effects/force/confusion_old.efx");
 
 	cgs.effects.forceLightning		= trap->FX_RegisterEffect( "effects/force/lightning.efx" );
 	cgs.effects.forceLightningWide	= trap->FX_RegisterEffect( "effects/force/lightningwide.efx" );
@@ -1250,7 +1250,7 @@ static void CG_RegisterGraphics( void ) {
 	cgs.effects.forceDrainWide	= trap->FX_RegisterEffect( "effects/mp/drainwide.efx" );
 	cgs.effects.forceDrained	= trap->FX_RegisterEffect( "effects/mp/drainhit.efx");
 
-	cgs.effects.mDisruptorDeathSmoke = trap->FX_RegisterEffect("disruptor/death_smoke");
+	cgs.effects.mDisruptorDeathSmoke = trap->FX_RegisterEffect("effects/disruptor/death_smoke.efx");
 
 	for ( i = 0 ; i < NUM_CROSSHAIRS ; i++ ) {
 		cgs.media.crosshairShader[i] = trap->R_RegisterShaderNoMip( va("gfx/2d/crosshair%c", 'a'+i) );

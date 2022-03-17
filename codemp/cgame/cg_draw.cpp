@@ -2893,10 +2893,16 @@ static void CG_DrawCrosshairNames( void ) {
     //[USE_ITEMS]
     if ( cg_entities[cg.crosshairClientNum].currentState.eType == ET_ITEM )
     {
-        UI_DrawProportionalString (320, 170, "Press E to pick up weapon", UI_CENTER, colorTable[CT_WHITE], FONT_MEDIUM);
+        //UI_DrawProportionalString (320, 170, "Press E to pick up weapon", UI_CENTER, colorTable[CT_WHITE], FONT_MEDIUM);
         return;
     }
     //[/USE_ITEMS]
+
+	if (cg_entities[cg.crosshairClientNum].currentState.eType == ET_BODY)
+	{
+		UI_DrawProportionalString(320, 170, "Press E to loot body", UI_CENTER, colorTable[CT_WHITE], FONT_MEDIUM);
+		return;
+	}
 
 	if (cg.crosshairClientNum >= MAX_CLIENTS)
 	{

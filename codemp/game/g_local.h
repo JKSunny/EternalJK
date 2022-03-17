@@ -198,7 +198,7 @@ typedef struct {
 	gentity_t* buffer;
 } buffInfo_t;
 
-typedef struct {
+typedef struct Dimension {
 	int dNum { 0 };	//negative: isolated from all, 0: global/default, 1+: isolated instance
 	std::vector<bool> properties{ 0, 0, 0, 0, 0, 0}; //controls which property to isolate
 	/*
