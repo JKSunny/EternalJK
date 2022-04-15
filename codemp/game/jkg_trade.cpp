@@ -261,9 +261,6 @@ void JKG_UnmakeNPCVendor(gentity_t* ent)
 
 	char* empty = "";
 	Q_strncpyz(ent->treasureclass, empty, sizeof(ent->treasureclass));
-
-	//ent->use = NPC_Use;
-	ent->use = 0;
 	ent->bVendor = false;
 }
 
