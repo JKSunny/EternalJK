@@ -246,6 +246,27 @@ void JKG_MakeNPCVendor(gentity_t* ent, char* szTreasureClassName)
 	JKG_RegenerateStock(ent);
 }
 
+
+/*
+JKG_UnmakeNPCVendor
+
+Removes the vendor properties of an NPC
+*/
+void JKG_UnmakeNPCVendor(gentity_t* ent)
+{
+	if (!ent)
+	{
+		return;
+	}
+
+	char* empty = "";
+	Q_strncpyz(ent->treasureclass, empty, sizeof(ent->treasureclass));
+
+	//ent->use = NPC_Use;
+	ent->use = 0;
+	ent->bVendor = false;
+}
+
 /*
 ====================
 JKG_GenericVendorUse

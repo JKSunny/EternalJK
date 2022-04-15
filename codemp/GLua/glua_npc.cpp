@@ -210,6 +210,16 @@ static int GLua_NPC_MakeVendor(lua_State *L)
 	return 0;
 }
 
+static int GLua_NPC_UnmakeVendor(lua_State* L)
+{
+	gentity_t* npc = GLua_CheckNPC(L, 1);
+	if (!npc) return 0;
+
+	JKG_UnmakeNPCVendor(npc);
+
+	return 0;
+}
+
 static int GLua_NPC_RefreshStock(lua_State *L)
 {
 	gentity_t* npc = GLua_CheckNPC(L, 1);
@@ -1848,7 +1858,7 @@ static int GLua_Player_HasHoldable(lua_State *L) {
 */
 
 //Stoiss added this again as it fucked up the lua code for npcs
-static const struct luaL_reg npc_m [] = {
+static const struct luaL_reg npc_m[] = {
 	/* Metamethods */
 	{"__index", GLua_NPC_Index},
 	{"__newindex", GLua_NPC_NewIndex},
@@ -1860,6 +1870,7 @@ static const struct luaL_reg npc_m [] = {
 	{"IsValid", GLua_NPC_IsValid},
 	{"Kill", GLua_NPC_Kill},
 	{"MakeVendor", GLua_NPC_MakeVendor},
+	{"UnmakeVendor", GLua_NPC_UnmakeVendor},
 	{"RefreshVendorStock", GLua_NPC_RefreshStock},
 	{"UseVendor", GLua_NPC_UseVendor},
 	{"SetPos", GLua_NPC_SetPos},

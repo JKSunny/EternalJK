@@ -26,6 +26,7 @@ function NPC:OnSpawn()
 	self.UseRange = 120
 	-- Set up local variables
 	self.LastUse = 0
+	self.IsUsable = true; -- can players use/interact/talk to us
 end
 
 function NPC:OnUse(other, activator)
@@ -36,6 +37,10 @@ function NPC:OnUse(other, activator)
 	
 	if not activator:IsPlayer() then
 		return		-- Only talk to players, nothin else
+	end
+
+	if not self.IsUsable then
+		return
 	end
 	
 	self.Enemy = nil 	--no enemies please
@@ -77,6 +82,23 @@ function NPC:OnPain(ply, dmg)
 	--if you do damage to the npc
 end
 
+function NPC:OnDie(inflictor, killer, dmg, mod)
+	--if the npc dies
+	self:UnmakeVendor()
+	self.IsUsable = false; --refuse to talk to the player
+	
+	--example of what we can do with this:
+	--if dmg >= 10 then
+		--print("Massive damage!")
+	--end
+	--if killer:IsPlayer() then
+		--local ply = killer:ToPlayer()
+		--print("Killer is a player")
+		--print("Killer: " .. ply:GetName())
+		--ply:ModifyCreditCount(killer, 75)
+	--end
+end
+
 function NPC:OnRemove()
-	self.Spawner:Use(self, self)
+	self.Spawner:Use(self, self) --this probably doesn't work quite right
 end
