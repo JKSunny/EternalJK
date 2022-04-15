@@ -70,7 +70,7 @@ Please be aware of the implications of the GPLv2 licence. In short, be prepared 
 
 ### If you wish to contribute to JKGalaxies, please do the following ###
 * [Fork](https://github.com/JKGDevs/JediKnightGalaxies/fork) the project on Github.
-* Create a new branch and make your changes.  Please note that master branch represents the current stable release, while the develop branch represents new changes that will be made public during the next release.  It is usually best to start new changes by creating a new branch based on develop.
+* Create a new branch and make your changes.  Please note that master branch represents the current stable release, while the develop branch represents new changes that will be made public during the next release.  It is usually best to start new changes by creating a new branch based on develop.  It's also usually a good idea to check with the developers on [Discord](https://discord.gg/YuG8Zks) before working on something new.
 * Send a [pull request](https://help.github.com/articles/creating-a-pull-request) to upstream (JKGDevs/JediKnightGalaxies)
 
 ### If you wish to base your work off JKGalaxies (mod or engine) ###
@@ -103,7 +103,6 @@ These are very much subject to change, especially phases later than Versus.
 JKG uses the following version schema: Phase.Major.Minor with an optional suffix (or "patch")letter following the minor version for hotfixes (these are unplanned versions that address server side only fixes and do not require client updates to play).  For example, the current version of the game is v`1.3.23`.  Phases represent collosal changes to the game (these are often called 'expansions' in other games) that include major new features and gameplay changes and even engine changes!  Phases should be considered seperate games.  Major versions represent completions of milestones that include several key new features and bug fixes.  Minor versions represent small incremental changes within a milestone and usually represent a single new feature or small set of features and/or bug fixes.  Other software produced by the developers (such as the launcher) uses its own versioning scheme and is not covered in this readme.
 
 
-
 ## How can I help? ##
 If you want to help contribute to JKG there's a lot of ways you can do so, here are some examples:
 * Participate: Joining the [Discord](https://discord.gg/YuG8Zks) and chatting with the developers or community in the #development channel is the most important way to get involved.  You can also find other players here to schedule matches with.
@@ -113,6 +112,45 @@ If you want to help contribute to JKG there's a lot of ways you can do so, here 
 * Modelling, Mapping etc: Join the [Discord](https://discord.gg/YuG8Zks), and ask in the #development channel if you can help contribute.  Providing us examples of your work is appreciated and we can usually suggest things that we need help with.  One of the best ways to show you can help is to mod JKG and show off the results (ie: make a new weapon or new map for the game).  A video is a good way to showcase something like this.
 * Audio/Music: Offer to help in the Discord and post samples of your work, the developers can usually put your talent to good use!
 
+
+## Repository Organization ##
+The repo is organized into the following directories.  Not all subdirectories are shown, just those of most significance.
+
+* `root`: (You are here).  Contains tools for automated builds and cmake.  Also includes documentation such as this readme, `LICENSE.txt`, or the `Extended Data.txt` documentation on JSON style data the game uses.  Also includes batch files for generating Microsoft visual studio solution projects.
+* `CMakeModules`: Contains files needed for configuring CMake builds so you can easily use make to build the project or generate project solutions.
+* `JKGalaxies`: Contains json data files and other configuration settings used by the game (such as .itm files which define items in JKG).  Also contains the games lua scripts.  The contents of this directory are packed into a .pk3 file (zip) named `zz_JKG_Assets5.pk3` when packed for release.  Contains the following sub directories:
+  - `ext_data`: Contains most of the game's json style formatted data.  Most people will want to start by playing with the files here to get a good idea of how to create new content for JKG.  Changing the stuff here will not require a new binary compilation and is intended to be human readable so as to make adjusting settings and game content easy for anyone including non-coders.  For example you can go to `ext_data/weapons/carbine_0_E-11_Carbine.wpn` to adjust the E-11 carbine's stats and settings.
+  - `glua`: The game's lua scripts.  Can be hotloaded by reloading the current map with a map_restart.
+  - `models`: Model information such as `_humanoid/animation.cfg` used to define things like animations.
+  - `shaders`: Contains the game's shaders.
+  - `strings`: Contains strings used by the game such as `strings/English/jkg_items.str` contains English translations for placeholder text.
+  - `ui`: UI code (mostly menus).
+* `JKGServer`: Contains additional configuration information needed to run a JKG server.  For example, the account list `accountlist.json` or server configuration settings `server.cfg`.  The contents of this directory are placed in the JKG subdirectory of the game when packed for release.
+* `_Deprecated GLUA`: Contains Lua code no longer used by the game, but may be useful as examples of how to use lua to interact with the game or that may eventually be added back in.  Be warned most of these contain errors as they have not been updated to work with the current GLUA system.
+* `codemp`: The game's source code.  Contains the following subdirectories:
+  - `botlib`: For handling multiplayer bots (mimic player behavior).  Mostly unchanged from JKA.
+  - `cgame`: Contains cg code (eg: user interface code such as cg_scoreboard.cpp or cg_view.cpp).  For drawing mainly 2d things on the client's screen.
+  - `client`: Contains client code (eg: handling key input, networking client to talk to server, sound, etc)
+  - `game`: Contains a large portion of the game's game logic, such as g_combat.cpp which handles how combat/damage works between players/npcs.  
+  - `ghoul2`: Handles ghoul2 model format system.
+  - `GLua`: Hooks lua scripts into the game and provides an interface for lua to interact with the game. eg: glua_player.cpp has functions that can be used on/by player entities.
+  - `icarus`: Old scripting system mostly leftover from JKA, no longer really used.
+  - `libraries`: 3rd party libraries, such as jpeg formating (jpeg-9a), openssl, etc.
+  - `macosx`: Contains info for building for JKG's mac .app and making renderers compile on osx.
+  - `mp3code`: For handling mp3s.
+  - `null`: Stub functions for dedicated servers.
+  - `qcommon`: For handling generalized functions that need mostly global access, such as math stuff, or random number generators, etc.
+  - `Ratl`: Used by raven for various standard templates.
+  - `Ravl`: Raven's library for handling vectors.
+  - `rd-common`: Shared common libraries used by the renderers (such as font code).
+  - `rd-dedicated`: Dedicated render code.
+  - `rd-vanilla`: The vanilla renderer code.
+  - `server`: Handles serve side code logic (for talking to clients).
+  - `ui`: Handles ui code, such as jkg_shop.cpp which draws the shop interface on the screen and allows you to interact with it.
+  - `win32`: Code needed for windows build.
+  - `zlib`: zlib library.
+* `shared`: 3rd party source code such as sdl or system headers and binary icons.
+* `tools`: Small script examples useful for helping make a developer's job easier.
 
 
 ## Contributors ##
