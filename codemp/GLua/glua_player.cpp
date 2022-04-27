@@ -986,6 +986,37 @@ static int GLua_Player_HasNoKnockback(lua_State *L) {
 	return 1;
 }
 
+static int GLua_Player_SetBusy(lua_State* L)
+{
+	GLua_Data_Player_t* ply = GLua_CheckPlayer(L, 1);
+	int active = lua_toboolean(L, 2);
+	gentity_t* ent;
+	if (!ply) return 0;
+	ent = &g_entities[ply->clientNum];
+	if (active) {
+		ent->flags |= FL_BUSYMODE;
+	}
+	else {
+		ent->flags &= ~FL_BUSYMODE;
+	}
+	return 0;
+}
+
+static int GLua_Player_HasBusy(lua_State* L)
+{
+	GLua_Data_Player_t* ply = GLua_CheckPlayer(L, 1);
+	gentity_t* ent;
+	if (!ply) return 0;
+	ent = &g_entities[ply->clientNum];
+	if (ent->flags & FL_BUSYMODE) {
+		lua_pushboolean(L, 1);
+	}
+	else {
+		lua_pushboolean(L, 0);
+	}
+	return 1;
+}
+
 static int GLua_Player_SetNoDebuff(lua_State *L)
 {
 	GLua_Data_Player_t *ply = GLua_CheckPlayer(L, 1);
@@ -1907,6 +1938,7 @@ static const struct GLua_Prop player_p [] = {
 	{"GodMode", GLua_Player_HasGodMode,		GLua_Player_SetGodMode},
 	{"NoClip",	GLua_Player_HasNoClip,		GLua_Player_SetNoClip},
 	{"NoKnockback", GLua_Player_HasNoKnockback, GLua_Player_SetNoKnockback },		//futuza: adding NoKnockback for players
+	{ "Busy",	GLua_Player_HasBusy,		GLua_Player_SetBusy },							//futuza: check if the player is busy with something else (eg: in a pazaak game, hacking, trading, etc)
 	{"NoDebuff", GLua_Player_HasNoDebuff,	GLua_Player_SetNoDebuff },
 	{"NoTarget",GLua_Player_HasNoTarget,	GLua_Player_SetNoTarget},
 	{"Gravity", GLua_Player_GetGravity,		GLua_Player_SetGravity},

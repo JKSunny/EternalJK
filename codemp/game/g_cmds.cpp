@@ -1216,6 +1216,7 @@ void Cmd_CloseVendor_f (gentity_t *ent)
 		return;
 	}
 
+	ent->flags &= ~FL_BUSYMODE; //no longer marked as busy
 	ent->client->pmnomove = false;
 	ent->client->currentTrader->genericValue1 = ENTITYNUM_NONE;
 	ent->client->currentTrader = NULL;

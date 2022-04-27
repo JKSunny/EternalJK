@@ -74,6 +74,11 @@ local function PzkTestCmd(ply, argc, argv)
 		opp = nil
 	else
 		opp = opp:ToPlayer()
+		if opp.Busy then
+			ply:SendPrint(opp.Name .. "^7 is busy and cannot respond.  Try later.")
+			opp:SendPrint(ply.Name .. "^7 tried to challenge you to Pazaak.")
+			return
+		end
 	end
 	
 	pzk:SetPlayers(ply, opp)

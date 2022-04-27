@@ -14,10 +14,9 @@
 2. Typing in /y will accept the match and proceed as normal.
 3. Typing in /n will decline the match
 4. If challenged by more than one person within the 10 second grace period, system will respond to new challengers with, "Sorry this person has already been challenged by another opponent, ask them again later."
-5. When you accept a match, toggle god mode on for both players/make invincible.  This will be a server cfg setting, that can be turned on/off (so if it is a problem, people can't cheat using pazaak for invincibility in a match).
-6. When match finishes, turn off god mode.
+5. Add cvar for whether or not 2 player pazaak matches should be invulnerable or not?
 
-Note: the godmode bit is currently in the glua code under pzktest, but isn't a cfg setting yet
+Note: much of the implementation is also in pazaak.lua or misc.lua (pzktest)
 */
 
 #include "ui_shared.h"

@@ -165,6 +165,8 @@ void JKG_target_vendor_use(gentity_t* self, gentity_t* other, gentity_t* activat
 		activator->client->ps.useDelay = level.time + 500;
 		return;
 	}
+
+	activator->flags |= FL_BUSYMODE; //mark activator as busy
 	BG_SendTradePacket(IPT_TRADEOPEN, activator, self, &(*self->inventory)[0], self->inventory->size(), 0);
 
 	if (self->s.eType == ET_NPC)
