@@ -1043,12 +1043,13 @@ local function Status(ply, argc, argv)
 				local plysel = players.GetByID(k)
 				if plysel:IsValid() then
 					local plyselname = plysel:GetName()
-					printstring = printstring .. k .. " - " .. plyselname
+					printstring = printstring .. "\n^7" .. k .. " - " .. plyselname
 					if plysel.isLoggedIn then
 						local plyselaccountname = plysel:GetAccount()
 						local plyselaccount = accounts[plyselaccountname]
-						
-						printstring = printstring .. " ^7(^2Logged in as ^4" .. plyselaccountname .. " ^5[Rank: " .. plyselaccount["rank"] .. "]^7)\n"
+						printstring = printstring .. " ^7(^2Logged in as ^4" .. plyselaccountname .. " ^5[Rank: ^7" .. plyselaccount["rank"] .. "^5]^7)"
+					else
+						printstring = printstring .. " ^7(^1Not logged in.^7)"
 					end
 				end
 				k = k + 1
@@ -1092,9 +1093,10 @@ local function Tell(ply, argc, argv)
 				end
 
 				local account = accounts[ply:GetAccount()]
-				local message = table.concat(argv," ",1, argc-1)
+				local message = table.concat(argv," ",2, argc-1)
 
-				plytarg:SendChat( "^5Admin " .. account["username"] .. " ^5whispers: ^7" .. message )
+				plytarg:SendChat( "^5Admin " .. ply.Name .. " ^5whispers: ^7" .. message )
+				ply:SendChat("^5You whisper: ^7" .. message )
 
 				if plytarg.lastadmtell == nil then
 					plytarg:SendChat( "^8Reply to this message using /Reply <msg>" )
@@ -1126,13 +1128,13 @@ local function Reply(ply, argc, argv)
 		local plytarg = players.GetByID(k)
 
 		if( account == plytarg:GetAccount() ) then
-			plytarg:SendChat( "^5" .. ply.Name .. " replies: " .. message )
+			plytarg:SendChat( "^7" .. ply.Name .. "^5 replies: ^7" .. message )
 		end
 
 		k = k + 1
 	end
 
-	ply:SendChat( "^5You reply: " .. message )
+	ply:SendChat( "^5You reply: ^7" .. message )
 end
 
 local function Say(ply, argc, argv)
