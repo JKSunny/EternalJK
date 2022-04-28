@@ -1938,7 +1938,7 @@ static const struct GLua_Prop player_p [] = {
 	{"GodMode", GLua_Player_HasGodMode,		GLua_Player_SetGodMode},
 	{"NoClip",	GLua_Player_HasNoClip,		GLua_Player_SetNoClip},
 	{"NoKnockback", GLua_Player_HasNoKnockback, GLua_Player_SetNoKnockback },		//futuza: adding NoKnockback for players
-	{ "Busy",	GLua_Player_HasBusy,		GLua_Player_SetBusy },							//futuza: check if the player is busy with something else (eg: in a pazaak game, hacking, trading, etc)
+	{"Busy",	GLua_Player_HasBusy,		GLua_Player_SetBusy },					//futuza: check if the player is busy with something else (eg: in a pazaak game, hacking, trading, etc)
 	{"NoDebuff", GLua_Player_HasNoDebuff,	GLua_Player_SetNoDebuff },
 	{"NoTarget",GLua_Player_HasNoTarget,	GLua_Player_SetNoTarget},
 	{"Gravity", GLua_Player_GetGravity,		GLua_Player_SetGravity},

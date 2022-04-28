@@ -673,6 +673,97 @@ static int GLua_NPC_HasNoTarget(lua_State *L) {
 	return 1;
 }
 
+static int GLua_NPC_SetBusy(lua_State* L)
+{
+	gentity_t* npc = GLua_CheckNPC(L, 1);
+	int active = lua_toboolean(L, 2);
+	if (!npc) return 0;
+	if (active) {
+		npc->flags |= FL_BUSYMODE;
+	}
+	else {
+		npc->flags &= ~FL_BUSYMODE;
+	}
+	return 0;
+}
+
+static int GLua_NPC_HasBusy(lua_State* L)
+{
+	gentity_t* npc = GLua_CheckNPC(L, 1);
+	if (!npc) return 0;
+	if (npc->flags & FL_BUSYMODE) {
+		lua_pushboolean(L, 1);
+	}
+	else {
+		lua_pushboolean(L, 0);
+	}
+	return 1;
+}
+
+static int GLua_NPC_SetNoDebuff(lua_State* L)
+{
+	gentity_t* npc = GLua_CheckNPC(L, 1);
+	int active = lua_toboolean(L, 2);
+	if (!npc) return 0;
+	if (active) {
+		npc->flags |= FL_NO_DEBUFF;
+	}
+	else {
+		npc->flags &= ~FL_NO_DEBUFF;
+	}
+	return 0;
+}
+
+static int GLua_NPC_HasNoDebuff(lua_State* L)
+{
+	gentity_t* npc = GLua_CheckNPC(L, 1);
+	if (!npc) return 0;
+	if (npc->flags & FL_NO_DEBUFF) {
+		lua_pushboolean(L, 1);
+	}
+	else {
+		lua_pushboolean(L, 0);
+	}
+	return 1;
+}
+
+extern void G_BuffEntity(gentity_t* ent, gentity_t* buffer, int buffID, float intensity, int duration);
+static int GLua_NPC_AddBuff(lua_State* L)
+{
+	//L1 = Player (required), L2 = Buffname (required), L3 = duration, L4 = intensity
+	if (lua_isnoneornil(L, 3)) return luaL_error(L, "No buff name provided");
+	gentity_t* npc = GLua_CheckNPC(L, 2);
+	if (!npc) return 0;
+
+	int duration = 5000; // default to 5 seconds
+	float intensity = 1.0f; // default to normal intensity
+	int buffID = -1;
+
+	const char* buffName = luaL_checkstring(L, 3);
+	if (sizeof(buffName) > BUFF_NAME_LEN)
+	{
+		return luaL_error(L, "Invalid buff name provided");
+	}
+
+	buffID = JKG_ResolveBuffName(buffName);
+	if (buffID < 0)
+	{
+		return luaL_error(L, "Invalid buff name provided");
+	}
+
+	//grab duration and intensity values (if present)
+	if (lua_gettop(L) > 3)
+	{
+		duration = lua_tointeger(L, 4);
+
+		if (lua_gettop(L) > 4)
+			intensity = lua_tonumber(L, 5);
+	}
+
+	G_BuffEntity(npc, npc, buffID, intensity, duration);
+	return 0;
+}
+
 extern stringID_table_t BSTable[];
 int NAV_FindClosestWaypointForEnt( gentity_t *ent, int targWp );
 void NPC_BSSearchStart( int homeWp, bState_t bState );
@@ -1892,6 +1983,7 @@ static const struct luaL_reg npc_m[] = {
 	{"GetEyeTrace", GLua_NPC_GetEyeTrace},
 	{"GetEntity", GLua_NPC_GetEntity},
 	{"Damage", GLua_NPC_Damage},
+	{"AddBuff", GLua_NPC_AddBuff},
 	{"GiveForce", GLua_NPC_GiveForce},
 	{"TakeForce", GLua_NPC_TakeForce},
 	{"HasForce", GLua_NPC_HasForce},
@@ -2023,6 +2115,8 @@ static const struct GLua_Prop npc_p [] = {
 	{"GodMode", GLua_NPC_HasGodMode, GLua_NPC_SetGodMode},
 	{"NoKnockback", GLua_NPC_HasNoKnockback, GLua_NPC_SetNoKnockback},
 	{"NoTarget", GLua_NPC_HasNoTarget, GLua_NPC_SetNoTarget},
+	{"Busy",	GLua_NPC_HasBusy,		GLua_NPC_SetBusy },					//futuza: check if the npc is busy with something else (eg: in a pazaak game, a quest, etc.) and shouldn't be interacted with
+	{"NoDebuff", GLua_NPC_HasNoDebuff,	GLua_NPC_SetNoDebuff },
 	{"UseRange", GLua_NPC_GetUseRange, GLua_NPC_SetUseRange},
 	{NULL,		NULL,						NULL},
 };
