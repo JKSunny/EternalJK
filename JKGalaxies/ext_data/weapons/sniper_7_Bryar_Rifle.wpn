@@ -86,12 +86,12 @@
 	"ammodefault": "AMMO_POWERCELL_M",
         "clipSize":              24,
         "accuracy": {
-			"accuracyRating": 33,
+			"accuracyRating": 20,
 			"accuracyRatingPerShot": 4,
 			"msToDrainAccuracy": 100,
 			"maxAccuracyAdd": 80,
 			"crouchModifier": 0.6,
-			"sightsModifier": 0.6,
+			"sightsModifier": 0.4,
 			"walkModifier": 1.5,
 			"runModifier": 1.8,
 			"inAirModifier": 2.2
@@ -118,7 +118,7 @@
 	"ammodefault": "AMMO_POWERCELL_M",
         "clipSize":              24,
         "accuracy": {
-			"accuracyRating": 35,
+			"accuracyRating": 20,
 			"accuracyRatingPerShot": 10,
 			"msToDrainAccuracy": 115,
 			"maxAccuracyAdd": 90,
