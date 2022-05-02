@@ -85,7 +85,7 @@
 	"ammodefault": "AMMO_POWERPACK_M",
         "clipSize":              60,
             "accuracy": {
-        "accuracyRating": 60,
+        "accuracyRating": 40,
         "accuracyRatingPerShot": 2,
         "msToDrainAccuracy": 55,
         "maxAccuracyAdd": 78,
