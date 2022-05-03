@@ -117,7 +117,7 @@
 			"maxAccuracyAdd": 70,
 			"crouchModifier": 0.7,
 			"runModifier": 1.5,
-			"sightsModifier": 0.1,
+			"sightsModifier": 0.25,
 			"walkModifier": 1.25,
 			"inAirModifier": 1.7
         },

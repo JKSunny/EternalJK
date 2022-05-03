@@ -86,7 +86,7 @@
 			"msToDrainAccuracy": 65,
 			"maxAccuracyAdd": 85,
 			"crouchModifier": 0.7,
-			"sightsModifier": 0.7,
+			"sightsModifier": 0.35,
 			"walkModifier": 1.2,
 			"runModifier": 1.6,
 			"inAirModifier": 1.8
@@ -118,7 +118,7 @@
         	"msToDrainAccuracy": 65,
         	"maxAccuracyAdd": 95,
         	"crouchModifier": 0.7,
-        	"sightsModifier": 0.7,
+        	"sightsModifier": 0.35,
         	"walkModifier": 1.4,
 			"runModifier": 1.8,
         	"inAirModifier": 1.9
