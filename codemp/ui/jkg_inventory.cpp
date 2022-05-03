@@ -381,21 +381,23 @@ void JKG_SplitDescriptionLines(const std::string& s, std::vector<std::string>& v
 	//these 'consts' might need to be calculated based on inventory width of the current screen
 	const int MAXLENGTH = 39; //max length of a line
 	const int MAXFIRSTLINE = 33; //max length with "info: " preceeding the text
-
+	bool multiline = true;	//for determing if we need to handle multiple lines of description or a single line
 	int length = s.length();
-
-	//if the last part of the line is not a alphanumeric, don't add a dash
-	if (!std::isalnum(s[MAXFIRSTLINE-1]))
-		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_DESCRIPTION"), s.substr(0, MAXFIRSTLINE).c_str()));
-	else
-		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_DESCRIPTION"), (s.substr(0, MAXFIRSTLINE) + "-").c_str()));
 	
 	if (length - MAXFIRSTLINE < MAXLENGTH)
 	{
-		vDescLines.push_back(s.substr(MAXFIRSTLINE).c_str());
+		vDescLines.push_back(s.c_str());
+		multiline = false;
 	}
-	else
+	
+	if(multiline)
 	{
+		//if the last part of the line is not a alphanumeric, don't add a dash
+		if (!std::isalnum(s[MAXFIRSTLINE - 1]))
+			vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_DESCRIPTION"), s.substr(0, MAXFIRSTLINE).c_str()));
+		else
+			vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_DESCRIPTION"), (s.substr(0, MAXFIRSTLINE) + "-").c_str()));
+
 		length = length - MAXFIRSTLINE; //subtrack first line from length
 		int start = MAXFIRSTLINE; //where to start the line
 
