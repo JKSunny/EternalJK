@@ -2550,6 +2550,10 @@ void CG_DrawNPCNames( void )
 			classText = "Supplies Vendor";
 			VectorSet4(textColor, 0.525f, 0.525f, 1.0f, 1.0f);
 			break;
+		case CLASS_EQUIPMENT_VENDOR:
+			classText = "Equipment Vendor";
+			VectorSet4(textColor, 0.525f, 0.525f, 1.0f, 1.0f);
+			break;
 		case CLASS_FOOD_VENDOR:
 			classText = "Food Vendor";
 			VectorSet4(textColor, 0.525f, 0.525f, 1.0f, 1.0f);
@@ -2708,6 +2712,7 @@ void CG_DrawNPCNames( void )
 			case CLASS_WEAPONS_VENDOR:
 			case CLASS_ARMOR_VENDOR:
 			case CLASS_SUPPLIES_VENDOR:
+			case CLASS_EQUIPMENT_VENDOR:
 			case CLASS_FOOD_VENDOR:
 			case CLASS_MEDICAL_VENDOR:
 			case CLASS_GAMBLER_VENDOR:

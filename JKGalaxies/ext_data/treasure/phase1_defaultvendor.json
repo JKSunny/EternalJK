@@ -160,7 +160,6 @@
 					"sniper_ACP": 1
 				}
 		},
-		
 		"sabervendor":
 		{
 			"numberPicksMin": 8,
@@ -186,7 +185,6 @@
 					"saber_firebrand": 5
 				}
 		},
-		
 		"basicvendor":
 		{
 			"numberPicksMin": 8,
@@ -234,6 +232,84 @@
 				"ammo_ionPwrPackELG_60": 6
 			}
 		},
+		"equipmentvendor":
+		{
+			"numberPicksMin": 9,
+			"numberPicksMax": 12,
+			"uniquePicks": true,
+			"picks":
+			{
+				"armorvendor": 5,
+				"jetpackvendor": 4,
+				"shieldvendor": 6,
+				"ammovendor": 8,
+				"medicvendor": 10
+			}
+		},
+		"armorvendor":
+		{
+			"numberPicksMin": 3,
+			"numberPicksMax": 5,
+			"uniquePicks": true,
+			"picks":
+			{
+				"gloves_stormtrooper": 5,
+				"helmet_stormtrooper": 4,
+				"helmet_stormtrooper_rusty": 6,
+				"legs_stormtrooper": 4,
+				"torso_stormtrooper": 3,
+				"helmet_rebel_dark": 6,
+				"helmet_rebel_light": 5,
+				"helmet_rebel_red": 4,
+				"legs_glight": 4,
+				"torso_glight": 3,
+				"helmet_impworker": 6,
+				"helmet_swamptrooper": 1,
+				"legs_swamptrooper": 2,
+				"torso_swamptrooper": 1, 
+				"gloves_pilot": 6,
+				"helmet_pilot": 5,
+				"coat_heavy": 4
+			}
+		},
+		"jetpackvendor":
+		{
+			"numberPicksMin": 1,
+			"numberPicksMax": 1,
+			"uniquePicks": true,
+			"picks":
+			{
+				"jetpack_burst": 7,
+				"jetpack_burst2": 3,
+				"jetpack_test": 1
+			}
+		},
+		"shieldvendor":
+		{
+			"numberPicksMin": 3,
+			"numberPicksMax": 6,
+			"uniquePicks": true,
+			"picks":
+			{
+				"shield_blastech_ind": 3,
+				"shield_merrsonn_cour": 5,
+				"shield_bacnor_dread": 2,
+				"shield_blastech_imp": 6,
+				"shield_blastech_fleet": 1,
+				"shield_sorusuub": 3,
+				"shield_merrsonn_port": 3,
+				"shield_merrsonn_super": 1,
+				"shield_golan_ds1": 5,
+				"shield_golan_ds2": 2,
+				"shield_atgar": 4,
+				"shield_oviedo": 5,
+				"shield_prax_small": 3,
+				"shield_prax_medium": 2,
+				"shield_merrsonn_ultra": 2,
+				"shield_knockoff1": 7,
+				"shield_knockoff2": 8
+			}
+		},
 		"grenadevendor":
 		{
 			"numberPicksMin": 3,
@@ -261,7 +337,7 @@
 		"ammovendor":
 		{
 			"numberPicksMin": 2,
-			"numberPicksMax": 4,
+			"numberPicksMax": 5,
 			"uniquePicks": true,
 			"picks":
 			{

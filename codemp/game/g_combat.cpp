@@ -4336,6 +4336,7 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 		case CLASS_WEAPONS_VENDOR:
 		case CLASS_ARMOR_VENDOR:
 		case CLASS_SUPPLIES_VENDOR:
+		case CLASS_EQUIPMENT_VENDOR:
 		case CLASS_FOOD_VENDOR:
 		case CLASS_MEDICAL_VENDOR:
 		case CLASS_GAMBLER_VENDOR:

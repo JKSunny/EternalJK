@@ -60,6 +60,37 @@ vendor_general
 	dismemberProbWaist	0
 }
 
+vendor_equipment
+{
+	playerModel	prisoner
+	weapon		WP_MELEE
+	rank		crewman
+	altFire		1
+	snd			prisoner
+	reactions	3
+	aim			1
+	move		3
+	aggression	3
+	evasion		1
+	intelligence	5
+	rank		crewman
+	playerTeam	TEAM_NEUTRAL
+	enemyTeam	TEAM_NEUTRAL
+
+	class		CLASS_EQUIPMENT_VENDOR
+	snd			prisoner
+	sndcombat	prisoner
+	sndextra	prisoner
+	yawspeed	60
+	walkSpeed	40
+	runSpeed	200
+	dismemberProbHead	0
+	dismemberProbArms	0
+	dismemberProbHands	0
+	dismemberProbLegs	0
+	dismemberProbWaist	0
+}
+
 vendor_medic
 {
 	playerModel	reborn_new
@@ -139,7 +170,7 @@ vendor_ammo
 	playerTeam	TEAM_NEUTRAL
 	enemyTeam	TEAM_NEUTRAL
 
-	class		CLASS_GENERAL_VENDOR
+	class		CLASS_SUPPLIES_VENDOR
 	snd		rodian
 	sndcombat	rodian
 	sndextra	rodian
