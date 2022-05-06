@@ -84,7 +84,7 @@
 	    "ammobase": "AMMO_POWERPACK_M",
 	    "ammodefault": "AMMO_POWERPACK_S",
         "clipSize":              20,
-        "heatGenerated": 2.5
+        "heatGenerated": 4
     },
     
     "firemode1": {
@@ -103,7 +103,7 @@
 	    "ammobase": "AMMO_POWERPACK_M",
 	    "ammodefault": "AMMO_POWERPACK_S",
         "clipSize":              20,
-        "heatGenerated": 3
+        "heatGenerated": 5
     },
     
     "playeranims": {
