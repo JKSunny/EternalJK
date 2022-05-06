@@ -110,7 +110,7 @@ If you want to help contribute to JKG there's a lot of ways you can do so, here 
 * Server Hosting: Host a JKG game server.
 * Coding: Compile the project and get it running on your own machine first (as outlined in this readme), then take a look at the [issues](https://github.com/JKGDevs/JediKnightGalaxies/issues) list for one that interests you.  (The pinned issue for the next patch covers the most critical issues needed for the next patch).
 * Modelling, Mapping etc: Join the [Discord](https://discord.gg/YuG8Zks), and ask in the #development channel if you can help contribute.  Providing us examples of your work is appreciated and we can usually suggest things that we need help with.  One of the best ways to show you can help is to mod JKG and show off the results (ie: make a new weapon or new map for the game).  A video is a good way to showcase something like this.
-* Audio/Music: Offer to help in the Discord and post samples of your work, the developers can usually put your talent to good use!
+* Audio/Music: Offer to help in the Discord and post samples of your work, the developers would love to put your talent to good use!
 
 
 ## Repository Organization ##
@@ -244,8 +244,8 @@ Thank you to the following for your support of JKG and your efforts in contribut
 * Tommy
 * WizardMKBK (help with icons)
 * Xel
-* And many more!
+* [And many more!](https://www.jkgalaxies.net/contributors.html)
  
  
 
-This project is based on [OpenJK](https://github.com/JACoders/OpenJK) , which in turn is based on the source release of Raven's Jedi Academy.  Thank you all who have contributed to either project!   JKG IS NOT MADE, DISTRIBUTED, OR SUPPORTED BY LUCASARTS, A DIVISION OF LUCASFILM ENTERTAINMENT COMPANY LTD. ELEMENTS™ & (©) LUCASARTS, A DIVISION OF LUCASFILM ENTERTAINMENT COMPANY LTD.
+This project is based on [OpenJK](https://github.com/JACoders/OpenJK) , which in turn is based on the source release of Raven's Jedi Academy.  Thank you all who have contributed to either project!   JEDI KNIGHT GALAXIES IS NOT MADE, DISTRIBUTED, OR SUPPORTED BY ACTIVISION, RAVEN, DISNEY, OR LUCASARTS, A DIVISION OF LUCASFILM ENTERTAINMENT COMPANY LTD. ELEMENTS™ & (©) LUCASARTS, A DIVISION OF LUCASFILM ENTERTAINMENT COMPANY LTD.
