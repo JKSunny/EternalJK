@@ -1,6 +1,6 @@
 --[[ ------------------------------------------------
 	Jedi Knight Galaxies Lua Code
-	JKG Spaceport backend: npcs
+	JKG Mos Eisley Arena: npcs
 	
 	Written by Futuza
 --------------------------------------------------]]
@@ -8,69 +8,70 @@
 -- Here we'll spawn all the npcs that belong to the map
 
 local npctable = {
-	-- The vendors @ hutt base
+	-- The vendors @ blue base
     {
-        NPCType = "vendor_ammo",
-        NPCScript = "ammo_merchant",
-        Origin = Vector(-988, 2351, 108),
-        Angles = Vector(0, 0, 0)
-    },
-	{
-        NPCType = "vendor_medic",
-        NPCScript = "medic_merchant",
-        Origin = Vector(-981, 2486, 108),
-        Angles = Vector(0, 0, 0)
-    },
-	-- the vendors @ imp base
-	{
-        NPCType = "vendor_ammo",
-        NPCScript = "ammo_merchant",
-        Origin = Vector(-1175, -882, 63),
+        NPCType = "vendor_equipment",
+        NPCScript = "equipment_merchant",
+        Origin = Vector(314, 212, 320),
         Angles = Vector(0, -90, 0)
     },
 	{
         NPCType = "vendor_medic",
         NPCScript = "medic_merchant",
-        Origin = Vector(-1022, -988, 63),
+        Origin = Vector(312, 123, 145),
+        Angles = Vector(0, -180, 0)
+    },
+	-- the vendors @ red base
+	{
+        NPCType = "vendor_equipment",
+        NPCScript = "equipment_merchant",
+        Origin = Vector(1506, 5303, 112),
+        Angles = Vector(0, -90, 0)
+    },
+	{
+        NPCType = "vendor_medic",
+        NPCScript = "medic_merchant",
+        Origin = Vector(1542, 5099, 112),
         Angles = Vector(0, 180, 0)
     },
-	-- free vendor outside imp base
-	{
-        NPCType = "vendor_grenades",
-        NPCScript = "grenade_merchant",
-        Origin = Vector(-1899, -1339, 63),
-        Angles = Vector(0, 0, 0)
-    },
-	-- free vendor outside hutt base
-	{
-        NPCType = "vendor_grenades",
-        NPCScript = "grenade_merchant",
-        Origin = Vector(-565, 1107, 60),
-        Angles = Vector(0, 135, 0)
-    },
-	-- free vendor in slave area
-	{
-        NPCType = "vendor_grenades",
-        NPCScript = "grenade_merchant",
-        Origin = Vector(1369, -1316, 60),
-        Angles = Vector(0, 95, 0)
-    },
-	-- free vendor in center area
+
+	-- neutral vendors
+	--red side, next to bed and barrels
 	{
         NPCType = "vendor_general",
         NPCScript = "general_merchant",
-        Origin = Vector(-727, -146, 60),
-        Angles = Vector(0, 50, 0)
-    },
-	-- free vendor in bar area
-	{
-        NPCType = "vendor_general",
-        NPCScript = "general_merchant",
-        Origin = Vector(-579, 1248, 364),
+        Origin = Vector(961 , 3055, -70),
         Angles = Vector(0, 90, 0)
     },
+	--blue side, wine cellar
+	{
+        NPCType = "vendor_general",
+        NPCScript = "general_merchant",
+        Origin = Vector(-5 , 1360, 0),
+        Angles = Vector(0, 180, 0)
+    },
+	--blue side, outside wolf path
+	{
+        NPCType = "vendor_grenades",
+        NPCScript = "grenade_merchant",
+        Origin = Vector(-2180 , 1985, 115),
+        Angles = Vector(0, -90, 0)
+    },
+	--red side, outside stairs
+	{
+        NPCType = "vendor_grenades",
+        NPCScript = "grenade_merchant",
+        Origin = Vector(-1080 , 3010, -70),
+        Angles = Vector(0, -110, 0)
+    },
+	--hidden vendor by ice
+	{
+        NPCType = "vendor_ammo",
+        NPCScript = "ammo_merchant",
+        Origin = Vector(240 , 3741, -99),
+        Angles = Vector(0, -90, 0)
+    },
 }
-
 
 local function InitNPCs()
 	-- First, delete all spawners we already made
@@ -99,4 +100,4 @@ local function InitNPCs()
 	end
 end
 
-hook.Add("MapLoaded", "SpaceportNPCInit", InitNPCs)
+hook.Add("MapLoaded", "NightfallNPCInit", InitNPCs)

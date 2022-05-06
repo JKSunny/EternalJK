@@ -1,4 +1,4 @@
-NPC.NPCName = "ammo_merchant"
+NPC.NPCName = "spice_merchant"
 
 function NPC:OnInit(spawner)
 	self.Spawner = spawner
@@ -14,14 +14,14 @@ function NPC:OnSpawn()
 	self.ChaseEnemies = false
 	
 	--vendor setup
-	self:MakeVendor("ammovendor")
+	self:MakeVendor("spicevendor")
 	self:RefreshVendorStock()
 	self.UseRange = 150 -- make us easier to use
 	self.TimeToRestock = 1000 * sys.GetCvarInt("jkg_shop_replenish_time") -- how often (milliseconds) to restock?
 	self.RestockTimer = sys.Time()
-	
-	--local vars
 	self.LastUse = 0
+	
+	--other vars
 end
 
 function NPC:OnUse(other, activator)

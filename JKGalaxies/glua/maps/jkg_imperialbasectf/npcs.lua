@@ -1,6 +1,6 @@
 --[[ ------------------------------------------------
 	Jedi Knight Galaxies Lua Code
-	JKG Spaceport backend: npcs
+	JKG ImperialBaseCTF backend: npcs
 	
 	Written by Futuza
 --------------------------------------------------]]
@@ -8,66 +8,49 @@
 -- Here we'll spawn all the npcs that belong to the map
 
 local npctable = {
-	-- The vendors @ hutt base
+	-- The vendors @ imperial
     {
-        NPCType = "vendor_ammo",
-        NPCScript = "ammo_merchant",
-        Origin = Vector(-988, 2351, 108),
-        Angles = Vector(0, 0, 0)
-    },
-	{
         NPCType = "vendor_medic",
         NPCScript = "medic_merchant",
-        Origin = Vector(-981, 2486, 108),
-        Angles = Vector(0, 0, 0)
-    },
-	-- the vendors @ imp base
-	{
-        NPCType = "vendor_ammo",
-        NPCScript = "ammo_merchant",
-        Origin = Vector(-1175, -882, 63),
-        Angles = Vector(0, -90, 0)
+        Origin = Vector(1425, 1590, -3),    
+        Angles = Vector(0, -120, 0)
     },
 	{
-        NPCType = "vendor_medic",
-        NPCScript = "medic_merchant",
-        Origin = Vector(-1022, -988, 63),
-        Angles = Vector(0, 180, 0)
-    },
-	-- free vendor outside imp base
-	{
-        NPCType = "vendor_grenades",
-        NPCScript = "grenade_merchant",
-        Origin = Vector(-1899, -1339, 63),
-        Angles = Vector(0, 0, 0)
-    },
-	-- free vendor outside hutt base
-	{
-        NPCType = "vendor_grenades",
-        NPCScript = "grenade_merchant",
-        Origin = Vector(-565, 1107, 60),
-        Angles = Vector(0, 135, 0)
-    },
-	-- free vendor in slave area
-	{
-        NPCType = "vendor_grenades",
-        NPCScript = "grenade_merchant",
-        Origin = Vector(1369, -1316, 60),
-        Angles = Vector(0, 95, 0)
-    },
-	-- free vendor in center area
-	{
-        NPCType = "vendor_general",
-        NPCScript = "general_merchant",
-        Origin = Vector(-727, -146, 60),
-        Angles = Vector(0, 50, 0)
-    },
-	-- free vendor in bar area
-	{
-        NPCType = "vendor_general",
-        NPCScript = "general_merchant",
-        Origin = Vector(-579, 1248, 364),
+        NPCType = "imperial",
+        NPCScript = "equipment_merchant", 
+        Origin = Vector(1310, 535, -3),    
         Angles = Vector(0, 90, 0)
+    },	
+
+
+	-- the vendors @ rebels
+    {
+        NPCType = "vendor_equipment",
+        NPCScript = "equipment_merchant",
+        Origin = Vector(-4611, 704, 68),
+        Angles = Vector(0, 0, 0)
+    },
+	{
+        NPCType = "vendor_medic",
+        NPCScript = "medic_merchant",
+        Origin = Vector(-4529, 1400, 68),
+        Angles = Vector(0, 45, 0)
+    },
+
+
+    --neutral vendors
+    {
+        NPCType = "vendor_grenades",
+        NPCScript = "grenade_merchant",
+        Origin = Vector(33, -171, -123),    
+        Angles = Vector(0, 90, 0)
+    },
+
+	{
+        NPCType = "vendor_grenades",
+        NPCScript = "grenade_merchant",
+        Origin = Vector(-1543, 2922, -131),       
+        Angles = Vector(0, -120, 0)
     },
 }
 
@@ -99,4 +82,4 @@ local function InitNPCs()
 	end
 end
 
-hook.Add("MapLoaded", "SpaceportNPCInit", InitNPCs)
+hook.Add("MapLoaded", "BespinNPCInit", InitNPCs)
