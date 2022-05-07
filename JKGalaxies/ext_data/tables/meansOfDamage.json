@@ -368,6 +368,7 @@
 		"inventoryName": "@JKG_INVENTORY_MOD_ACP",
 
 		"modifiers": {
+			"ignoreShield": false,
 			"dodgeable": true,
 			"armor": 0.8,
 			"organic": 1.2,

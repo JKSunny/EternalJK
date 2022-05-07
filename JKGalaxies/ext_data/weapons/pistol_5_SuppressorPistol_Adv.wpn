@@ -77,8 +77,9 @@
         "projectilespeed": 3000.0,
         "projectileclass": "blaster_proj",
         "meansofdeath": "MOD_ACP",
-	"ammobase": "AMMO_ACP_POWERCELL_S",
-	"ammodefault": "AMMO_ACP_POWERCELL_S",
+        "ACPRatio": 0.3,
+	    "ammobase": "AMMO_ACP_POWERCELL_S",
+	    "ammodefault": "AMMO_ACP_POWERCELL_S",
         "clipSize":              10,
 		"accuracy": {
 			"accuracyRating": 11,

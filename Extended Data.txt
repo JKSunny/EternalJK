@@ -353,6 +353,7 @@ The .wpn file contains one field for each firing mode, starting with 0.
   - projectilespeed (float): How fast the projectile moves
   - projectileclass (string): What the spawned projectile's classname is
   - meansofdeath (special): The damage type of this weapon. Connects to a field in meansOfDamage.json
+  - ACPRatio (float, default 0.5): If meansofdeath is MOD_ACP this option is also available.  It determines which portion of the ACP damage impacts on the shield/vs what bypasses it. eg: 0.4 == 40% direct dmg, 60% shield damage. Range: 0.0 - 1.0.
   - splashmeansofdeath (special): The damage type of this weapon, when splash damage is applied. Connects to a field in meansOfDamage.json
   - useQuantity (boolean): If true, this fire mode deducts one from the item stack quantity when shooting. Used for grenades mostly.
   - ammoBase (string): Points to an ammo type. This firemode can use anything that is based on this ammo type.

@@ -87,8 +87,8 @@
         "projectileclass":"flech_proj",
         "meansofdeath": "MOD_SLUGTHROWER",
         "splashmeansofdeath": "MOD_SLUGTHROWER",
-	"ammobase": "AMMO_FWG-5",
-	"ammodefault": "AMMO_FWG-5",
+	    "ammobase": "AMMO_FWG-5",
+	    "ammodefault": "AMMO_FWG-5",
         "clipSize":              8,
 		"accuracy": {
 			"accuracyRating": 24,

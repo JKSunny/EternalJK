@@ -389,6 +389,12 @@ static void BG_ParseWeaponFireMode ( weaponFireModeStats_t *fireModeStats, cJSON
     node = cJSON_GetObjectItem (fireModeNode, "meansofdeath");
     str = cJSON_ToStringOpt (node, "MOD_UNKNOWN");
 	fireModeStats->weaponMOD = JKG_GetMeansOfDamageIndex(str);
+
+    if (fireModeStats->weaponMOD == JKG_GetMeansOfDamageIndex("MOD_ACP") )
+    {
+        node = cJSON_GetObjectItem(fireModeNode, "ACPRatio");
+        fireModeStats->ACPRatio = (float)cJSON_ToNumberOpt(node, 0.5f);
+    }
     
     node = cJSON_GetObjectItem (fireModeNode, "splashmeansofdeath");
     str = cJSON_ToStringOpt (node, "MOD_UNKNOWN");

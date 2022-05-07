@@ -4622,6 +4622,29 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 		take = G_EvaluateEvasion(targ, attacker, take); //calculate roll dodge reduction
 	}
 
+	int directDmg = 0; //direct damage that bypasses shield from ACP weaponry
+	if (mod == JKG_GetMeansOfDamageIndex("MOD_ACP") ) //handle division of ACP type damage
+	{
+		const weaponData_t* weaponData;
+		weaponData = GetWeaponData(attacker->client->ps.weapon, attacker->client->ps.weaponVariation);
+		float ratio = weaponData->firemodes[attacker->client->ps.firingMode].ACPRatio; //defaults to 0.5
+
+		//clamp range
+		if (ratio > 1)
+			ratio = 1.0f;
+		if (ratio < 0)
+			ratio = 0.0f;
+
+		directDmg = take * ratio; //% that is direct (bypasses shields), eg: 30dmg * 0.4 == 12 direct dmg
+		take = (1 - ratio) * take; //% that is energy (blocked by shields), eg: 30dmg * 0.6 == 18 dmg to shield (or carry over to direct dmg if no shield)
+
+		//set minimum dmg to 1
+		if (take < 1)
+			take = 1;
+		if (directDmg < 1)
+			directDmg = 1;
+	}
+
 	///////////////////////////////////////
 	//
 	//	1. Reduce damage by shield amount
@@ -4673,16 +4696,8 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 		}
 	}
 
-	//apply EMP effects from electric damage
-	if(take && targ->client && means->modifiers.isEMP)
-	{	
-		//short out jetpacks
-		if (targ->client->ps.eFlags & EF_JETPACK_ACTIVE)
-			Jetpack_Off(targ);
+	take = take + directDmg;	//apply direct damage in case the shield was bypassed
 
-		//--Futuza: note that a better version of EMP is available through the standard-emp debuff, this only shorts stuff out once
-		//see how it interacts with jetpacks in jkg_equip.cpp ItemUse_Jetpack()
-	}
 
 	if (take > 0 && !(dflags&DAMAGE_NO_HIT_LOC))
 	{//see if we should modify it by damage location
@@ -4711,6 +4726,17 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 		take = take / 2; //reduce damage by 1/2
 		if (take < 1)
 			take = 1;
+	}
+
+	//apply EMP effects from electric damage
+	if (take && targ->client && means->modifiers.isEMP)
+	{
+		//short out jetpacks
+		if (targ->client->ps.eFlags & EF_JETPACK_ACTIVE)
+			Jetpack_Off(targ);
+
+		//--Futuza: note that a better version of EMP is available through the standard-emp debuff, this only shorts stuff out once
+		//see how it interacts with jetpacks in jkg_equip.cpp ItemUse_Jetpack()
 	}
 
 #ifndef FINAL_BUILD

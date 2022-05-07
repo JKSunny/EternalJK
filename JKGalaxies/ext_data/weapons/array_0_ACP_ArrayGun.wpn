@@ -83,8 +83,8 @@
         "projectilespeed": 6000.0,
         "projectileclass": "blaster_proj",
         "meansofdeath": "MOD_ACP",
-	"ammobase": "AMMO_ACP_ARRAY",
-	"ammodefault": "AMMO_ACP_ARRAY",
+	    "ammobase": "AMMO_ACP_ARRAY",
+	    "ammodefault": "AMMO_ACP_ARRAY",
         "clipSize":              8,
         "accuracy": {
         	"accuracyRating": 96,
@@ -122,8 +122,8 @@
         "projectilespeed": 6000.0,
         "projectileclass": "blaster_proj",
         "meansofdeath": "MOD_ACP",
-	"ammobase": "AMMO_ACP_ARRAY",
-	"ammodefault": "AMMO_ACP_ARRAY",
+	    "ammobase": "AMMO_ACP_ARRAY",
+	    "ammodefault": "AMMO_ACP_ARRAY",
         "clipSize":              8,
         "accuracy": {
         	"accuracyRating": 96,
