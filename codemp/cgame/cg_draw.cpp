@@ -4428,7 +4428,8 @@ static void CG_Draw2D( void ) {
 			CG_DrawChatbox();	// Only show the chatbox when we're alive (JKG)
 		} else {
 			// don't draw any status if dead or the scoreboard is being explicitly shown
-			if ( cg.snap->ps.stats[STAT_HEALTH] > 0 && !cg.deathcamFadeStart ) { //!cg.showScores && to bring back scoreboard on tab press.
+			if ( cg.snap->ps.stats[STAT_HEALTH] > 0 && !cg.deathcamFadeStart) 
+			{ //!cg.showScores && to bring back scoreboard on tab press.
 
 				if ( /*cg_drawStatus.integer*/0 ) {
 					//Reenable if stats are drawn with menu system again
@@ -4455,9 +4456,17 @@ static void CG_Draw2D( void ) {
 				CG_DrawGrenade();
 
 				CG_DrawChatbox();	// Only show the chatbox when we're alive (JKG)
-			} else {
-				if (cg.isChatting) {
-					ChatBox_CloseChat();
+			}
+			else {
+				if (cg.isChatting) 
+				{
+					if(cg.snap->ps.clientNum == cg.clientNum) { //close chat
+						ChatBox_CloseChat();
+					}
+
+					else { //(except on spectators)
+						CG_DrawChatbox();
+					}
 				}
 			}
 	    
