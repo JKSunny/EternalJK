@@ -4797,16 +4797,16 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 	// do the damage
 	if (take || ssave) 
 	{
-		// Display damage sustained
+		// Display actual damage sustained
 		if ( targ->health > 0 )
 		{
 			if ( !point || ( dflags & DAMAGE_RADIUS ))
 			{
-				DamagePlum(targ, targ->r.currentOrigin, ( take > targ->health ) ? targ->health : take, mod, ssave, take <= (damage / 4) );
+				DamagePlum(targ, targ->r.currentOrigin, take, mod, ssave, take <= (damage / 4));
 			}
 			else
 			{
-				DamagePlum(targ, point, ( take > targ->health ) ? targ->health : take, mod, ssave, take <= (damage / 4) );
+				DamagePlum(targ, point, take, mod, ssave, take <= (damage / 4));
 			}
 		}
 		// -----------------------
@@ -4819,6 +4819,12 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 			{
 				targ->health = 1;
 			}
+		}
+
+		//don't bother with negative health  //--Futuza: for some reason if this isn't present disintegration sometimes doesn't happen for high damage?
+		if (targ->health < 0)
+		{
+			targ->health = -10;	
 		}
 
 		if ( targ->client ) {
@@ -4885,18 +4891,6 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 				{
 					VectorCopy(targ->client->ps.origin, targ->pos1);
 				}
-
-				//if our movement was frozen unfreeze at death - this should happen on player_die - shouldn't be necessary here?
-				/*client->pmfreeze = qfalse;
-				client->pmfreeze = qfalse;
-				client->pmlock = qfalse;
-				client->pmnomove = qfalse;
-
-				client->ps.freezeLegsAnim = 0;
-				client->ps.freezeTorsoAnim = 0;
-				targ->s.freezeLegsAnim = 0;
-				targ->s.freezeTorsoAnim = 0;*/
-				
 
 				//notify of headshot --futuza
 				if (isHeadShot)
