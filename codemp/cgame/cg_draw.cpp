@@ -4457,14 +4457,19 @@ static void CG_Draw2D( void ) {
 
 				CG_DrawChatbox();	// Only show the chatbox when we're alive (JKG)
 			}
-			else {
+			else 
+			{
+				CG_DrawMessageNotifications();	//continue drawing message notifications
+
+				//if we die and we are chatting interrupt it
 				if (cg.isChatting) 
 				{
-					if(cg.snap->ps.clientNum == cg.clientNum) { //close chat
+					if(cg.snap->ps.clientNum == cg.clientNum) { 
 						ChatBox_CloseChat();
 					}
 
-					else { //(except on spectators)
+					//(except on spectators)
+					else { 
 						CG_DrawChatbox();
 					}
 				}
