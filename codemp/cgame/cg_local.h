@@ -1423,6 +1423,7 @@ typedef struct cgEffects_s {
 	fxHandle_t	mSparksExplodeNoSound;
 	fxHandle_t	mTripMineLaser;
 	fxHandle_t	mEmplacedMuzzleFlash;
+	fxHandle_t	mHeatSteam;
 	fxHandle_t	mOverheatSteam;
 	fxHandle_t	mHyperspaceStars;
 	fxHandle_t	mBlackSmoke;

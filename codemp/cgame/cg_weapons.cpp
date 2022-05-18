@@ -2612,8 +2612,8 @@ void JKG_RenderGenericWeaponWorld ( centity_t *cent, const weaponDrawData_t *wea
 		//--futuza: add red hot barrel tips here, eg:
 		//if (cg.snap->ps.heat > cg.snap->ps.heatThreshold)
 
-		//if the weapon is in an overheated state do steam efx
-		if (cg.snap->ps.overheated || cg.snap->ps.heat > cg.snap->ps.heatThreshold)
+		//draw steam efx on barrel end if heat is critical
+		if (cg.snap->ps.heat > cg.snap->ps.heatThreshold)
 		{
 			hasMuzzleLocation = qtrue;
 			JKG_GetMuzzleLocation(cent, angles, flashOrigin, flashDirection);
@@ -2621,8 +2621,13 @@ void JKG_RenderGenericWeaponWorld ( centity_t *cent, const weaponDrawData_t *wea
 			matrix3_t flashAxis;
 			AnglesToAxis(cent->lerpAngles, flashAxis);
 
+			fxHandle_t steamEfx = cgs.effects.mHeatSteam;
+			if (cg.snap->ps.overheated)
+				steamEfx = cgs.effects.mOverheatSteam; //bigger steam we've overheated completely!
+
 			JKG_RenderOverheatEffect(
 				cent,
+				steamEfx,
 				flashOrigin,
 				flashAxis,
 				isLocalPlayer,
@@ -3064,11 +3069,16 @@ static void JKG_RenderGenericWeaponView ( const weaponDrawData_t *weaponData )
 	//--futuza: add red hot barrel tips here, eg:
 	//if (cg.snap->ps.heat > cg.snap->ps.heatThreshold)
 
-	//if the weapon is in an overheated state, do steam efx
-	if (cg.snap->ps.overheated || cg.snap->ps.heat > cg.snap->ps.heatThreshold)
+	//heating up, do steam efx
+	if (cg.snap->ps.heat > cg.snap->ps.heatThreshold)
 	{
+		fxHandle_t steamEfx = cgs.effects.mHeatSteam;
+		if(cg.snap->ps.overheated)
+			steamEfx = cgs.effects.mOverheatSteam; //bigger steam
+
 		JKG_RenderOverheatEffect(
 			cent,
+			steamEfx,
 			muzzle.origin,
 			muzzle.axis,
 			qtrue,
@@ -3333,16 +3343,16 @@ void JKG_RenderProjectile ( const centity_t *cent, unsigned char firingMode )
 	}
 }
 
-void JKG_RenderOverheatEffect(centity_t* cent, const vec3_t muzzlePosition, vec3_t* axis, qboolean isLocalPlayer, qboolean isFirstPerson)
+void JKG_RenderOverheatEffect(centity_t* cent, fxHandle_t steamEfx, const vec3_t muzzlePosition, vec3_t* axis, qboolean isLocalPlayer, qboolean isFirstPerson)
 {
 	if (isFirstPerson)
 	{
-		trap->FX_PlayEntityEffectID(cgs.effects.mOverheatSteam, const_cast<float*>(muzzlePosition), axis, -1, -1, -1, -1);
+		trap->FX_PlayEntityEffectID(steamEfx, const_cast<float*>(muzzlePosition), axis, -1, -1, -1, -1);
 	}
 
 	else
 	{
-		trap->FX_PlayEntityEffectID(cgs.effects.mOverheatSteam, const_cast<float*>(muzzlePosition), axis, cent->boltInfo, cent->currentState.number, -1, -1);
+		trap->FX_PlayEntityEffectID(steamEfx, const_cast<float*>(muzzlePosition), axis, cent->boltInfo, cent->currentState.number, -1, -1);
 	}
 }
 
