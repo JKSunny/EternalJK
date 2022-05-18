@@ -2613,7 +2613,7 @@ void JKG_RenderGenericWeaponWorld ( centity_t *cent, const weaponDrawData_t *wea
 		//if (cg.snap->ps.heat > cg.snap->ps.heatThreshold)
 
 		//if the weapon is in an overheated state do steam efx
-		if (cg.snap->ps.overheated)
+		if (cg.snap->ps.overheated || cg.snap->ps.heat > cg.snap->ps.heatThreshold)
 		{
 			hasMuzzleLocation = qtrue;
 			JKG_GetMuzzleLocation(cent, angles, flashOrigin, flashDirection);
@@ -3065,7 +3065,7 @@ static void JKG_RenderGenericWeaponView ( const weaponDrawData_t *weaponData )
 	//if (cg.snap->ps.heat > cg.snap->ps.heatThreshold)
 
 	//if the weapon is in an overheated state, do steam efx
-	if (cg.snap->ps.overheated)
+	if (cg.snap->ps.overheated || cg.snap->ps.heat > cg.snap->ps.heatThreshold)
 	{
 		JKG_RenderOverheatEffect(
 			cent,
