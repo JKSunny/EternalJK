@@ -1567,8 +1567,6 @@ void CG_EntityEvent( centity_t *cent, vec3_t position ) {
 			qhandle_t warning = trap->S_RegisterSound(va("sound/weapons/common/heatWarning.wav"));
 			trap->S_StartSound(es->pos.trBase, es->number, CHAN_WEAPON, warning);
 
-			//add fx of slight steam?
-
 		}
 		break;
 
@@ -1580,12 +1578,7 @@ void CG_EntityEvent( centity_t *cent, vec3_t position ) {
 
 			qhandle_t heatSound = trap->S_RegisterSound(va("sound/weapons/common/overheat0%i.wav", Q_irand(0, 3)));
 			trap->S_StartSound(es->pos.trBase, es->number, CHAN_WEAPON, heatSound);
-
-			//add fx of lots of steam coming off gun here
-
-			//play shield effect
-			//ByteToDir(es->eventParm, dir);
-			//CG_PlayerShieldHit(es->otherEntityNum, dir, 100);
+			//also steam comes off gun once in an overheated state see cg_weapons JKG_RenderOverheatEffect() function
 		}
 		break;
 

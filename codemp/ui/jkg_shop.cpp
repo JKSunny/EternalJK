@@ -4,6 +4,7 @@
 #include "jkg_inventory.h"
 #include <algorithm>
 
+
 using namespace std;
 
 /* Global variables */
@@ -535,6 +536,17 @@ char* JKG_ShopAmmoPriceText() {
 	{
 		return "...";
 	}
+}
+
+/*#include <game/g_local.h>*/
+char* JKG_ShopRefreshTimeText()
+{
+	/*if (jkg_announceShopRefresh.integer > 0
+		&& ((level.time - level.startTime) > jkg_shop_replenish_time.integer * 1000 - 1))*/
+
+	//need access to level.time to figure out how much refresh time is left
+	int timeRemaining = 300;
+	return va("%i", timeRemaining);
 }
 
 //

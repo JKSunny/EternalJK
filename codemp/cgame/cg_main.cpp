@@ -1223,6 +1223,7 @@ static void CG_RegisterGraphics( void ) {
 	cgs.effects.mSparksExplodeNoSound = trap->FX_RegisterEffect("sparks/spark_exp_nosnd");
 	cgs.effects.mTripMineLaser = trap->FX_RegisterEffect("tripMine/laser.efx");
 	cgs.effects.mEmplacedMuzzleFlash = trap->FX_RegisterEffect( "effects/emplaced/muzzle_flash" );
+	cgs.effects.mOverheatSteam = trap->FX_RegisterEffect("effects/blaster/barrelsmoke_test.efx");
 
 	cgs.effects.mHyperspaceStars = trap->FX_RegisterEffect("ships/hyperspace_stars");
 	cgs.effects.mBlackSmoke = trap->FX_RegisterEffect( "volumetric/black_smoke" );

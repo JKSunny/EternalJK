@@ -2608,6 +2608,26 @@ void JKG_RenderGenericWeaponWorld ( centity_t *cent, const weaponDrawData_t *wea
 				s->constantLight
 			);
 		}
+
+		//--futuza: add red hot barrel tips here, eg:
+		//if (cg.snap->ps.heat > cg.snap->ps.heatThreshold)
+
+		//if the weapon is in an overheated state do steam efx
+		if (cg.snap->ps.overheated)
+		{
+			hasMuzzleLocation = qtrue;
+			JKG_GetMuzzleLocation(cent, angles, flashOrigin, flashDirection);
+
+			matrix3_t flashAxis;
+			AnglesToAxis(cent->lerpAngles, flashAxis);
+
+			JKG_RenderOverheatEffect(
+				cent,
+				flashOrigin,
+				flashAxis,
+				isLocalPlayer,
+				qfalse);
+		}
 	}
 
 	VectorClear (cg.lastFPFlashPoint);
@@ -3041,6 +3061,20 @@ static void JKG_RenderGenericWeaponView ( const weaponDrawData_t *weaponData )
 			s->constantLight);
 	}
 
+	//--futuza: add red hot barrel tips here, eg:
+	//if (cg.snap->ps.heat > cg.snap->ps.heatThreshold)
+
+	//if the weapon is in an overheated state, do steam efx
+	if (cg.snap->ps.overheated)
+	{
+		JKG_RenderOverheatEffect(
+			cent,
+			muzzle.origin,
+			muzzle.axis,
+			qtrue,
+			qtrue);
+	}
+
 	// TODO: At some point, I want to put this into a common function which the
 	// world model and view model can call. For now it's just copy/pasted.
 	// Do muzzle flash
@@ -3296,6 +3330,19 @@ void JKG_RenderProjectile ( const centity_t *cent, unsigned char firingMode )
 	if( weapon->eventsHandler[firingMode] && weapon->eventsHandler[firingMode]->ProjectileRender )
 	{
 		weapon->eventsHandler[firingMode]->ProjectileRender ( cent, &weapon->drawData[firingMode], &ammoTable[cent->currentState.ammoType]);
+	}
+}
+
+void JKG_RenderOverheatEffect(centity_t* cent, const vec3_t muzzlePosition, vec3_t* axis, qboolean isLocalPlayer, qboolean isFirstPerson)
+{
+	if (isFirstPerson)
+	{
+		trap->FX_PlayEntityEffectID(cgs.effects.mOverheatSteam, const_cast<float*>(muzzlePosition), axis, -1, -1, -1, -1);
+	}
+
+	else
+	{
+		trap->FX_PlayEntityEffectID(cgs.effects.mOverheatSteam, const_cast<float*>(muzzlePosition), axis, cent->boltInfo, cent->currentState.number, -1, -1);
 	}
 }
 
