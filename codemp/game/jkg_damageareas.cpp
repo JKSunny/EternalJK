@@ -295,9 +295,9 @@ void G_BuffEntity(gentity_t* ent, gentity_t* buffer, int buffID, float intensity
 
 int JKG_AdjustAmbientHeatDamage(bool heat, int damage)
 {
-	//1==heat, 0==cold
+	//heat == 1 is fire debuff, 0==cold debuff
 
-	//don't waste time here, if we're already at minimum damage or default heat
+	//don't waste time here, if we're already at default heat
 	if (jkg_heatDissipateTime.integer == 100)
 	{
 		return damage;
