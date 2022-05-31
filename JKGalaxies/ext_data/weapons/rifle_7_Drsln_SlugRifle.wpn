@@ -13,7 +13,7 @@
         "selectsound":      "sound/weapons/select_carbine.wav",
                 
         "gunposition":      "9.0 -4.5 -7.0",
-        "ironsightsposition": "4.0 0.0 -2.8",
+        "ironsightsposition": "4.0 0.0 -2.755",
         "ironsightsfov": "70",
 		"barrelCount": "3",
     
