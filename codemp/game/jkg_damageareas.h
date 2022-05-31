@@ -72,6 +72,7 @@ void JKG_DamagePlayers(void);
 void G_TickBuffs(gentity_t *ent);
 
 int JKG_CalculateDamageDecay(int damage, float distance, float range, float decayRate);
+int JKG_AdjustAmbientHeatDamage(bool heat, int damage);	//adjust debuff fire/cold damage based on ambient tempature
 
 constexpr float MAX_RANGE_MULTIPLIER = 10.0;	//how many times should we bother calculating beyond a weapon's range
 

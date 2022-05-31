@@ -2550,6 +2550,10 @@ void CG_DrawNPCNames( void )
 			classText = "Supplies Vendor";
 			VectorSet4(textColor, 0.525f, 0.525f, 1.0f, 1.0f);
 			break;
+		case CLASS_EQUIPMENT_VENDOR:
+			classText = "Equipment Vendor";
+			VectorSet4(textColor, 0.525f, 0.525f, 1.0f, 1.0f);
+			break;
 		case CLASS_FOOD_VENDOR:
 			classText = "Food Vendor";
 			VectorSet4(textColor, 0.525f, 0.525f, 1.0f, 1.0f);
@@ -2708,6 +2712,7 @@ void CG_DrawNPCNames( void )
 			case CLASS_WEAPONS_VENDOR:
 			case CLASS_ARMOR_VENDOR:
 			case CLASS_SUPPLIES_VENDOR:
+			case CLASS_EQUIPMENT_VENDOR:
 			case CLASS_FOOD_VENDOR:
 			case CLASS_MEDICAL_VENDOR:
 			case CLASS_GAMBLER_VENDOR:
@@ -4423,7 +4428,8 @@ static void CG_Draw2D( void ) {
 			CG_DrawChatbox();	// Only show the chatbox when we're alive (JKG)
 		} else {
 			// don't draw any status if dead or the scoreboard is being explicitly shown
-			if ( cg.snap->ps.stats[STAT_HEALTH] > 0 && !cg.deathcamFadeStart ) { //!cg.showScores && to bring back scoreboard on tab press.
+			if ( cg.snap->ps.stats[STAT_HEALTH] > 0 && !cg.deathcamFadeStart) 
+			{ //!cg.showScores && to bring back scoreboard on tab press.
 
 				if ( /*cg_drawStatus.integer*/0 ) {
 					//Reenable if stats are drawn with menu system again
@@ -4450,9 +4456,22 @@ static void CG_Draw2D( void ) {
 				CG_DrawGrenade();
 
 				CG_DrawChatbox();	// Only show the chatbox when we're alive (JKG)
-			} else {
-				if (cg.isChatting) {
-					ChatBox_CloseChat();
+			}
+			else 
+			{
+				CG_DrawMessageNotifications();	//continue drawing message notifications
+
+				//if we die and we are chatting interrupt it
+				if (cg.isChatting) 
+				{
+					if(cg.snap->ps.clientNum == cg.clientNum) { 
+						ChatBox_CloseChat();
+					}
+
+					//(except on spectators)
+					else { 
+						CG_DrawChatbox();
+					}
 				}
 			}
 	    

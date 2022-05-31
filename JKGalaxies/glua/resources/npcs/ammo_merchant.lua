@@ -1,4 +1,4 @@
-NPC.NPCName = "medic_merchant"
+NPC.NPCName = "ammo_merchant"
 
 function NPC:OnInit(spawner)
 	self.Spawner = spawner
@@ -14,12 +14,14 @@ function NPC:OnSpawn()
 	self.ChaseEnemies = false
 	
 	--vendor setup
-	self:MakeVendor("medicvendor")
+	self:MakeVendor("ammovendor")
 	self:RefreshVendorStock()
 	self.UseRange = 150 -- make us easier to use
-	
-	--local vars
+	self.TimeToRestock = 1000 * sys.GetCvarInt("jkg_shop_replenish_time") -- how often (milliseconds) to restock?
+	self.RestockTimer = sys.Time()
 	self.LastUse = 0
+	
+	--other vars
 end
 
 function NPC:OnUse(other, activator)
@@ -39,6 +41,14 @@ end
 
 function NPC:OnTouch(other)
 	self:SetAnimBoth("BOTH_STAND10TOSTAND1") --if we get bumped into, react
+end
+
+function NPC:OnThink()
+	--refresh stocks
+	if sys.Time() - self.RestockTimer > self.TimeToRestock then
+		self:RefreshVendorStock()
+		self.RestockTimer = sys.Time()
+	end
 end
 
 function NPC:OnRemove()

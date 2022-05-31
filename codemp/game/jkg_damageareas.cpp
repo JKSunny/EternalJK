@@ -293,6 +293,100 @@ void G_BuffEntity(gentity_t* ent, gentity_t* buffer, int buffID, float intensity
 	}
 }
 
+int JKG_AdjustAmbientHeatDamage(bool heat, int damage)
+{
+	//heat == 1 is fire debuff, 0==cold debuff
+
+	//don't waste time here, if we're already at default heat
+	if (jkg_heatDissipateTime.integer == 100)
+	{
+		return damage;
+	}
+
+	enum categories { verycold = -2, cold = -1, temperate = 0, hot = 1, veryhot = 2 };  //categories of tempature
+	int temp = 0;
+
+	float percent = (jkg_heatDissipateTime.integer > 0 ? static_cast<float>(jkg_heatDissipateTime.integer) : 1.0f) / 100.0f;
+	if (percent > 2.0f)
+		percent = 2.0f;		//max cap
+
+	if (percent < 0.01f)
+		percent = 0.01f;	//low cap
+
+	//determine ranges of categories
+	//very cold
+	if (percent <= 0.5f)
+	{
+		temp = verycold;
+	}
+
+	//cold
+	else if (percent > 0.5 && percent < 0.9f)
+	{
+		temp = cold;
+	}
+
+	//temperate
+	else if (percent >= 0.9 && percent <= 1.1)
+	{
+		temp = temperate;
+	}
+
+	//hot
+	else if (percent > 1.1 && percent <= 1.5f)
+	{
+		temp = hot;
+	}
+
+	//very hot
+	else //(percent > 1.5f)
+	{
+		temp = veryhot;
+	}
+
+	switch (temp)
+	{
+		case verycold:
+			if (heat)
+				damage -= 2;
+			else
+				damage += 2;
+			break;
+
+		case cold:
+			if (heat)
+				damage -= 1;
+			else
+				damage += 1;
+			break;
+
+		case temperate:
+			break;
+
+		case hot:
+			if (heat)
+				damage += 1;
+			else
+				damage -= 1;
+			break;
+
+		case veryhot:
+			if (heat)
+				damage += 2;
+			else
+				damage -= 2;
+			break;
+
+		default:
+			break;
+	}
+
+	if (damage < 1)
+		damage = 1;	//it should always do at least 1
+
+	return damage;
+}
+
 /*
  *	Ticks all of the buffs on this entity and sees if they should be removed or if they should do damage
  */
@@ -333,6 +427,18 @@ void G_TickBuffs(gentity_t* ent)
 						damage > 1 ? damage : damage = 1;	//do at least 1 damage
 					else
 						damage < 0 ? damage : damage = -1;
+				}
+				
+				//adjust damage based on ambient tempature for fire
+				if (!Q_stricmp(pBuff->category, "fire"))
+				{
+					damage = JKG_AdjustAmbientHeatDamage(1, damage);
+				}
+
+				//adjust damage based on ambient tempature for cold
+				if (!Q_stricmp(pBuff->category, "cold"))
+				{
+					damage = JKG_AdjustAmbientHeatDamage(0, damage);
 				}
 
 				//check if debuff is doing damage

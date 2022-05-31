@@ -1,4 +1,4 @@
-NPC.NPCName = "medic_merchant"
+NPC.NPCName = "grenade_merchant"
 
 function NPC:OnInit(spawner)
 	self.Spawner = spawner
@@ -14,12 +14,16 @@ function NPC:OnSpawn()
 	self.ChaseEnemies = false
 	
 	--vendor setup
-	self:MakeVendor("medicvendor")
+	self:MakeVendor("grenadevendor")
 	self:RefreshVendorStock()
 	self.UseRange = 150 -- make us easier to use
-	
-	--local vars
+	self.TimeToRestock = 1000 * sys.GetCvarInt("jkg_shop_replenish_time") -- how often (milliseconds) to restock?
+	self.RestockTimer = sys.Time()
 	self.LastUse = 0
+	
+	--for advertising wares animation
+	self.LastAdvertisement = 0
+	math.randomseed(sys.Time()) --seed random
 end
 
 function NPC:OnUse(other, activator)
@@ -28,8 +32,9 @@ function NPC:OnUse(other, activator)
 	end
 	self.LastUse = sys.Time()
 	
+	-- Only talk to players, nothin else
 	if not activator:IsPlayer() then
-		return		-- Only talk to players, nothin else
+		return		
 	end
 	
 	local ply = activator:ToPlayer()
@@ -39,6 +44,22 @@ end
 
 function NPC:OnTouch(other)
 	self:SetAnimBoth("BOTH_STAND10TOSTAND1") --if we get bumped into, react
+end
+
+function NPC:OnThink(other)
+	--every 20000 seconds do an advertisement animation
+	if sys.Time() - self.LastAdvertisement < 20000 then
+		return
+	else
+		self:SetAnimBoth("BOTH_TUSKENTAUNT1")
+		self.LastAdvertisement = (sys.Time() + math.random(1150,3550))
+	end
+
+	--refresh stocks
+	if sys.Time() - self.RestockTimer > self.TimeToRestock then
+		self:RefreshVendorStock()
+		self.RestockTimer = sys.Time()
+	end
 end
 
 function NPC:OnRemove()

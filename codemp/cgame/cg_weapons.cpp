@@ -2608,6 +2608,31 @@ void JKG_RenderGenericWeaponWorld ( centity_t *cent, const weaponDrawData_t *wea
 				s->constantLight
 			);
 		}
+
+		//--futuza: add red hot barrel tips here, eg:
+		//if (cg.snap->ps.heat > cg.snap->ps.heatThreshold)
+
+		//draw steam efx on barrel end if heat is critical
+		if (cg.snap->ps.heat > cg.snap->ps.heatThreshold)
+		{
+			hasMuzzleLocation = qtrue;
+			JKG_GetMuzzleLocation(cent, angles, flashOrigin, flashDirection);
+
+			matrix3_t flashAxis;
+			AnglesToAxis(cent->lerpAngles, flashAxis);
+
+			fxHandle_t steamEfx = cgs.effects.mHeatSteam;
+			if (cg.snap->ps.overheated)
+				steamEfx = cgs.effects.mOverheatSteam; //bigger steam we've overheated completely!
+
+			JKG_RenderOverheatEffect(
+				cent,
+				steamEfx,
+				flashOrigin,
+				flashAxis,
+				isLocalPlayer,
+				qfalse);
+		}
 	}
 
 	VectorClear (cg.lastFPFlashPoint);
@@ -3041,6 +3066,25 @@ static void JKG_RenderGenericWeaponView ( const weaponDrawData_t *weaponData )
 			s->constantLight);
 	}
 
+	//--futuza: add red hot barrel tips here, eg:
+	//if (cg.snap->ps.heat > cg.snap->ps.heatThreshold)
+
+	//heating up, do steam efx
+	if (cg.snap->ps.heat > cg.snap->ps.heatThreshold)
+	{
+		fxHandle_t steamEfx = cgs.effects.mHeatSteam;
+		if(cg.snap->ps.overheated)
+			steamEfx = cgs.effects.mOverheatSteam; //bigger steam
+
+		JKG_RenderOverheatEffect(
+			cent,
+			steamEfx,
+			muzzle.origin,
+			muzzle.axis,
+			qtrue,
+			qtrue);
+	}
+
 	// TODO: At some point, I want to put this into a common function which the
 	// world model and view model can call. For now it's just copy/pasted.
 	// Do muzzle flash
@@ -3296,6 +3340,19 @@ void JKG_RenderProjectile ( const centity_t *cent, unsigned char firingMode )
 	if( weapon->eventsHandler[firingMode] && weapon->eventsHandler[firingMode]->ProjectileRender )
 	{
 		weapon->eventsHandler[firingMode]->ProjectileRender ( cent, &weapon->drawData[firingMode], &ammoTable[cent->currentState.ammoType]);
+	}
+}
+
+void JKG_RenderOverheatEffect(centity_t* cent, fxHandle_t steamEfx, const vec3_t muzzlePosition, vec3_t* axis, qboolean isLocalPlayer, qboolean isFirstPerson)
+{
+	if (isFirstPerson)
+	{
+		trap->FX_PlayEntityEffectID(steamEfx, const_cast<float*>(muzzlePosition), axis, -1, -1, -1, -1);
+	}
+
+	else
+	{
+		trap->FX_PlayEntityEffectID(steamEfx, const_cast<float*>(muzzlePosition), axis, cent->boltInfo, cent->currentState.number, -1, -1);
 	}
 }
 

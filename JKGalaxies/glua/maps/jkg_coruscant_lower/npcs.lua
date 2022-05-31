@@ -76,10 +76,20 @@ local npctable = {
         Origin = Vector(13941, -4966, 844),
         Angles = Vector(0, 180, 0)
     },
-    --Locked Locations
-    --Secret Bar: 13539 -6720 60 : 160
-    --Sewer Entrance: 14282 -4554 -125 : -110
-    --Train Tunnel: 10637 -4440 412 : -180
+    --neutral vendor grenades, backalley top
+    {
+        NPCType = "vendor_grenades",
+        NPCScript = "grenade_merchant",
+        Origin = Vector(12896, -7533, 844),
+        Angles = Vector(0, -180, 0)
+    },
+    --neutral vendor grenades, street by bar
+    {
+        NPCType = "vendor_grenades",
+        NPCScript = "grenade_merchant",
+        Origin = Vector(8359, -3471, 60),
+        Angles = Vector(0, 180, 0)
+    },
 }
 
 

@@ -268,6 +268,7 @@ typedef struct weaponFireModeStats_s
 	char	    weaponClass[32];	// The projectile class name for server reference and information.
 	int		    weaponMOD;			// The MOD (Means of Death) for this mode and weapon for direct contact.
 	int			weaponSplashMOD;	// The MOD (Means of Death) for this mode and weapon for splash damage.
+	float		ACPRatio;			// If MOD is MOD_ACP, the ratio that is energy vs physical applied to the target
 	qboolean    isGrenade;          // Is this firemode a grenade?
 	qboolean	grenadeBounces;		// Does this grenade bounce off of enemies, or does it explode on impact? (true for bounces on people)
 	int			grenadeBounceDMG;	// Determines the amount of damage to do when bouncing off of an enemy.

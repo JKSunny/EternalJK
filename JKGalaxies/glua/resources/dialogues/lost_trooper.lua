@@ -603,7 +603,7 @@ DLG.Nodes = {
 	O79 = {
 		Type = 3,
 		SubNode = "T80",
-		NextNode = "O77",
+		NextNode = "O140",
 		Text = "Can I buy something off of you?",
 		HasCondition = false,
 		HasResolver = false,
@@ -639,17 +639,25 @@ DLG.Nodes = {
 	D94 = {
 		Type = 5,
 	},
-	O77 = {
+	O140 = {
 		Type = 3,
-		SubNode = "S95",
+		SubNode = "T141",
 		NextNode = "O97",
-		Text = "Nevermind.",
+		Text = "You're a really cool dude.",
 		HasCondition = false,
 		HasResolver = false,
 	},
-	S95 = {
+	T141 = {
+		Type = 2,
+		SubNode = "S142",
+		Text = "Uh thanks.",
+		Duration = 3000,
+		HasCondition = false,
+		HasResolver = false,
+	},
+	S142 = {
 		Type = 6,
-		SubNode = "D96",
+		SubNode = "D143",
 		ScriptFunc = function(owner, ply, data)
 			--[[-----------------------------------------------
 				Dialogue Script
@@ -659,16 +667,18 @@ DLG.Nodes = {
 				ply	  - Player the owner is talking to
 				data - Local storage table
 			--]]-----------------------------------------------
-			ply.EntPtr:PlaySound(4, "sound/chars/stofficer1/misc/giveup4.mp3")
+			owner:SetAnimBoth("BOTH_THUMB_UP")
+			ply:SetAnimBoth("BOTH_THUMB_UP")
 		end,
 		HasCondition = false,
 	},
-	D96 = {
+	D143 = {
 		Type = 5,
 	},
 	O97 = {
 		Type = 3,
 		SubNode = "T98",
+		NextNode = "O77",
 		Text = "I know why you keep seeing things...",
 		HasCondition = true,
 		ConditionFunc = function(owner, ply, data)
@@ -953,6 +963,32 @@ DLG.Nodes = {
 	L104 = {
 		Type = 4,
 		Target = "T76",
+	},
+	O77 = {
+		Type = 3,
+		SubNode = "S95",
+		Text = "Nevermind.",
+		HasCondition = false,
+		HasResolver = false,
+	},
+	S95 = {
+		Type = 6,
+		SubNode = "D96",
+		ScriptFunc = function(owner, ply, data)
+			--[[-----------------------------------------------
+				Dialogue Script
+			
+				Available Variables:
+				owner - Entity that runs this conversation
+				ply	  - Player the owner is talking to
+				data - Local storage table
+			--]]-----------------------------------------------
+			ply.EntPtr:PlaySound(4, "sound/chars/stofficer1/misc/giveup4.mp3")
+		end,
+		HasCondition = false,
+	},
+	D96 = {
+		Type = 5,
 	},
 	E4 = {
 		Type = 1,

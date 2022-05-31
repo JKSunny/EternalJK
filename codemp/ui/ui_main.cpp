@@ -2037,6 +2037,9 @@ static int UI_OwnerDrawWidth(int ownerDraw, int ownerDrawID, float scale) {
 		case UI_JKG_SHOP_AMMOPRICE:
 			s = JKG_ShopAmmoPriceText();
 			break;
+		case UI_JKG_SHOP_REFRESHTIME:
+			s = JKG_ShopRefreshTimeText();
+			break;
     default:
       break;
   }

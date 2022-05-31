@@ -1,37 +1,35 @@
 --[[ ------------------------------------------------
 	Jedi Knight Galaxies Lua Code
-	Hoth spice caves backend: npcs
+	JKG Mos Eisley Arena: npcs
 	
-	Written by Darth Futuza
+	Written by Futuza
 --------------------------------------------------]]
 
--- Here we'll spawn all the npcs that belong to the arena
+-- Here we'll spawn all the npcs that belong to the map
 
 local npctable = {
-	-- The lost stormtrooper
+	-- The vendors @ blue base
     {
-        NPCType = "stormtrooper",
-        NPCScript = "lost_trooper",
-        Origin = Vector(-3149, -626, 1516),
-        Angles = Vector(0, -88, 0)
+        NPCType = "vendor_equipment",
+        NPCScript = "equipment_merchant",
+        Origin = Vector(-4086, 1419, 60),
+        Angles = Vector(0, -90, 0)
     },
-	--tutorial_bossman
+	-- the vendors @ red base
 	{
-		NPCType = "stormtrooper",
-		NPCScript = "tutorial_bossman",
-		Origin = Vector(-2462, 255, 1553),
-        Angles = Vector(0, 115, 0)
-	},
-	--test generic vendor
-		--tutorial_bossman
+        NPCType = "vendor_equipment",
+        NPCScript = "equipment_merchant",
+        Origin = Vector(4086, -1419, 60),
+        Angles = Vector(0, 90, 0)
+    },
+	-- silly hidden vendor
 	{
-		NPCType = "stormtrooper",
-		NPCScript = "general_merchant",
-		Origin = Vector(-3415, -1325, 1425),
-		Angles = Vector(0, -10, 0)
-	},
+        NPCType = "vendor_general",
+        NPCScript = "general_merchant",
+        Origin = Vector(425 , 2800, 855),
+        Angles = Vector(0, 180, 0)
+    },
 }
-
 
 local function InitNPCs()
 	-- First, delete all spawners we already made
@@ -60,4 +58,4 @@ local function InitNPCs()
 	end
 end
 
-hook.Add("MapLoaded", "HothNPCInit", InitNPCs)
+hook.Add("MapLoaded", "MosEisleyArenaNPCInit", InitNPCs)

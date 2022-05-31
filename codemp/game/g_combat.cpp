@@ -4336,6 +4336,7 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 		case CLASS_WEAPONS_VENDOR:
 		case CLASS_ARMOR_VENDOR:
 		case CLASS_SUPPLIES_VENDOR:
+		case CLASS_EQUIPMENT_VENDOR:
 		case CLASS_FOOD_VENDOR:
 		case CLASS_MEDICAL_VENDOR:
 		case CLASS_GAMBLER_VENDOR:
@@ -4621,6 +4622,29 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 		take = G_EvaluateEvasion(targ, attacker, take); //calculate roll dodge reduction
 	}
 
+	int directDmg = 0; //direct damage that bypasses shield from ACP weaponry
+	if (mod == JKG_GetMeansOfDamageIndex("MOD_ACP") ) //handle division of ACP type damage
+	{
+		const weaponData_t* weaponData;
+		weaponData = GetWeaponData(attacker->client->ps.weapon, attacker->client->ps.weaponVariation);
+		float ratio = weaponData->firemodes[attacker->client->ps.firingMode].ACPRatio; //defaults to 0.5
+
+		//clamp range
+		if (ratio > 1)
+			ratio = 1.0f;
+		if (ratio < 0)
+			ratio = 0.0f;
+
+		directDmg = take * ratio; //% that is direct (bypasses shields), eg: 30dmg * 0.4 == 12 direct dmg
+		take = (1 - ratio) * take; //% that is energy (blocked by shields), eg: 30dmg * 0.6 == 18 dmg to shield (or carry over to direct dmg if no shield)
+
+		//set minimum dmg to 1
+		if (take < 1)
+			take = 1;
+		if (directDmg < 1)
+			directDmg = 1;
+	}
+
 	///////////////////////////////////////
 	//
 	//	1. Reduce damage by shield amount
@@ -4672,16 +4696,8 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 		}
 	}
 
-	//apply EMP effects from electric damage
-	if(take && targ->client && means->modifiers.isEMP)
-	{	
-		//short out jetpacks
-		if (targ->client->ps.eFlags & EF_JETPACK_ACTIVE)
-			Jetpack_Off(targ);
+	take = take + directDmg;	//apply direct damage in case the shield was bypassed
 
-		//--Futuza: note that a better version of EMP is available through the standard-emp debuff, this only shorts stuff out once
-		//see how it interacts with jetpacks in jkg_equip.cpp ItemUse_Jetpack()
-	}
 
 	if (take > 0 && !(dflags&DAMAGE_NO_HIT_LOC))
 	{//see if we should modify it by damage location
@@ -4710,6 +4726,17 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 		take = take / 2; //reduce damage by 1/2
 		if (take < 1)
 			take = 1;
+	}
+
+	//apply EMP effects from electric damage
+	if (take && targ->client && means->modifiers.isEMP)
+	{
+		//short out jetpacks
+		if (targ->client->ps.eFlags & EF_JETPACK_ACTIVE)
+			Jetpack_Off(targ);
+
+		//--Futuza: note that a better version of EMP is available through the standard-emp debuff, this only shorts stuff out once
+		//see how it interacts with jetpacks in jkg_equip.cpp ItemUse_Jetpack()
 	}
 
 #ifndef FINAL_BUILD
@@ -4770,16 +4797,16 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 	// do the damage
 	if (take || ssave) 
 	{
-		// Display damage sustained
+		// Display actual damage sustained
 		if ( targ->health > 0 )
 		{
 			if ( !point || ( dflags & DAMAGE_RADIUS ))
 			{
-				DamagePlum(targ, targ->r.currentOrigin, ( take > targ->health ) ? targ->health : take, mod, ssave, take <= (damage / 4) );
+				DamagePlum(targ, targ->r.currentOrigin, take, mod, ssave, take <= (damage / 4));
 			}
 			else
 			{
-				DamagePlum(targ, point, ( take > targ->health ) ? targ->health : take, mod, ssave, take <= (damage / 4) );
+				DamagePlum(targ, point, take, mod, ssave, take <= (damage / 4));
 			}
 		}
 		// -----------------------
@@ -4792,6 +4819,12 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 			{
 				targ->health = 1;
 			}
+		}
+
+		//don't bother with negative health  //--Futuza: for some reason if this isn't present disintegration sometimes doesn't happen for high damage?
+		if (targ->health < 0)
+		{
+			targ->health = -10;	
 		}
 
 		if ( targ->client ) {
@@ -4858,18 +4891,6 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 				{
 					VectorCopy(targ->client->ps.origin, targ->pos1);
 				}
-
-				//if our movement was frozen unfreeze at death - this should happen on player_die - shouldn't be necessary here?
-				/*client->pmfreeze = qfalse;
-				client->pmfreeze = qfalse;
-				client->pmlock = qfalse;
-				client->pmnomove = qfalse;
-
-				client->ps.freezeLegsAnim = 0;
-				client->ps.freezeTorsoAnim = 0;
-				targ->s.freezeLegsAnim = 0;
-				targ->s.freezeTorsoAnim = 0;*/
-				
 
 				//notify of headshot --futuza
 				if (isHeadShot)
