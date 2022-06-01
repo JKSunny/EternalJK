@@ -1,9 +1,9 @@
 {
-	"name":		"Merr-Sonn Basic Burst Jetpack",
+	"name":		"Merr-Sonn V-Burst Jetpack (basic)",
 	"internal":	"jetpack_burst",
 	"itemtype":	"jetpack",
 	"cost":		525,
-	"itemIcon":	"gfx/hud/i_icon_jetpack.tga",
+	"itemIcon":	"gfx/item_icons/bounty_hunter_backpack.tga",
 	"jetpack":	"jetpack_burst",
-	"itemDescription": "The Merr-Sonn Basic Burst Jetpack creates a primarily vertical thrust in short 'bursts' to enable its user to take full advantage of terrain and reach ledges otherwise inaccessible."
+	"itemDescription": "Merr-Sonn Munition's V-Burst Jetpack line fires short vertical 'bursts' to enable its user to take full advantage of terrain and reach ledges otherwise inaccessible.  The basic version is limited in fuel capacity, but more affordable."
 }

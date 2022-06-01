@@ -6,11 +6,11 @@
 	// thrustConsumption - how fast units are consumed while thrusting (pressing jump)
 	// fuelRegeneration - scale of how fast fuel gets regenerated
 
-	"ref":			"jetpack_burst",
-	"fuelCapacity":		15,
-	"fuelConsumption":	3.0,
-	"thrustConsumption":	3.0,
-	"fuelRegeneration":	0.15,
+	"ref":			"jetpack_jango",
+	"fuelCapacity":		80,
+	"fuelConsumption":	1.0,
+	"thrustConsumption":	2.0,
+	"fuelRegeneration":	1.0,
 	
 	"movement": {
 		// Movement - done on both client and server
@@ -21,24 +21,19 @@
 		// downMove - amount to modify downward movement by
 		// thrustFwd/thrustBack/thrustSide - same as above, but when thrusting
 		// thrustUp - amount to modify upward movement by
-		// thrustAllowed - bool, whether we're allowed to thrust with this jetpack (sprint key)
-		// fwdThrustAllowed - bool, whether thrusts (if allowed) should do horizontal thrust
-		"hoverGravity":	375.0,
+		"hoverGravity":	"-1.0",
 
-		"forwardMove": 2.5,
-		"backMove": 1.5,
+		"forwardMove": 1.0,
+		"backMove": 1.0,
 		"sideMode": 1.0,
 		"downMove": 1.0,
-		
-		"thrustAllowed": 0,
-		"thrustFwd": 3.0,
+
+		"thrustFwd": 1.0,
 		"thrustBack": 1.0,
 		"thrustSide": 1.0,
-		"thrustUp": 2.0,
-		
-		"fwdThrustAllowed": 0,
-		"fwdThrustAmt": 2.0,
-		"loadBearingAllowed": true
+		"thrustUp": 1.0,
+
+		"fwdThrustAmt": 3.0
 	},
 
 	"visuals": {
@@ -52,17 +47,16 @@
 		// activateSound (S) - sound to play when jetpack is activated
 		// deactivateSound (S) - sound to play when jetpack is deactivated
 
-		"modelName":	"models/weapons2/b_jetpack/model.glm",
+		"modelName":	"models/weapons2/jetpack_jango/model.glm",
 		"effectBolts": [
-			"*exhaust1",
-			"*exhaust2"
+			"ljet",
+			"rjet"
 		],
 		"hoverEffect": "effects/player/jetpack.efx",
 		"thrustEffect": "effects/player/jetpack.efx",
 		"idleSound": "sound/jkg/jetpack/jethover",
 		"thrustSound": "sound/jkg/jetpack/jetlp",
 		"activateSound": "sound/jkg/jetpack/jeton",
-		"deactivateSound": "sound/jkg/jetpack/jetoff",
-		"sputterSound": "sound/jkg/jetpack/jetsputter"
+		"deactivateSound": "sound/jkg/jetpack/jetoff"
 	}
 }

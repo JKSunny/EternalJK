@@ -157,7 +157,25 @@
 					"sniper_DLT-19_SB": 1,
 					"sniper_Dressy": 1,
 					"sniper_Bryar": 1,
-					"sniper_ACP": 1
+					"sniper_ACP": 1,
+					"helmet_bountyhunter": 1,
+					"shoulderpads_bountyhunter": 1,
+					"torso_bountyhunter": 1,
+					"gloves_bountyhunter": 1,
+					"legs_bountyhunter": 1,
+					"boots_bountyhunter": 1,
+					"cape_bountyhunter": 1,
+					"helmet_bountyhunter2": 1,
+					"shoulderpads_bountyhunter2": 1,
+					"torso_bountyhunter2": 1,
+					"gloves_bountyhunter2": 1,
+					"boots_bountyhunter2": 1,
+					"cape_bountyhunter2": 1,
+					"helmet_endor": 1,
+					"hat_imp": 1,
+					"helmet_bousshh": 1,
+					"helmet_zam_light": 1,
+					"jetpack_jango": 1
 				}
 		},
 		"sabervendor":
