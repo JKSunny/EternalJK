@@ -6,5 +6,5 @@
 	"weight":		"2",
 	"cost":			"350",
 	"itemIcon":		"gfx/item_icons/bounty_hunter_legs.tga",
-	"itemDescription": "Protective pants manufactured by the Kessler Corp.  Often used by mercenaries and bounty hunters in the Ivax Syndicate."
+	"itemDescription": "Protective pants manufactured by the Kessler Corp."
 }
