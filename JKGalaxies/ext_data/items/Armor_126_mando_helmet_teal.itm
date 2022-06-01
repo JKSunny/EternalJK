@@ -1,0 +1,10 @@
+{
+	"name":         "Mandalorian Helmet (Teal)",
+	"internal":     "helmet_mando_teal",
+	"itemtype":     "armor",
+	"armor":		"mandohelmet",
+	"weight":		"3",
+	"cost":			"1000",
+	"itemIcon":		"gfx/item_icons/bousshh_helmet.tga",
+	"itemDescription": "This traditional helmet crafted by Mandalorian metalsmiths makes use of beskar alloys providing incredibly strong protection for the wearer.  Rare and expensive."
+}

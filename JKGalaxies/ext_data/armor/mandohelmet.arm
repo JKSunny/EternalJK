@@ -1,7 +1,7 @@
 {
 	"ref":		"mandohelmet",
 	"slot":		"head",
-	"armor":		125,
+	"armor":		250,
 	"movemodifier":	1.0,
 
 	"visuals": {

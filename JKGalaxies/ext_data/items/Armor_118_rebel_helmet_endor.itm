@@ -1,6 +1,6 @@
 {
 	"name":         "Rebel Helmet (camo)",
-	"internal":     "helmet_endor",
+	"internal":     "helmet_rebel_endor",
 	"itemtype":     "armor",
 	"armor":		"endor_helmet",
 	"weight":		"1",
