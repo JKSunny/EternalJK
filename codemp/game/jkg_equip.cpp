@@ -195,12 +195,21 @@ Our armor has been changed. Recalculate stats.
 ====================================
 */
 void JKG_ArmorChanged(gentity_t* ent) {
-	ent->client->ps.stats[STAT_MAX_HEALTH] = 100; // FIXME: not use a magic number
+	
+	bool haveFullHP = false;
+	if (ent->client->ps.stats[STAT_HEALTH] >= ent->client->ps.stats[STAT_MAX_HEALTH]) //check if we have full health already
+		haveFullHP = true;
 
+	ent->client->ps.stats[STAT_MAX_HEALTH] = ent->client->pers.maxHealth;
 	for (auto it = ent->inventory->begin(); it != ent->inventory->end(); ++it) {
 		if (it->equipped && it->id->itemType == ITEM_ARMOR) {
 			ent->client->ps.stats[STAT_MAX_HEALTH] += it->id->armorData.pArm->hp;
 		}
+	}
+	if (haveFullHP)
+	{
+		if(ent->client->ps.stats[STAT_HEALTH] < ent->client->ps.stats[STAT_MAX_HEALTH])
+			ent->health = ent->client->ps.stats[STAT_HEALTH] = ent->client->ps.stats[STAT_MAX_HEALTH]; //set current health to same as maximum
 	}
 }
 
@@ -321,12 +330,12 @@ void JKG_UnequipItem(gentity_t *ent, int iNum)
 	{
 		item->equipped = qfalse;
 	    trap->SendServerCommand (ent->s.number, "chw 0");
-		JKG_ArmorChanged(ent);
 	}
 	else if(item->id->itemType == ITEM_ARMOR)
 	{
 		item->equipped = qfalse;
 		ent->client->ps.armor[item->id->armorData.pArm->slot] = 0;
+		JKG_ArmorChanged(ent);
 	}
 	else if (item->id->itemType == ITEM_SHIELD) {
 		Cmd_ShieldUnequipped(ent);

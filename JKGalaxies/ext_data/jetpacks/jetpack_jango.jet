@@ -7,7 +7,7 @@
 	// fuelRegeneration - scale of how fast fuel gets regenerated
 
 	"ref":			"jetpack_jango",
-	"fuelCapacity":		80,
+	"fuelCapacity":		60,
 	"fuelConsumption":	1.0,
 	"thrustConsumption":	2.0,
 	"fuelRegeneration":	1.0,
