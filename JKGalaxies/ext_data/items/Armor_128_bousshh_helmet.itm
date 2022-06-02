@@ -4,7 +4,7 @@
 	"itemtype":     "armor",
 	"armor":		"bousshh_helmet",
 	"weight":		"2",
-	"cost":			"900",
+	"cost":			"2000",
 	"itemIcon":		"gfx/item_icons/bousshh_helmet.tga",
-	"itemDescription": "A customized armored helmet worn by the bounty hunter Boushh.  It offers light protection, but contains several features such as a breathing filtration system, speech scramblers, an advnanced HUD and vision scanners."
+	"itemDescription": "An armored customized helmet worn by the bounty hunter Boushh.  It offers light protection, and contains several features such as a breathing filtration system, speech scramblers, an advnanced HUD and vision scanners."
 }
