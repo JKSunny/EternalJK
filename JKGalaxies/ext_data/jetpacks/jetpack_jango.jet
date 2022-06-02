@@ -8,9 +8,9 @@
 
 	"ref":			"jetpack_jango",
 	"fuelCapacity":		60,
-	"fuelConsumption":	1.0,
-	"thrustConsumption":	2.0,
-	"fuelRegeneration":	1.0,
+	"fuelConsumption":	1.1,
+	"thrustConsumption":	2.4,
+	"fuelRegeneration":	0.5,
 	
 	"movement": {
 		// Movement - done on both client and server
