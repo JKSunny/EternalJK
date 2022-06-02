@@ -238,7 +238,7 @@
 				"torso_glight": 2,
 				"legs_glight": 2,
 				"hat_goggles_pilot": 3,
-				"helmet_bountyhunter": 2
+				"helmet_bountyhunter": 2,
 				"shoulderpads_bountyhunter": 1,
 				"torso_bountyhunter": 1,
 				"gloves_bountyhunter": 4,
@@ -295,7 +295,7 @@
 				"legs_glight": 4,
 				"torso_glight": 3,
 				"hat_goggles_pilot": 6,
-				"helmet_bountyhunter": 3
+				"helmet_bountyhunter": 3,
 				"shoulderpads_bountyhunter": 3,
 				"torso_bountyhunter": 3,
 				"gloves_bountyhunter": 6,
@@ -550,7 +550,7 @@
 				"gloves_pilot": 2,
 				"hat_imp": 5,
 				"helmet_impworker": 3,
-				"helmet_bountyhunter": 3
+				"helmet_bountyhunter": 3,
 				"shoulderpads_bountyhunter": 3,
 				"torso_bountyhunter": 2,
 				"gloves_bountyhunter": 6,
@@ -641,7 +641,7 @@
 				"helmet_rebel_red": 4,
 				"helmet_rebel_endor": 5,
 				"coat_heavy": 4,
-				"helmet_bountyhunter": 2
+				"helmet_bountyhunter": 2,
 				"shoulderpads_bountyhunter": 2,
 				"torso_bountyhunter": 2,
 				"gloves_bountyhunter": 5,
