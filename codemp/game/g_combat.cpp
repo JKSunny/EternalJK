@@ -4108,32 +4108,22 @@ int G_EvaluateEvasion(gentity_s* targ, gentity_s* attacker, int take)
 		bool rolled = false;
 		if (dmgReduction > 0)
 		{
-			switch (targ->client->ps.legsAnim)	//check for roll & dmgReduction exists
+			if( targ->client->ps.speed > 25 && BG_InRoll(targ->playerState, targ->client->ps.legsAnim)) //check if target is moving & in a roll anim)
 			{
-			case BOTH_ROLL_F: case BOTH_ROLL_B:
-			case BOTH_ROLL_R: case BOTH_ROLL_L:
-			case BOTH_GETUP_BROLL_B: case BOTH_GETUP_BROLL_F:
-			case BOTH_GETUP_BROLL_L: case BOTH_GETUP_BROLL_R:
-			case BOTH_GETUP_FROLL_B: case BOTH_GETUP_FROLL_F:
-			case BOTH_GETUP_FROLL_L: case BOTH_GETUP_FROLL_R:
-				if (targ->playerState->legsTimer > 0)	//they're rolling in time
+				int timing = bgAllAnims[targ->localAnimIndex].anims[targ->client->ps.legsAnim].numFrames * fabs((float)(bgHumanoidAnimations[targ->client->ps.legsAnim].frameLerp));	//get animation timing length
+				timing *= 0.5f; //cut in two
+				if ((timing + 300 > targ->playerState->legsTimer) && (targ->playerState->legsTimer > timing - 300))		//perfect timing
 				{
-					int timing = bgAllAnims[targ->localAnimIndex].anims[targ->client->ps.legsAnim].numFrames * fabs((float)(bgHumanoidAnimations[targ->client->ps.legsAnim].frameLerp));	//get animation timing length
-					timing *= 0.5f; //cut in two
-					if ((timing + 300 > targ->playerState->legsTimer) && (targ->playerState->legsTimer > timing - 300))		//perfect timing
-					{
-						trap->SendServerCommand(targ - g_entities, va("notify 1 \"Flawless Dodge!\""));
-						take > 2 ? take *= (1 - (dmgReduction * 2)) : take = 1;	//double , or set it to 1
-						G_Sound(targ, CHAN_AUTO, G_SoundIndex("sound/weapons/melee/swing4.mp3"));		//play flawless dodge sound
-					}
-					else
-					{
-						take > 2 ? take *= (1 - dmgReduction) : take = 1;	//reduce damage by 1/4
-						trap->SendServerCommand(targ - g_entities, va("notify 1 \"Dodge!\""));
-					}
-					rolled = true;
+					trap->SendServerCommand(targ - g_entities, va("notify 1 \"Flawless Dodge!\""));
+					take > 2 ? take *= (1 - (dmgReduction * 2)) : take = 1;	//double , or set it to 1
+					G_Sound(targ, CHAN_AUTO, G_SoundIndex("sound/weapons/melee/swing4.mp3"));		//play flawless dodge sound
 				}
-				break;
+				else
+				{
+					take > 2 ? take *= (1 - dmgReduction) : take = 1;	//reduce damage by 1/4
+					trap->SendServerCommand(targ - g_entities, va("notify 1 \"Dodge!\""));
+				}
+				rolled = true;
 			}
 		}
 		if (rolled)
