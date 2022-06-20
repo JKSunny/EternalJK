@@ -462,6 +462,11 @@ void PM_ApplySpeedConstants()
 			ps->speed = 600;
 		}
 		//Automatically slow down as the roll ends.
+
+		if (ps->weaponstate == WEAPON_FIRING)
+		{
+			ps->weaponstate = WEAPON_ROLLFIRING;	//if we're trying to fire while rolling set our weapon state to spray and pray
+		}
 	}
 
 	saber = BG_MySaber(ps->clientNum, 0);
@@ -4821,9 +4826,12 @@ static void PM_Weapon(void)
 		BG_InRoll(pm->ps, pm->ps->legsAnim) ||
 		PM_InRollComplete(pm->ps, pm->ps->legsAnim))
 	{
-		if (pm->ps->weaponTime < pm->ps->legsTimer)
+		if (pm->ps->weaponstate != WEAPON_ROLLFIRING)
 		{
-			pm->ps->weaponTime = pm->ps->legsTimer;
+			if (pm->ps->weaponTime < pm->ps->legsTimer)
+			{
+				pm->ps->weaponTime = pm->ps->legsTimer;
+			}
 		}
 	}
 
@@ -5561,7 +5569,8 @@ void PM_AdjustAttackStates( pmove_t *pmove )
 	{
 		weaponData_t *wp = GetWeaponData( pmove->ps->weapon, pmove->ps->weaponVariation );
 		if ( pmove->ps->weaponstate == WEAPON_READY || pmove->ps->weaponstate == WEAPON_FIRING ||
-			pmove->ps->weaponstate == WEAPON_IDLE || pmove->ps->weaponstate == WEAPON_CHARGING) // fix ADS charging bug --eez
+			pmove->ps->weaponstate == WEAPON_IDLE || pmove->ps->weaponstate == WEAPON_CHARGING || // fix ADS charging bug --eez
+			pmove->ps->weaponstate == WEAPON_ROLLFIRING) //you can now fire while rolling (good luck hitting anything)
 	    	{
 			if ( (pmove->cmd.buttons & BUTTON_IRONSIGHTS || pmove->ps->isInSights) &&
 		            (pmove->ps->ironsightsTime & IRONSIGHTS_MSB) &&

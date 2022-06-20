@@ -2747,9 +2747,11 @@ static void WP_GetWeaponDirection( gentity_t *ent, int firemode, const vec3_t fo
 		// Crouching			= Slightly Accurate
 		// Stationary			= Very Accurate
 		// Stationary + Crouch	= Pinpoint Accuracy
+		// Rolling				= Random direction lol
 
 		gclient_t *cl = ent->client;
 		const bool bIsCrouching	= cl->ps.pm_flags & PMF_DUCKED;
+		const bool bIsRolling = cl->ps.pm_flags & PMF_ROLLING;
 		const bool bIsMoving	= ( cl->pers.cmd.forwardmove || cl->pers.cmd.rightmove || cl->pers.cmd.upmove > 0 );
 		const bool bIsWalking	= (cl->pers.cmd.buttons & BUTTON_WALKING) && !BG_IsSprinting (&cl->ps, &cl->pers.cmd, qfalse);
 		const bool bInIronsights  = (cl->pers.cmd.buttons & BUTTON_IRONSIGHTS);
@@ -2799,6 +2801,13 @@ static void WP_GetWeaponDirection( gentity_t *ent, int firemode, const vec3_t fo
 		{
 			fSpreadModifiers *= weaponAccuracy->crouchModifier;
 			fKnockBack	*= 1.0f;
+		}
+
+		/* Special case - client is rolling, shots should go wildly everywhere */
+		if (bIsRolling)
+		{
+			fSpreadModifiers *= static_cast<float>(Q_irandSafe(50, 150));
+			fKnockBack *= 3.0f;
 		}
 			
 		/* The sights modifier is altered based on how far into scoping we are.
