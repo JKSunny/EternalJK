@@ -5066,6 +5066,7 @@ static void PM_Weapon(void)
 			PM_AddEvent(EV_OVERHEATED);  //do a sound event
 
 		pm->ps->overheated = true;
+		pm->ps->shotsRemaining = 0;
 		return;
 	}
 
