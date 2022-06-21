@@ -266,6 +266,12 @@ void G_BuffEntity(gentity_t* ent, gentity_t* buffer, int buffID, float intensity
 				}
 			}
 
+			//do a knockback if applicable
+			if (pBuff->passive.knockdown)
+			{
+				G_Knockdown(ent, buffer, buffer->client->ps.origin, 50.0, qtrue);
+			}
+
 			//override movement speed
 			if (pBuff->passive.maxstacks && pBuff->passive.movemodifier != 1.0)
 			{

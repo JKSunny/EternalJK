@@ -72,6 +72,7 @@ struct jkgBuffPassive_t
 
 	qboolean empstaggered;		//are your electronics shorted out? (prevents jetpack activation/other things not yet implemented, like maybe hud shutoff?)
 	qboolean resistant;			//does the buff give you resistance? (reduces incoming damage by 50%)
+	qboolean knockdown;			//knock the player over if true
 
 };
 

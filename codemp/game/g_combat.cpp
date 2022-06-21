@@ -4636,10 +4636,10 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 	}
 
 	//stunning does knockdown
-	if (mod == JKG_GetMeansOfDamageIndex("MOD_STUNNED"))
+	/*if (mod == JKG_GetMeansOfDamageIndex("MOD_STUNNED"))
 	{
 		G_Knockdown(targ, attacker, attacker->client->ps.origin, 50.0, qtrue);
-	}
+	}*/
 
 	///////////////////////////////////////
 	//

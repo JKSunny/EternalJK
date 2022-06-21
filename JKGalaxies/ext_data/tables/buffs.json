@@ -86,6 +86,7 @@
 
 		"passive": {
 			"pmove": "PM_NOMOVE",
+			"knockdown": true,
 			"movemodifier" : 0.4,
 			"maxstacks" : 2
 		},

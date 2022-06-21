@@ -338,6 +338,8 @@ static qboolean JKG_ParseBuffPassiveData(cJSON* json, jkgBuff_t* pBuff)
 
 	pBuff->passive.movemodifier_cur = pBuff->passive.movemodifier;  //set initial movemodifier
 
+	child = cJSON_GetObjectItem(json, "knockdown");					//does this debuff apply a knockback? (just one)
+	pBuff->passive.knockdown = cJSON_ToBooleanOpt(child, false);
 
 	child = cJSON_GetObjectItem(json, "empstaggered");
 	pBuff->passive.empstaggered = cJSON_ToBooleanOpt(child, false);
