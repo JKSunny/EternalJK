@@ -99,17 +99,20 @@ Each object, whose name is the buff linkage (example, "standard-fire": {} can be
  - passive (object): Defines data about passive stat bonuses that this buff provides. Contains the following fields:
   - maxstacks(unsigned int): If greater than 0, the movemodifier can be changed.  eg: setting it to 3, would allow the movemodifier to be stackable up to 3x.  Setting to 1 allows the effect to apply only once.  Default is 0.
   - movemodifier(float): How much the debuff should modifiy overall movement speed by.  eg: 0.8 slows down by 20%, while 1.5 increaes speed by 50%.  Default is 1.0.  maxstacks must be greater than 0, for movemodifier to be applied. 
+  - knockdown(boolean): If true, when the debuff is first applied, the player will be knocked down and fall on their face (only applies once).  Default: false.
+  - empstaggered(boolean): If true, your electronics are disabled/shorting out.  eg: Jetpacks are shut off.  Default: false.
+  - resistant(boolean): If true, incoming damage is reduced by 50%.  Default: false.
   - pmove (string/special): Overrides the movement type while this buff is applied. Can be one of the following:
    * PM_NORMAL - Regular movement
    * PM_JETPACK - Jetpack movement
-   * PM_FLOAT - Zero gravity movement
+   * PM_FLOAT - Zero gravity movement (eg: grip)
    * PM_NOCLIP - Noclipping
    * PM_SPECTATOR - Spectator movement
    * PM_DEAD - Dead movement
    * PM_FREEZE - Frozen movement
    * PM_INTERMISSION - Intermission movement
-   * PM_LOCK - Identical to PM_FREEZE (?)
-   * PM_NOMOVE - Identical to PM_FREEZE (?)
+   * PM_LOCK - Fully stop all motion whatsoever, including turning, nearly identical to PM_FREEZE
+   * PM_NOMOVE - Player cannot move or fire weapons, but can still move camera, torso twist, aim etc.
  - visuals (object): Contains visual data about the buff. Contains the following fields:
   - efx (object): Contains information about fullbody effects on the player. Contains the following fields:
    - effect (string): The EFX file to play
