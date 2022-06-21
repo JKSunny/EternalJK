@@ -85,6 +85,35 @@
 		},
 
 		"passive": {
+			"pmove": "PM_NOMOVE",
+			"movemodifier" : 0.4,
+			"maxstacks" : 2
+		},
+
+		"visuals": {
+			"shader": {
+				"shader": "gfx/PlayerOverlays/stun",
+				"shaderRGBA": [ 0, 0, 127, 255 ],
+				"shaderLen": 500
+			}
+		}
+	},
+
+	"stasis-stun": {
+		"category": "stun",
+
+		"canceling": {
+			"noBuffStack": false,
+			"noCategoryStack": true,
+			"shieldRemoval": true
+		},
+		
+		"damage":
+		{
+			"deadly": false
+		},
+
+		"passive": {
 			"pmove": "PM_FREEZE"
 		},
 

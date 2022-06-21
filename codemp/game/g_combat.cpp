@@ -4635,6 +4635,12 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 			directDmg = 1;
 	}
 
+	//stunning does knockdown
+	if (mod == JKG_GetMeansOfDamageIndex("MOD_STUNNED"))
+	{
+		G_Knockdown(targ, attacker, attacker->client->ps.origin, 50.0, qtrue);
+	}
+
 	///////////////////////////////////////
 	//
 	//	1. Reduce damage by shield amount

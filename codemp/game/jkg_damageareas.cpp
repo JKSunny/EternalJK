@@ -140,6 +140,10 @@ void G_RemoveBuff(gentity_t* ent, int index)
 			ent->client->pmfreeze = qfalse;
 			ent->client->pmlock = qfalse;
 		}
+		if (pBuff->passive.overridePmoveType.second == PM_NOMOVE)
+		{
+			ent->client->pmnomove = qfalse;
+		}
 	}
 	pBuff->passive.stacks = 0;
 	pBuff->passive.movemodifier_cur = 1.0;
@@ -239,7 +243,7 @@ void G_BuffEntity(gentity_t* ent, gentity_t* buffer, int buffID, float intensity
 			//override movement type
 			if (pBuff->passive.overridePmoveType.first)
 			{
-				if (pBuff->passive.overridePmoveType.second == PM_FREEZE)
+				if (pBuff->passive.overridePmoveType.second == PM_FREEZE) //freeze in place no movement
 				{
 					// clear out the velocity vector only if we are not in midair
 					if (ent->client->ps.groundEntityNum != ENTITYNUM_NONE)
@@ -249,6 +253,16 @@ void G_BuffEntity(gentity_t* ent, gentity_t* buffer, int buffID, float intensity
 					ent->client->ps.freezeLegsAnim = ent->client->ps.legsAnim;
 					ent->client->ps.freezeTorsoAnim = ent->client->ps.torsoAnim;
 					ent->client->pmlock = ent->client->pmfreeze = qtrue;
+				}
+				else if (pBuff->passive.overridePmoveType.second == PM_NOMOVE) //can't move legs, but can twist/aim
+				{
+					// clear out the velocity vector only if we are not in midair
+					if (ent->client->ps.groundEntityNum != ENTITYNUM_NONE)
+					{
+						VectorClear(ent->client->ps.velocity);
+					}
+					ent->client->ps.freezeLegsAnim = ent->client->ps.legsAnim;
+					ent->client->pmnomove = qtrue;
 				}
 			}
 
