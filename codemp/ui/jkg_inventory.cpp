@@ -246,8 +246,9 @@ static void JKG_ConstructArmorDescription(itemInstance_t* pItem, std::vector<std
 		if (speed < 0) {
 			vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ARM_MOVESPEED_POS"), -speed));
 		}
-		else {
-			vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ARM_MOVESPEED"), speed));
+		if (speed > 0)
+		{
+			vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ARM_MOVESPEED"), +speed));
 		}
 	}
 	if (pArmorData->hp) {
@@ -405,7 +406,6 @@ static void JKG_ConstructWeaponDescription(itemInstance_t* pItem, std::vector<st
 	{
 		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_WEIGHT"), pItem->id->weight));
 	}
-
 	if (wp->hasRollAbility) {
 		vDescLines.push_back(UI_GetStringEdString2("@JKG_INVENTORY_WEP_TAG_ROLLING"));
 	}
@@ -546,7 +546,7 @@ void JKG_ConstructItemDescription(itemInstance_t* pItem, std::vector<std::string
 			break;
 	}
 
-	vDescLines.push_back(""); // Push a blank line because we like nice formatting
+	vDescLines.push_back("--"); // Push a blank line because we like nice formatting
 	if(sizeof(pItem->id->itemDescription) > 35)
 	{ 
 		JKG_SplitDescriptionLines(std::string(pItem->id->itemDescription), vDescLines);
