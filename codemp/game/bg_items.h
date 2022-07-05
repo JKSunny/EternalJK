@@ -29,6 +29,7 @@ typedef enum jkgItemType_e
 {
     ITEM_UNKNOWN,
     ITEM_WEAPON,
+	ITEM_TOOL,			// Very similar to weapon, things like pickaxe, drills, hydrospanners, etc.
     ITEM_ARMOR,
     ITEM_CLOTHING,		// Classified as "armor" in the filter
 	ITEM_CONSUMABLE,
@@ -86,6 +87,20 @@ typedef enum
 	IPT_TRADECREDITS,	// The other party has entered the number of credits that they want to send.
 } itemTradePacketType_t;
 
+typedef enum itemTier_e
+{
+	//The tiers or 'quality' of an item.
+
+	TIER_SCRAP,		//tier 0: lowest quality, things like scrap or raw materials
+	TIER_COMMON,	//tier 1: the base tier, most items are common
+	TIER_REFINED,	//tier 2: uncommon, quality items - harder to find than common
+	TIER_ELITE,		//tier 3: rare and high quality - elite items are the most powerful items that can be granted from a drop
+	TIER_SUPERIOR,	//tier 4: most powerful item type - can only be created by high level crafting, not available from drops/npcs
+	TIER_LEGENDARY,	//tier 5: unique 1-of-a-kind items, only a single instance should exist (eg: "Han Solo's Blaster") on par with superior
+
+	NUM_ITEM_TIERS
+} itemTier_t;
+
 /*
  * Item-specific structures
  */
@@ -97,6 +112,11 @@ typedef struct {
 	int varID;
 	qboolean holsterState; //is the weapon holstered? (melee mode vs weapon mode)
 } itemWeaponData_t;
+
+// Tools
+typedef struct {
+	qboolean holsterState; //is the tool holstered?
+} itemToolData_t;
 
 // Armor
 typedef struct {
@@ -156,8 +176,12 @@ typedef struct {
 	char internalName[MAX_ITEM_NAME];
 	int itemID;
 	jkgItemType_t itemType;
+	itemTier_t itemTier;
 	float weight;
 	unsigned int maxStack;
+	bool tradeable;		//can it be traded?
+	bool segregated;	//if an item is segregated, it doesn't exist in the normal inventory space (eg: quest items, blueprints, etc)
+	bool droppable;		//can the item be dropped?
 	char itemDescription[MAX_ITEM_DESCRIPTION];
 
 	// Visual Data
@@ -168,6 +192,7 @@ typedef struct {
 	// Data specific to the jkgItemType
 	union {
 		itemWeaponData_t weaponData;
+		itemToolData_t toolData;
 		itemArmorData_t armorData;
 		itemConsumableData_t consumableData;
 		itemShieldData_t shieldData;

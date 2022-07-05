@@ -1202,6 +1202,8 @@ static bool BG_LoadItem(const char *itemFilePath, itemData_t *itemData)
 		itemData->itemType = ITEM_ARMOR;
 	else if (Q_stricmp(str, "weapon") == 0)
 		itemData->itemType = ITEM_WEAPON;
+	else if (Q_stricmp(str, "tool") == 0)
+		itemData->itemType = ITEM_TOOL;
 	else if (Q_stricmp(str, "clothing") == 0)
 		itemData->itemType = ITEM_CLOTHING;
 	else if (Q_stricmp(str, "consumable") == 0)
@@ -1214,6 +1216,31 @@ static bool BG_LoadItem(const char *itemFilePath, itemData_t *itemData)
 		itemData->itemType = ITEM_AMMO;
 	else
 		itemData->itemType = ITEM_UNKNOWN;
+
+	jsonNode = cJSON_GetObjectItem(json, "tier");
+	item = cJSON_ToIntegerOpt(jsonNode, 1);
+	if (item >= NUM_ITEM_TIERS || item < TIER_SCRAP) //out of range
+	{
+		Com_Printf(S_COLOR_YELLOW "Invalid item tier (%i) detected in %s, defaulting to common.\n", item, itemFilePath);
+		item = 1;
+	}
+	itemData->itemTier = static_cast<itemTier_t>(item);
+
+	jsonNode = cJSON_GetObjectItem(json, "tradeable");
+	itemData->tradeable = cJSON_ToBooleanOpt(jsonNode, true);
+
+	jsonNode = cJSON_GetObjectItem(json, "segregated");
+	itemData->segregated = cJSON_ToBooleanOpt(jsonNode, false);
+
+	jsonNode = cJSON_GetObjectItem(json, "droppable");
+	itemData->droppable = cJSON_ToBooleanOpt(jsonNode, true);
+
+	//legendary items are special
+	if (itemData->itemTier == TIER_LEGENDARY)
+	{
+		itemData->tradeable = true;
+		itemData->droppable = true;
+	}
 
 	jsonNode = cJSON_GetObjectItem(json, "itemDescription");
 	str = cJSON_ToStringOpt(jsonNode, "No description available.");

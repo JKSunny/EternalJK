@@ -25,9 +25,9 @@ void JKG_ConstructInventoryList() {
 		pAllItems = (itemInstance_t*)cgImports->InventoryDataRequest(INVENTORYREQUEST_ITEMS, -1);
 		for (int i = 0; i < nNumInventoryItems; i++) {
 			itemInstance_t* pThisItem = &pAllItems[i];
-			if (ui_inventoryFilter.integer == JKGIFILTER_ARMOR 
-				&& pThisItem->id->itemType != ITEM_ARMOR 
-				&& pThisItem->id->itemType != ITEM_CLOTHING 
+			if (ui_inventoryFilter.integer == JKGIFILTER_ARMOR
+				&& pThisItem->id->itemType != ITEM_ARMOR
+				&& pThisItem->id->itemType != ITEM_CLOTHING
 				&& pThisItem->id->itemType != ITEM_SHIELD
 				&& pThisItem->id->itemType != ITEM_JETPACK) {
 				continue;
@@ -36,6 +36,10 @@ void JKG_ConstructInventoryList() {
 				continue;
 			}
 			else if (ui_inventoryFilter.integer == JKGIFILTER_CONSUMABLES && pThisItem->id->itemType != ITEM_CONSUMABLE) {
+				continue;
+			}
+			else if (ui_inventoryFilter.integer == JKGIFILTER_TOOLS && pThisItem->id->itemType != ITEM_TOOL)
+			{
 				continue;
 			}
 			else if (ui_inventoryFilter.integer == JKGIFILTER_MISC) {
@@ -61,6 +65,41 @@ void JKG_ConstructInventoryList() {
 DESCRIPTION CONSTRUCTION
 ==========================
 */
+
+// Display the item's tier (quality/rarity)
+static QINLINE void JKG_ConstructItemTierDescription(itemTier_t tier, std::vector<std::string>& vDescLines)
+{
+	switch (tier)
+	{
+	case TIER_SCRAP:
+		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TIER"), va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TIER_0"), static_cast<int>(tier))));
+		break;
+
+	case TIER_COMMON:
+		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TIER"), va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TIER_1"), static_cast<int>(tier))));
+		break;
+
+	case TIER_REFINED:
+		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TIER"), va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TIER_2"), static_cast<int>(tier))));
+		break;
+
+	case TIER_ELITE:
+		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TIER"), va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TIER_3"), static_cast<int>(tier))));
+		break;
+
+	case TIER_SUPERIOR:
+		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TIER"), va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TIER_4"), static_cast<int>(tier))));
+		break;
+
+	case TIER_LEGENDARY:
+		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TIER"), va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TIER_5"), static_cast<int>(tier))));
+		break;
+
+	default:
+		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TIER"), "Unknown", static_cast<int>(tier)));
+		break;
+	}
+}
 
 // Returns the proper tag that should appear with Blast Damage
 char* JKG_GetBlastDamageTag(weaponData_t* pData, const int nFiringMode) {
@@ -134,7 +173,12 @@ static void JKG_ConstructJetpackDescription(itemInstance_t* pItem, std::vector<s
 	// Fuel Regeneration: ###
 	// Hover Gravity: ###
 	vDescLines.push_back(UI_GetStringEdString2("@JKG_INVENTORY_ITYPE_JETPACK"));
-	vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_SHIELD_CAPACITY"), pItem->id->jetpackData.pJetpackData->fuelCapacity));
+	JKG_ConstructItemTierDescription(pItem->id->itemTier, vDescLines);
+	if (pItem->id->weight > 0.0f)
+	{
+		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_WEIGHT"), pItem->id->weight));
+	}
+	vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_CAPACITY"), pItem->id->jetpackData.pJetpackData->fuelCapacity));
 	vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_JETPACK_IDLECONSUMPTION"), pItem->id->jetpackData.pJetpackData->fuelConsumption));
 	vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_JETPACK_THRUSTCONSUMPTION"), pItem->id->jetpackData.pJetpackData->thrustConsumption));
 	vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_JETPACK_FUELREGEN"), pItem->id->jetpackData.pJetpackData->fuelRegeneration));
@@ -148,7 +192,12 @@ static void JKG_ConstructShieldDescription(itemInstance_t* pItem, std::vector<st
 	// Recharge Time: ### seconds
 	// Regeneration: # shields per second
 	vDescLines.push_back(UI_GetStringEdString2("@JKG_INVENTORY_ITYPE_SHIELD"));
-	vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_SHIELD_CAPACITY"), pItem->id->shieldData.capacity));
+	JKG_ConstructItemTierDescription(pItem->id->itemTier, vDescLines);
+	if (pItem->id->weight > 0.0f)
+	{
+		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_WEIGHT"), pItem->id->weight));
+	}
+	vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_CAPACITY"), pItem->id->shieldData.capacity));
 	vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_SHIELD_RECHARGE"), pItem->id->shieldData.cooldown / 1000.0f));
 	vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_SHIELD_REGEN"), 1000.0f / pItem->id->shieldData.regenrate));
 }
@@ -163,6 +212,11 @@ static void JKG_ConstructArmorDescription(itemInstance_t* pItem, std::vector<std
 	armorData_t* pArmorData = pItem->id->armorData.pArm;
 
 	vDescLines.push_back(UI_GetStringEdString2("@JKG_INVENTORY_ITYPE_ARMOR"));
+	JKG_ConstructItemTierDescription(pItem->id->itemTier, vDescLines);
+	if (pItem->id->weight > 0.0f)
+	{
+		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_WEIGHT"), pItem->id->weight));
+	}
 	vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ARM_EQUIPPEDSLOT"), JKG_GetArmorSlotString(pArmorData)));
 	if (pArmorData->armor) {
 		int maxHP = cgImports->GetPredictedPlayerState()->stats[STAT_MAX_HEALTH];
@@ -203,6 +257,20 @@ static void JKG_ConstructArmorDescription(itemInstance_t* pItem, std::vector<std
 		else {
 			vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ARM_MAXHEALTH_NEG"), pArmorData->hp));
 		}
+	}
+	if (pArmorData->stamina)
+	{
+		if (pArmorData->stamina > 0) {
+			vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ARM_MAXSTAMINA_POS"), pArmorData->stamina));
+		}
+		else {
+			vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ARM_MAXSTAMINA_NEG"), pArmorData->stamina));
+		}
+	}
+
+	if (pArmorData->filter)
+	{
+		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ARM_FILTER")));
 	}
 }
 
@@ -332,7 +400,15 @@ static void JKG_ConstructWeaponDescription(itemInstance_t* pItem, std::vector<st
 	weaponData_t* wp = cgImports->GetWeaponDatas(pItem->id->weaponData.weapon, pItem->id->weaponData.variation);
 
 	vDescLines.push_back(UI_GetStringEdString2("@JKG_INVENTORY_ITYPE_WEAPON"));
+	JKG_ConstructItemTierDescription(pItem->id->itemTier, vDescLines);
+	if (pItem->id->weight > 0.0f)
+	{
+		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_WEIGHT"), pItem->id->weight));
+	}
 
+	if (wp->hasRollAbility) {
+		vDescLines.push_back(UI_GetStringEdString2("@JKG_INVENTORY_WEP_TAG_ROLLING"));
+	}
 	if (wp->hasCookAbility) {
 		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_WEP_COOKTIME"), (float)(wp->weaponReloadTime / 1000.0f)));
 	}
@@ -357,10 +433,6 @@ static void JKG_ConstructWeaponDescription(itemInstance_t* pItem, std::vector<st
 		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_WEP_SPEEDPENALTY"), fMovementPenalty));
 	}
 
-	if (wp->hasRollAbility) {
-		vDescLines.push_back(UI_GetStringEdString2("@JKG_INVENTORY_WEP_TAG_ROLLING"));
-	}
-
 	vDescLines.push_back(""); // Push a blank line because we like nice formatting
 
 	if (wp->weaponBaseIndex != WP_SABER) { // FIXME: sabers don't really have a good item description yet
@@ -370,9 +442,24 @@ static void JKG_ConstructWeaponDescription(itemInstance_t* pItem, std::vector<st
 	}
 }
 
+// Create a tool item's description
+static void JKG_ConstructToolDescription(itemInstance_t* pItem, std::vector<std::string>& vDescLines) {
+	vDescLines.push_back(UI_GetStringEdString2("@JKG_INVENTORY_ITYPE_TOOL"));
+	JKG_ConstructItemTierDescription(pItem->id->itemTier, vDescLines);
+	if (pItem->id->weight > 0.0f)
+	{
+		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_WEIGHT"), pItem->id->weight));
+	}
+}
+
 // Create a consumable item's description
 static void JKG_ConstructConsumableDescription(itemInstance_t* pItem, std::vector<std::string>& vDescLines) {
 	vDescLines.push_back(UI_GetStringEdString2("@JKG_INVENTORY_ITYPE_CONSUMABLE"));
+	JKG_ConstructItemTierDescription(pItem->id->itemTier, vDescLines);
+	if (pItem->id->weight > 0.0f)
+	{
+		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_WEIGHT"), pItem->id->weight));
+	}
 }
 
 //a stupid simple line splitter for descriptions
@@ -444,10 +531,18 @@ void JKG_ConstructItemDescription(itemInstance_t* pItem, std::vector<std::string
 		case ITEM_WEAPON:
 			JKG_ConstructWeaponDescription(pItem, vDescLines);
 			break;
+		case ITEM_TOOL:
+			JKG_ConstructToolDescription(pItem, vDescLines);
+			break;
 		case ITEM_CONSUMABLE:
 			JKG_ConstructConsumableDescription(pItem, vDescLines);
 			break;
 		default:
+			JKG_ConstructItemTierDescription(pItem->id->itemTier, vDescLines);
+			if (pItem->id->weight > 0.0f)
+			{
+				vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_WEIGHT"), pItem->id->weight));
+			}
 			break;
 	}
 
@@ -460,7 +555,16 @@ void JKG_ConstructItemDescription(itemInstance_t* pItem, std::vector<std::string
 	{
 		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_DESCRIPTION"), pItem->id->itemDescription));
 	}
-	
+
+	if (!pItem->id->tradeable)
+	{
+		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_UNTRADEABLE")));
+	}
+
+	if (!pItem->id->droppable)
+	{
+		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_UNDROPPABLE")));
+	}
 }
 
 // Returns the string that should appear on nLineNum of an item description
