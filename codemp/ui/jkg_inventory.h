@@ -43,6 +43,8 @@ void JKG_ConstructInventoryList();
 void JKG_ConstructItemDescription(itemInstance_t* pItem, std::vector<std::string>& vDescLines);
 void JKG_SplitDescriptionLines(const std::string& s, std::vector<std::string>& vDescLines);
 qboolean JKG_Inventory_HandleKey(int key);
+void JKG_LightenTextColor(vec4_t& color);
+void JKG_SetTierColor(int tier, vec4_t& color);
 
 
 //

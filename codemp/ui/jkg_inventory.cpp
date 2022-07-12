@@ -101,16 +101,15 @@ static QINLINE void JKG_ConstructItemTierDescription(itemTier_t tier, std::vecto
 	}
 }
 
-//lighten colors to make them easier to read
-void JKG_Lighten_Text_Color(vec4_t& color)
-{
-	//[0] == red, [1] == green, [2] == blue, [3] == alpha
-	float lightPerct = 0.6;	//% to lighten colors by
-	float highest = std::max(color[0], color[1]); highest= std::max(color[1], color[2]);	//determine highest value
+//lighten rgb color to make it easier to read
+void JKG_LightenTextColor(vec4_t& color)
+{  //todo: move to somewhere more universally useful?
+	float percent = 0.6;	//% to lighten colors by
+	float highest = color[0] < color[1] ? color[1] : color[0]; highest = highest < color[2] ? color[2] : highest;	//determine highest RGB value
 
 	for (int i = 0; i < 2; i++) //don't change alpha
 	{
-		color[i] = color[i] + ((1.0 - color[i]) * lightPerct); //lighten color by %
+		color[i] = color[i] + ((1.0 - color[i]) * percent); //lighten color by %
 
 		//give 10% higher weight to the most significant color(s)
 		if (color[i] == highest)
@@ -118,6 +117,37 @@ void JKG_Lighten_Text_Color(vec4_t& color)
 
 		if (color[i] > 1.0)
 			color[i] = 1.0; //clamp colors
+	}
+}
+
+void JKG_SetTierColor(int tier, vec4_t& color)
+{
+	switch (tier)
+	{
+	case TIER_SCRAP:
+		VectorCopy4(colorMdGrey, color);
+		break;
+	case TIER_COMMON:
+		VectorCopy4(colorWhite, color);
+		break;
+	case TIER_REFINED:
+		VectorCopy4(colorGreen, color);
+		JKG_LightenTextColor(color);
+		break;
+	case TIER_ELITE:
+		VectorCopy4(colorCyan, color);
+		JKG_LightenTextColor(color);
+		break;
+	case TIER_SUPERIOR:
+		VectorCopy4(colorMagenta, color);
+		JKG_LightenTextColor(color);
+		break;
+	case TIER_LEGENDARY:
+		VectorCopy4(colorYellow, color);
+		break;
+	default:
+		VectorCopy4(colorWhite, color);
+		break;
 	}
 }
 
@@ -645,35 +675,7 @@ void JKG_Inventory_OwnerDraw_ItemName(itemDef_t* item, int ownerDrawID) {
 
 	//figure out color based on item tier
 	vec4_t color;
-	switch (pItem->id->itemTier)
-	{
-	case TIER_SCRAP:
-		VectorCopy4(colorMdGrey, color);
-		break;
-	case TIER_COMMON:
-		VectorCopy4(colorWhite, color);
-		break;
-	case TIER_REFINED:
-		VectorCopy4(colorGreen, color);
-		JKG_Lighten_Text_Color(color);
-		break;
-	case TIER_ELITE:
-		VectorCopy4(colorCyan, color);
-		JKG_Lighten_Text_Color(color);
-		break;
-	case TIER_SUPERIOR:
-		VectorCopy4(colorMagenta, color);
-		JKG_Lighten_Text_Color(color);
-		break;
-	case TIER_LEGENDARY:
-		VectorCopy4(colorYellow, color);
-		JKG_Lighten_Text_Color(color);
-		break;
-	default:
-		VectorCopy4(colorWhite, color);
-		break;
-	}
-	
+	JKG_SetTierColor(pItem->id->itemTier, color);
 	Item_Text_Paint(item, color);
 }
 
@@ -790,32 +792,7 @@ void JKG_Inventory_OwnerDraw_SelItemName(itemDef_t* item) {
 
 	//figure out color based on item tier
 	vec4_t color;
-	switch (pItem->id->itemTier)
-	{
-	case TIER_SCRAP:
-		VectorCopy4(colorMdGrey, color);
-		break;
-	case TIER_COMMON:
-		VectorCopy4(colorWhite, color);
-		break;
-	case TIER_REFINED:
-		VectorCopy4(colorGreen, color);
-		break;
-	case TIER_ELITE:
-		VectorCopy4(colorCyan, color);
-		break;
-	case TIER_SUPERIOR:
-		VectorCopy4(colorMagenta, color);
-		break;
-	case TIER_LEGENDARY:
-		VectorCopy4(colorYellow, color);
-		break;
-	default:
-		VectorCopy4(colorWhite, color);
-		break;
-	}
-
-	JKG_Lighten_Text_Color(color);
+	JKG_SetTierColor(pItem->id->itemTier, color);
 	Item_Text_Paint(item, color);
 }
 

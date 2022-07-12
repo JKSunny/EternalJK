@@ -5194,7 +5194,8 @@ void Item_TextColor(itemDef_t *item, vec4_t *newColor) {
 		lowLight[3] = 0.8 * item->window.foreColor[3]; 
 		LerpColor(item->window.foreColor,lowLight,*newColor,0.5+0.5*sin((float)(DC->realTime / PULSE_DIVISOR)));
 	} else {
-		memcpy(item->window.foreColor, newColor, sizeof(vec4_t));	//override the foreColor with the new color
+		memcpy(newColor, item->window.foreColor, sizeof(vec4_t));	//original
+		//memcpy(item->window.foreColor, newColor, sizeof(vec4_t));	//override the foreColor with the new color
 	}
 
 	// items can be enabled and disabled based on cvars
@@ -5343,12 +5344,13 @@ void Item_Text_Wrapped_Paint(itemDef_t *item) {
 	DC->drawText(x, y, item->textscale, color, start, 0, 0, item->textStyle, item->iMenuFont);
 }
 
-//full color version
-void Item_Text_Paint(itemDef_t* item, vec4_t &color)
+//default version
+void Item_Text_Paint(itemDef_t* item)
 {
 	char text[1024] = { 0 };
 	const char* textPtr;
 	int height, width;
+	vec4_t color;
 
 	if (item->window.flags & WINDOW_WRAPPED) {
 		Item_Text_Wrapped_Paint(item);
@@ -5387,7 +5389,7 @@ void Item_Text_Paint(itemDef_t* item, vec4_t &color)
 	if (*textPtr == '\0') {
 		return;
 	}
-
+	
 	Item_TextColor(item, &color);
 	DC->drawText(item->textRect.x, item->textRect.y, item->textscale, color, textPtr, 0, 0, item->textStyle, item->iMenuFont);
 
@@ -5415,9 +5417,76 @@ void Item_Text_Paint(itemDef_t* item, vec4_t &color)
 	}
 }
 
-//default version
-void Item_Text_Paint(itemDef_t* item) {
-	Item_Text_Paint(item, colorWhite);
+//special version - you can pass a color along
+void Item_Text_Paint(itemDef_t* item, vec4_t &color) {
+
+	char text[1024] = { 0 };
+	const char* textPtr;
+	int height, width;
+
+	if (item->window.flags & WINDOW_WRAPPED) {
+		Item_Text_Wrapped_Paint(item);
+		return;
+	}
+	if (item->window.flags & WINDOW_AUTOWRAPPED) { //need to solve what to do with specifying colors when called from JKG_SHOP_ShopItemName() etc
+		Item_Text_AutoWrapped_Paint(item);
+		return;
+	}
+	// Jedi Knight Galaxies, allow ITEM_TYPE_TEXT items to have dynamic texts. (IF defined!)
+	if (item->type == ITEM_TYPE_TEXT && item->typeData.text && item->typeData.text->customText) {
+		textPtr = item->typeData.text->text;
+		if (!textPtr) return;
+	}
+	else if (item->text[0] == '\0') {
+		if (item->cvar == NULL) {
+			return;
+		}
+		else {
+			DC->getCVarString(item->cvar, text, sizeof(text));
+			textPtr = text;
+		}
+	}
+	else {
+		textPtr = item->text;
+	}
+	if (*textPtr == '@')	// string reference
+	{
+		trap->SE_GetStringTextString(&textPtr[1], text, sizeof(text));
+		textPtr = text;
+	}
+
+	// this needs to go here as it sets extents for cvar types as well
+	Item_SetTextExtents(item, &width, &height, textPtr);
+
+	if (*textPtr == '\0') {
+		return;
+	}
+
+	//Item_TextColor(item, &color); //don't bother
+	DC->drawText(item->textRect.x, item->textRect.y, item->textscale, color, textPtr, 0, 0, item->textStyle, item->iMenuFont);
+
+	if (item->text2[0])	// Is there a second line of text?
+	{
+		int fontHandle = (item->iMenuFont2) ? item->iMenuFont2 : item->iMenuFont;
+		float textscale = (item->textscale2) ? item->textscale2 : item->textscale;
+		int textstyle = (item->textStyle2) ? item->textStyle2 : item->textStyle;
+		textPtr = item->text2;
+		if (*textPtr == '@')	// string reference
+		{
+			trap->SE_GetStringTextString(&textPtr[1], text, sizeof(text));
+			textPtr = text;
+		}
+		Item_TextColor(item, &color);
+		//Hold your fancy pants. This is all fine and dandy for left-aligned, but for anything else, it's not gud.
+		if ((item->textalignment == ITEM_ALIGN_LEFT || item->textalignment == ITEM_ALIGN_CENTER) && item->text2alignment != ITEM_ALIGN_RIGHT)
+		{
+			DC->drawText(item->textRect.x + item->text2alignx, item->textRect.y + item->text2aligny, textscale, color, textPtr, 0, 0, textstyle, fontHandle);
+		}
+		else if (item->textalignment == ITEM_ALIGN_RIGHT || item->text2alignment == ITEM_ALIGN_RIGHT)
+		{
+			DC->drawText((item->window.rect.x + item->textalignx + item->text2alignx) - (DC->textWidth(textPtr, 1, fontHandle) * textscale), item->textRect.y + item->text2aligny, textscale, color, textPtr, 0, 0, textstyle, fontHandle);
+		}
+	}
 }
 
 

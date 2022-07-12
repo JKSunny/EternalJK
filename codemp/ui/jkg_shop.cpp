@@ -377,6 +377,7 @@ void JKG_Shop_ShopSelection(itemDef_t* item, int nOwnerDrawID) {
 // The name of the item that shows on each button
 //
 extern void Item_Text_Paint(itemDef_t *item);
+extern void Item_Text_Paint(itemDef_t* item, vec4_t& color);
 void JKG_Shop_InventoryItemName(itemDef_t* item, int nOwnerDrawID) {
 	if (nInventoryScroll + nOwnerDrawID >= nNumberInventoryItems) {
 		memset(item->text, 0, sizeof(item->text));
@@ -385,7 +386,11 @@ void JKG_Shop_InventoryItemName(itemDef_t* item, int nOwnerDrawID) {
 	}
 	itemInstance_t* pItem = vInventoryItems[nInventoryScroll + nOwnerDrawID].second;
 	Q_strncpyz(item->text, pItem->id->displayName, sizeof(item->text));
-	Item_Text_Paint(item);
+
+	//figure out color based on item tier
+	vec4_t color;
+	JKG_SetTierColor(pItem->id->itemTier, color);
+	Item_Text_Paint(item, color);
 }
 
 void JKG_Shop_ShopItemName(itemDef_t* item, int nOwnerDrawID) {
@@ -396,7 +401,11 @@ void JKG_Shop_ShopItemName(itemDef_t* item, int nOwnerDrawID) {
 	}
 	itemInstance_t* pItem = vShopItems[nShopScroll + nOwnerDrawID].second;
 	Q_strncpyz(item->text, pItem->id->displayName, sizeof(item->text));
-	Item_Text_Paint(item);
+	
+	//figure out color based on item tier
+	vec4_t color;
+	JKG_SetTierColor(pItem->id->itemTier, color);
+	Item_Text_Paint(item, color);
 }
 
 //
