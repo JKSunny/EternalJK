@@ -5194,10 +5194,10 @@ void Item_TextColor(itemDef_t *item, vec4_t *newColor) {
 		lowLight[3] = 0.8 * item->window.foreColor[3]; 
 		LerpColor(item->window.foreColor,lowLight,*newColor,0.5+0.5*sin((float)(DC->realTime / PULSE_DIVISOR)));
 	} else {
-		memcpy(newColor, &item->window.foreColor, sizeof(vec4_t));
-		// items can be enabled and disabled based on cvars
+		memcpy(item->window.foreColor, newColor, sizeof(vec4_t));	//override the foreColor with the new color
 	}
 
+	// items can be enabled and disabled based on cvars
 	if (item->disabled) 
 	{
 		memcpy(newColor, &parent->disableColor, sizeof(vec4_t));
@@ -5343,11 +5343,12 @@ void Item_Text_Wrapped_Paint(itemDef_t *item) {
 	DC->drawText(x, y, item->textscale, color, start, 0, 0, item->textStyle, item->iMenuFont);
 }
 
-void Item_Text_Paint(itemDef_t *item) {
-	char text[1024] = {0};
-	const char *textPtr;
+//full color version
+void Item_Text_Paint(itemDef_t* item, vec4_t &color)
+{
+	char text[1024] = { 0 };
+	const char* textPtr;
 	int height, width;
-	vec4_t color;
 
 	if (item->window.flags & WINDOW_WRAPPED) {
 		Item_Text_Wrapped_Paint(item);
@@ -5376,7 +5377,7 @@ void Item_Text_Paint(itemDef_t *item) {
 	}
 	if (*textPtr == '@')	// string reference
 	{
-		trap->SE_GetStringTextString( &textPtr[1], text, sizeof(text));
+		trap->SE_GetStringTextString(&textPtr[1], text, sizeof(text));
 		textPtr = text;
 	}
 
@@ -5387,9 +5388,7 @@ void Item_Text_Paint(itemDef_t *item) {
 		return;
 	}
 
-
 	Item_TextColor(item, &color);
-
 	DC->drawText(item->textRect.x, item->textRect.y, item->textscale, color, textPtr, 0, 0, item->textStyle, item->iMenuFont);
 
 	if (item->text2[0])	// Is there a second line of text?
@@ -5400,20 +5399,25 @@ void Item_Text_Paint(itemDef_t *item) {
 		textPtr = item->text2;
 		if (*textPtr == '@')	// string reference
 		{
-			trap->SE_GetStringTextString( &textPtr[1], text, sizeof(text));
+			trap->SE_GetStringTextString(&textPtr[1], text, sizeof(text));
 			textPtr = text;
 		}
 		Item_TextColor(item, &color);
 		//Hold your fancy pants. This is all fine and dandy for left-aligned, but for anything else, it's not gud.
-		if((item->textalignment == ITEM_ALIGN_LEFT || item->textalignment == ITEM_ALIGN_CENTER) && item->text2alignment != ITEM_ALIGN_RIGHT)
+		if ((item->textalignment == ITEM_ALIGN_LEFT || item->textalignment == ITEM_ALIGN_CENTER) && item->text2alignment != ITEM_ALIGN_RIGHT)
 		{
-			DC->drawText(item->textRect.x + item->text2alignx, item->textRect.y + item->text2aligny, textscale, color, textPtr, 0, 0, textstyle,fontHandle);
+			DC->drawText(item->textRect.x + item->text2alignx, item->textRect.y + item->text2aligny, textscale, color, textPtr, 0, 0, textstyle, fontHandle);
 		}
-		else if(item->textalignment == ITEM_ALIGN_RIGHT || item->text2alignment == ITEM_ALIGN_RIGHT)
+		else if (item->textalignment == ITEM_ALIGN_RIGHT || item->text2alignment == ITEM_ALIGN_RIGHT)
 		{
-			DC->drawText((item->window.rect.x + item->textalignx + item->text2alignx)-(DC->textWidth(textPtr, 1, fontHandle)*textscale), item->textRect.y + item->text2aligny, textscale, color, textPtr, 0, 0, textstyle,fontHandle);
+			DC->drawText((item->window.rect.x + item->textalignx + item->text2alignx) - (DC->textWidth(textPtr, 1, fontHandle) * textscale), item->textRect.y + item->text2aligny, textscale, color, textPtr, 0, 0, textstyle, fontHandle);
 		}
 	}
+}
+
+//default version
+void Item_Text_Paint(itemDef_t* item) {
+	Item_Text_Paint(item, colorWhite);
 }
 
 

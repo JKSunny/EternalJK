@@ -101,6 +101,26 @@ static QINLINE void JKG_ConstructItemTierDescription(itemTier_t tier, std::vecto
 	}
 }
 
+//lighten colors to make them easier to read
+void JKG_Lighten_Text_Color(vec4_t& color)
+{
+	//[0] == red, [1] == green, [2] == blue, [3] == alpha
+	float lightPerct = 0.6;	//% to lighten colors by
+	float highest = std::max(color[0], color[1]); highest= std::max(color[1], color[2]);	//determine highest value
+
+	for (int i = 0; i < 2; i++) //don't change alpha
+	{
+		color[i] = color[i] + ((1.0 - color[i]) * lightPerct); //lighten color by %
+
+		//give 10% higher weight to the most significant color(s)
+		if (color[i] == highest)
+			color[i] += 0.1;
+
+		if (color[i] > 1.0)
+			color[i] = 1.0; //clamp colors
+	}
+}
+
 // Returns the proper tag that should appear with Blast Damage
 char* JKG_GetBlastDamageTag(weaponData_t* pData, const int nFiringMode) {
 	return ""; // Damage stuff isn't loaded yet :<
@@ -582,6 +602,7 @@ OWNERDRAW STUFF
 */
 
 extern void Item_Text_Paint(itemDef_t *item);
+extern void Item_Text_Paint(itemDef_t* item, vec4_t &color);
 
 // Draws the "Credits: X" text
 void JKG_Inventory_OwnerDraw_CreditsText(itemDef_t* item)
@@ -621,7 +642,39 @@ void JKG_Inventory_OwnerDraw_ItemName(itemDef_t* item, int ownerDrawID) {
 	}
 	itemInstance_t* pItem = pItems[nItemNum].second;
 	strcpy(item->text, pItem->id->displayName);
-	Item_Text_Paint(item);
+
+	//figure out color based on item tier
+	vec4_t color;
+	switch (pItem->id->itemTier)
+	{
+	case TIER_SCRAP:
+		VectorCopy4(colorMdGrey, color);
+		break;
+	case TIER_COMMON:
+		VectorCopy4(colorWhite, color);
+		break;
+	case TIER_REFINED:
+		VectorCopy4(colorGreen, color);
+		JKG_Lighten_Text_Color(color);
+		break;
+	case TIER_ELITE:
+		VectorCopy4(colorCyan, color);
+		JKG_Lighten_Text_Color(color);
+		break;
+	case TIER_SUPERIOR:
+		VectorCopy4(colorMagenta, color);
+		JKG_Lighten_Text_Color(color);
+		break;
+	case TIER_LEGENDARY:
+		VectorCopy4(colorYellow, color);
+		JKG_Lighten_Text_Color(color);
+		break;
+	default:
+		VectorCopy4(colorWhite, color);
+		break;
+	}
+	
+	Item_Text_Paint(item, color);
 }
 
 // Draws additional stuff below the item name
@@ -734,7 +787,36 @@ void JKG_Inventory_OwnerDraw_SelItemName(itemDef_t* item) {
 	}
 	itemInstance_t* pItem = pItems[nSelected].second;
 	strcpy(item->text, pItem->id->displayName);
-	Item_Text_Paint(item);
+
+	//figure out color based on item tier
+	vec4_t color;
+	switch (pItem->id->itemTier)
+	{
+	case TIER_SCRAP:
+		VectorCopy4(colorMdGrey, color);
+		break;
+	case TIER_COMMON:
+		VectorCopy4(colorWhite, color);
+		break;
+	case TIER_REFINED:
+		VectorCopy4(colorGreen, color);
+		break;
+	case TIER_ELITE:
+		VectorCopy4(colorCyan, color);
+		break;
+	case TIER_SUPERIOR:
+		VectorCopy4(colorMagenta, color);
+		break;
+	case TIER_LEGENDARY:
+		VectorCopy4(colorYellow, color);
+		break;
+	default:
+		VectorCopy4(colorWhite, color);
+		break;
+	}
+
+	JKG_Lighten_Text_Color(color);
+	Item_Text_Paint(item, color);
 }
 
 // Draws the selected item's description (ownerDrawID being the line number)
