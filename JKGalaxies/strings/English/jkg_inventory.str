@@ -149,13 +149,13 @@ REFERENCE		ITEM_TIER_1
 LANG_ENGLISH		"Common (%i)"
 
 REFERENCE		ITEM_TIER_2
-LANG_ENGLISH		"^2Refined^7 (%i)"
+LANG_ENGLISH		"^xcf5Refined^7 (%i)"
 
 REFERENCE		ITEM_TIER_3
-LANG_ENGLISH		"^5Elite^7 (%i)"
+LANG_ENGLISH		"^x9ffElite^7 (%i)"
 
 REFERENCE		ITEM_TIER_4
-LANG_ENGLISH		"^6Superior^7 (%i)"
+LANG_ENGLISH		"^xf9fSuperior^7 (%i)"
 
 REFERENCE		ITEM_TIER_5
 LANG_ENGLISH		"^3Legendary^7 (%i)"
