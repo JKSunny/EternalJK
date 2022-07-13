@@ -390,6 +390,7 @@ void JKG_Shop_InventoryItemName(itemDef_t* item, int nOwnerDrawID) {
 	//figure out color based on item tier
 	vec4_t color;
 	JKG_SetTierColor(pItem->id->itemTier, color);
+	item->window.flags |= WINDOW_TEXTCOLOR; //we're overriding the color
 	Item_Text_Paint(item, color);
 }
 
@@ -405,6 +406,7 @@ void JKG_Shop_ShopItemName(itemDef_t* item, int nOwnerDrawID) {
 	//figure out color based on item tier
 	vec4_t color;
 	JKG_SetTierColor(pItem->id->itemTier, color);
+	item->window.flags |= WINDOW_TEXTCOLOR; //we're overriding the color
 	Item_Text_Paint(item, color);
 }
 

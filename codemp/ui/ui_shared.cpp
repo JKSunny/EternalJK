@@ -5195,7 +5195,6 @@ void Item_TextColor(itemDef_t *item, vec4_t *newColor) {
 		LerpColor(item->window.foreColor,lowLight,*newColor,0.5+0.5*sin((float)(DC->realTime / PULSE_DIVISOR)));
 	} else {
 		memcpy(newColor, item->window.foreColor, sizeof(vec4_t));	//original
-		//memcpy(item->window.foreColor, newColor, sizeof(vec4_t));	//override the foreColor with the new color
 	}
 
 	// items can be enabled and disabled based on cvars
@@ -5429,8 +5428,18 @@ void Item_Text_Paint(itemDef_t* item, vec4_t &color) {
 		return;
 	}
 	if (item->window.flags & WINDOW_AUTOWRAPPED) { //need to solve what to do with specifying colors when called from JKG_SHOP_ShopItemName() etc
-		Item_Text_AutoWrapped_Paint(item);
-		return;
+		if (item->window.flags & WINDOW_TEXTCOLOR)
+		{
+			memcpy(item->window.foreColor, color, sizeof(vec4_t));	//hack to override color
+			Item_Text_AutoWrapped_Paint(item);
+			return;
+		}
+
+		else
+		{
+			Item_Text_AutoWrapped_Paint(item);
+			return;
+		}
 	}
 	// Jedi Knight Galaxies, allow ITEM_TYPE_TEXT items to have dynamic texts. (IF defined!)
 	if (item->type == ITEM_TYPE_TEXT && item->typeData.text && item->typeData.text->customText) {
