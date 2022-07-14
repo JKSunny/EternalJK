@@ -69,30 +69,60 @@ DESCRIPTION CONSTRUCTION
 // Display the item's tier (quality/rarity)
 static QINLINE void JKG_ConstructItemTierDescription(itemTier_t tier, std::vector<std::string>& vDescLines)
 {
+	const char toWhite[3] = "^7";
+	char line[1024] = "";
 	switch (tier)
 	{
 	case TIER_SCRAP:
-		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TIER"), va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TIER_0"), static_cast<int>(tier))));
+		Q_strcat(line, sizeof(line), va("^9"));
+		Q_strcat(line, sizeof(line), va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TIER_0")));
+		Q_strcat(line, sizeof(line), toWhite);
+		Q_strcat(line, sizeof(line), va( " (%i)", static_cast<int>(tier)));
+		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TIER"), line));
+		line[0] = '\0';
 		break;
 
 	case TIER_COMMON:
-		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TIER"), va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TIER_1"), static_cast<int>(tier))));
+		Q_strcat(line, sizeof(line), va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TIER_1")));
+		Q_strcat(line, sizeof(line), va(" (%i)", static_cast<int>(tier)));
+		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TIER"), line));
+		line[0] = '\0';
 		break;
 
 	case TIER_REFINED:
-		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TIER"), va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TIER_2"), static_cast<int>(tier))));
+		Q_strcat(line, sizeof(line), va("^xcf5"));
+		Q_strcat(line, sizeof(line), va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TIER_2")));
+		Q_strcat(line, sizeof(line), toWhite);
+		Q_strcat(line, sizeof(line), va(" (%i)", static_cast<int>(tier)));
+		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TIER"), line));
+		line[0] = '\0';
 		break;
 
 	case TIER_ELITE:
-		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TIER"), va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TIER_3"), static_cast<int>(tier))));
+		Q_strcat(line, sizeof(line), va("^x9ff"));
+		Q_strcat(line, sizeof(line), va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TIER_3")));
+		Q_strcat(line, sizeof(line), toWhite);
+		Q_strcat(line, sizeof(line), va(" (%i)", static_cast<int>(tier)));
+		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TIER"), line));
+		line[0] = '\0';
 		break;
 
 	case TIER_SUPERIOR:
-		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TIER"), va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TIER_4"), static_cast<int>(tier))));
+		Q_strcat(line, sizeof(line), va("^xf9f"));
+		Q_strcat(line, sizeof(line), va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TIER_4")));
+		Q_strcat(line, sizeof(line), toWhite);
+		Q_strcat(line, sizeof(line), va(" (%i)", static_cast<int>(tier)));
+		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TIER"), line));
+		line[0] = '\0';
 		break;
 
 	case TIER_LEGENDARY:
-		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TIER"), va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TIER_5"), static_cast<int>(tier))));
+		Q_strcat(line, sizeof(line), va("^3"));
+		Q_strcat(line, sizeof(line), va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TIER_5")));
+		Q_strcat(line, sizeof(line), toWhite);
+		Q_strcat(line, sizeof(line), va(" (%i)", static_cast<int>(tier)));
+		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TIER"), line));
+		line[0] = '\0';
 		break;
 
 	default:
