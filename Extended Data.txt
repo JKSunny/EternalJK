@@ -208,10 +208,14 @@ Each .itm file contains one item, which can have the following fields:
  - internal (string): The internal code reference of this item, used in treasure classes and scripting.
  - id (integer): Assigns a specific internal item ID number to this item. Not recommended to use this except in special circumstances.
  - itemIcon (string): The item icon shader as it appears in the inventory
- - itemtype (special): The type of the item. Can be the following: armor, weapon, clothing, consumable, shield, jetpack, ammo.
+ - itemtype (special): The type of the item. Can be the following: armor, weapon, clothing, consumable, shield, jetpack, ammo, tool.
+ - tier (integer): Which tier of item the item is (0 - scrap, 1 - common, 2 - refined, 3 - elite, 4 - superior, 5 - legendary). Default: Common
  - weight (float): Unused, cannot be less than 0.    Default: 1.0
  - cost (integer): How much the item costs from the vendor.  Default: 100
  - maxStack (integer): How many of this item can be carried in a stack.
+ - tradeable (boolean): If true, the item can be traded/sold/etc.  Not yet fully implemented.  Default: true. (Note: defaults to true if tier is 5)
+ - segregated (boolean): If true, the item does not show up/take up space in the normal inventory (for things like quest items etc).  Default: false.
+ - droppable (boolean): If true, the item can be dropped/destroyed.  Not yet fully implemented.  Default: true ((Note: defaults to true if tier is 5)
  - itemDescription (string): A description of the item up to 250 characters in length.  Longer descriptions are forcibly truncated.
 
 The following contains information specific to WEAPON items:

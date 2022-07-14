@@ -74,7 +74,7 @@ static QINLINE void JKG_ConstructItemTierDescription(itemTier_t tier, std::vecto
 	switch (tier)
 	{
 	case TIER_SCRAP:
-		Q_strcat(line, sizeof(line), va("^9"));
+		Q_strcat(line, sizeof(line), va("^9")); //gray
 		Q_strcat(line, sizeof(line), va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TIER_0")));
 		Q_strcat(line, sizeof(line), toWhite);
 		Q_strcat(line, sizeof(line), va( " (%i)", static_cast<int>(tier)));
@@ -90,7 +90,7 @@ static QINLINE void JKG_ConstructItemTierDescription(itemTier_t tier, std::vecto
 		break;
 
 	case TIER_REFINED:
-		Q_strcat(line, sizeof(line), va("^xcf5"));
+		Q_strcat(line, sizeof(line), va("^xcf5")); //light green
 		Q_strcat(line, sizeof(line), va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TIER_2")));
 		Q_strcat(line, sizeof(line), toWhite);
 		Q_strcat(line, sizeof(line), va(" (%i)", static_cast<int>(tier)));
@@ -99,7 +99,7 @@ static QINLINE void JKG_ConstructItemTierDescription(itemTier_t tier, std::vecto
 		break;
 
 	case TIER_ELITE:
-		Q_strcat(line, sizeof(line), va("^x9ff"));
+		Q_strcat(line, sizeof(line), va("^x9ff")); //light blue
 		Q_strcat(line, sizeof(line), va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TIER_3")));
 		Q_strcat(line, sizeof(line), toWhite);
 		Q_strcat(line, sizeof(line), va(" (%i)", static_cast<int>(tier)));
@@ -108,7 +108,7 @@ static QINLINE void JKG_ConstructItemTierDescription(itemTier_t tier, std::vecto
 		break;
 
 	case TIER_SUPERIOR:
-		Q_strcat(line, sizeof(line), va("^xf9f"));
+		Q_strcat(line, sizeof(line), va("^xf9f")); //light purple
 		Q_strcat(line, sizeof(line), va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TIER_4")));
 		Q_strcat(line, sizeof(line), toWhite);
 		Q_strcat(line, sizeof(line), va(" (%i)", static_cast<int>(tier)));
@@ -117,7 +117,7 @@ static QINLINE void JKG_ConstructItemTierDescription(itemTier_t tier, std::vecto
 		break;
 
 	case TIER_LEGENDARY:
-		Q_strcat(line, sizeof(line), va("^3"));
+		Q_strcat(line, sizeof(line), va("^3")); //yellow
 		Q_strcat(line, sizeof(line), va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TIER_5")));
 		Q_strcat(line, sizeof(line), toWhite);
 		Q_strcat(line, sizeof(line), va(" (%i)", static_cast<int>(tier)));

@@ -1,7 +1,8 @@
 {
-	"name":         "Boba Fett's Helmet (Legendary)",
+	"name":         "Boba Fett's Helmet",
 	"internal":     "helmet_fett",
 	"itemtype":     "armor",
+	"tier":			5,
 	"armor":		"fetthelmet",
 	"weight":		"3",
 	"cost":			"5000",
