@@ -23,7 +23,12 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include "tr_local.h"
 
+#ifdef USE_VK_PBR
+static VkBuffer shade_bufs[9];
+#else
 static VkBuffer shade_bufs[8];
+#endif
+
 static int bind_base;
 static int bind_count;
 
@@ -201,6 +206,9 @@ void vk_bind_geometry( uint32_t flags )
 	if (tess.vboIndex) {
 
 		shade_bufs[0] = shade_bufs[1] = shade_bufs[2] = shade_bufs[3] = shade_bufs[4] = shade_bufs[5] = shade_bufs[6] = shade_bufs[7] = vk.vbo.vertex_buffer;
+#ifdef USE_VK_PBR
+		shade_bufs[8] = vk.vbo.vertex_buffer;
+#endif
 
 		if (flags & TESS_XYZ) {  // 0
 			vk.cmd->vbo_offset[0] = tess.shader->vboOffset + 0;
@@ -241,13 +249,21 @@ void vk_bind_geometry( uint32_t flags )
 			vk.cmd->vbo_offset[7] = tess.shader->stages[tess.vboStage]->rgb_offset[2];
 			vk_bind_index_attr(7);
 		}
+#ifdef USE_VK_PBR
+		if (flags & TESS_PBR) {
+			vk.cmd->vbo_offset[8] = tess.shader->qtangentOffset;
+			vk_bind_index_attr(8);
+		}
+#endif
 		qvkCmdBindVertexBuffers(vk.cmd->command_buffer, bind_base, bind_count, shade_bufs, vk.cmd->vbo_offset + bind_base);
-
 	}
 	else
 #endif // USE_VBO
 	{
 		shade_bufs[0] = shade_bufs[1] = shade_bufs[2] = shade_bufs[3] = shade_bufs[4] = shade_bufs[5] = shade_bufs[6] = shade_bufs[7] = vk.cmd->vertex_buffer;
+#ifdef USE_VK_PBR
+		shade_bufs[8] = vk.cmd->vertex_buffer;
+#endif
 
 		if (flags & TESS_XYZ)
 			vk_bind_attr(0, sizeof(tess.xyz[0]), &tess.xyz[0]);
@@ -272,7 +288,10 @@ void vk_bind_geometry( uint32_t flags )
 
 		if (flags & TESS_RGBA2)
 			vk_bind_attr(7, sizeof(color4ub_t), tess.svars.colors[2]);
-
+#ifdef USE_VK_PBR
+		if (flags & TESS_PBR)
+			vk_bind_attr(8, sizeof(tess.qtangent[0]), tess.qtangent);
+#endif
 		qvkCmdBindVertexBuffers(vk.cmd->command_buffer, bind_base, bind_count, shade_bufs, vk.cmd->buf_offset + bind_base);
 	}
 }
@@ -439,6 +458,16 @@ void vk_update_attachment_descriptors( void ) {
 				qvkUpdateDescriptorSets( vk.device, 1, &desc, 0, NULL );
 			}
 		}
+
+#ifdef VK_PBR_BRDFLUT
+		if( vk.pbrActive )
+		{
+			info.imageView = vk.brdflut_image_view;
+			desc.dstSet = vk.brdflut_image_descriptor;
+
+			qvkUpdateDescriptorSets( vk.device, 1, &desc, 0, NULL );	
+		}
+#endif
 	}
 }
 
@@ -508,6 +537,11 @@ void vk_init_descriptors( void ) {
 
 		alloc.descriptorSetCount = 1;
 		VK_CHECK( qvkAllocateDescriptorSets( vk.device, &alloc, &vk.screenMap.color_descriptor ) ); // screenmap
+
+#ifdef VK_PBR_BRDFLUT
+		if( vk.pbrActive )
+			VK_CHECK( qvkAllocateDescriptorSets( vk.device, &alloc, &vk.brdflut_image_descriptor ) );
+#endif
 
 		vk_update_attachment_descriptors();
 	}
@@ -589,6 +623,25 @@ void vk_update_descriptor( int tmu, VkDescriptorSet curDesSet )
 
 	vk.cmd->descriptor_set.current[tmu] = curDesSet;
 }
+
+#ifdef USE_VK_PBR
+static void vk_set_valid_preceeding_descriptor( const int tmu )
+{
+	if( vk.cmd->descriptor_set.current[tmu] != VK_NULL_HANDLE )
+		return;
+
+	vk_update_descriptor(tmu, tr.emptyImage->descriptor_set);
+
+	if( tmu > 0 )
+		vk_set_valid_preceeding_descriptor( tmu - 1 );
+}
+static void vk_update_pbr_descriptor( const int tmu, VkDescriptorSet curDesSet ){
+	
+	vk_set_valid_preceeding_descriptor( tmu - 1 );
+
+	vk_update_descriptor( tmu, curDesSet );
+}
+#endif
 
 void vk_update_descriptor_offset( int index, uint32_t offset )
 {
@@ -1557,6 +1610,71 @@ void RB_StageIteratorGeneric( void )
 			vk_bind( pStage->bundle[ ( pStage->numTexBundles - 1 ) ].image[0] );
 			Com_Memcpy( tess.svars.colors[0], tess.svars.colors[( pStage->numTexBundles - 1 )], sizeof(tess.svars.colors[0]) );
 		}
+
+		// PBR
+#ifdef USE_VK_PBR
+		if( tess_flags & TESS_PBR ) 
+		{
+			if( backEnd.isGlowPass )
+				tess_flags &= ~TESS_PBR;
+
+			// discard unsuported pbr geometry for now
+			if( backEnd.projection2D )
+				tess_flags &= ~TESS_PBR;
+
+			if( backEnd.viewParms.portalView == PV_MIRROR)
+				tess_flags &= ~TESS_PBR;
+
+			if( backEnd.currentEntity){
+				if ( backEnd.currentEntity != &tr.worldEntity )
+					tess_flags &= ~TESS_PBR;
+			}
+			
+			vk_get_pipeline_def( pipeline, &def );
+			if( def.shader_type < TYPE_GENERIC_BEGIN )
+				tess_flags &= ~TESS_PBR;
+
+			// check if pbr hasn't been discarded
+			if( tess_flags & TESS_PBR ) {
+
+				if ( fogCollapse || !(tess_flags & TESS_VPOS) ) {
+					VectorCopy( backEnd.ori.viewOrigin, uniform.eyePos );
+					//VectorCopy(tr.sunDirection, uniform.lightPos); 
+					//uniform.lightPos[3] = 0.0f;
+					vk_push_uniform( &uniform );	
+				}
+
+				// brdf lut
+				vk_update_pbr_descriptor(6, vk.brdflut_image_descriptor);
+				
+				// unused preceeding descriptor sets is invalid API behaivior
+				// find a better way to mark unused descriptors 
+				// following THE last valid descriptor set
+				// for now, send a 2x2 pixel white texture
+				if( pStage->vk_pbr_flags & PBR_HAS_NORMALMAP )
+					vk_update_pbr_descriptor(7, pStage->normalMap->descriptor_set);
+				else
+					vk_update_pbr_descriptor(7, tr.emptyImage->descriptor_set);
+
+				if( pStage->vk_pbr_flags & PBR_HAS_ROUGHNESSMAP )
+					vk_update_pbr_descriptor(8, pStage->roughnessMap->descriptor_set);
+				else
+					vk_update_pbr_descriptor(8, tr.emptyImage->descriptor_set);
+			
+				if( pStage->vk_pbr_flags & PBR_HAS_METALLICMAP )
+					vk_update_pbr_descriptor(9, pStage->metallicMap->descriptor_set);
+				else
+					vk_update_pbr_descriptor(9, tr.emptyImage->descriptor_set);
+			
+				if( pStage->vk_pbr_flags & PBR_HAS_OCCLUSIONMAP )
+					vk_update_pbr_descriptor(10, pStage->occlusionMap->descriptor_set);
+				else
+					vk_update_pbr_descriptor(10, tr.emptyImage->descriptor_set);
+
+				pipeline = pStage->vk_pbr_pipeline[fog_stage];
+			}
+		}
+#endif
 
 		vk_bind_pipeline( pipeline );
 		vk_bind_geometry( tess_flags );

@@ -52,6 +52,9 @@ void vk_restart_swapchain( const char *funcname )
     vk_create_framebuffers();
     vk_create_bloom_pipelines();
     vk_create_dglow_pipelines();
+#ifdef VK_PBR_BRDFLUT
+    vk_create_brdflut_pipeline();
+#endif
 
     vk_update_attachment_descriptors();
     vk_update_post_process_pipelines();

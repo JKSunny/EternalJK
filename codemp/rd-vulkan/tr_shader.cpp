@@ -1279,6 +1279,126 @@ static qboolean ParseStage(shaderStage_t *stage, const char **text)
 				}
 			}
 		}
+#ifdef USE_VK_PBR
+		else if ( !Q_stricmp(token, "normalMap") && vk.pbrActive )
+		{
+			token = COM_ParseExt(text, qfalse);
+
+			imgFlags_t flags = IMGFLAG_NONE;
+
+			if (!shader.noMipMaps)
+				flags |= IMGFLAG_MIPMAP;
+
+			if (!shader.noPicMip)
+				flags |= IMGFLAG_PICMIP;
+
+			//if (shader.noTC)
+			flags |= IMGFLAG_NO_COMPRESSION;
+
+			flags |= IMGFLAG_NOLIGHTSCALE;
+			stage->normalMap = R_FindImageFile(token, flags);
+
+			if (!stage->normalMap)
+			{
+				ri.Printf(PRINT_WARNING, "WARNING: R_FindImageFile could not find normalMap '%s' in shader '%s'\n", token, shader.name);
+				return qfalse;
+			}
+
+			stage->vk_pbr_flags |= PBR_HAS_NORMALMAP;
+		}
+		else if ( !Q_stricmp(token, "roughnessMap") && vk.pbrActive )
+		{
+			token = COM_ParseExt(text, qfalse);
+
+			imgFlags_t flags = IMGFLAG_NONE;
+
+			if (!shader.noMipMaps)
+				flags |= IMGFLAG_MIPMAP;
+
+			if (!shader.noPicMip)
+				flags |= IMGFLAG_PICMIP;
+
+			if (shader.noTC)
+				flags |= IMGFLAG_NO_COMPRESSION;
+
+			flags |= IMGFLAG_NOLIGHTSCALE;
+			stage->roughnessMap = R_FindImageFile(token, flags);
+
+			if (!stage->roughnessMap)
+			{
+				ri.Printf(PRINT_WARNING, "WARNING: R_FindImageFile could not find roughnessMap '%s' in shader '%s'\n", token, shader.name);
+				return qfalse;
+			}
+
+			stage->vk_pbr_flags |= PBR_HAS_ROUGHNESSMAP;
+		}
+		else if ( !Q_stricmp(token, "metallicMap") && vk.pbrActive )
+		{
+			token = COM_ParseExt(text, qfalse);
+
+			imgFlags_t flags = IMGFLAG_NONE;
+
+			if (!shader.noMipMaps)
+				flags |= IMGFLAG_MIPMAP;
+
+			if (!shader.noPicMip)
+				flags |= IMGFLAG_PICMIP;
+
+			if (shader.noTC)
+				flags |= IMGFLAG_NO_COMPRESSION;
+
+			flags |= IMGFLAG_NOLIGHTSCALE;
+			stage->metallicMap = R_FindImageFile(token, flags);
+
+			if (!stage->metallicMap)
+			{
+				ri.Printf(PRINT_WARNING, "WARNING: R_FindImageFile could not find metallicMap '%s' in shader '%s'\n", token, shader.name);
+				return qfalse;
+			}
+
+			stage->vk_pbr_flags |= PBR_HAS_METALLICMAP;
+		}
+		else if ( !Q_stricmp(token, "occlusionMap") && vk.pbrActive )
+		{
+			token = COM_ParseExt(text, qfalse);
+
+			imgFlags_t flags = IMGFLAG_NONE;
+
+			if (!shader.noMipMaps)
+				flags |= IMGFLAG_MIPMAP;
+
+			if (!shader.noPicMip)
+				flags |= IMGFLAG_PICMIP;
+
+			if (shader.noTC)
+				flags |= IMGFLAG_NO_COMPRESSION;
+
+			flags |= IMGFLAG_NOLIGHTSCALE;
+			stage->occlusionMap = R_FindImageFile(token, flags);
+
+			if (!stage->occlusionMap)
+			{
+				ri.Printf(PRINT_WARNING, "WARNING: R_FindImageFile could not find occlusionMap '%s' in shader '%s'\n", token, shader.name);
+				return qfalse;
+			}
+
+			stage->vk_pbr_flags |= PBR_HAS_OCCLUSIONMAP;
+		}
+		else if ( !Q_stricmp(token, "metallicValue")  && vk.pbrActive ) {
+			token = COM_ParseExt(text, qfalse);
+			if (token[0]) {
+				stage->metallic_value = atof(token);
+				stage->vk_pbr_flags |= PBR_HAS_METALLIC_VALUE;
+			}
+		}
+		else if ( !Q_stricmp(token, "roughnessValue")  && vk.pbrActive ) {
+			token = COM_ParseExt(text, qfalse);
+			if (token[0]) {
+				stage->roughness_value = atof(token);
+				stage->vk_pbr_flags |= PBR_HAS_ROUGHNESS_VALUE;
+			}
+		}
+#endif
 		//
 		// clampmap <name>
 		//
@@ -2898,8 +3018,29 @@ static void ScanAndLoadShaderFiles( void )
 	{
 		char filename[MAX_QPATH];
 
+#ifdef USE_VK_PBR
+		// look for a .mtr file first
+		if( vk.pbrActive ){
+			char *ext;
+			Com_sprintf( filename, sizeof( filename ), "shaders/%s", shaderFiles[i] );
+			if ( (ext = strrchr(filename, '.')) )
+			{
+				strcpy(ext, ".mtr");
+			}
+
+			if ( ri.FS_ReadFile( filename, NULL ) <= 0 )
+			{
+				Com_sprintf( filename, sizeof( filename ), "shaders/%s", shaderFiles[i] );
+			}
+		}else{
+			Com_sprintf(filename, sizeof(filename), "shaders/%s", shaderFiles[i]);
+		}
+#else
 		Com_sprintf(filename, sizeof(filename), "shaders/%s", shaderFiles[i]);
+#endif
+		
 		vk_debug("...loading '%s'\n", filename);
+		ri.Printf( PRINT_DEVELOPER, "...loading '%s'\n", filename );
 		summand = ri.FS_ReadFile(filename, (void**)&buffers[i]);
 
 		if (!buffers[i]) {
@@ -3456,6 +3597,18 @@ static int CollapseMultitexture( unsigned int st0bits, shaderStage_t *st0, shade
 
 	if( st1->glow )
 		st0->glow = true;
+
+#ifdef USE_VK_PBR
+	if( st1->vk_pbr_flags ) {
+		st0->vk_pbr_flags = st1->vk_pbr_flags;
+		st0->normalMap = st1->normalMap;
+		st0->roughnessMap = st1->roughnessMap;
+		st0->metallicMap = st1->metallicMap;
+		st0->occlusionMap = st1->occlusionMap;
+		st0->metallic_value = st1->metallic_value;
+		st0->roughness_value = st1->roughness_value;
+	}
+#endif
 
 	//
 	// move down subsequent shaders
@@ -4154,6 +4307,11 @@ shader_t *FinishShader( void )
 	shader.tessFlags = TESS_XYZ;
 	stages[0].tessFlags = TESS_RGBA0 | TESS_ST0;
 
+#if defined( USE_VK_PBR ) && defined( VK_PBR_FORCE )
+	if( vk.pbrActive )					// debug
+		shader.tessFlags |= TESS_PBR;	// force pbr for all geometry
+#endif
+
 	/*
 	for (iStage = 1; iStage < shader.numUnfoggedPasses; iStage++)
 	{
@@ -4308,6 +4466,12 @@ shader_t *FinishShader( void )
 				}
 			}
 
+#ifdef USE_VK_PBR
+			if( pStage->vk_pbr_flags )
+				pStage->tessFlags |= TESS_PBR;
+				
+			def.vk_pbr_flags = 0;
+#endif
 
 			if (pStage->ss && pStage->ss->surfaceSpriteType) {
 				def.face_culling = CT_TWO_SIDED;
@@ -4332,6 +4496,16 @@ shader_t *FinishShader( void )
 
 			// this will be a copy of the vk_pipeline[0] but with faceculling disabled
 			pStage->vk_2d_pipeline = VK_NULL_HANDLE;
+
+#ifdef USE_VK_PBR
+			if( pStage->tessFlags & TESS_PBR ) {
+				def.mirror = qfalse;
+				def.vk_pbr_flags = pStage->vk_pbr_flags;
+				def.metallic_value = pStage->metallic_value;
+				def.roughness_value = pStage->roughness_value;
+				pStage->vk_pbr_pipeline[0] = vk_find_pipeline_ext(0, &def, qfalse);
+			}
+#endif
 		}
 	}
 
@@ -4351,6 +4525,18 @@ shader_t *FinishShader( void )
 		def_mirror.fog_stage = 1;
 		pStage->vk_pipeline[1] = vk_find_pipeline_ext(0, &def, qfalse);
 		pStage->vk_mirror_pipeline[1] = vk_find_pipeline_ext(0, &def_mirror, qfalse);
+
+#ifdef USE_VK_PBR
+		if( pStage->tessFlags & TESS_PBR ) {
+			Vk_Pipeline_Def def_pbr;
+			vk_get_pipeline_def(pStage->vk_pipeline[0], &def_pbr);
+			def_pbr.fog_stage = 1;
+			def_pbr.vk_pbr_flags = pStage->vk_pbr_flags;
+			def.metallic_value = pStage->metallic_value;
+			def.roughness_value = pStage->roughness_value;
+			pStage->vk_pbr_pipeline[1] = vk_find_pipeline_ext(0, &def_pbr, qfalse);
+		}
+#endif
 
 		shader.fogCollapse = qtrue;
 		//stages[0].adjustColorsForFog = ACFF_NONE;

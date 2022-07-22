@@ -478,6 +478,59 @@ void vk_create_render_passes()
 
     VK_CHECK(qvkCreateRenderPass(device, &desc, NULL, &vk.render_pass.screenmap));
     VK_SET_OBJECT_NAME(vk.render_pass.screenmap, "render pass - screenmap", VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT);
+
+#ifdef VK_PBR_BRDFLUT
+    if( vk.pbrActive )
+    {
+        deps[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+        deps[0].dstSubpass = 0;
+        deps[0].srcStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+        deps[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        deps[0].srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+        deps[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        deps[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+        deps[1].srcSubpass = 0;
+        deps[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+        deps[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        deps[1].dstStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+        deps[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        deps[1].dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+        deps[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+        attachments[0].format = VK_FORMAT_R16G16_SFLOAT;
+        attachments[0].samples = VK_SAMPLE_COUNT_1_BIT;
+        attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        attachments[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        attachments[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        attachments[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        attachments[0].finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+        color_attachment_ref.attachment = 0;
+        color_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+        Com_Memset(&subpass, 0, sizeof(subpass));
+        subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        subpass.colorAttachmentCount = 1;
+        subpass.pColorAttachments = &color_attachment_ref;
+        subpass.pDepthStencilAttachment = VK_NULL_HANDLE;
+
+        Com_Memset(&desc, 0, sizeof(desc));
+        desc.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+        desc.pNext = NULL;
+        desc.flags = 0;
+        desc.pAttachments = attachments;
+        desc.pSubpasses = &subpass;
+        desc.subpassCount = 1;
+        desc.attachmentCount = 1;
+        desc.dependencyCount = 2;
+        desc.pDependencies = deps;
+
+        VK_CHECK(qvkCreateRenderPass(device, &desc, NULL, &vk.render_pass.brdflut));
+        VK_SET_OBJECT_NAME(vk.render_pass.brdflut, "render pass - brdf lut", VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT);
+    }
+#endif
 }
 
 void vk_create_framebuffers()
@@ -660,6 +713,20 @@ void vk_create_framebuffers()
             }
         }
 
+#ifdef VK_PBR_BRDFLUT
+        if( vk.pbrActive )
+{
+            desc.renderPass = vk.render_pass.brdflut;
+            desc.width = desc.height = 512;  
+            desc.attachmentCount = 1;
+
+            attachments[0] = vk.brdflut_image_view;
+
+            VK_CHECK( qvkCreateFramebuffer( vk.device, &desc, NULL, &vk.framebuffers.brdflut ) );
+            VK_SET_OBJECT_NAME( vk.framebuffers.brdflut, va( "framebuffer - brdf LUT" ), VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT );
+        }
+#endif
+
         vk_debug("Created vk.framebuffers with fbo on\n");
     }
 
@@ -725,6 +792,13 @@ void vk_destroy_render_passes( void )
         qvkDestroyRenderPass( vk.device, vk.render_pass.dglow.blend, NULL );
         vk.render_pass.dglow.blend = VK_NULL_HANDLE;
     }
+
+#ifdef VK_PBR_BRDFLUT
+    if ( vk.render_pass.brdflut != VK_NULL_HANDLE ) {
+        qvkDestroyRenderPass( vk.device, vk.render_pass.brdflut, NULL );
+        vk.render_pass.brdflut = VK_NULL_HANDLE;
+    }
+#endif
 }
 
 void vk_destroy_framebuffers( void )
@@ -780,6 +854,13 @@ void vk_destroy_framebuffers( void )
             vk.framebuffers.dglow.blur[i] = VK_NULL_HANDLE;
         }
     }
+
+#ifdef VK_PBR_BRDFLUT
+    if ( vk.framebuffers.brdflut != VK_NULL_HANDLE ) {
+        qvkDestroyFramebuffer( vk.device, vk.framebuffers.brdflut, NULL );
+        vk.framebuffers.brdflut = VK_NULL_HANDLE;
+    }
+#endif
 }
 
 static qboolean vk_find_screenmap_drawsurfs( void )
@@ -949,6 +1030,57 @@ void vk_begin_dglow_extract_render_pass( void )
 
     vk_begin_render_pass( vk.render_pass.dglow.extract, frameBuffer, qtrue, vk.renderWidth, vk.renderHeight );
 }
+
+#ifdef VK_PBR_BRDFLUT
+void vk_create_brfdlut( void )
+{
+    if( !vk.pbrActive )
+        return;
+
+    VkRenderPassBeginInfo   begin_info;
+    VkClearValue            clear_values[1];
+    VkCommandBuffer         command_buffer;
+    VkViewport              viewport{};
+    VkRect2D                scissor_rect{};
+    uint32_t                size;
+
+    command_buffer = vk_begin_command_buffer();
+    size = 512;
+    
+    begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    begin_info.pNext = NULL;
+    begin_info.renderPass = vk.render_pass.brdflut;
+    begin_info.framebuffer = vk.framebuffers.brdflut;
+    begin_info.renderArea.offset.x = 0;
+    begin_info.renderArea.offset.y = 0;
+    begin_info.renderArea.extent.width = size;
+    begin_info.renderArea.extent.height = size;
+
+    Com_Memset( clear_values, 0, sizeof( clear_values ) );
+    clear_values[0].color.float32[3] = 1.0f;
+
+    begin_info.clearValueCount = 1;
+    begin_info.pClearValues = clear_values;
+	
+    Com_Memset( &viewport, 0, sizeof( viewport ) );
+    viewport.width = viewport.height = (float)size;
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+
+    Com_Memset( &scissor_rect, 0, sizeof( scissor_rect ) );
+    scissor_rect.extent.width = scissor_rect.extent.height = size;
+
+    qvkCmdBeginRenderPass( command_buffer, &begin_info, VK_SUBPASS_CONTENTS_INLINE );
+    qvkCmdSetScissor( command_buffer, 0, 1, &scissor_rect );
+    qvkCmdSetViewport( command_buffer, 0, 1, &viewport ); 
+    qvkCmdBindPipeline( command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.brdflut_pipeline );
+    qvkCmdBindDescriptorSets( command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout_brdflut, 0, 1, &vk.brdflut_image_descriptor, 0, NULL );
+    qvkCmdDraw( command_buffer, 4, 1, 0, 0 );	
+    qvkCmdEndRenderPass( command_buffer );
+
+    vk_end_command_buffer( command_buffer );
+}
+#endif
 
 
 void vk_begin_frame( void )

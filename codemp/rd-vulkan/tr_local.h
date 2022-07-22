@@ -24,6 +24,12 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #ifndef TR_LOCAL_H
 #define TR_LOCAL_H
 
+#define USE_VK_PBR
+#ifdef USE_VK_PBR
+	#define VK_PBR_BRDFLUT		// for inspecting codebase, does not toggle brdflut. 
+	//#define VK_PBR_FORCE
+#endif
+
 #define USE_VBO					// store static world geometry in VBO
 #define USE_FOG_ONLY
 #define USE_FOG_COLLAPSE		// not compatible with legacy dlights
@@ -522,6 +528,16 @@ typedef struct shaderStage_s {
 	uint32_t		vk_mirror_pipeline[2];
 	uint32_t		vk_pipeline_df; // depthFragment
 	uint32_t		vk_mirror_pipeline_df;
+#ifdef USE_VK_PBR
+	uint32_t		vk_pbr_flags;
+	uint32_t		vk_pbr_pipeline[2];
+	image_t			*normalMap;
+	image_t			*roughnessMap;
+	image_t			*metallicMap;
+	image_t			*occlusionMap;
+	float			roughness_value;
+	float			metallic_value;
+#endif
 #ifdef USE_VBO
 	uint32_t		rgb_offset[NUM_TEXTURE_BUNDLES]; // within current shader
 	uint32_t		tex_offset[NUM_TEXTURE_BUNDLES]; // within current shader
@@ -627,6 +643,9 @@ typedef struct shader_s {
 	int			numVertexes;
 	int			curVertexes;
 	int			curIndexes;
+#ifdef USE_VK_PBR
+	int			qtangentOffset;
+#endif
 #endif
 
 	struct shader_s		*remappedShader;			// current shader this one is remapped too
@@ -828,10 +847,28 @@ typedef struct srfFlare_s {
 	vec3_t			color;
 } srfFlare_t;
 
+
+#ifdef USE_VK_PBR			// sqeeuzed in a vec3 for normals
+#define VERTEX_LM			8
+#define	VERTEXSIZE			( 9 + ( MAXLIGHTMAPS * 3 ) )
+#define	VERTEX_COLOR		( 8 + ( MAXLIGHTMAPS * 2 ) )
+#else
 #define VERTEX_LM			5
 #define	VERTEXSIZE			( 6 + ( MAXLIGHTMAPS * 3 ) )
 #define	VERTEX_COLOR		( 5 + ( MAXLIGHTMAPS * 2 ) )
+#endif
 #define	VERTEX_FINAL_COLOR	( 5 + ( MAXLIGHTMAPS * 3 ) )
+
+typedef struct srfVert_s {
+	vec3_t		xyz;
+	float		st[2];
+	float		lightmap[MAXLIGHTMAPS][2];
+	vec3_t		normal;
+#ifdef USE_VK_PBR
+	vec4_t		qtangent;
+#endif
+	byte		color[MAXLIGHTMAPS][4];
+} srfVert_t;
 
 typedef struct srfGridMesh_s {
 	surfaceType_t	surfaceType;
@@ -859,7 +896,7 @@ typedef struct srfGridMesh_s {
 	int				width, height;
 	float			*widthLodError;
 	float			*heightLodError;
-	drawVert_t		verts[1];				// variable sized
+	srfVert_t		verts[1];				// variable sized
 } srfGridMesh_t;
 
 typedef struct srfSurfaceFace_s {
@@ -870,6 +907,9 @@ typedef struct srfSurfaceFace_s {
 	int				vboItemIndex;
 #endif
 	float			*normals;
+#ifdef USE_VK_PBR
+	float			*qtangents;
+#endif
 
 	// triangle definitions (no normals at points)
 	int				numPoints;
@@ -897,8 +937,7 @@ typedef struct srfTriangles_s {
 	int				*indexes;
 
 	int				numVerts;
-	drawVert_t		*verts;
-//	vec3_t			*tangents;
+	srfVert_t		*verts;
 } srfTriangles_t;
 
 extern	void (*rb_surfaceTable[SF_NUM_SURFACE_TYPES])(void *);
@@ -1270,6 +1309,9 @@ typedef struct trGlobals_s {
 	image_t					*whiteImage;		// full of 0xff
 	image_t					*blackImage;			
 	image_t					*identityLightImage;// full of tr.identityLightByte
+#ifdef USE_VK_PBR
+	image_t					*emptyImage;		// full of 0xff
+#endif
 
 	shader_t				*defaultShader;
 	shader_t				*whiteShader;
@@ -1574,7 +1616,9 @@ extern cvar_t	*r_nomip;				// apply picmip only on worldspawn textures
 #ifdef USE_VBO
 extern cvar_t	*r_vbo;
 #endif
-
+#ifdef USE_VK_PBR
+extern cvar_t	*r_pbr;
+#endif
 /*
 Ghoul2 Insert Start
 */
@@ -1718,6 +1762,9 @@ struct shaderCommands_s
 	glIndex_t		indexes[SHADER_MAX_INDEXES]						QALIGN(16);
 	vec4_t			xyz[SHADER_MAX_VERTEXES*2]						QALIGN(16);
 	vec4_t			normal[SHADER_MAX_VERTEXES]						QALIGN(16);
+#ifdef USE_VK_PBR
+	vec4_t			qtangent[SHADER_MAX_VERTEXES]					QALIGN(16);
+#endif
 	vec2_t			texCoords[NUM_TEX_COORDS][SHADER_MAX_VERTEXES]	QALIGN(16);
 	vec2_t			texCoords00[SHADER_MAX_VERTEXES]				QALIGN(16);
 	color4ub_t		vertexColors[SHADER_MAX_VERTEXES]				QALIGN(16);
@@ -1846,7 +1893,7 @@ CURVE TESSELATION
 */
 #define PATCH_STITCHING
 
-srfGridMesh_t	*R_SubdividePatchToGrid( int width, int height, drawVert_t points[MAX_PATCH_SIZE * MAX_PATCH_SIZE] );
+srfGridMesh_t	*R_SubdividePatchToGrid( int width, int height, srfVert_t points[MAX_PATCH_SIZE * MAX_PATCH_SIZE] );
 srfGridMesh_t	*R_GridInsertColumn( srfGridMesh_t *grid, int column, int row, vec3_t point, float loderror );
 srfGridMesh_t	*R_GridInsertRow( srfGridMesh_t *grid, int row, int column, vec3_t point, float loderror );
 void			R_FreeSurfaceGridMesh( srfGridMesh_t *grid );
@@ -2159,6 +2206,14 @@ void RB_DrawSurfaceSprites(const shaderStage_t *stage, const ss_input *input);
 qboolean ShaderHashTableExists(void);
 
 // Vulkan
+#ifdef USE_VK_PBR
+// pbr
+void		R_CalcTangents( vec3_t tangent, vec3_t binormal,
+				const vec3_t v0, const vec3_t v1, const vec3_t v2,
+				const vec2_t t0, const vec2_t t1, const vec2_t t2 );
+void		R_TBNtoQtangents( const vec3_t tangent, const vec3_t binormal,
+		       const vec3_t normal, vec4_t qtangent );
+#endif
 
 // debug
 void		DrawTris( const shaderCommands_t *pInput );

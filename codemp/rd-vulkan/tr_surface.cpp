@@ -384,8 +384,11 @@ RB_SurfaceTriangles
 */
 void RB_SurfaceTriangles( const srfTriangles_t *srf ) {
 	int					i;
-	const drawVert_t	*dv;
+	const srfVert_t	*dv;
 	float				*xyz, *normal, *texCoords0, *texCoords1, *texCoords2, *texCoords3, *texCoords4;
+#ifdef USE_VK_PBR
+	float				*qtangent;
+#endif
 	byte				*color;
 
 #ifdef USE_VBO
@@ -426,6 +429,9 @@ void RB_SurfaceTriangles( const srfTriangles_t *srf ) {
 	dv = srf->verts;
 	xyz = tess.xyz[ tess.numVertexes ];
 	normal = tess.normal[ tess.numVertexes ];
+#ifdef USE_VK_PBR
+	qtangent = tess.qtangent[ tess.numVertexes ];
+#endif
 	texCoords0 = tess.texCoords[0][tess.numVertexes];
 	texCoords1 = tess.texCoords[1][tess.numVertexes];
 	texCoords2 = tess.texCoords[2][tess.numVertexes];
@@ -444,6 +450,16 @@ void RB_SurfaceTriangles( const srfTriangles_t *srf ) {
 		normal[1] = dv->normal[1];
 		normal[2] = dv->normal[2];
 		normal += 4;
+
+#ifdef USE_VK_PBR
+		if( vk.pbrActive ) {
+			qtangent[0] = dv->qtangent[0];
+			qtangent[1] = dv->qtangent[1];
+			qtangent[2] = dv->qtangent[2];
+			qtangent[3] = dv->qtangent[3];
+			qtangent += 4;
+		}
+#endif
 
 		texCoords0[0] = dv->st[0];
 		texCoords0[1] = dv->st[1];
@@ -1464,12 +1480,22 @@ void RB_SurfaceFace( srfSurfaceFace_t *surf ) {
 		}
 	}
 
+#ifdef USE_VK_PBR
+		if( vk.pbrActive && surf->qtangents )	
+			memcpy( &tess.qtangent[ tess.numVertexes ], surf->qtangents, numPoints * sizeof( vec4_t ) );	
+#endif
+
 	for ( i = 0, v = surf->points[0], ndx = tess.numVertexes; i < numPoints; i++, v += VERTEXSIZE, ndx++ )
 	{
 		VectorCopy( v, tess.xyz[ndx]);
+
+#ifdef USE_VK_PBR
+		tess.texCoords[0][ndx][0] = v[6];	// squeezed in in normals
+		tess.texCoords[0][ndx][1] = v[7];
+#else
 		tess.texCoords[0][ndx][0] = v[3];
 		tess.texCoords[0][ndx][1] = v[4];
-		
+#endif
 		for(k=0;k<MAXLIGHTMAPS;k++)
 		{
 			if (tess.shader->lightmapIndex[k] >= 0)
@@ -1602,9 +1628,12 @@ Just copy the grid of points and triangulate
 void RB_SurfaceGrid( srfGridMesh_t *cv ) {
 	int		i, j;
 	float	*xyz, *normal;
+#ifdef USE_VK_PBR
+	float	*qtangent;
+#endif
 	float	*texCoords0, *texCoords1, *texCoords2, *texCoords3, *texCoords4;
 	unsigned char *color;
-	drawVert_t	*dv;
+	srfVert_t	*dv;
 	int		rows, irows, vrows;
 	int		used;
 	int		widthTable[MAX_GRID_SIZE];
@@ -1719,6 +1748,9 @@ void RB_SurfaceGrid( srfGridMesh_t *cv ) {
 
 		xyz = tess.xyz[numVertexes];
 		normal = tess.normal[numVertexes];
+#ifdef USE_VK_PBR
+		qtangent = tess.qtangent[numVertexes];
+#endif
 		texCoords0 = tess.texCoords[0][numVertexes];
 		texCoords1 = tess.texCoords[1][numVertexes];
 		texCoords2 = tess.texCoords[2][numVertexes];
@@ -1762,12 +1794,20 @@ void RB_SurfaceGrid( srfGridMesh_t *cv ) {
 					texCoords4 += 2;
 				}
 
-				{
-					normal[0] = dv->normal[0];
-					normal[1] = dv->normal[1];
-					normal[2] = dv->normal[2];
-				}
+				normal[0] = dv->normal[0];
+				normal[1] = dv->normal[1];
+				normal[2] = dv->normal[2];
 				normal += 4;
+
+#ifdef USE_VK_PBR
+				if( vk.pbrActive ) {
+					qtangent[0] = dv->qtangent[0];
+					qtangent[1] = dv->qtangent[1];
+					qtangent[2] = dv->qtangent[2];
+					qtangent[3] = dv->qtangent[3];
+					qtangent += 4;
+				}
+#endif
 
 				*(unsigned *)color = ComputeFinalVertexColor((byte *)dv->color);
 				color += 4;

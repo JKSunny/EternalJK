@@ -432,6 +432,13 @@ void vk_initialize( void )
 	if ( r_fbo->integer )
 		vk.fboActive = qtrue;		
 
+#ifdef USE_VK_PBR
+	// if another pbr input attachment has been added
+	// up the maxBoundDescriptorSets here as well
+	if( vk.fboActive && r_pbr->integer && vk.maxBoundDescriptorSets >= 10 )
+		vk.pbrActive = qtrue;
+#endif
+
 	//if (r_ext_multisample->integer && !r_ext_supersample->integer)
 	if ( r_ext_multisample->integer )
 		vk.msaaActive = qtrue;
@@ -535,6 +542,9 @@ void vk_shutdown( void )
 	qvkDestroyPipelineLayout(vk.device, vk.pipeline_layout, NULL);
 	qvkDestroyPipelineLayout(vk.device, vk.pipeline_layout_post_process, NULL);
 	qvkDestroyPipelineLayout(vk.device, vk.pipeline_layout_blend, NULL);
+#ifdef USE_VK_PBR
+	qvkDestroyPipelineLayout(vk.device, vk.pipeline_layout_brdflut, NULL);
+#endif
 
 #ifdef USE_VBO	
 	vk_release_vbo();

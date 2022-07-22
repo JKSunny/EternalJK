@@ -179,6 +179,133 @@ for %%f in (%glsl%*.frag) do (
 "%cl%" -S frag -V -o "%tmpf%" %glsl%gen_frag.tmpl -DUSE_CL2 -DUSE_TX2 -DUSE_FOG
 "%bh%" "%tmpf%" %outf% frag_tx2_cl_fog
 
+
+
+
+@rem -----------------------------------------
+@rem ------------------ PBR ------------------
+
+
+@rem single-texture vertex
+
+"%cl%" -S vert -V -o "%tmpf%" %glsl%gen_vert.tmpl -DUSE_VK_PBR 
+"%bh%" "%tmpf%" %outf% vert_tx0_pbr
+
+"%cl%" -S vert -V -o "%tmpf%" %glsl%gen_vert.tmpl -DUSE_VK_PBR -DUSE_FOG
+"%bh%" "%tmpf%" %outf% vert_tx0_pbr_fog
+
+"%cl%" -S vert -V -o "%tmpf%" %glsl%gen_vert.tmpl -DUSE_VK_PBR -DUSE_ENV
+"%bh%" "%tmpf%" %outf% vert_tx0_pbr_env
+
+"%cl%" -S vert -V -o "%tmpf%" %glsl%gen_vert.tmpl -DUSE_VK_PBR -DUSE_FOG -DUSE_ENV
+"%bh%" "%tmpf%" %outf% vert_tx0_pbr_env_fog
+
+"%cl%" -S vert -V -o "%tmpf%" %glsl%gen_vert.tmpl -DUSE_VK_PBR -DUSE_CL0_IDENT
+"%bh%" "%tmpf%" %outf% vert_tx0_pbr_ident
+
+@rem double-texture vertex
+
+"%cl%" -S vert -V -o "%tmpf%" %glsl%gen_vert.tmpl -DUSE_VK_PBR -DUSE_TX1
+"%bh%" "%tmpf%" %outf% vert_tx1_pbr
+
+"%cl%" -S vert -V -o "%tmpf%" %glsl%gen_vert.tmpl -DUSE_VK_PBR -DUSE_TX1 -DUSE_FOG
+"%bh%" "%tmpf%" %outf% vert_tx1_pbr_fog
+
+"%cl%" -S vert -V -o "%tmpf%" %glsl%gen_vert.tmpl -DUSE_VK_PBR -DUSE_TX1 -DUSE_ENV
+"%bh%" "%tmpf%" %outf% vert_tx1_pbr_env
+
+"%cl%" -S vert -V -o "%tmpf%" %glsl%gen_vert.tmpl -DUSE_VK_PBR -DUSE_TX1 -DUSE_FOG -DUSE_ENV
+"%bh%" "%tmpf%" %outf% vert_tx1_pbr_env_fog
+
+@rem double-texture vertex, non-identical colors
+
+"%cl%" -S vert -V -o "%tmpf%" %glsl%gen_vert.tmpl -DUSE_VK_PBR -DUSE_CL1 -DUSE_TX1
+"%bh%" "%tmpf%" %outf% vert_tx1_cl_pbr
+
+"%cl%" -S vert -V -o "%tmpf%" %glsl%gen_vert.tmpl -DUSE_VK_PBR -DUSE_CL1 -DUSE_TX1 -DUSE_FOG
+"%bh%" "%tmpf%" %outf% vert_tx1_cl_pbr_fog
+
+"%cl%" -S vert -V -o "%tmpf%" %glsl%gen_vert.tmpl -DUSE_VK_PBR -DUSE_CL1 -DUSE_TX1 -DUSE_ENV
+"%bh%" "%tmpf%" %outf% vert_tx1_cl_pbr_env
+
+"%cl%" -S vert -V -o "%tmpf%" %glsl%gen_vert.tmpl -DUSE_VK_PBR -DUSE_CL1 -DUSE_TX1 -DUSE_ENV -DUSE_FOG
+"%bh%" "%tmpf%" %outf% vert_tx1_cl_pbr_env_fog
+
+@rem triple-texture vertex
+
+"%cl%" -S vert -V -o "%tmpf%" %glsl%gen_vert.tmpl -DUSE_VK_PBR -DUSE_TX2
+"%bh%" "%tmpf%" %outf% vert_tx2_pbr
+
+"%cl%" -S vert -V -o "%tmpf%" %glsl%gen_vert.tmpl -DUSE_VK_PBR -DUSE_TX2 -DUSE_FOG
+"%bh%" "%tmpf%" %outf% vert_tx2_pbr_fog
+
+"%cl%" -S vert -V -o "%tmpf%" %glsl%gen_vert.tmpl -DUSE_VK_PBR -DUSE_TX2 -DUSE_ENV
+"%bh%" "%tmpf%" %outf% vert_tx2_pbr_env
+
+"%cl%" -S vert -V -o "%tmpf%" %glsl%gen_vert.tmpl -DUSE_VK_PBR -DUSE_TX2 -DUSE_ENV -DUSE_FOG
+"%bh%" "%tmpf%" %outf% vert_tx2_pbr_env_fog
+
+@rem triple-texture vertex, non-identical colors
+
+"%cl%" -S vert -V -o "%tmpf%" %glsl%gen_vert.tmpl -DUSE_VK_PBR -DUSE_CL2 -DUSE_TX2
+"%bh%" "%tmpf%" %outf% vert_tx2_cl_pbr
+
+"%cl%" -S vert -V -o "%tmpf%" %glsl%gen_vert.tmpl -DUSE_VK_PBR -DUSE_CL2 -DUSE_TX2 -DUSE_FOG
+"%bh%" "%tmpf%" %outf% vert_tx2_cl_pbr_fog
+
+"%cl%" -S vert -V -o "%tmpf%" %glsl%gen_vert.tmpl -DUSE_VK_PBR -DUSE_CL2 -DUSE_TX2 -DUSE_ENV
+"%bh%" "%tmpf%" %outf% vert_tx2_cl_pbr_env
+
+"%cl%" -S vert -V -o "%tmpf%" %glsl%gen_vert.tmpl -DUSE_VK_PBR -DUSE_CL2 -DUSE_TX2 -DUSE_ENV -DUSE_FOG
+"%bh%" "%tmpf%" %outf% vert_tx2_cl_pbr_env_fog
+
+@rem single-texture fragment
+
+"%cl%" -S frag -V -o "%tmpf%" %glsl%gen_frag.tmpl -DUSE_VK_PBR -DUSE_CL0_IDENT
+"%bh%" "%tmpf%" %outf% frag_tx0_pbr_ident
+
+"%cl%" -S frag -V -o "%tmpf%" %glsl%gen_frag.tmpl -DUSE_VK_PBR -DUSE_ATEST
+"%bh%" "%tmpf%" %outf% frag_tx0_pbr
+
+"%cl%" -S frag -V -o "%tmpf%" %glsl%gen_frag.tmpl -DUSE_VK_PBR -DUSE_ATEST -DUSE_FOG
+"%bh%" "%tmpf%" %outf% frag_tx0_pbr_fog
+
+@rem double-texture fragment
+
+"%cl%" -S frag -V -o "%tmpf%" %glsl%gen_frag.tmpl -DUSE_VK_PBR -DUSE_TX1
+"%bh%" "%tmpf%" %outf% frag_tx1_pbr
+
+"%cl%" -S frag -V -o "%tmpf%" %glsl%gen_frag.tmpl -DUSE_VK_PBR -DUSE_TX1 -DUSE_FOG
+"%bh%" "%tmpf%" %outf% frag_tx1_pbr_fog
+
+@rem double-texture fragment, non-identical colors
+
+"%cl%" -S frag -V -o "%tmpf%" %glsl%gen_frag.tmpl -DUSE_VK_PBR -DUSE_CL1 -DUSE_TX1
+"%bh%" "%tmpf%" %outf% frag_tx1_cl_pbr
+
+"%cl%" -S frag -V -o "%tmpf%" %glsl%gen_frag.tmpl -DUSE_VK_PBR -DUSE_CL1 -DUSE_TX1 -DUSE_FOG
+"%bh%" "%tmpf%" %outf% frag_tx1_cl_pbr_fog
+
+@rem triple-texture fragment
+
+"%cl%" -S frag -V -o "%tmpf%" %glsl%gen_frag.tmpl -DUSE_VK_PBR -DUSE_TX2
+"%bh%" "%tmpf%" %outf% frag_tx2_pbr
+
+"%cl%" -S frag -V -o "%tmpf%" %glsl%gen_frag.tmpl -DUSE_VK_PBR -DUSE_TX2 -DUSE_FOG
+"%bh%" "%tmpf%" %outf% frag_tx2_pbr_fog
+
+@rem triple-texture fragment, non-identical colors
+
+"%cl%" -S frag -V -o "%tmpf%" %glsl%gen_frag.tmpl -DUSE_VK_PBR -DUSE_CL2 -DUSE_TX2
+"%bh%" "%tmpf%" %outf% frag_tx2_cl_pbr
+
+"%cl%" -S frag -V -o "%tmpf%" %glsl%gen_frag.tmpl -DUSE_VK_PBR -DUSE_CL2 -DUSE_TX2 -DUSE_FOG
+"%bh%" "%tmpf%" %outf% frag_tx2_cl_pbr_fog
+
+
+
+
+
 del /Q "%tmpf%"
 
 pause

@@ -211,6 +211,9 @@ cvar_t	*r_nomip;
 #ifdef USE_VBO
 cvar_t	*r_vbo;
 #endif
+#ifdef USE_VK_PBR
+cvar_t	*r_pbr;
+#endif
 
 // the limits apply to the sum of all scenes in a frame --
 // the main view, all the 3D icons, etc
@@ -949,6 +952,11 @@ void R_Register( void )
 #ifdef USE_VBO
 	r_vbo								= ri.Cvar_Get("r_vbo",								"1",						CVAR_ARCHIVE | CVAR_LATCH, "");
 #endif
+#ifdef USE_VK_PBR
+	r_pbr								= ri.Cvar_Get("r_pbr",								"0",						CVAR_ARCHIVE_ND | CVAR_LATCH, "Enables Physically Based Rendering. \nRequires " S_COLOR_CYAN "\\r_fbo 1 \n" S_COLOR_GREEN "Advised " S_COLOR_CYAN "\\r_vbo 1 " S_COLOR_GREEN "for static world geometry " S_COLOR_WHITE "*optional");
+#endif
+
+
 	r_renderWidth						= ri.Cvar_Get("r_renderWidth",						"800",						CVAR_ARCHIVE_ND | CVAR_LATCH, "");
 	r_renderHeight						= ri.Cvar_Get("r_renderHeight",						"600",						CVAR_ARCHIVE_ND | CVAR_LATCH, "");
 	r_renderScale						= ri.Cvar_Get("r_renderScale",						"0",						CVAR_ARCHIVE_ND | CVAR_LATCH, "Scaling mode to be used with custom render resolution:\n"
@@ -1088,6 +1096,11 @@ void R_Init( void ) {
 	R_InitImages();	
 
 	vk_create_pipelines();	// Vulkan
+
+#ifdef VK_PBR_BRDFLUT
+	vk_create_brfdlut();
+#endif
+
 	vk_set_fastsky_color();
 
 	R_InitShaders(qfalse);

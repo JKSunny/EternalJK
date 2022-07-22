@@ -68,6 +68,12 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 //#define USE_VANILLA_SHADOWFINISH
 #define USE_VK_STATS
 
+#ifdef USE_VK_PBR
+#define VK_LAYOUT_COUNT					11
+#else
+#define VK_LAYOUT_COUNT					7
+#endif
+
 #define NUM_COMMAND_BUFFERS				2
 #define VK_NUM_BLUR_PASSES				4
 
@@ -112,6 +118,17 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define TESS_NNN   						( 128 )
 #define TESS_VPOS  						( 256 )	// uniform with eyePos
 #define TESS_ENV   						( 512 )	// mark shader stage with environment mapping
+
+#ifdef USE_VK_PBR
+#define TESS_PBR   						( 1024 ) // PBR shader variant, qtangent vertex attribute and eyePos uniform
+
+#define PBR_HAS_NORMALMAP				( 1 )
+#define PBR_HAS_METALLICMAP				( 2 )
+#define PBR_HAS_ROUGHNESSMAP			( 4 )
+#define PBR_HAS_OCCLUSIONMAP			( 8 )
+#define PBR_HAS_ROUGHNESS_VALUE			( 16 )
+#define PBR_HAS_METALLIC_VALUE			( 32 )
+#endif
 
 // extra math
 #define DotProduct4( a , b )			((a)[0]*(b)[0] + (a)[1]*(b)[1] + (a)[2]*(b)[2] + (a)[3]*(b)[3])
@@ -400,6 +417,12 @@ typedef struct {
 	int line_width;
 	int abs_light;
 	int allow_discard;
+
+#ifdef USE_VK_PBR
+	uint32_t				vk_pbr_flags;
+	float					roughness_value;
+	float					metallic_value;
+#endif
 } Vk_Pipeline_Def;
 
 typedef struct VK_Pipeline {
@@ -497,15 +520,20 @@ typedef struct vk_tess_s {
 
 	VkDescriptorSet		uniform_descriptor;
 	uint32_t			uniform_read_offset;
+#ifdef USE_VK_PBR
+	VkDeviceSize		buf_offset[9];
+	VkDeviceSize		vbo_offset[9];
+#else
 	VkDeviceSize		buf_offset[8];
 	VkDeviceSize		vbo_offset[8];
+#endif
 
 	VkBuffer			curr_index_buffer;
 	uint32_t			curr_index_offset;
 
 	struct {
 		uint32_t		start, end;
-		VkDescriptorSet	current[7];	// 0:storage, 1:uniform, 2:color0, 3:color1, 4:color2, 5:fog
+		VkDescriptorSet	current[VK_LAYOUT_COUNT];	// 0:storage, 1:uniform, 2:color0, 3:color1, 4:color2, 5:fog, 6:brdf lut, 7:normal, 8:roughness, 9:metallic, 10: ambient occlusion
 		uint32_t		offset[2];	// 0 (uniform) and 5 (storage)
 	} descriptor_set;
 	
@@ -573,6 +601,12 @@ typedef struct {
 	VkImage			dglow_msaa_image;
 	VkImageView		dglow_msaa_image_view;
 
+#ifdef VK_PBR_BRDFLUT
+	VkImage			brdflut_image;
+	VkImageView		brdflut_image_view;
+	VkDescriptorSet brdflut_image_descriptor;
+#endif
+
 	// screenmap
 	struct {
 		VkImage			depth_image;
@@ -595,6 +629,9 @@ typedef struct {
 		VkRenderPass gamma;
 		VkRenderPass screenmap;
 		VkRenderPass capture;
+#ifdef VK_PBR_BRDFLUT
+		VkRenderPass brdflut;
+#endif
 
 		struct {
 			VkRenderPass blur[VK_NUM_BLUR_PASSES * 2];
@@ -620,6 +657,9 @@ typedef struct {
 		VkFramebuffer gamma[MAX_SWAPCHAIN_IMAGES];
 		VkFramebuffer screenmap;
 		VkFramebuffer capture;
+#ifdef VK_PBR_BRDFLUT
+		VkFramebuffer brdflut;
+#endif
 
 		struct {
 			VkFramebuffer blur[VK_NUM_BLUR_PASSES * 2];
@@ -660,6 +700,9 @@ typedef struct {
 	VkPipelineLayout pipeline_layout_storage;
 	VkPipelineLayout pipeline_layout_post_process;	// post-processing
 	VkPipelineLayout pipeline_layout_blend;			// post-processing
+#ifdef VK_PBR_BRDFLUT
+	VkPipelineLayout pipeline_layout_brdflut;
+#endif
 
 	VkPipeline gamma_pipeline;
 	VkPipeline bloom_extract_pipeline;
@@ -668,6 +711,9 @@ typedef struct {
 	VkPipeline capture_pipeline;
 	VkPipeline dglow_blur_pipeline[VK_NUM_BLUR_PASSES * 2]; // horizontal & vertical pairs
 	VkPipeline dglow_blend_pipeline;
+#ifdef VK_PBR_BRDFLUT
+	VkPipeline brdflut_pipeline;
+#endif
 
 	// Standard pipeline(s)
 	struct  {
@@ -728,7 +774,11 @@ typedef struct {
 	// shader modules.
 	struct {
 		struct {
+#ifdef USE_VK_PBR
+			VkShaderModule gen[2][3][2][2][2]; // pbr[0,1], tx[0,1,2], cl[0,1] env0[0,1] fog[0,1]
+#else
 			VkShaderModule gen[3][2][2][2]; // tx[0,1,2], cl[0,1] env0[0,1] fog[0,1]
+#endif
 			VkShaderModule light[2]; // fog[0,1]
 			VkShaderModule gen0_ident;
 		}	vert;
@@ -736,7 +786,11 @@ typedef struct {
 		struct {
 			VkShaderModule gen0_ident;
 			VkShaderModule gen0_df;
+#ifdef USE_VK_PBR
+			VkShaderModule gen[2][3][2][2]; // pbr[0,1], tx[0,1,2] cl[0,1] fog[0,1]
+#else
 			VkShaderModule gen[3][2][2]; // tx[0,1,2] cl[0,1] fog[0,1]
+#endif
 			VkShaderModule light[2][2]; // linear[0,1] fog[0,1]
 		}	frag;
 
@@ -755,6 +809,9 @@ typedef struct {
 		VkShaderModule bloom_fs;
 		VkShaderModule blur_fs;
 		VkShaderModule blend_fs;
+#ifdef VK_PBR_BRDFLUT
+		VkShaderModule brdflut_fs;
+#endif
 	} shaders;
 
 	uint32_t frame_count;
@@ -767,6 +824,9 @@ typedef struct {
 	qboolean fastSky;		// requires VK_IMAGE_USAGE_TRANSFER_DST_BIT
 	qboolean fboActive;
 	qboolean blitEnabled;
+#ifdef USE_VK_PBR
+	qboolean pbrActive;
+#endif
 
 	float maxAnisotropy;
 	float maxLod;
@@ -844,6 +904,9 @@ void		vk_create_descriptor_layout( void );
 void		vk_create_pipeline_layout( void );
 void		vk_destroy_pipelines( qboolean reset );
 void		vk_update_post_process_pipelines( void );
+#ifdef VK_PBR_BRDFLUT
+void		vk_create_brdflut_pipeline( void );
+#endif
 
 // swapchain
 void		vk_restart_swapchain( const char *funcname );
@@ -956,6 +1019,10 @@ qboolean	vk_bloom( void );
 void		vk_begin_dglow_extract_render_pass( void );
 void		vk_begin_dglow_blur_render_pass( uint32_t index );
 qboolean	vk_begin_dglow_blur( void );
+
+#ifdef VK_PBR_BRDFLUT
+void		vk_create_brfdlut( void );
+#endif
 
 // info
 const char	*vk_format_string( VkFormat format );

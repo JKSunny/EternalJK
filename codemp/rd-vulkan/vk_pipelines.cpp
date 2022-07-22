@@ -23,8 +23,13 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include "tr_local.h"
 
+#ifdef USE_VK_PBR
+static VkVertexInputBindingDescription bindings[9];
+static VkVertexInputAttributeDescription attribs[9];
+#else
 static VkVertexInputBindingDescription bindings[8];
 static VkVertexInputAttributeDescription attribs[8];
+#endif
 static uint32_t num_binds;
 static uint32_t num_attrs;
 
@@ -59,8 +64,11 @@ void vk_create_descriptor_layout( void )
         uint32_t i, maxSets;
 
         pool_size[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+#ifdef USE_VK_PBR
+        pool_size[0].descriptorCount = MAX_DRAWIMAGES + 1 + 1 + 1 + ( VK_NUM_BLUR_PASSES * 4 ) + 1 + 4; // + 4: roughness, metallic, brdf-lut, ambient-occlusion
+#else
         pool_size[0].descriptorCount = MAX_DRAWIMAGES + 1 + 1 + 1 + ( VK_NUM_BLUR_PASSES * 4 ) + 1;
-
+#endif
         pool_size[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         pool_size[1].descriptorCount = NUM_COMMAND_BUFFERS;
 
@@ -92,7 +100,7 @@ void vk_create_descriptor_layout( void )
 void vk_create_pipeline_layout( void )
 {
     // Pipeline layouts
-    VkDescriptorSetLayout set_layouts[7];
+    VkDescriptorSetLayout set_layouts[VK_LAYOUT_COUNT];
     VkPipelineLayoutCreateInfo desc;
     VkPushConstantRange push_range;
     
@@ -107,12 +115,17 @@ void vk_create_pipeline_layout( void )
     set_layouts[3] = vk.set_layout_sampler; // lightmap / fog-only
     set_layouts[4] = vk.set_layout_sampler; // blend
     set_layouts[5] = vk.set_layout_sampler; // collapsed fog texture
-    set_layouts[6] = vk.set_layout_sampler; // normalMap
-
+    set_layouts[6] = vk.set_layout_sampler; // empty or brdfLUT
+#ifdef USE_VK_PBR
+    set_layouts[7] = vk.set_layout_sampler; // normalMap
+    set_layouts[8] = vk.set_layout_sampler; // roughnessMap
+    set_layouts[9] = vk.set_layout_sampler; // metallicMap
+    set_layouts[10] = vk.set_layout_sampler;// occlusionMap
+#endif
     desc.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     desc.pNext = NULL;
     desc.flags = 0;
-    desc.setLayoutCount = (vk.maxBoundDescriptorSets >= 6) ? 7 : 4;
+    desc.setLayoutCount = (vk.maxBoundDescriptorSets >= VK_LAYOUT_COUNT) ? VK_LAYOUT_COUNT : 4;
     desc.pSetLayouts = set_layouts;
     desc.pushConstantRangeCount = 1;
     desc.pPushConstantRanges = &push_range;
@@ -151,6 +164,16 @@ void vk_create_pipeline_layout( void )
 
     VK_SET_OBJECT_NAME(vk.pipeline_layout_post_process, "pipeline layout - post-processing", VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT);
     VK_SET_OBJECT_NAME(vk.pipeline_layout_blend, "pipeline layout - blend", VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT);
+
+#ifdef VK_PBR_BRDFLUT
+    if( vk.pbrActive ) {
+        desc.setLayoutCount = 1;
+
+        VK_CHECK(qvkCreatePipelineLayout(vk.device, &desc, NULL, &vk.pipeline_layout_brdflut));
+        VK_SET_OBJECT_NAME(vk.pipeline_layout_brdflut, "pipeline layout - brdflut", VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT);
+    }
+#endif
+
 }
 
 static void vk_push_bind( uint32_t binding, uint32_t stride )
@@ -493,13 +516,157 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
         int32_t tex_mode;
         int32_t discard_mode;
         float   identity_color;
+#ifdef USE_VK_PBR
+        float   metallic_value;
+        float   roughness_value;
+        int32_t normal_texture_set;
+        int32_t metallic_texture_set;
+        int32_t roughness_texture_set;
+        int32_t occlusion_texture_set;
+#endif
     } frag_spec_data; 
+
+#ifdef USE_VK_PBR
+    uint32_t use_pbr;
+    VkSpecializationMapEntry spec_entries[16];
+#else
     VkSpecializationMapEntry spec_entries[10];
+#endif
     VkSpecializationInfo frag_spec_info;
     VkBool32 alphaToCoverage = VK_FALSE;
     unsigned int atest_bits;
     unsigned int state_bits = def->state_bits;
 
+#ifdef USE_VK_PBR
+    use_pbr = def->vk_pbr_flags ? 1 : 0;
+
+    switch ( def->shader_type ) {
+        case TYPE_SINGLE_TEXTURE_LIGHTING:
+            vs_module = &vk.shaders.vert.light[0];
+            fs_module = &vk.shaders.frag.light[0][0];
+            break;
+
+        case TYPE_SINGLE_TEXTURE_LIGHTING_LINEAR:
+            vs_module = &vk.shaders.vert.light[0];
+            fs_module = &vk.shaders.frag.light[1][0];
+            break;
+
+        case TYPE_SINGLE_TEXTURE_DF:
+            state_bits |= GLS_DEPTHMASK_TRUE;
+            // need pbr shader too?
+            vs_module = &vk.shaders.vert.gen[0][0][0][0][0];
+            fs_module = &vk.shaders.frag.gen0_df;
+            break;
+
+        case TYPE_SINGLE_TEXTURE_IDENTITY:
+            vs_module = &vk.shaders.vert.gen0_ident;
+            fs_module = &vk.shaders.frag.gen0_ident;
+            break;
+
+        case TYPE_SINGLE_TEXTURE:
+            vs_module = &vk.shaders.vert.gen[use_pbr][0][0][0][0];
+            fs_module = &vk.shaders.frag.gen[use_pbr][0][0][0];
+            break;
+
+        case TYPE_SINGLE_TEXTURE_ENV:
+            vs_module = &vk.shaders.vert.gen[use_pbr][0][0][1][0];
+            fs_module = &vk.shaders.frag.gen[use_pbr][0][0][0];
+            break;
+
+        case TYPE_MULTI_TEXTURE_MUL2:
+        case TYPE_MULTI_TEXTURE_ADD2_IDENTITY:
+        case TYPE_MULTI_TEXTURE_ADD2:
+            vs_module = &vk.shaders.vert.gen[use_pbr][1][0][0][0];
+            fs_module = &vk.shaders.frag.gen[use_pbr][1][0][0];
+            break;
+
+        case TYPE_MULTI_TEXTURE_MUL2_ENV:
+        case TYPE_MULTI_TEXTURE_ADD2_IDENTITY_ENV:
+        case TYPE_MULTI_TEXTURE_ADD2_ENV:
+            vs_module = &vk.shaders.vert.gen[use_pbr][1][0][1][0];
+            fs_module = &vk.shaders.frag.gen[use_pbr][1][0][0];
+            break;
+
+        case TYPE_MULTI_TEXTURE_MUL3:
+        case TYPE_MULTI_TEXTURE_ADD3_IDENTITY:
+        case TYPE_MULTI_TEXTURE_ADD3:
+            vs_module = &vk.shaders.vert.gen[use_pbr][2][0][0][0];
+            fs_module = &vk.shaders.frag.gen[use_pbr][2][0][0];
+            break;
+
+        case TYPE_MULTI_TEXTURE_MUL3_ENV:
+        case TYPE_MULTI_TEXTURE_ADD3_IDENTITY_ENV:
+        case TYPE_MULTI_TEXTURE_ADD3_ENV:
+            vs_module = &vk.shaders.vert.gen[use_pbr][2][0][1][0];
+            fs_module = &vk.shaders.frag.gen[use_pbr][2][0][0];
+            break;
+
+        case TYPE_BLEND2_ADD:
+        case TYPE_BLEND2_MUL:
+        case TYPE_BLEND2_ALPHA:
+        case TYPE_BLEND2_ONE_MINUS_ALPHA:
+        case TYPE_BLEND2_MIX_ALPHA:
+        case TYPE_BLEND2_MIX_ONE_MINUS_ALPHA:
+        case TYPE_BLEND2_DST_COLOR_SRC_ALPHA:
+            vs_module = &vk.shaders.vert.gen[use_pbr][1][1][0][0];
+            fs_module = &vk.shaders.frag.gen[use_pbr][1][1][0];
+            break;
+
+        case TYPE_BLEND2_ADD_ENV:
+        case TYPE_BLEND2_MUL_ENV:
+        case TYPE_BLEND2_ALPHA_ENV:
+        case TYPE_BLEND2_ONE_MINUS_ALPHA_ENV:
+        case TYPE_BLEND2_MIX_ALPHA_ENV:
+        case TYPE_BLEND2_MIX_ONE_MINUS_ALPHA_ENV:
+        case TYPE_BLEND2_DST_COLOR_SRC_ALPHA_ENV:
+            vs_module = &vk.shaders.vert.gen[use_pbr][1][1][1][0];
+            fs_module = &vk.shaders.frag.gen[use_pbr][1][1][0];
+            break;
+
+        case TYPE_BLEND3_ADD:
+        case TYPE_BLEND3_MUL:
+        case TYPE_BLEND3_ALPHA:
+        case TYPE_BLEND3_ONE_MINUS_ALPHA:
+        case TYPE_BLEND3_MIX_ALPHA:
+        case TYPE_BLEND3_MIX_ONE_MINUS_ALPHA:
+        case TYPE_BLEND3_DST_COLOR_SRC_ALPHA:
+            vs_module = &vk.shaders.vert.gen[use_pbr][2][1][0][0];
+            fs_module = &vk.shaders.frag.gen[use_pbr][2][1][0];
+            break;
+
+        case TYPE_BLEND3_ADD_ENV:
+        case TYPE_BLEND3_MUL_ENV:
+        case TYPE_BLEND3_ALPHA_ENV:
+        case TYPE_BLEND3_ONE_MINUS_ALPHA_ENV:
+        case TYPE_BLEND3_MIX_ALPHA_ENV:
+        case TYPE_BLEND3_MIX_ONE_MINUS_ALPHA_ENV:
+        case TYPE_BLEND3_DST_COLOR_SRC_ALPHA_ENV:
+            vs_module = &vk.shaders.vert.gen[use_pbr][2][1][1][0];
+            fs_module = &vk.shaders.frag.gen[use_pbr][2][1][0];
+            break;
+
+        case TYPE_COLOR_WHITE:
+        case TYPE_COLOR_GREEN:
+        case TYPE_COLOR_RED:
+            vs_module = &vk.shaders.color_vs;
+            fs_module = &vk.shaders.color_fs;
+            break;
+
+        case TYPE_FOG_ONLY:
+            vs_module = &vk.shaders.fog_vs;
+            fs_module = &vk.shaders.fog_fs;
+            break;
+
+        case TYPE_DOT:
+            vs_module = &vk.shaders.dot_vs;
+            fs_module = &vk.shaders.dot_fs;
+            break;
+
+        default:
+            ri.Error(ERR_DROP, "create_pipeline: unknown shader type %i\n", def->shader_type);
+            return 0;
+    }
+#else
     switch ( def->shader_type ) {
         case TYPE_SINGLE_TEXTURE_LIGHTING:
             vs_module = &vk.shaders.vert.light[0];
@@ -625,7 +792,7 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
             ri.Error(ERR_DROP, "create_pipeline: unknown shader type %i\n", def->shader_type);
             return 0;
     }
-
+#endif
     if ( def->fog_stage ) {
         switch ( def->shader_type ) {
             case TYPE_FOG_ONLY:
@@ -828,6 +995,58 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
     spec_entries[9].size = sizeof(frag_spec_data.identity_color);
 
     frag_spec_info.mapEntryCount = 9;
+#ifdef USE_VK_PBR
+    {
+        frag_spec_info.mapEntryCount += 6;
+
+        spec_entries[10].constantID = 9;
+        spec_entries[10].offset = offsetof(struct FragSpecData, metallic_value);
+        spec_entries[10].size = sizeof(frag_spec_data.metallic_value);
+
+        spec_entries[11].constantID = 10;
+        spec_entries[11].offset = offsetof(struct FragSpecData, roughness_value);
+        spec_entries[11].size = sizeof(frag_spec_data.roughness_value);
+
+        spec_entries[12].constantID = 11;
+        spec_entries[12].offset = offsetof(struct FragSpecData, normal_texture_set);
+        spec_entries[12].size = sizeof(frag_spec_data.normal_texture_set);
+    
+        spec_entries[13].constantID = 12;
+        spec_entries[13].offset = offsetof(struct FragSpecData, metallic_texture_set);
+        spec_entries[13].size = sizeof(frag_spec_data.metallic_texture_set);
+
+        spec_entries[14].constantID = 13;
+        spec_entries[14].offset = offsetof(struct FragSpecData, roughness_texture_set);
+        spec_entries[14].size = sizeof(frag_spec_data.roughness_texture_set);
+   
+        spec_entries[15].constantID = 15;
+        spec_entries[15].offset = offsetof(struct FragSpecData, occlusion_texture_set);
+        spec_entries[15].size = sizeof(frag_spec_data.occlusion_texture_set);
+
+        // set pbr info
+        frag_spec_data.roughness_value = 1.0;
+        frag_spec_data.metallic_value = 1.0;
+
+        if( def->vk_pbr_flags & PBR_HAS_METALLIC_VALUE )
+            frag_spec_data.metallic_value = def->metallic_value;
+
+        if( def->vk_pbr_flags & PBR_HAS_ROUGHNESS_VALUE )
+            frag_spec_data.roughness_value = def->roughness_value;
+
+        // no pbr texture set
+	    if( ( def->vk_pbr_flags & PBR_HAS_NORMALMAP ) == 0 )
+            frag_spec_data.normal_texture_set = -1;
+
+        if( ( def->vk_pbr_flags & PBR_HAS_METALLICMAP ) == 0 )
+	        frag_spec_data.metallic_texture_set = -1;
+
+        if( ( def->vk_pbr_flags & PBR_HAS_ROUGHNESSMAP ) == 0 )
+            frag_spec_data.roughness_texture_set = -1;   
+
+        if( ( def->vk_pbr_flags & PBR_HAS_OCCLUSIONMAP ) == 0 )
+            frag_spec_data.occlusion_texture_set = -1;  
+    }
+#endif
     frag_spec_info.pMapEntries = spec_entries + 1;
     frag_spec_info.dataSize = sizeof( frag_spec_data );
     frag_spec_info.pData = &frag_spec_data;
@@ -835,6 +1054,13 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
 
     // vertex input state (binding and attributes)
     vk_push_vertex_input_binding_attribute( def );
+
+ #ifdef USE_VK_PBR  // qtangent
+    if( def->vk_pbr_flags ){    
+        vk_push_bind(8, sizeof(vec4_t));
+        vk_push_attr(8, 8, VK_FORMAT_R32G32B32A32_SFLOAT);
+    }
+#endif
 
     vertex_input_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     vertex_input_state.pNext = NULL;
@@ -1134,6 +1360,17 @@ static void vk_create_post_process_pipeline( int program_index, uint32_t width, 
             pipeline_name = "bloom blend pipeline";
             blend = qtrue;
             break;
+#ifdef VK_PBR_BRDFLUT
+        case 5: // generate brdf LUT
+            pipeline = &vk.brdflut_pipeline;
+            fs_module = vk.shaders.brdflut_fs;
+            renderpass = vk.render_pass.brdflut;
+            layout = vk.pipeline_layout_brdflut;
+            samples = VK_SAMPLE_COUNT_1_BIT;
+            pipeline_name = "brdf LUT pipeline";
+            blend = qfalse;
+            break;
+#endif
         default: // gamma correction
             pipeline = &vk.gamma_pipeline;
             fs_module = vk.shaders.gamma_fs;
@@ -1883,7 +2120,22 @@ void vk_create_pipelines( void )
 
     vk_create_bloom_pipelines();
     vk_create_dglow_pipelines();
+#ifdef VK_PBR_BRDFLUT
+    vk_create_brdflut_pipeline();
+#endif
 }
+
+#ifdef VK_PBR_BRDFLUT
+void vk_create_brdflut_pipeline( void )
+{
+    if( !vk.pbrActive )
+        return;
+
+    uint32_t size = 512;
+
+    vk_create_post_process_pipeline( 5, size, size );
+}
+#endif
 
 void vk_create_bloom_pipelines( void )
 {
@@ -1997,4 +2249,11 @@ void vk_destroy_pipelines( qboolean reset )
         qvkDestroyPipeline( vk.device, vk.dglow_blend_pipeline, NULL );
         vk.dglow_blend_pipeline = VK_NULL_HANDLE;
     }
+
+#ifdef VK_PBR_BRDFLUT
+    if( vk.brdflut_pipeline != VK_NULL_HANDLE ) {
+        qvkDestroyPipeline( vk.device, vk.brdflut_pipeline, NULL );
+        vk.brdflut_pipeline = VK_NULL_HANDLE;
+    }
+#endif
 }
