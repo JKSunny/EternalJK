@@ -42,6 +42,10 @@ void JKG_ConstructInventoryList() {
 			{
 				continue;
 			}
+			else if (ui_inventoryFilter.integer == JKGIFILTER_AMMO && pThisItem->id->itemType != ITEM_AMMO)
+			{
+				continue;
+			}
 			else if (ui_inventoryFilter.integer == JKGIFILTER_MISC) {
 				continue; // FIXME
 			}
@@ -522,6 +526,16 @@ static void JKG_ConstructWeaponDescription(itemInstance_t* pItem, std::vector<st
 	}
 }
 
+//create an ammo item's description
+static void JKG_ConstructAmmoDescription(itemInstance_t* pItem, std::vector<std::string>& vDescLines) {
+	vDescLines.push_back(UI_GetStringEdString2("@JKG_INVENTORY_ITYPE_AMMO"));
+	JKG_ConstructItemTierDescription(pItem->id->itemTier, vDescLines);
+	if (pItem->id->weight > 0.0f)
+	{
+		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_WEIGHT"), pItem->id->weight));
+	}
+}
+
 // Create a tool item's description
 static void JKG_ConstructToolDescription(itemInstance_t* pItem, std::vector<std::string>& vDescLines) {
 	vDescLines.push_back(UI_GetStringEdString2("@JKG_INVENTORY_ITYPE_TOOL"));
@@ -610,6 +624,9 @@ void JKG_ConstructItemDescription(itemInstance_t* pItem, std::vector<std::string
 			break;
 		case ITEM_WEAPON:
 			JKG_ConstructWeaponDescription(pItem, vDescLines);
+			break;
+		case ITEM_AMMO:
+			JKG_ConstructAmmoDescription(pItem, vDescLines);
 			break;
 		case ITEM_TOOL:
 			JKG_ConstructToolDescription(pItem, vDescLines);

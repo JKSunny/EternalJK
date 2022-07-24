@@ -864,15 +864,16 @@ Prints a list of all the ammo that you have
 ==================
 */
 static void Cmd_MyAmmo_f(gentity_t* ent) {
-	trap->SendServerCommand(ent - g_entities, "print \"=============================================\n\"");
+	trap->SendServerCommand(ent - g_entities, "print \"Ammo Name                       |Type                            |Cur/Total\n\"");
+	trap->SendServerCommand(ent - g_entities, "print \"================================|================================|==========\n\"");
 	for (int i = 0; i < numAmmoLoaded; i++) {
 		if (!ent->client->ammoTable[i]) {
 			continue;
 		}
 		ammo_t* ammo = &ammoTable[i];
-		trap->SendServerCommand(ent - g_entities, va("print \"%s: %i/%i\n\"", ammo->name, ent->client->ammoTable[i], ammo->ammoMax));
+		trap->SendServerCommand(ent - g_entities, va("print \"%-31s | %-30s | %-4i/%-4i\n\"", ammo->shortname, ammo->substitute, ent->client->ammoTable[i], ammo->ammoMax));	
 	}
-	trap->SendServerCommand(ent - g_entities, "print \"=============================================\n\"");
+	trap->SendServerCommand(ent - g_entities, "print \"\n\"");
 }
 
 
@@ -2310,7 +2311,41 @@ void Cmd_ShowInv_f(gentity_t *ent)
 	Q_strcat (buffer, sizeof (buffer), va( "Total weight: %.2f\n", weight));
 	Q_strcat (buffer, sizeof (buffer), va( "Total items: %i", ent->inventory->size()));
 	trap->SendServerCommand (ent->s.number, va ("print \"%s\n\"", buffer)); 
+}
 
+void Cmd_ShowBuyBack_f(gentity_t* ent)
+{
+	if (!ent->client)
+		return;
+
+	if (jkg_buybackTime.integer < 1)
+	{
+		trap->SendServerCommand(ent - g_entities, "print \"Buyback is not enabled, server must set jkg_buybackTime to > 0\n\"");
+		return;
+	}
+
+	if (ent->inventory->size() < 1 || ent->bb_inventory->size() < 1)
+	{
+		trap->SendServerCommand(ent - g_entities, "print \"Buyback Items                      \n----------------------------------------------------------\n\""); //empty
+		return;
+	}
+
+	char buffer[MAX_STRING_CHARS] = { 0 };
+	Q_strncpyz(buffer, "Buyback Items                      \n", sizeof(buffer));
+	Q_strcat(buffer, sizeof(buffer), "----------------------------------------------------------\n");
+	trap->SendServerCommand(ent->s.number, va("print \"%s\"", buffer)); //print out
+	memset(buffer, '\0', sizeof(buffer));
+
+	// loopthrough bb_inventory and display list
+	for (auto it = ent->bb_inventory->begin(); it != ent->bb_inventory->end(); ++it)
+	{
+		if (it->first)
+		{
+			Q_strcat(buffer, sizeof(buffer), va(S_COLOR_WHITE "%-45s", it->first->displayName));
+			Q_strcat(buffer, sizeof(buffer), va("\n"));
+		}
+	}
+	trap->SendServerCommand(ent->s.number, va("print \"%s\n\"", buffer));
 }
 
 /*
@@ -5098,6 +5133,7 @@ static const command_t commands[] = {
 	{ "crystal1",				Cmd_Crystal1_f,				CMD_NEEDCHEATS | CMD_NOINTERMISSION | CMD_NOSPECTATOR | CMD_ONLYALIVE },
 	{ "crystal2",				Cmd_Crystal2_f,				CMD_NEEDCHEATS | CMD_NOINTERMISSION | CMD_NOSPECTATOR | CMD_ONLYALIVE },
 	{ "debuginventory",			Cmd_ShowInv_f,				CMD_NOINTERMISSION | CMD_NOSPECTATOR },
+	{ "debugbbi",				Cmd_ShowBuyBack_f,			CMD_NOINTERMISSION | CMD_NOSPECTATOR },
 	{ "dismember",				Cmd_Dismember_f,			CMD_NEEDCHEATS | CMD_NOINTERMISSION | CMD_NOSPECTATOR | CMD_ONLYALIVE },
 	{ "dumpweaponlist_sv",		Cmd_DumpWeaponList_f,		0 },
 	{ "equip",					Cmd_EquipItem_f,			CMD_NOINTERMISSION | CMD_NOSPECTATOR | CMD_ONLYALIVE },

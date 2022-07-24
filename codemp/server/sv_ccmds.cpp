@@ -270,7 +270,7 @@ static void SV_MapRestart_f( void ) {
 		SV_SetConfigstring( CS_WARMUP, va("%i", sv.restartTime) );
 		return;
 	}
-
+	
 	// check for changes in variables that can't just be restarted
 	// check for maxclients change
 	if ( sv_maxclients->modified || sv_gametype->modified ) {
@@ -288,6 +288,7 @@ static void SV_MapRestart_f( void ) {
 
 
 	//todo: clear out any armor so it doesn't stick around like skins do
+	//eForceReload_MODELS;
 
 	// toggle the server bit so clients can detect that a
 	// map_restart has happened

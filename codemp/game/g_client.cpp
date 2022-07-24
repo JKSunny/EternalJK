@@ -2076,6 +2076,7 @@ char *ClientConnect( int clientNum, qboolean firstTime, qboolean isBot ) {
 		client->sess.sessionTeam != TEAM_SPECTATOR ) {
 		BroadcastTeamChange( client, -1 );
 	}
+	
 
 	// count current clients and rank for scoreboard
 	CalculateRanks();
@@ -2249,7 +2250,6 @@ void ClientBegin( int clientNum, qboolean allowTeamReset ) {
 	//init saber ent
 	WP_SaberInitBladeData( ent );
 
-	// First time model setup for that player.
 	trap->GetUserinfo( clientNum, userinfo, sizeof(userinfo) );
 	modelname = Info_ValueForKey (userinfo, "model");
 	SetupGameGhoul2Model(ent, modelname, NULL);

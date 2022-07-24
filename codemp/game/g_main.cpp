@@ -45,7 +45,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "jkg_treasureclass.h"
 
 #include <assert.h>
-
+extern void JKG_UnequipItem(gentity_t* ent, int iNum);
 int Q_vsnprintf( char *dest, size_t size, const char *fmt, va_list argptr );
 
 level_locals_t	level;
@@ -1540,7 +1540,6 @@ void BeginIntermission( void ) {
 
 	// send the current scoring to all clients
 	SendScoreboardMessageToAllClients();
-
 }
 
 qboolean DuelLimitHit(void)
