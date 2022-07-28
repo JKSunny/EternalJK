@@ -185,7 +185,7 @@ void BG_GetAllAmmoSubstitutions(int ammoIndex, std::vector<ammo_t*>& outSubs) {
 	ammo_t* find = &ammoTable[ammoIndex];
 	for (int i = 0; i < numAmmoLoaded; i++) {
 		ammo_t* thisAmmo = &ammoTable[i];
-		if (thisAmmo->pSub == find) {
+		if (thisAmmo->pSub == find || thisAmmo == find) {
 			outSubs.push_back(thisAmmo);
 		}
 	}
