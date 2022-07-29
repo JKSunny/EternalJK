@@ -1433,7 +1433,7 @@ local function Help(ply, argc, argv)
 		SystemReply(ply, "See console for cmdlist.")
 		ply:SendPrint("Commands:")
 		printstring = "^3login ^7- allows user to sign into an account.\n^3logout ^7- signs out of the current account.\n^3changepassword ^7- change current account password.\n^3register ^7- register for a new client account.\n"
-		printstring = printstring .. "^3admkick ^7- kick a user off the server.\n^3admchangeddetails ^7- edit account details.\n^3admprofile ^7- check what account you're logged in with.\n^3admnewaccount ^7- create a new account as an admin.\n"
+		printstring = printstring .. "^3admkick ^7- kick a user off the server.\n^3admchangedetails ^7- edit account details.\n^3admprofile ^7- check what account you're logged in with.\n^3admnewaccount ^7- create a new account as an admin.\n"
 		printstring = printstring .. "^3admdeleteaccount ^7- delete an account as an admin.\n^3admlist ^7- query for info about accounts.\n^3admrank ^7- query for permission held by a rank\n^3admalter ^7- alter an accounts rank or password.\n"
 		printstring = printstring .. "^3admstatus ^7- list logged in users and status.\n^3admsay ^7- imitates the /say cmd for admins.\n^3admtell ^7- imitates the /tell cmd for admins.\n^3admspeak ^7- imitates the /sayglobal cmd for admins."
 		ply:SendPrint(printstring) 	 --getting too long, gotta break it up
