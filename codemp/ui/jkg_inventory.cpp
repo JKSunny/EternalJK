@@ -318,10 +318,10 @@ static void JKG_ConstructArmorDescription(itemInstance_t* pItem, std::vector<std
 
 		damageReduction *= 100.0f;
 		if (pArmorData->armor < 0) {
-			vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ARM_NEG_DEFENSE"), pArmorData->armor, damageReduction, JKG_GetArmorSlotString(pArmorData)));
+			vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ARM_NEG_DEFENSE"), pArmorData->armor, damageReduction * -1));
 		}
 		else {
-			vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ARM_DEFENSE"), pArmorData->armor, damageReduction, JKG_GetArmorSlotString(pArmorData)));
+			vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ARM_DEFENSE"), pArmorData->armor, damageReduction));
 		}
 	}
 	if (pArmorData->movemodifier >= 0.005 || pArmorData->movemodifier <= -0.005) {

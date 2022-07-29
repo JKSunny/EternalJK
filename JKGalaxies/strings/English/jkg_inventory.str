@@ -239,10 +239,10 @@ REFERENCE		SLOT_IMPLANT
 LANG_ENGLISH		"Implant"
 
 REFERENCE 		ARM_DEFENSE
-LANG_ENGLISH		"Armor: %i (%.2f reduced %s damage taken)"
+LANG_ENGLISH		"Armor: %i (damage reduced by %.1f%%)"
 
 REFERENCE		ARM_NEG_DEFENSE
-LANG_ENGLISH		"Armor: %i (%.2f increased %s damage taken)"
+LANG_ENGLISH		"Armor: %i (damage increased by %.1f%%)"
 
 REFERENCE		ARM_MOVESPEED
 LANG_ENGLISH		"Movement Speed: -%.1f%%"
