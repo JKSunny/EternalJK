@@ -264,8 +264,6 @@ void JKG_EquipItem(gentity_t *ent, int iNum)
 		int previousArmor = ent->client->ps.armor[pArm->slot] - 1;
 		ent->client->ps.armor[pArm->slot] = pArm - armorTable + 1;
 
-		
-
 		if (previousArmor >= 0)
 		{
 			// We just equipped a new piece of armor over top of our old one.
