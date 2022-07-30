@@ -4885,13 +4885,16 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 				//notify of headshot --futuza
 				if (isHeadShot)
 				{
-					if (attacker != inflictor)
+					if (attacker == targ)
+					{
+						trap->SendServerCommand(targ - g_entities, va("chat 100 \"Killed by your own head blow!\""));
+					}
+
+					else
 					{
 						trap->SendServerCommand(targ - g_entities, va("chat 100 \"Killed by %s^7's head blow!\"", attacker->client->pers.netname));
 						trap->SendServerCommand(attacker - g_entities, va("notify 1 \"Head blow!\""));
 					}
-					else
-						trap->SendServerCommand(targ - g_entities, va("chat 100 \"Killed by your own head blow!\""));
 				}
 			}
 			else if (targ->s.eType == ET_NPC)
