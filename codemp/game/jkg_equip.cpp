@@ -272,7 +272,8 @@ void JKG_EquipItem(gentity_t *ent, int iNum)
 			// We need to iterate through the inventory and remove the old equipped item.
 			for (auto it = ent->inventory->begin(); it != ent->inventory->end(); ++it)
 			{
-				if (it->equipped && it->id->armorData.pArm->slot == armorTable[previousArmor].slot) //if its equipped and takes up the same slot type, we can only have one per slot
+				if (it->equipped && it->id->itemType == ITEM_ARMOR
+					&& it->id->armorData.pArm->slot == armorTable[previousArmor].slot) //if its equipped armor, and takes up the same slot type, we can only have one per slot
 				{
 					it->equipped = qfalse;
 				}

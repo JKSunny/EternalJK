@@ -431,7 +431,7 @@ void JKG_Shop_InventoryItemCost(itemDef_t* item, int nOwnerDrawID) {
 	else
 	{
 		// Perform a price check on this item, but don't spam
-		if(buyBackRefreshTime > 100)
+		if(buyBackRefreshTime > 250)
 			cgImports->SendClientCommand(va("checkbuyback %i", vInventoryItems[nInventoryScroll + nOwnerDrawID].first));
 
 		if (isBuyBack) //item is currently elligible for buyback, give full cost back
