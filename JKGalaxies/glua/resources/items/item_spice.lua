@@ -20,7 +20,7 @@ function GiveSpiceSmall(ply, quantity)
 	--Damage(victim, attacker, direction, location, damage, flags , means of damage)
 	ply:Damage(ply:GetEntity(ply), ply:GetEntity(ply), ply:GetOrigin(ply), ply:GetOrigin(ply), SPICE_STD_DMG, 30, "MOD_POISONED") --note that poison damage does 1.3x extra dmg to organics
 	ply.Entity:PlaySound(1, "sound/items/use_bacta.wav")
-	ply:AddBuff(ply, "standard-haste"); --speed
+	ply:AddBuff(ply, "standard-haste", 7000, 1.5); --speed
 end
 
 function GiveSpiceLarge(ply, quantity)

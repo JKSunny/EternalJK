@@ -8,5 +8,5 @@
 	"partHealthReq": true,
 	"weight":		"3",
 	"itemIcon":		"gfx/item_icons/bacta.tga",
-	"itemDescription": "A large canister containing a treatment of bacta which when injected can quickly regenerate damaged tissue and limbs to promote healing."
+	"itemDescription": "A large canister containing a treatment of bacta which when injected can quickly regenerate damaged tissue and limbs to promote healing and remove toxins."
 }
