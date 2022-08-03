@@ -665,7 +665,6 @@ void BG_GiveItemNonNetworked(gentity_t* ent, itemInstance_t item) {
 
 	// Add the new item stack to the inventory
 	ent->inventory->push_back(item);
-
 	//do special checks for shields and jetpacks (autoequipping)
 	if ((item.id->itemType == ITEM_SHIELD || item.id->itemType == ITEM_JETPACK) && ent->s.eType == ET_PLAYER) //for now don't give anyone except players autoequip shields/jetpacks
 	{
@@ -725,7 +724,7 @@ void BG_GiveItemNonNetworked(gentity_t* ent, itemInstance_t item) {
 			}
 		}
 	}
-	
+
 	//handle weapons - sometime?  Currently weapons only exist in ACI and don't have an 'equipped state'
 	/*if (ent->s.eType == ET_PLAYER && item.id->itemType == ITEM_WEAPON)
 	{
@@ -821,9 +820,34 @@ void BG_GiveItemNonNetworked(itemInstance_t item)
 			if (nFreeACISlot == -1)
 			{
 				nFreeACISlot = 0;
+				auto slotZero = (*cg.playerInventory)[cg.playerACI[nFreeACISlot]].id->itemType; //remember what was at slot 0
+
+				if (slotZero == ITEM_SHIELD) //if we had a shield equipped
+				{
+					//if we're equipping anything other than a shield
+					if (item.id->itemType != ITEM_SHIELD)
+					{
+						if(slotZero == ITEM_SHIELD) //if the thing we're replacing was a shield, then unequip
+							trap->SendClientCommand("unequipShield");
+
+						if(slotZero == ITEM_JETPACK) //if the thing we're replacing was a jetpack, then unequip
+							trap->SendClientCommand("unequipJetpack");
+					}
+				}
+				if (slotZero == ITEM_JETPACK) //handle jetpacks like shields above
+				{
+					if (item.id->itemType != ITEM_JETPACK)
+					{
+						if (slotZero == ITEM_SHIELD) 
+							trap->SendClientCommand("unequipShield");
+
+						if (slotZero == ITEM_JETPACK) 
+							trap->SendClientCommand("unequipJetpack");
+					}
+				}
 			}
+
 			//otherwise we found a free slot (since nFreeACISLot != -1)
-			
 			cg.playerACI[nFreeACISlot] = cg.playerInventory->size() - 1; //assign the aci slot to the inventory just added
 
 			if (item.id->itemType == ITEM_WEAPON)

@@ -101,6 +101,14 @@ void JKG_ConstructShopLists() {
 			else if (ui_inventoryFilter.integer == JKGIFILTER_CONSUMABLES && pThisItem->id->itemType != ITEM_CONSUMABLE) {
 				continue;
 			}
+			else if (ui_inventoryFilter.integer == JKGIFILTER_TOOLS && pThisItem->id->itemType != ITEM_TOOL)
+			{
+				continue;
+			}
+			else if (ui_inventoryFilter.integer == JKGIFILTER_AMMO && pThisItem->id->itemType != ITEM_AMMO)
+			{
+				continue;
+			}
 			else if (ui_inventoryFilter.integer == JKGIFILTER_MISC) {
 				continue; // FIXME
 			}
@@ -155,6 +163,14 @@ void JKG_ConstructShopLists() {
 				continue;
 			}
 			else if (ui_inventoryFilter.integer == JKGIFILTER_CONSUMABLES && pThisItem->id->itemType != ITEM_CONSUMABLE) {
+				continue;
+			}
+			else if (ui_inventoryFilter.integer == JKGIFILTER_TOOLS && pThisItem->id->itemType != ITEM_TOOL)
+			{
+				continue;
+			}
+			else if (ui_inventoryFilter.integer == JKGIFILTER_AMMO && pThisItem->id->itemType != ITEM_AMMO)
+			{
 				continue;
 			}
 			else if (ui_inventoryFilter.integer == JKGIFILTER_MISC) {

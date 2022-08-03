@@ -1530,13 +1530,14 @@ void JKG_CG_FillACISlot(int itemNum, int slot)
 
 	// If the item is a shield, then we need to remove all other shields in our ACI and inform the server that we equipped shield
 	// Unless of course we already had this item in the ACI, in which case we do nothing
+	bool activateJetpack = false, activateShield = false;
 	if (item->itemType == ITEM_SHIELD && !alreadyInACI) {
 		JKG_RemoveACIItemsOfType(ITEM_SHIELD);
-		trap->SendClientCommand(va("equipShield %i", itemNum));
+		activateShield = true;
 	}
 	else if (item->itemType == ITEM_JETPACK && !alreadyInACI) {
 		JKG_RemoveACIItemsOfType(ITEM_JETPACK);
-		trap->SendClientCommand(va("equipJetpack %i", itemNum));
+		activateJetpack = true;
 	}
 	else if (cg.playerACI[slot] > 0 && cg.playerACI[slot] < cg.playerInventory->size()) {
 		// Check to see if we're overwriting a shield/jetpack (if so, unequip it)
@@ -1559,12 +1560,19 @@ void JKG_CG_FillACISlot(int itemNum, int slot)
 			}
 		}
 	}
-
-	if (slot == -1) {
-		trap->Print("Couldn't assign %i to ACI, ACI is full\n", itemNum);
-		return;
+	//ACI is full, replace whatever is at slot 0
+	if (slot == -1)
+	{
+		trap->Print("ACI is full, replacing slot 0 with requested item.\n");
+		JKG_CG_ClearACISlot(0); //remove what's at slot 0
+		slot = 0;
 	}
 
+	//if we need to activate/equip special items do so now
+	if(activateJetpack)
+		trap->SendClientCommand(va("equipJetpack %i", itemNum));
+	if (activateShield)
+		trap->SendClientCommand(va("equipShield %i", itemNum));
 
 	cg.playerACI[slot] = itemNum;
 }
@@ -1590,7 +1598,7 @@ void JKG_CG_ACIPostFix(int itemSlot)
 
 void JKG_CG_ClearACISlot(int slot)
 {
-	if (slot < 0 || slot >= MAX_ACI_SLOTS)
+	if (slot < 0 || slot > MAX_ACI_SLOTS)
 	{
 		return;
 	}
