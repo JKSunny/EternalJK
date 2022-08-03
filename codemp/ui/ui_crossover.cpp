@@ -41,7 +41,6 @@ uiCrossoverExports_t *UI_InitializeCrossoverAPI( cgCrossoverExports_t *cg )
 	ui.ShopNotify = JKG_ShopNotify;
 	ui.ItemsUpdated = JKG_ForceItemMenuUpdates;
 	ui.InventoryPriceCheckResult = JKG_Shop_PriceCheckComplete;
-	ui.BuybackCheckResult = JKG_Shop_BuybackCheckComplete;
 
 	return &ui;
 }

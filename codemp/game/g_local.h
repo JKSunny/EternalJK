@@ -475,7 +475,6 @@ struct gentity_s {
 	gentity_t   *damagePlum;
 	int			damagePlumTime;
 	int			lastHealTime;
-	int			lastBBTime;		// Determines when the last buyback time for inventory items is.
 	buffInfo_t	buffData[PLAYERBUFF_BITS];
 	dimension_t dimension;		// Used by player isolation to determine if player's can interact with each other (see jkg_playerisolation.cpp)
 
@@ -531,7 +530,6 @@ struct gentity_s {
 	//
 	/////////////////////////////////////////
 	std::vector<itemInstance_t>* inventory;
-	std::vector<std::pair<itemData_t*, int>>* bb_inventory; //keeps track of recently purchased items
 	std::vector<entityHitRecord_t>* assists;
 };
 

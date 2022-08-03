@@ -691,7 +691,6 @@ typedef struct uiCrossoverExports_s
 	void			(*ShopNotify)( jkgShopNotify_e msg );
 	void			(*ItemsUpdated)();
 	void			(*InventoryPriceCheckResult)(int invID, int price);
-	void			(*BuybackCheckResult)(qboolean found);
 } uiCrossoverExports_t;
 
 typedef struct cgCrossoverExports_s

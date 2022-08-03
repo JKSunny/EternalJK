@@ -968,7 +968,6 @@ void ClientEvents( gentity_t *ent, int oldEventSequence ) {
 			ent->client->dangerTime = level.time;
 			ent->client->ps.eFlags &= ~EF_INVULNERABLE;
 			ent->client->invulnerableTimer = 0;
-			ent->bb_inventory->clear();	//if we attack, no more buybacks
 			break;
 
 		case EV_ALT_FIRE:
@@ -976,14 +975,12 @@ void ClientEvents( gentity_t *ent, int oldEventSequence ) {
 			ent->client->dangerTime = level.time;
 			ent->client->ps.eFlags &= ~EF_INVULNERABLE;
 			ent->client->invulnerableTimer = 0;
-			ent->bb_inventory->clear();	//if we attack, no more buybacks
 			break;
 
 		case EV_SABER_ATTACK:
 			ent->client->dangerTime = level.time;
 			ent->client->ps.eFlags &= ~EF_INVULNERABLE;
 			ent->client->invulnerableTimer = 0;
-			ent->bb_inventory->clear();	//if we attack, no more buybacks
 			break;
 
 		case EV_CHANGE_WEAPON:
@@ -2076,29 +2073,6 @@ void ClientThink_real( gentity_t *ent ) {
 			trap->SendServerCommand(ent->s.number, va("notify 1 \"Salary: +%i Credits\"", reward));		//notify player its pay day, if debug mode enabled (otherwise this is too spammy)
 			//consider a sound here
 			#endif
-		}
-	}
-
-	//JKG: purge any items in our buyback inventory list that have exceeded their buyback time
-	if (jkg_buybackTime.integer > 0 && ent->client->sess.sessionTeam != TEAM_SPECTATOR && ent->bb_inventory)
-	{
-		if (ent->lastBBTime + jkg_buybackTime.integer < level.time)
-		{
-			
-			if (ent->bb_inventory->size() > 0)
-			{
-				for (auto it = ent->bb_inventory->begin(); it != ent->bb_inventory->end();)
-				{
-					if (it->second < level.time - jkg_buybackTime.integer) //this item has expired
-					{
-						it = ent->bb_inventory->erase(it); //kill him, kill him now anakin
-					}
-
-					else
-						++it;
-				}
-			}
-			ent->lastBBTime = level.time;  //reset cooldown so we can check again
 		}
 	}
 

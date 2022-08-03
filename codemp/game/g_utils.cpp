@@ -688,7 +688,6 @@ void G_InitGentity( gentity_t *e ) {
 	JKG_Pairs_Clear(&g_spawnvars[e->s.number]);
 
 	e->inventory = new std::vector<itemInstance_t>();
-	e->bb_inventory = new std::vector<std::pair<itemData_t*, int>>();
 	e->assists = new std::vector<entityHitRecord_t>();
 
 	trap->ICARUS_FreeEnt( (sharedEntity_t *)e );	//ICARUS information must be added after this point
@@ -1111,7 +1110,6 @@ void G_FreeEntity( gentity_t *ed ) {
 	ed->UsesELS = 0;
 	ed->IDCode = 0;
 	delete ed->inventory;
-	delete ed->bb_inventory;
 	delete ed->assists;
 	memset (ed, 0, sizeof(*ed));
 	ed->classname = "freed";

@@ -1953,13 +1953,6 @@ static void CG_ServerCommand( void ) {
 		return;
 	}
 
-	if (!strcmp(cmd, "bbi"))
-	{
-		//buybackinventory check response, see Cmd_CheckBuyBack_f()
-		uiImports->BuybackCheckResult(atoi(CG_Argv(1)));
-		return;
-	}
-
 	if (!strcmp(cmd, "cbi"))
 	{
 		// Client bought item
