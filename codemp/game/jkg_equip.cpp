@@ -395,6 +395,23 @@ void Jetpack_On(gentity_t *ent)
 		}
 	}
 
+	//can't activate jetpack if empstaggered by debuff
+	if (ent->client->ps.buffsActive)
+	{
+		for (int i = 0; i < PLAYERBUFF_BITS; i++)
+		{
+			if (ent->client->ps.buffsActive & (1 << i))
+			{
+				jkgBuff_t* pBuff = &buffTable[ent->client->ps.buffs[i].buffID];
+				if (pBuff->passive.empstaggered)
+				{
+					G_Sound(ent, CHAN_AUTO, G_SoundIndex("sound/effects/energy_crackle.wav"));
+					return;
+				}
+			}
+		}
+	}
+
 	
 	if (jet->visuals.activateSound[0])
 		G_Sound(ent, CHAN_AUTO, G_SoundIndex(jet->visuals.activateSound));
@@ -443,13 +460,12 @@ void ItemUse_Jetpack(gentity_t *ent)
 	//can't activate jetpack if empstaggered by debuff
 	if (ent->client->ps.buffsActive)
 	{
-		jkgBuff_t* pBuff;
 		for (int i = 0; i < PLAYERBUFF_BITS; i++)
 		{
 			if (ent->client->ps.buffsActive & (1 << i))
 			{
-				pBuff = &buffTable[i];
-				if(pBuff->passive.empstaggered)
+				jkgBuff_t* pBuff = &buffTable[ent->client->ps.buffs[i].buffID];
+				if (pBuff->passive.empstaggered)
 				{
 					G_Sound(ent, CHAN_AUTO, G_SoundIndex("sound/effects/energy_crackle.wav"));
 					return;

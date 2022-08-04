@@ -147,7 +147,6 @@ void G_RemoveBuff(gentity_t* ent, int index)
 	}
 	pBuff->passive.stacks = 0;
 	pBuff->passive.movemodifier_cur = 1.0;
-	pBuff->passive.empstaggered = false;
 }
 
 /*
