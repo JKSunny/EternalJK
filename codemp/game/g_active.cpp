@@ -2155,7 +2155,6 @@ void ClientThink_real( gentity_t *ent ) {
 	}
 
 // remove debuffs that shields protect from: now done in jkg_damageareas.cpp!
-//extern void G_RemoveBuff(gentity_t* ent, int index);
 	// remove toxins and other debuffs that filters protects
 	if (ent->inventory->size() > 0 && JKG_ClientAlive(ent))
 	{
