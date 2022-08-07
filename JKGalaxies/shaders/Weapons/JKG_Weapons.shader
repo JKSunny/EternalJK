@@ -31,6 +31,7 @@
 // ee-3_rifle
 // elg-3a_pistol
 // fwg-5_flechettepistol
+// grenade_bacta_antidote-e
 // grenade_c-14a
 // grenade_c22frag
 // grenade_codekey
@@ -2284,6 +2285,48 @@ models/weapons/fwg-5_flechettepistol/fwg5
         blendFunc GL_SRC_ALPHA GL_ONE
         detail
         alphaGen lightingSpecular
+    }
+}
+
+// Bacta Grenade (Xel, Silverfang)
+
+models/weapons/grenade_bacta/grenade_0
+{
+    q3map_nolightmap
+    {
+        map models/weapons/grenade_bacta/grenade
+        rgbGen lightingDiffuse
+    }
+    {
+        map models/weapons/grenade_bacta/grenade_spec
+        blendFunc GL_SRC_ALPHA GL_ONE
+        detail
+        alphaGen lightingSpecular
+    }
+}
+
+models/weapons/grenade_bacta/bacta_0
+{
+    q3map_nolightmap
+    {
+        map models/weapons/grenade_bacta/bacta
+        rgbGen lightingDiffuse
+    }
+    {
+        map models/weapons/grenade_bacta/bacta_glow
+        blendFunc GL_SRC_ALPHA GL_ONE
+        glow
+        detail
+        rgbGen lightingDiffuse
+    }
+    {
+        map envmap_spec
+        blendFunc GL_SRC_ALPHA GL_ONE
+        glow
+        detail
+        rgbGen lightingDiffuse
+        alphaGen lightingSpecular
+        tcGen environment
     }
 }
 
