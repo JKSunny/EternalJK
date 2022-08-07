@@ -1,10 +1,9 @@
 -- Emotes System
 -- Written by eezstreet (2012)
--- Updated by Futuza (2021)
+-- Updated by Futuza (2022)
 
 -- This is a simple emote system that I decided to hack in at the last minute. Basically adds a series of chat commands to the game, along with some help as to how to use it. --eezstreet
 -- Keep in mind that none of these do 1st person animations...but that could be possible with more work.
-
 
 --
 -- [[ General Functions() ]]
@@ -18,7 +17,7 @@
 
 local function EmoteHelp(ply, argc, argv)
 	ply:SendChat("See console for list of available emotes.")
-	ply:SendPrint("Emotes available: /salute, /thumbsUp, /yes, /no, /signalRally, /signalFallIn, /signalConfusion, /signalFlashbang, /signalFreeze, /danceTwist, /danceMufa, /danceBofa, /danceFreestyle, /sitMeditate, /sitLounge, /sadPanda")
+	ply:SendPrint("Emotes available: /salute, /thumbsUp, /signalYes, /signalNo, /signalRally, /signalFallIn, /signalConfusion, /signalFlashbang, /signalFreeze, /danceTwist, /danceMufa, /danceBofa, /danceFreestyle, /sitMeditate, /sitLounge, /sadPanda")
 end
 
 local function EmoteThumbsUp(ply, argc, argv)
