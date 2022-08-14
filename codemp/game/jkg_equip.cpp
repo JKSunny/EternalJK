@@ -405,8 +405,11 @@ void Jetpack_On(gentity_t *ent)
 				jkgBuff_t* pBuff = &buffTable[ent->client->ps.buffs[i].buffID];
 				if (pBuff->passive.empstaggered)
 				{
+					vec3_t higher;
+					VectorCopy(ent->client->ps.origin, higher);
+					higher[2] += 20.0f;
 					G_Sound(ent, CHAN_AUTO, G_SoundIndex("sound/effects/energy_crackle.wav"));
-					G_PlayEffectID(G_EffectIndex( "effects/env/electricity.efx"), ent->client->ps.origin, ent->client->ps.viewangles);
+					G_PlayEffectID(G_EffectIndex( "effects/Player/electrocute.efx"), higher, ent->client->ps.viewangles);
 					return;
 				}
 			}
@@ -468,8 +471,11 @@ void ItemUse_Jetpack(gentity_t *ent)
 				jkgBuff_t* pBuff = &buffTable[ent->client->ps.buffs[i].buffID];
 				if (pBuff->passive.empstaggered)
 				{
+					vec3_t higher;
+					VectorCopy(ent->client->ps.origin, higher);
+					higher[2] += 20.0f;
 					G_Sound(ent, CHAN_AUTO, G_SoundIndex("sound/effects/energy_crackle.wav"));
-					G_PlayEffectID(G_EffectIndex("effects/env/electricity.efx"), ent->client->ps.origin, ent->client->ps.viewangles);
+					G_PlayEffectID(G_EffectIndex("effects/Player/electrocute.efx"), higher, ent->client->ps.viewangles);
 					return;
 				}
 			}
