@@ -530,8 +530,9 @@ Each object in the ammo file is the linkage name for it, and they can contain th
     - runSound (string): Overrides the sound effect that plays on the projectile
     - lightIntensity (complexAmmoFloat): Overrides the size of the dynamic light that shows up on the projectile.
     - lightColor (array of float): Overrides the color of the light that shows on the projectile.
+    - deathfx (string): Overrides the effect that plays when the projectile impacts on something that's not a player/entity (such as a wall).
     - miss (string): Overrides the effect that plays when the projectile falls out of range.
-    - hit (string): Overrides the effect that plays when the projectile hits something.
+    - hit (string): Overrides the effect that plays when the projectile hits someone.
     - deflect (string): Overrides the effect that plays when the projectile is deflected by a lightsaber.
 
 Buff Field:

@@ -321,7 +321,14 @@ void DamagePlum( gentity_t *ent, vec3_t origin, int damage, int meansOfDeath, in
 	if (ent->damagePlumTime != level.time) {
 		ent->damagePlum = G_TempEntity( origin, EV_DAMAGEPLUM );
 		ent->damagePlumTime = level.time;
-	} 
+	}
+	else //if it happens in the same frame
+	{
+		if (ent->damagePlum->s.time && meansOfDeath == ent->damagePlum->s.eventParm) //and there was prior damage done, and its the same means
+		{
+			damage += ent->damagePlum->s.time; //stack up the damage
+		}
+	}
 	ent->damagePlum->s.time = damage;
 	ent->damagePlum->s.eventParm = meansOfDeath;
 	ent->damagePlum->s.generic1 = shield;
