@@ -310,6 +310,7 @@ void GenericPlum(gentity_t *ent, vec3_t origin, char *str, int color)
 DamagePlum
 ===========
 */
+#include <numeric>
 void DamagePlum( gentity_t *ent, vec3_t origin, int damage, int meansOfDeath, int shield, qboolean weak ) {
 	meansOfDamage_t* means = JKG_GetMeansOfDamage(meansOfDeath);
 	
@@ -324,15 +325,22 @@ void DamagePlum( gentity_t *ent, vec3_t origin, int damage, int meansOfDeath, in
 	}
 	else //if it happens in the same frame
 	{
-		if (ent->damagePlum->s.time && meansOfDeath == ent->damagePlum->s.eventParm) //and there was prior damage done, and its the same means
+		//its the same means
+		if (meansOfDeath == ent->damagePlum->s.eventParm)
 		{
-			damage += ent->damagePlum->s.time; //stack up the damage
+			//stack up the damage
+			if (ent->damagePlum->s.time)
+				damage += ent->damagePlum->s.time;
+
+			//stack up all the shield damage
+			if (ent->damagePlum->s.generic1)
+				shield += ent->damagePlum->s.generic1;
 		}
 	}
 	ent->damagePlum->s.time = damage;
 	ent->damagePlum->s.eventParm = meansOfDeath;
 	ent->damagePlum->s.generic1 = shield;
-	ent->damagePlum->s.groundEntityNum = weak;
+	ent->damagePlum->s.groundEntityNum = weak; //note may be inaccurate as it just overwrites whatever the prior value was if it happens in the same frame
 }
 
 /*
