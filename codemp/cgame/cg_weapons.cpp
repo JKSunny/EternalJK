@@ -2418,9 +2418,9 @@ static void JKG_BounceSpecialGrenade ( const centity_t *cent, const weaponDrawDa
 
 static void JKG_RenderGenericProjectileMiss ( const centity_t* cent, const weaponDrawData_t *weaponData, const ammo_t* ammoData, const vec3_t origin, const vec3_t normal )
 {
-	if (JKG_SimpleAmmoOverridePresent(ammoData->visualOverrides.projectile.impactEffect))
+	if (JKG_SimpleAmmoOverridePresent(ammoData->visualOverrides.projectile.missEffect))
 	{
-		trap->FX_PlayEffectID(trap->FX_RegisterEffect(ammoData->visualOverrides.projectile.impactEffect.second.c_str()),
+		trap->FX_PlayEffectID(trap->FX_RegisterEffect(ammoData->visualOverrides.projectile.missEffect.second.c_str()),
 			(float*) origin, (float*) normal, -1, -1, false);
 	}
 	else if ( weaponData->projectileMiss.generic.impactEffect )

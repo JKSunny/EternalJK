@@ -725,7 +725,8 @@ dead2:
 		JKG_ParseSimpleOverrideString(ammo->visualOverrides.projectile.runSound, "runSound", child);
 		JKG_ParseAmmoOverride_Float(child, "lightIntensity", ammo->visualOverrides.projectile.lightIntensity);
 		JKG_ParseSimpleOverrideVec3(ammo->visualOverrides.projectile.lightColor, "lightColor", child);
-		JKG_ParseSimpleOverrideString(ammo->visualOverrides.projectile.deathEffect, "miss", child);
+		JKG_ParseSimpleOverrideString(ammo->visualOverrides.projectile.deathEffect, "deathfx", child);
+		JKG_ParseSimpleOverrideString(ammo->visualOverrides.projectile.missEffect, "miss", child);
 		JKG_ParseSimpleOverrideString(ammo->visualOverrides.projectile.impactEffect, "hit", child);
 		JKG_ParseSimpleOverrideString(ammo->visualOverrides.projectile.deflectEffect, "deflect", child);
 	}
@@ -738,6 +739,7 @@ dead3:
 		ammo->visualOverrides.projectile.lightIntensity.bIsPresent = qfalse;
 		ammo->visualOverrides.projectile.lightColor.first = qfalse;
 		ammo->visualOverrides.projectile.deathEffect.first = qfalse;
+		ammo->visualOverrides.projectile.missEffect.first = qfalse;
 		ammo->visualOverrides.projectile.impactEffect.first = qfalse;
 		ammo->visualOverrides.projectile.deflectEffect.first = qfalse;
 	}
