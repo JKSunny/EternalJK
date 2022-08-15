@@ -2145,6 +2145,8 @@ models/weapons/e-60r_rocketlauncher/launcher
     }
 }
 
+// EE-3 Blaster (Jonthe, Pande)
+
 models/weapons/ee-3_rifle/blaster_0
 {
 	q3map_nolightmap

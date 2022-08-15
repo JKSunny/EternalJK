@@ -39,7 +39,7 @@
 		{
 			"Damage":
 			{
-				"multiply": 0.9
+				"multiply": 0.45 //0.9
 			},
 			"splashmeansofdeath": "MOD_FIRE",
 			"splashRange":

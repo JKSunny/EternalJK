@@ -116,8 +116,9 @@
 			"visuals": {
 				"projectile": {
 					"hit": "Blasters/blue_flesh_impact",
-					"miss": "Blasters/blue_impacttiny",
-					"effect": "Blasters/shot_Blue_small"
+					"miss": "weapons/blaster_impact_blue_medium",
+					"effect": "Blasters/shot_Blue_small",
+					"deathfx": "blasters/shot_Blue_vaporize"
 				},
 				"fire": {
 					"muzzleEffect": "Blasters/muzzleflash_Blue_small"
@@ -145,8 +146,9 @@
 			"visuals": {
 				"projectile": {
 					"hit": "Blasters/blue_flesh_impact",
-					"miss": "Blasters/blue_impactsmall",
-					"effect": "Blasters/shot_Blue_small"
+					"miss": "weapons/blaster_impact_blue_medium",
+					"effect": "Blasters/shot_Blue_small",
+					"deathfx": "blasters/shot_Blue_vaporize"
 				},
 				"fire": {
 					"muzzleEffect": "Blasters/muzzleflash_Blue_medium"
@@ -174,8 +176,9 @@
 			"visuals": {
 				"projectile": {
 					"hit": "Blasters/blue_flesh_impact",
-					"miss": "Blasters/blue_impactmedium",
-					"effect": "Blasters/shot_Blue_medium"
+					"miss": "weapons/blaster_impact_blue_medium",
+					"effect": "Blasters/shot_Blue_medium",
+					"deathfx": "blasters/shot_Blue_vaporize"
 				},
 				"fire": {
 					"muzzleEffect": "Blasters/muzzleflash_Blue_medium"
@@ -196,8 +199,9 @@
 			"visuals": {
 				"projectile": {
 					"hit": "Blasters/purple_flesh_impact",
-					"miss": "Blasters/purple_impactmedium",
-					"effect": "Blasters/shot_RedPurple_medium"
+					"miss": "weapons/blaster_impact_purple_medium_fire",
+					"effect": "Blasters/shot_RedPurple_medium",
+					"deathfx": "blasters/shot_RedPurple_vaporize"
 				},
 				"fire": {
 					"muzzleEffect": "Blasters/muzzleflash_Purple_medium"
@@ -231,8 +235,9 @@
 			"visuals": {
 				"projectile": {
 					"hit": "Blasters/blue_flesh_impact",
-					"miss": "Blasters/blue_impacttiny",
-					"effect": "Blasters/shot_Blue_small"
+					"miss": "weapons/blaster_impact_blue_medium",
+					"effect": "Blasters/shot_Blue_small",
+					"deathfx": "blasters/shot_Blue_vaporize"
 				},
 				"fire": {
 					"muzzleEffect": "Blasters/muzzleflash_Blue_small"
@@ -259,8 +264,9 @@
 			"visuals": {
 				"projectile": {
 					"hit": "Blasters/blue_flesh_impact",
-					"miss": "Blasters/blue_impacttiny",
-					"effect": "Blasters/shot_Blue_small"
+					"miss": "weapons/blaster_impact_blue_medium",
+					"effect": "Blasters/shot_Blue_small",
+					"deathfx": "blasters/shot_Blue_vaporize"
 				},
 				"fire": {
 					"muzzleEffect": "Blasters/muzzleflash_Blue_small"
@@ -287,11 +293,12 @@
 			"visuals": {
 				"projectile": {
 					"hit": "Blasters/blue_flesh_impact",
-					"miss": "Blasters/blue_impactmedium",
-					"effect": "Blasters/shot_Blue_medium"
+					"miss": "weapons/blaster_impact_blue_medium",
+					"effect": "Blasters/shot_Blue_medium",
+					"deathfx": "blasters/shot_Blue_vaporize"
 				},
 				"fire": {
-					"muzzleEffect": "Blasters/muzzleflash_Blue_medium"
+					"muzzleEffect": "Blasters/muzzleflash_Blue_small"
 				}
 			}
 		}
