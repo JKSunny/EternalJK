@@ -56,8 +56,8 @@
 		"projectilespeed": 4000.0,
 		"projectileclass": "blaster_proj",
 		"meansofdeath": "MOD_BRYAR_PISTOL",
-		"ammobase": "AMMO_SS_POWERPACK",
-		"ammodefault": "AMMO_SS_POWERPACK",
+		"ammobase": "AMMO_SS_POWERPAK",
+		"ammodefault": "AMMO_SS_POWERPAK",
 		"clipSize": 20,
 		"heatGenerated": 6.75
 	},

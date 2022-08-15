@@ -75,8 +75,8 @@
         "projectilespeed": 3000.0,
         "projectileclass": "blaster_proj",
         "meansofdeath": "MOD_BLASTER",
-	"ammobase": "AMMO_SS_POWERPACK",
-	"ammodefault": "AMMO_MS_POWERPACK",
+	"ammobase": "AMMO_SS_POWERPAK",
+	"ammodefault": "AMMO_MS_POWERPAK",
         "clipSize":              6,
         "accuracy": {
         	"accuracyRating": 15,
@@ -114,8 +114,8 @@
         "projectilespeed": 3000.0,
         "projectileclass": "blaster_proj",
 		"meansofdeath": "MOD_STUNNED",
-		"ammobase": "AMMO_SS_POWERPACK",
-		"ammodefault": "AMMO_MS_POWERPACK",
+		"ammobase": "AMMO_SS_POWERPAK",
+		"ammodefault": "AMMO_MS_POWERPAK",
         "clipSize":              6,
         "accuracy": {
         	"accuracyRating": 1,
