@@ -1,4 +1,4 @@
-//power "paks" are a different series from power packs apparently...
+//power "paks" are for pistols
 {
 	"name":		"60 BlasTech Ion Pwr Pak(sm)",
 	"internal":	"ammo_ionPwrPakSm_60",

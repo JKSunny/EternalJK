@@ -22,6 +22,7 @@
 					"ammo_ionPwrPackELG_60": 1,
 					"ammo_ionPwrPakLrg_60": 1,
 					"ammo_ionPwrPakSm_60": 1,
+					"ammo_overchargedPwrPackLg_75": 1,
 					"gloves_stormtrooper": 1,
 					"helmet_stormtrooper": 1,
 					"helmet_stormtrooper_rusty": 1,
@@ -255,11 +256,12 @@
 				"ammo_incendiarySlugs_100": 3,
 				"ammo_medicBeads_60": 5,
 				"ammo_poison_gas_50": 4,
-				"ammo_ionPwrPakLrg_60": 1,
+				"ammo_ionPwrPakLrg_60": 2,
 				"ammo_ionPwrPakSm_60": 5,
 				"ammo_ionPwrPackSm_60": 5,
 				"ammo_ionPwrPackMed_60": 2,
-				"ammo_ionPwrPackELG_60": 6
+				"ammo_ionPwrPackELG_60": 6,
+				"ammo_overchargedPwrPackLg_75": 1
 			}
 		},
 		"equipmentvendor":
@@ -397,7 +399,8 @@
 				"ammo_medicBeads_60": 8,
 				"ammo_poison_gas_50": 4,
 				"ammo_ionPwrPakLrg_60": 2,
-				"ammo_ionPwrPackELG_60": 3
+				"ammo_ionPwrPackELG_60": 3,
+				"ammo_overchargedPwrPackLg_75": 2
 			}
 		},
 		"medicvendor":
@@ -479,11 +482,12 @@
 				"helmet_bountyhunter": 1,
 				"gloves_bountyhunter": 2,
 				"legs_bountyhunter": 2,
-				"ammo_splittingQuarrels_40": 2,
+				"ammo_splittingQuarrels_40": 3,
 				"ammo_bouncingQuarrels_40": 2,
 				"ammo_explosiveSlugs_60": 1,
-				"ammo_incendiarySlugs_45": 2,
+				"ammo_incendiarySlugs_45": 3,
 				"ammo_medicBeads_60": 3,
+				"ammo_overchargedPwrPackLg_75": 2,
 				"ammo_ionPwrPackSm_60": 5,
 				"ammo_ionPwrPackMed_60": 2,
 				"ammo_ionPwrPackELG_60": 6,
@@ -574,12 +578,13 @@
 				"ammo_incendiarySlugs_100": 3,
 				"ammo_medicBeads_60": 5,
 				"ammo_poison_gas_50": 4,
-				"ammo_ionPwrPackSm_60": 2,
+				"ammo_ionPwrPackSm_60": 3,
 				"ammo_ionPwrPackMed_60": 3,
 				"ammo_ionPwrPackLrg_60": 4,
 				"ammo_ionPwrPackELG_60": 2,
-				"ammo_ionPwrPakLrg_60": 1,
-				"ammo_ionPwrPakSm_60": 4
+				"ammo_ionPwrPakLrg_60": 3,
+				"ammo_ionPwrPakSm_60": 4,
+				"ammo_overchargedPwrPackLg_75": 3
 			}
 		},
 		"genericvendor-late": {
@@ -665,7 +670,8 @@
 				"ammo_ionPwrPackLrg_60": 4,
 				"ammo_ionPwrPackELG_60": 2,
 				"ammo_ionPwrPakLrg_60": 4,
-				"ammo_ionPwrPakSm_60": 2
+				"ammo_ionPwrPakSm_60": 2,
+				"ammo_overchargedPwrPackLg_75": 3
 			}
 		},
 		"genericvendor-rare": {

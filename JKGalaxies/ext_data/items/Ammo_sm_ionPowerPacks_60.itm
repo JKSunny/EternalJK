@@ -1,3 +1,4 @@
+//mostly for dh-17 and other e-11 based blaster pistols
 {
 	"name":		"60 BlasTech Ion Pwr Pack(sm)",
 	"internal":	"ammo_ionPwrPackSm_60",
