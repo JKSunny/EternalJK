@@ -4653,6 +4653,14 @@ void PM_FinishWeaponChange( void ) {
 	weaponData = GetWeaponData(pm->ps->weapon, pm->ps->weaponVariation);
 	pm->ps->maxHeat = weaponData->firemodes[pm->ps->firingMode].maxHeat; //set maxHeat to new weapon value
 	pm->ps->heatThreshold = weaponData->firemodes[pm->ps->firingMode].heatThreshold;
+
+	
+	if (weapon == WP_SABER) //set saber crystal color
+	{
+		const saberCrystalData_t* crystal = JKG_GetSaberCrystal(weaponData->sab.defaultcrystal);
+		pm->ps->saberCrystal[0] = crystal->crystalID;
+		//pm->ps->saberCrystal[1] = crystal->crystalID; //--futuza: additional sabers?  not sure how to handle that yet...
+	}
 }
 
 /*

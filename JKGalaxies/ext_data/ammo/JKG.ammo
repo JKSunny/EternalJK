@@ -91,21 +91,21 @@
 	},
 
 	"AMMO_POWERPACK": {
-		"shortname": "Blaster Power Packs",
+		"shortname": "Blaster PowerPacks",
 		"longname": "Blastech Industries Blaster Power Packs",
 		"pricePerUnit": 0.3,
 		"max": 600 //total: 180
 	},
 
 	"AMMO_POWERPACK_S": {
-		"shortname": "Blaster Power Packs (s)",
+		"shortname": "Blaster PowerPacks (s)",
 		"longname": "BlasTech Industries Blaster Power Packs (small)",
 		"pricePerUnit": 0.25,
 		"basedOn": "AMMO_POWERPACK",
 		"max": 480 //total: 120
 	},
 	"AMMO_ION_POWERPACK_S": {
-		"shortname": "Ion Blaster Power Packs (s)",
+		"shortname": "Ion Blaster PowerPacks (s)",
 		"longname": "BlasTech Industries Ionized Blaster Power Packs (small)",
 		"basedOn": "AMMO_POWERPACK_S",
 		"max": 480,
@@ -128,14 +128,14 @@
 	},
 
 	"AMMO_POWERPACK_M": {
-		"shortname": "Blaster Power Packs (m)",
+		"shortname": "Blaster PowerPacks (m)",
 		"longname": "BlasTech Industries Blaster Power Packs (medium)",
 		"pricePerUnit": 0.3,
 		"basedOn": "AMMO_POWERPACK",
 		"max": 600 //total: 180
 	},
 	"AMMO_ION_POWERPACK_M": {
-		"shortname": "Ion Blaster Power Packs (m)",
+		"shortname": "Ion Blaster PowerPacks (m)",
 		"longname": "BlasTech Industries Ionized Blaster Power Packs (medium)",
 		"basedOn": "AMMO_POWERPACK_M",
 		"max": 600,
@@ -158,14 +158,14 @@
 	},
 
 	"AMMO_POWERPACK_L": {
-		"shortname": "Blaster Power Packs (l)",
+		"shortname": "Blaster PowerPacks (l)",
 		"longname": "BlasTech Industries Blaster Power Packs (large)",
 		"pricePerUnit": 0.4,
 		"basedOn": "AMMO_POWERPACK_M",
 		"max": 960 //total: 384
 	},
 	"AMMO_ION_POWERPACK_L": {
-		"shortname": "Ion Blaster Power Packs (l)",
+		"shortname": "Ion Blaster PowerPacks (l)",
 		"longname": "BlasTech Industries Ionized Blaster Power Packs (large)",
 		"basedOn": "AMMO_POWERPACK_M",
 		"max": 900,
@@ -187,7 +187,7 @@
 		}
 	},
 	"AMMO_POWERPACK_OVRCHRG": {
-		"shortname": "Ovrchrg Power Packs (l)",
+		"shortname": "Ovrchrg PowerPacks (l)",
 		"longname": "Overcharged Blaster Power Packs (large)",
 		"pricePerUnit": 1,
 		"max": 500, //total: 500
@@ -212,20 +212,20 @@
 
 	//sorusubb powerpak pistol ammo (for elg-3a, q2, westar)
 	"AMMO_SS_POWERPAK": {
-		"shortname": "ELG-3A Power Paks",
+		"shortname": "ELG-3A PowerPaks",
 		"longname": "SoruSubb Blaster Power Paks",
 		"pricePerUnit": 0.5,
 		"max": 360 //total: 150
 	},
 	"AMMO_MS_POWERPAK": {
-		"shortname": "Q2 Power Paks",
+		"shortname": "Q2 PowerPaks",
 		"longname": "Merr-Sonn Q2 Blaster Power Paks",
 		"basedOn": "AMMO_SS_POWERPAK",
 		"pricePerUnit": 0.3,
 		"max": 300 //total: 90
 	},
 	"AMMO_SS_ION_POWERPAK": {
-		"shortname": "ELG-3A Ion Power Paks",
+		"shortname": "ELG-3A Ion PowerPaks",
 		"longname": "SoruSubb Ionized Blaster Power Paks",
 		"basedOn": "AMMO_SS_POWERPAK",
 		"max": 360,

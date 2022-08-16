@@ -97,8 +97,8 @@
         "meansofdeath": "MOD_BLASTER",
         "splashmeansofdeath": "MOD_BLASTER",
 		"firingtype":   "auto",
-	"ammobase": "AMMO_POWERPACK_L",
-	"ammodefault": "AMMO_POWERPACK_S",
+	"ammobase": "AMMO_POWERPACK_M",
+	"ammodefault": "AMMO_POWERPACK_M",
         "clipSize":              30,
         "accuracy": {
 			"accuracyRating": 18,
@@ -140,8 +140,8 @@
         "projectilespeed": 3000.0,
         "projectileclass": "blaster_proj",
         "meansofdeath": "MOD_STUNNED",
-	"ammobase": "AMMO_POWERPACK_L",
-	"ammodefault": "AMMO_POWERPACK_S",
+	"ammobase": "AMMO_POWERPACK_M",
+	"ammodefault": "AMMO_POWERPACK_M",
         "clipSize":              30,
 	"maxHeat": 50
     },
@@ -159,8 +159,8 @@
         "projectilespeed": 4000.0,
         "projectileclass": "blaster_proj",
         "meansofdeath": "MOD_BLASTER",
-	"ammobase": "AMMO_POWERPACK_L",
-	"ammodefault": "AMMO_POWERPACK_S",
+	"ammobase": "AMMO_POWERPACK_M",
+	"ammodefault": "AMMO_POWERPACK_M",
         "clipSize":              30,
         "accuracy": {
         	"accuracyRating": 30,

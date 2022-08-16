@@ -80,7 +80,7 @@
         "projectileclass": "blaster_proj",
         "meansofdeath": "MOD_BLASTER",
         "splashmeansofdeath": "MOD_BLASTER",
-		"ammobase": "AMMO_POWERPACK_L",
+		"ammobase": "AMMO_POWERPACK_M",
 		"ammodefault": "AMMO_POWERPACK_M",
         "clipSize":              45,
 		"accuracy": {
@@ -106,7 +106,7 @@
         "projectileclass": "blaster_proj",
         "meansofdeath": "MOD_BLASTER",
         "splashmeansofdeath": "MOD_BLASTER",
-		"ammobase": "AMMO_POWERPACK_L",
+		"ammobase": "AMMO_POWERPACK_M",
 		"ammodefault": "AMMO_POWERPACK_M",
         "clipSize":              45,
 		"accuracy": 

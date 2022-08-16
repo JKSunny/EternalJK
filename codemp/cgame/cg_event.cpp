@@ -1441,6 +1441,13 @@ void CG_EntityEvent( centity_t *cent, vec3_t position ) {
 			{
 				WP_SetSaber( es->number, cgs.clientinfo[es->number].saber, 0, weaponData->sab.hiltname );
 				JKG_SwapToSaber( 0, &cgs.clientinfo[es->number], weaponData->sab.hiltname, weapon, variation );
+
+				const saberCrystalData_t* crystal = JKG_GetSaberCrystal(weaponData->sab.defaultcrystal);
+				cg.predictedPlayerState.saberCrystal[0] = crystal->crystalID;
+				cg_entities[es->number].currentState.saberCrystal[0] = crystal->crystalID;
+
+				//--futuza todo: handle additional sabers eg: cg.predictedPlayerState.saberCrystal[1]
+
 				//CG_InitG2SaberData( 0, &cgs.clientinfo[es->number] );
 				cgs.clientinfo[es->number].saber[0].SetDesiredLength(0, -1);
 				cgs.clientinfo[es->number].saber[1].SetDesiredLength(0, -1);
