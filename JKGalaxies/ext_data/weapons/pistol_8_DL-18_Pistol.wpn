@@ -77,7 +77,7 @@
         "projectilespeed": 3000.0,
         "projectileclass": "blaster_proj",
         "meansofdeath": "MOD_BLASTER",
-	"ammobase": "AMMO_POWERPAK_L",
+	"ammobase": "AMMO_POWERPAK_S",
 	"ammodefault": "AMMO_POWERPAK_S",
         "clipSize":              16
     },
@@ -107,7 +107,7 @@
         "projectilespeed": 3000.0,
         "projectileclass": "blaster_proj",
         "meansofdeath": "MOD_STUNNED",
-	"ammobase": "AMMO_POWERPAK_L",
+	"ammobase": "AMMO_POWERPAK_S",
 	"ammodefault": "AMMO_POWERPAK_S",
         "clipSize":              16
     },

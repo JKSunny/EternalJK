@@ -247,6 +247,7 @@
 		}
 	},
 
+	//powerpaks for most blaster pistols
 	"AMMO_POWERPAK_S": {
 		"shortname": "Std PowerPaks (s)",
 		"longname": "BlasTech Industries PowerPaks (small)",
@@ -279,13 +280,14 @@
 	"AMMO_POWERPAK_L": {
 		"shortname": "Std PowerPaks (l)",
 		"longname": "BlasTech Industries PowerPaks (large)",
+		"basedOn": "AMMO_POWERPAK_S",
 		"max": 512,
 		"pricePerUnit": 0.4 //total: 204
 	},
 	"AMMO_ION_POWERPAK_L": {
 		"shortname": "Ion PowerPaks (l)",
 		"longname": "BlasTech Industries Ionized PowerPaks (large)",
-		"basedOn": "AMMO_POWERPAK_L",
+		"basedOn": "AMMO_POWERPAK_S",
 		"max": 512,
 		"pricePerUnit": 0.8, //total: 409
 		"overrides": {
@@ -306,7 +308,7 @@
 	},
 
 	"AMMO_POWERCELL":{
-		"shortname": "Power Cells",
+		"shortname": "Power Cells (std)",
 		"longname": "Blastech Industries Power Cell Munitions",
 		"max": 600,
 		"pricePerUnit": 0.3

@@ -182,7 +182,17 @@ void BG_GetAllAmmoSubstitutions(int ammoIndex, std::vector<ammo_t*>& outSubs) {
 
 	outSubs.clear();
 
-	ammo_t* find = &ammoTable[ammoIndex];
+	ammo_t* find = &ammoTable[ammoIndex]; //which ammo we're looking for
+
+	//--futuza: note that doing things this way might be more accurate to what we're searching for, but would probably require a rewrite of JKG.ammo and most weapon files.
+	//			I would probably do it this way if instead of cycling to the next ammo you wanted to generate a list of ammo that worked with the weapon.
+	/*if (find->pSub->ammoIndex != ammoIndex) //if the ammo we're searching for is a substitution itself, recursive time
+	{
+		//find = &ammoTable[find->pSub->ammoIndex];
+		BG_GetAllAmmoSubstitutions(find->pSub->ammoIndex, outSubs);
+		return;
+	}*/
+
 	for (int i = 0; i < numAmmoLoaded; i++) {
 		ammo_t* thisAmmo = &ammoTable[i];
 		if (thisAmmo->pSub == find || thisAmmo == find) {

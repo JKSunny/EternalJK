@@ -4300,7 +4300,7 @@ void Cmd_AmmoCycle_f(gentity_t* ent) {
 	}
 
 	// Determine if we have ammo to cycle to.
-	BG_GetAllAmmoSubstitutions(wp->firemodes[fireMode].ammoBase->ammoIndex, allValidAmmos);
+	BG_GetAllAmmoSubstitutions(wp->firemodes[fireMode].ammoBase->ammoIndex, allValidAmmos); //--futuza trouble happening here
 
 	if (allValidAmmos.size() == 0) {
 		// Our weapon...is not linked up correctly? or something? It doesn't have any ammo...
