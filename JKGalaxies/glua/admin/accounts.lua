@@ -1109,7 +1109,7 @@ local function Tell(ply, argc, argv)
 	end
 end
 
--- NOT to be confused with SystemReply!!
+-- NOT to be confused with SystemReply!!  For replying to admtell messages.
 local function Reply(ply, argc, argv)
 	if argc < 2 then
 		SystemReply(ply, "^3Syntax: /Reply <message>")
@@ -1117,7 +1117,7 @@ local function Reply(ply, argc, argv)
 	end
 
 	if ply.lastadmtell == nil then
-		ply:SendChat( "^1You have not been messaged by an admin in this play session." )
+		ply:SendChat( "^1You have not been messaged by an admin in this play session.  Use /Tell <player name> <message> to msg a specific player." )
 		return
 	end
 
@@ -1127,7 +1127,7 @@ local function Reply(ply, argc, argv)
 	while players.GetByID(k) ~= nil do
 		local plytarg = players.GetByID(k)
 
-		if( account == plytarg:GetAccount() ) then
+		if( account == plytarg:GetAccount() and plytarg ~= ply ) then
 			plytarg:SendChat( "^7" .. ply.Name .. "^5 replies: ^7" .. message )
 		end
 
@@ -1158,16 +1158,12 @@ local function Say(ply, argc, argv)
 
 		while players.GetByID(k) ~= nil do
             local plytarg = players.GetByID(k)
-
-			if plytarg.isLoggedIn then
-            	local vecResult = vectorfnc.VectorSubtract(plyVec, vectorfnc.ObtainPlyVector(plytarg))       --subtract player's origin from target's origin
-            	if vectorfnc.VectorLength(vecResult) < normalRadius then      --if the length is inside the radius
-                	local fadelevel = vectorfnc.GetChatFadeLevel(vectorfnc.VectorLength(vecResult), normalRadius)
-					plytarg:SendFadedChat(fadelevel, "^7[^x39cAdmin^7] ^5" .. ply:GetName() .. "^7: " .. message )
+            local vecResult = vectorfnc.VectorSubtract(plyVec, vectorfnc.ObtainPlyVector(plytarg))       --subtract player's origin from target's origin
+            if vectorfnc.VectorLength(vecResult) < normalRadius then      --if the length is inside the radius
+                local fadelevel = vectorfnc.GetChatFadeLevel(vectorfnc.VectorLength(vecResult), normalRadius)
+				plytarg:SendFadedChat(fadelevel, "^7[^x39cAdmin^7] ^5" .. ply:GetName() .. "^7: " .. message )
 					--ourAccount["username"] --consider using actual account name?
-				end
 			end
-
 			k = k + 1
 		end
 		
@@ -1477,7 +1473,7 @@ local function InitAccountCmds()
 	chatcmds.Add("admcmds", Help)
 
 	-- For replying to /admtells..this isn't an admin command, it can be used by any client
-	chatcmds.Add("SystemReply", Reply)
+	chatcmds.Add("Reply", Reply)
 
 	-- Add them to the console too.
 	cmds.Add("login", Login)
