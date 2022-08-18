@@ -416,6 +416,12 @@ static void JKG_ConstructFiringModeDescription(weaponData_t* pWP, int firemode, 
 		default:
 			vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_FIRING_MODE"), firemode + 1, pVFM->displayName));
 			break;
+
+		//ammo type
+		if (pFM->ammoBase->shortname)
+		{
+			vDescLines.push_back(va(UI_GetStringEdString3("@JKG_INVENTORY_WEP_AMMOTYPE"), pFM->ammoBase->shortname));
+		}
 	}
 
 	if (pWP->weaponBaseIndex != WP_TRIP_MINE && pWP->weaponBaseIndex != WP_DET_PACK && pWP->weaponBaseIndex != WP_THERMAL && pFM->baseDamage > 0) {
@@ -519,7 +525,18 @@ static void JKG_ConstructWeaponDescription(itemInstance_t* pItem, std::vector<st
 
 	vDescLines.push_back(""); // Push a blank line because we like nice formatting
 
-	if (wp->weaponBaseIndex != WP_SABER) { // FIXME: sabers don't really have a good item description yet
+	if (wp->weaponBaseIndex == WP_SABER) // FIXME: sabers don't really have a good item description yet
+	{
+		//const saberCrystalData_t* crystal = JKG_GetSaberCrystal(wp->sab.defaultcrystal); //--futuza JKG_GetSaberCrysta() has an empty table when called from here...wat?
+		vDescLines.push_back(va("Hilt: %s", wp->sab.hiltname));
+		if (wp->sab.defaultcrystal)
+		{
+			vDescLines.push_back(va("Crystal: %s", wp->sab.defaultcrystal));
+		}
+	}
+
+	else
+	{ 
 		for (int i = 0; i < wp->numFiringModes; i++) {
 			JKG_ConstructFiringModeDescription(wp, i, vDescLines);
 		}

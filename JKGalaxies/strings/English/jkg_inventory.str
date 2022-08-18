@@ -449,7 +449,7 @@ REFERENCE		WEP_SPEEDBONUS
 LANG_ENGLISH		"Movement bonus: +%.0f%%"
 
 REFERENCE		WEP_AMMOTYPE
-LANG_ENGLISH		"Accepts %s ammo"
+LANG_ENGLISH		"Ammo Type: %s"
 
 REFERENCE		WEP_ACCURACY
 LANG_ENGLISH		"Accuracy Rating: %i - %i"

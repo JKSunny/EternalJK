@@ -4658,8 +4658,11 @@ void PM_FinishWeaponChange( void ) {
 	if (weapon == WP_SABER) //set saber crystal color
 	{
 		const saberCrystalData_t* crystal = JKG_GetSaberCrystal(weaponData->sab.defaultcrystal);
-		pm->ps->saberCrystal[0] = crystal->crystalID;
-		//pm->ps->saberCrystal[1] = crystal->crystalID; //--futuza: additional sabers?  not sure how to handle that yet...
+		if (crystal)
+		{
+			pm->ps->saberCrystal[0] = crystal->crystalID;
+			//pm->ps->saberCrystal[1] = crystal->crystalID; //--futuza: additional sabers?  not sure how to handle that yet...
+		}
 	}
 }
 
