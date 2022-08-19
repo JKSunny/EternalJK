@@ -57,7 +57,7 @@
 
 			{
 				"name":			"Client",
-				"use-cheats":		0,
+				"use-cheats":		0,		//as a note if a value is not specified, it will use the default setting (usually a 0)
 				"can-changedetails":	0,
 				"can-addaccounts":	0,
 				"can-deleteaccounts":	0,
@@ -66,7 +66,6 @@
 				"can-say":		0,
 				"can-tell":		0,
 				"can-speak":		0,
-				"can-announce":		0,
 				"can-puppet":		0,
 				"can-list-online":	0,
 				"can-list-admins":	0,

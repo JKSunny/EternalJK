@@ -42,8 +42,8 @@ function tablelength(T)
 
 local function AddPermission( permissionname, permissiondefault, friendlyname, color )
 	local permission = { }
-	permission["name"] = permissionname
-	permission["default"] = permissiondefault
+	permission["name"] = permissionname 
+	permission["default"] = permissiondefault or 0  --if no default permission specified use 0
 	permission["friendlyname"] = friendlyname
 	permission["color"] = color
 
@@ -158,7 +158,15 @@ local function InitRanks( )
 			local defvalue = sortedpermissions[j]["default"]
 
 			jObjectItem = json.GetObjectItem( jObject, permname )
-			rank[permname] = json.ToBooleanOpt( jObjectItem, defvalue )
+
+			--so lua is a bit dumb, 0 evaluates as true, so this will ensure only positive values == true
+			if defvalue < 1 then
+				defvalue = false
+			else
+				defvalue = true
+			end
+
+			rank[permname] = json.ToBooleanOpt( jObjectItem , defvalue )
 		end
 	
 		--
@@ -756,30 +764,30 @@ local function LogoutAccount(account)
 	end
 end
 
-local function DeleteAccount(ply, argc, argv)
+local function RemoveAccount(ply, argc, argv)
 	if ply.isLoggedIn then
 		local rank = GetRank(ply)
 		if rank["can-deleteaccounts"] ~= true then
 			SystemReply(ply, "^1You do not have permission to perform this action.")
+			return
 		else
-			-- Syntax:
-			-- /admdeleteaccount <username>
 			if argc ~= 2 then
 				SystemReply(ply, "^3Syntax: /admdeleteaccount <username>")
-			else
-				local desiredaccount = accounts[argv[1]]
-				if desiredaccount ~= nil then
-					local ourAccount = accounts[ply:GetAccount()]
-					if ourAccount["username"] ~= argv[1] then
-						LogoutAccount(desiredaccount)
-						DeleteAccount(desiredaccount)
-						SystemReply(ply, "^4Account deleted.")
-					else
-						SystemReply(ply, "^1You cannot delete your own account.")
-					end
+				return
+			end
+			
+			local desiredaccount = accounts[argv[1]]
+			if desiredaccount ~= nil then
+				local ourAccount = accounts[ply:GetAccount()]
+				if ourAccount["username"] ~= argv[1] then
+					LogoutAccount(desiredaccount)
+					DeleteAccount(desiredaccount)
+					SystemReply(ply, "^4Account deleted.")
 				else
-					SystemReply(ply, "^1Cannot delete account, it does not exist.")
+					SystemReply(ply, "^1You cannot delete your own account.")
 				end
+			else
+				SystemReply(ply, "^1Cannot delete account, it does not exist.")
 			end
 		end
 	else
@@ -1430,7 +1438,7 @@ local function Help(ply, argc, argv)
 		ply:SendPrint("Commands:")
 		printstring = "^3login ^7- allows user to sign into an account.\n^3logout ^7- signs out of the current account.\n^3changepassword ^7- change current account password.\n^3register ^7- register for a new client account.\n"
 		printstring = printstring .. "^3admkick ^7- kick a user off the server.\n^3admchangedetails ^7- edit account details.\n^3admprofile ^7- check what account you're logged in with.\n^3admnewaccount ^7- create a new account as an admin.\n"
-		printstring = printstring .. "^3admdeleteaccount ^7- delete an account as an admin.\n^3admlist ^7- query for info about accounts.\n^3admrank ^7- query for permission held by a rank\n^3admalter ^7- alter an accounts rank or password.\n"
+		printstring = printstring .. "^3admremoveaccount ^7- delete an account as an admin.\n^3admlist ^7- query for info about accounts.\n^3admrank ^7- query for permission held by a rank\n^3admalter ^7- alter an accounts rank or password.\n"
 		printstring = printstring .. "^3admstatus ^7- list logged in users and status.\n^3admsay ^7- imitates the /say cmd for admins.\n^3admtell ^7- imitates the /tell cmd for admins.\n^3admspeak ^7- imitates the /sayglobal cmd for admins."
 		ply:SendPrint(printstring) 	 --getting too long, gotta break it up
 		printstring = "^3admannounce ^7- make a server announcement.\n^3admpuppet ^7- allows admins to masquerade messages as other users.\n^3admchangemap ^7- change the current map (not implemented).\n"
@@ -1455,7 +1463,7 @@ local function InitAccountCmds()
 	chatcmds.Add("admchangedetails", ChangeDetails)
 	chatcmds.Add("admprofile", Profile)
 	chatcmds.Add("admnewaccount", AddAccount)
-	chatcmds.Add("admdeleteaccount", DeleteAccount)
+	chatcmds.Add("admremoveaccount", RemoveAccount)
 	chatcmds.Add("admlist", List)
 	chatcmds.Add("admrank", Rank)
 	chatcmds.Add("admalter", Alter)
@@ -1484,7 +1492,7 @@ local function InitAccountCmds()
 	cmds.Add("admchangedetails", ChangeDetails)
 	cmds.Add("admprofile", Profile)
 	cmds.Add("admnewaccount", AddAccount)
-	cmds.Add("admdeleteaccount", DeleteAccount)
+	cmds.Add("admremoveaccount", RemoveAccount)
 	cmds.Add("admlist", List)
 	cmds.Add("admrank", Rank)
 	cmds.Add("admalter", Alter)
