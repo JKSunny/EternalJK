@@ -773,8 +773,13 @@ void SpectatorThink( gentity_t *ent, usercmd_t *ucmd ) {
 			Cmd_FollowCycle_f( ent, 1 );
 		}
 
-		if (client->sess.spectatorState == SPECTATOR_FOLLOW && (ucmd->upmove > 0))
-		{ //jump now removes you from follow mode
+		//block/ironsights button cycles backwards through spectators
+		if ((client->buttons & BUTTON_IRONSIGHTS) && !(client->oldbuttons & BUTTON_IRONSIGHTS)) {
+			Cmd_FollowCycle_f(ent, -1);
+		}
+
+		if (client->sess.spectatorState == SPECTATOR_FOLLOW && (ucmd->upmove > 0 || ucmd->generic_cmd == GENCMD_SABERATTACKCYCLE) )
+		{ //jump or sabercycle/firemode now removes you from follow mode
 			StopFollowing(ent);
 		}
 	}
@@ -2076,7 +2081,7 @@ void ClientThink_real( gentity_t *ent ) {
 		}
 	}
 
-	// Automatically regenerate health and shield
+	// Automatically regenerate health
 	if (jkg_healthRegen.value > 0 && JKG_ClientAlive(ent)) 
 	{
 		if (ent->lastHealTime < level.time && (ent->damagePlumTime + jkg_healthRegenDelay.value) < level.time)
@@ -2087,7 +2092,8 @@ void ClientThink_real( gentity_t *ent ) {
 			ent->lastHealTime = level.time + jkg_healthRegenSpeed.value;
 		}
 	}
-
+	
+	//regen shield (if equipped)
 	if (ent->client->shieldEquipped && ent->client->ps.stats[STAT_SHIELD] <= ent->client->ps.stats[STAT_MAX_SHIELD] && JKG_ClientAlive(ent)) 
 	{
 		if(ent->client->ps.stats[STAT_SHIELD] < ent->client->ps.stats[STAT_MAX_SHIELD]) //if not full
@@ -2659,7 +2665,7 @@ void ClientThink_real( gentity_t *ent ) {
 				ent->client->saberBlockTime = level.time;				// Manual blocking at appropriate times will reduce the force drop from blaster bolts.
 			}
 
-			if( ent->client->pers.cmd.buttons & BUTTON_ATTACK )
+			if( ent->client->pers.cmd.buttons & BUTTON_ATTACK )		//if projectile blocking
 			{
 				if( !(ent->client->ps.saberActionFlags & ( 1 << SAF_PROJBLOCKING ) ) )
 				{
@@ -2675,12 +2681,27 @@ void ClientThink_real( gentity_t *ent ) {
 				ent->client->ps.saberActionFlags &= ~( 1 << SAF_PROJBLOCKING );
 			}
 		}
-		else if ( ent->client->ps.weaponTime >= 0 && ent->client->ps.saberActionFlags & (1 << SAF_BLOCKING) && 
+
+		//if blocking and in the air
+		else if ( ent->client->ps.weaponTime >= 0 && ent->client->ps.saberActionFlags & (1 << SAF_BLOCKING) &&
 			ent->client->pers.cmd.buttons & BUTTON_IRONSIGHTS &&
 			ent->client->ps.groundEntityNum != ENTITYNUM_NONE )
 		{
-			// FIXME
+			// FIXME: decide if blocking in the air should be allowed
+
+			/*if (ent->client->pers.cmd.buttons & BUTTON_ATTACK)		//if projectile blocking
+			{
+				if (!(ent->client->ps.saberActionFlags & (1 << SAF_PROJBLOCKING)))
+				{
+					ent->client->ps.saberActionFlags |= (1 << SAF_PROJBLOCKING);
+					ent->client->saberProjBlockTime = level.time;
+				}
+			*/
+			//ent->client->ps.saberMove = LS_REFLECT_UP;
+			//ent->client->pers.cmd.buttons &= ~BUTTON_ATTACK;
 		}
+
+		//we're not blocking
 		else
 		{
 			ent->client->ps.saberActionFlags &= ~(1 << SAF_BLOCKING);
@@ -2999,9 +3020,13 @@ void ClientThink_real( gentity_t *ent ) {
 		{
 			pmove.gender = GENDER_FEMALE;
 		}
-		else
+		else if (!Q_stricmp(text, "male") || !Q_stricmp(text, "m"))
 		{
 			pmove.gender = GENDER_MALE;
+		}
+		else
+		{
+			pmove.gender = GENDER_NEUTER;
 		}
 	}
 
@@ -3446,6 +3471,17 @@ void ClientThink_real( gentity_t *ent ) {
 				client->deathcamRadius = 200; // 200 units before we hit the edges of our movement area
 				trap->SendServerCommand(ent->s.number, va("dc %i %i %i %i %i", client->deathcamTime, client->deathcamRadius, (int)client->deathcamCenter[0], (int)client->deathcamCenter[1], (int)client->deathcamCenter[2]));
 				JKG_PermaSpectate(ent);
+				
+				//--futuza to do in phase 2: 
+				/* leave a corpse behind, that corpse will eventually decay, but should last for a few mins
+				   should be able to loot corpses for dropped items, items will be removed from players inventory
+				   based on drop rules, unless they have high notiriety only a few items are dropped
+				   allow players in the death cam to be seen by players using force sense as 'ghosts'
+				   allow them to be revived by revive items or force powers during the deathcam
+
+				   //MaintainBodyQueue(ent);  --futuza: might be useful here for this?
+				*/
+				
 			}
 
 		}
