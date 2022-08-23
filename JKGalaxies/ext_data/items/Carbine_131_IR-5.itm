@@ -1,23 +1,11 @@
 {
 	"name":             "@JKG_ITEMS_carbine_ir-5",
-	"internal":         "carbine-ir-5",
+	"internal":         "carbine_ir-5",
 	"itemtype":          "weapon",
 	"weapon":			"WP_BLASTER",
-	"variation":		"0",
+	"variation":		"8",
 	"weight":			"3",
 	"cost":				"575",
 	"itemIcon":			"models/weapons/IR-5_Carbine/icon_default",
-	"itemDescription":  "A cheap automatic carbine manufactured by Merr-Sonn Munitions, the IR-5 'Intimidator' Blaster was marketed toward private security enforcement, though it has become somewhat popular among criminals in the Outer Rim."
-},
-
-{
-	"name":             "@JKG_ITEMS_carbine_ir-5_adv",
-	"internal":         "carbine-ir-5_adv",
-	"itemtype":          "weapon",
-	"weapon":			"WP_BLASTER",
-	"variation":		"1",
-	"weight":			"4",
-	"cost":				"675",
-	"itemIcon":			"models/weapons/IR-5_Carbine/icon_default",
-	"itemDescription":  "The advanced model of the IR-5 'Intimidator' features several improvements over the original model, including a scope, a better cooling system, and larger clip capacity."
+	"itemDescription":  "A cheap automatic carbine manufactured by Merr-Sonn Munitions, the IR-5 'Intimidator' Blaster was marketed toward private security, though it has become popular among criminals in the Outer Rim."
 }

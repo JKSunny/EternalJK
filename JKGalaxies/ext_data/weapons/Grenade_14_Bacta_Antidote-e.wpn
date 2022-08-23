@@ -81,19 +81,19 @@
             "damageradius": 
 			{ 
 				"start": 0,
-				"end": 128,
+				"end": 150,
                 "function": "clamp",
                 "parm": 30,
                 "falloff": "constant" 
 			},
             "duration": 1000,
             "delay": 0,
-            "damage": -40,
+            "damage": -5,
             "damagedelay": 350,
 			"buffs": [
 			{
 				"buff": "standard-antidote",
-				"duration": 10000
+				"duration": 8000
 			}
 			],
 			"flags":	[ "DAMAGE_NO_KNOCKBACK" ]
@@ -107,16 +107,16 @@
                 "falloff": "linear" },
                 "duration": 1500,
                 "delay": 500,
-                "damage": -3,
-                "damagedelay": 250,
+                "damage": -1,
+                "damagedelay": 400,
                 "buffs": [
 				{
 					"buff": "standard-antidote",
-					"duration": 5000
+					"duration": 8000
 				},
                 {
                     "buff": "standard-heal",
-                    "duration": 5000
+					"duration": 3000
                 }
 				],
 			  "flags":	[ "DAMAGE_NO_KNOCKBACK" ]
@@ -149,19 +149,19 @@
             "damageradius": 
 			{ 
 				"start": 0,
-				"end": 128,
+				"end": 150,
                 "function": "clamp",
                 "parm": 30,
                 "falloff": "constant" 
 			},
             "duration": 1000,
             "delay": 0,
-            "damage": -40,
-            "damagedelay": 300,
+            "damage": -5,
+            "damagedelay": 500,
 			"buffs": [
 			{
 				"buff": "standard-antidote",
-				"duration": 10000
+				"duration": 8000
 			}
 			],
 			"flags":	[ "DAMAGE_NO_KNOCKBACK" ]
@@ -175,16 +175,16 @@
                 "falloff": "linear" },
                 "duration": 1500,
                 "delay": 500,
-                "damage": -3,
+                "damage": -1,
                 "damagedelay": 250,
                 "buffs": [
 				{
 					"buff": "standard-antidote",
-					"duration": 5000
+					"duration": 8000
 				},
                 {
                     "buff": "standard-heal",
-                    "duration": 5000
+					"duration": 3000
                 }
 				],
 			  "flags":	[ "DAMAGE_NO_KNOCKBACK" ]

@@ -1162,6 +1162,8 @@ void Cmd_CloseVendor_f (gentity_t *ent)
 //consume item helper function
 void JKG_ConsumeItem_h(gentity_t* ent, int itemNum)
 {
+
+	//--futuza todo: tie this to the ui so we can have a nice cooldown timer on the aci of the consumable item as well
 	int initHP = ent->client->ps.stats[STAT_HEALTH];    //get initial health before consuming item		--futuza: this is a hacky way of doing it, really needs a LUA function to figure this out
 	int initStamina = ent->client->ps.forcePower;		//get initial stamina/force
 	switch (BG_ConsumeItem(ent, itemNum))
