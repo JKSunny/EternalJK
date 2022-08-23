@@ -1164,7 +1164,7 @@ void JKG_ConsumeItem_h(gentity_t* ent, int itemNum)
 {
 	int initHP = ent->client->ps.stats[STAT_HEALTH];    //get initial health before consuming item		--futuza: this is a hacky way of doing it, really needs a LUA function to figure this out
 	int initStamina = ent->client->ps.forcePower;		//get initial stamina/force
-	switch (int errorcode = BG_ConsumeItem(ent, itemNum))
+	switch (BG_ConsumeItem(ent, itemNum))
 	{
 	case 1:
 		trap->SendServerCommand(ent - g_entities, "print \"Could not consume that item - either it is not a consumable or it is not a valid inventory item.\n\"");
