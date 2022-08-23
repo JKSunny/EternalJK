@@ -252,7 +252,7 @@ void BG_GiveItemNonNetworked(gentity_t* ent, itemInstance_t item);
 void BG_RemoveItemStack(gentity_t* ent, int itemStackNum);
 void BG_SendItemPacket(itemPacketType_t packetType, gentity_t* ent, void* memData, int intData, int intData2);
 void BG_ChangeItemStackQuantity(gentity_t* ent, int itemStackNum, int newQuantity);
-qboolean BG_ConsumeItem(gentity_t* ent, int itemStackNum);
+int BG_ConsumeItem(gentity_t* ent, int itemStackNum);
 void BG_SendTradePacket(itemTradePacketType_t packetType, gentity_t* ent, gentity_t* other, void* memData, int intData, int intData2);
 void BG_RemoveItemNonNetworked(gentity_t* ent, itemInstance_t item);
 void BG_AdjustItemStackQuantity(gentity_t* ent, int itemStack, int adjustment);

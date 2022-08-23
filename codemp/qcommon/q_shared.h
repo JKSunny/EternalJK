@@ -1433,7 +1433,7 @@ typedef struct forcedata_s {
 	int			forceButtonNeedRelease;
 	int			forcePowerDuration[NUM_FORCE_POWERS];
 	int			forcePower;
-	int			forcePowerMax;
+	//int			forcePowerMax;		//replaced with ps.stats[STAT_MAX_STAMINA]
 	int			forcePowerRegenDebounceTime;
 	int			forcePowerLevel[NUM_FORCE_POWERS];		//so we know the max forceJump power you have
 	int			forcePowerBaseLevel[NUM_FORCE_POWERS];
@@ -1810,6 +1810,7 @@ typedef struct playerState_s {
 	qboolean		sightsTransition;	// Are we in a sights transition? (Used for player animation)
 	unsigned int	credits;		//how many credits we have on hand
 	//unsigned int	spent;		//how many credits we've spent so far (currently not used for anything real, but might have application in the future)
+	unsigned int	consumableTime;	//Determines consumable item cooldown, when we can next use another consumable.
 } playerState_t;
 // For ironsights
 #define IRONSIGHTS_MSB (1 << 31)

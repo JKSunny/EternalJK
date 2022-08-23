@@ -3452,6 +3452,7 @@ void ClientSpawn(gentity_t *ent, qboolean respawn) {
 			ent->client->ps.heatThreshold = ent->client->ps.maxHeat * 0.75;
 	}
 
+	ent->client->ps.consumableTime = level.time;	//mark when consumables can be used as 'now'
 
 	GLua_Hook_PlayerSpawned(ent->s.number);
 

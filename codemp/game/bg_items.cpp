@@ -1039,41 +1039,49 @@ BG_ConsumeItem
 */
 #ifdef _GAME
 extern void GLua_ConsumeItem(gentity_t* consumer, itemInstance_t* item);
-qboolean BG_ConsumeItem(gentity_t* ent, int itemStackNum) {
+int BG_ConsumeItem(gentity_t* ent, int itemStackNum) {
 	itemInstance_t* item;
 	int consumeAmount;
 
 	if (itemStackNum < 0 || itemStackNum >= ent->inventory->size()) {
 		// Invalid inventory ID
-		return qfalse;
+		return 1;
 	}
 
 	item = &(*ent->inventory)[itemStackNum];
 	if (item->id->itemType != ITEM_CONSUMABLE) {
 		// Not a consumable item
-		return qfalse;
+		return 1;
 	}
 
 	consumeAmount = item->id->consumableData.consumeAmount;
 	if (consumeAmount > item->quantity) {
 		// Not enough quantity to consume this item
-		return qfalse;
+		return 2;
+	}
+
+	if (ent->client->ps.consumableTime > level.time)
+	{
+		//still on cooldown for consumables
+		G_Sound(ent, CHAN_AUTO, G_SoundIndex("sound/interface/ammocon_done.mp3"));
+		return 3;
 	}
 	
 
 	if(item->id->consumableData.partHealthReq && ent->health >= ent->client->ps.stats[STAT_MAX_HEALTH] )
 	{
-		return qfalse;
+		return 4;
 	}
 
 	if (item->id->consumableData.partStaminaReq && ent->playerState->forcePower >= ent->client->ps.stats[STAT_MAX_STAMINA] )
 	{
-		return qfalse;
+		return 4;
 	}
 
 	GLua_ConsumeItem(ent, item);
 	BG_ChangeItemStackQuantity(ent, itemStackNum, item->quantity - consumeAmount);
-	return qtrue;
+	ent->client->ps.consumableTime = level.time + bgConstants.consumableTime;
+	return 0;
 }
 #endif
 

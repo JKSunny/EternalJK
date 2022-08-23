@@ -785,5 +785,37 @@
 			"damageColor": [ "17", "255", "17" ],
 			"lowDamageColor": [ "89", "247", "110" ]
 		}
+	},
+
+	"MOD_STAMINA_LOSE": {
+		// Taking damage to stamina/force power (can't actually kill you, but sorta hurts you?)
+		"inventoryName": "@JKG_INVENTORY_MOD_STAMINA",
+
+		"modifiers": {
+			"ignoreArmor": true,
+			"ignoreShield": true,
+			"droid": 0.0		//droids are not force sensitive
+		},
+
+		"plums": {
+			"damageColor": [ "25", "75", "200" ],
+			"lowDamageColor": [ "100", "75", "200" ]
+		}
+	},
+
+	"MOD_STAMINA_GAIN": {
+		// Recovering stamina/force power (heals)
+		"inventoryName": "@JKG_INVENTORY_MOD_STAMINA",
+
+		"modifiers": {
+			"ignoreArmor": true,
+			"ignoreShield": true,
+			"droid": 0.0		//droids are not force sensitive
+		},
+
+		"plums": {
+			"damageColor": [ "30", "160", "230" ],
+			"lowDamageColor": [ "100", "160", "230" ]
+		}
 	}
 }

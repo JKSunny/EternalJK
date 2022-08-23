@@ -586,6 +586,20 @@ static int GLua_Player_MaxHealth_Set(lua_State *L) {
 	return 0;
 }
 
+static int GLua_Player_MaxStamina_Get(lua_State* L) {
+	GLua_Data_Player_t* ply = GLua_CheckPlayer(L, 1);
+	if (!ply) return 0;
+	lua_pushinteger(L, level.clients[ply->clientNum].ps.stats[STAT_MAX_STAMINA]);
+	return 1;
+}
+
+static int GLua_Player_MaxStamina_Set(lua_State* L) {
+	GLua_Data_Player_t* ply = GLua_CheckPlayer(L, 1);
+	if (!ply) return 0;
+	level.clients[ply->clientNum].ps.stats[STAT_MAX_STAMINA] = level.clients[ply->clientNum].pers.maxStamina = luaL_checkinteger(L, 2);
+	return 0;
+}
+
 
 static int GLua_Player_MaxShield_Get(lua_State *L) {
 	GLua_Data_Player_t *ply = GLua_CheckPlayer(L, 1);
@@ -608,10 +622,10 @@ static int GLua_Player_Shield_Get(lua_State *L) {
 	return 1;
 }
 
-static int GLua_Player_Shield_Set(lua_State *L) {
-	GLua_Data_Player_t *ply = GLua_CheckPlayer(L, 1);
+static int GLua_Player_Shield_Set(lua_State* L) {
+	GLua_Data_Player_t* ply = GLua_CheckPlayer(L, 1);
 	if (!ply) return 0;
-	level.clients[ply->clientNum].ps.stats[STAT_SHIELD] = luaL_checkinteger(L, 2);
+	level.clients[ply->clientNum].ps.stats[STAT_SHIELD] = g_entities[ply->clientNum].playerState->stats[STAT_SHIELD] = luaL_checkinteger(L, 2);
 	return 0;
 }
 
@@ -626,6 +640,20 @@ static int GLua_Player_Health_Set(lua_State *L) {
 	GLua_Data_Player_t *ply = GLua_CheckPlayer(L, 1);
 	if (!ply) return 0;
 	level.clients[ply->clientNum].ps.stats[STAT_HEALTH] = g_entities[ply->clientNum].health = luaL_checkinteger(L, 2);
+	return 0;
+}
+
+static int GLua_Player_Stamina_Get(lua_State* L) {
+	GLua_Data_Player_t* ply = GLua_CheckPlayer(L, 1);
+	if (!ply) return 0;
+	lua_pushinteger(L, level.clients[ply->clientNum].ps.forcePower);
+	return 1;
+}
+
+static int GLua_Player_Stamina_Set(lua_State* L) {
+	GLua_Data_Player_t* ply = GLua_CheckPlayer(L, 1);
+	if (!ply) return 0;
+	level.clients[ply->clientNum].ps.forcePower = g_entities[ply->clientNum].playerState->forcePower = luaL_checkinteger(L, 2);
 	return 0;
 }
 
@@ -1921,8 +1949,10 @@ static const struct luaL_reg player_m [] = {
 
 static const struct GLua_Prop player_p [] = {
 	{"Health",	GLua_Player_Health_Get,		GLua_Player_Health_Set},
+	{"Stamina", GLua_Player_Stamina_Get,	GLua_Player_Stamina_Set},
 	{"Shield",	GLua_Player_Shield_Get,		GLua_Player_Shield_Set},
 	{"MaxHealth", GLua_Player_MaxHealth_Get, GLua_Player_MaxHealth_Set},
+	{"MaxStamina", GLua_Player_MaxStamina_Get, GLua_Player_MaxStamina_Set},
 	{"MaxShield", GLua_Player_MaxShield_Get, GLua_Player_MaxShield_Set},
 	{"ID",		GLua_Player_GetID,			NULL},
 	{"Name",	GLua_Player_GetName,		NULL},

@@ -2384,7 +2384,7 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 					SkipRestOfLine( &p );
 					continue;
 				}
-				NPC->client->ps.fd.forcePowerMax = n;
+				NPC->client->ps.stats[STAT_MAX_STAMINA] = n;
 				continue;
 			}
 

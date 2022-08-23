@@ -1894,6 +1894,9 @@ typedef struct {
 	float minimumSpeedModifier;
 	float sprintSpeedModifier;
 
+	//Misc Stuff
+	unsigned int consumableTime;
+
 	// Stuff pertaining to stamina drains
 	struct {
 		int lossFromRolling;

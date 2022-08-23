@@ -13,6 +13,8 @@ function GiveBactaSmall(ply, quantity)
 
 	ply.Entity:PlaySound(1, "sound/items/use_bacta.wav")
 	ply:AddBuff(ply, "standard-heal", 5000, 1.5); --healing buff
+	ply:AddBuff(ply, "standard-slow", 1000, 1.0) --slow us down while applying buff
+    ply:SetAnimUpper("BOTH_USEMED")
 end
 
 function GiveBactaMedium(ply, quantity)
@@ -24,6 +26,8 @@ function GiveBactaMedium(ply, quantity)
 
 	ply.Entity:PlaySound(1, "sound/items/use_bacta.wav")
 	ply:AddBuff(ply, "standard-heal", 7000, 1.5); --healing buff
+	ply:AddBuff(ply, "standard-slow", 2000, 1.0) --slow us down while applying buff
+    ply:SetAnimUpper("BOTH_USEMED")
 end
 
 function GiveBactaLarge(ply, quantity)
@@ -35,6 +39,8 @@ function GiveBactaLarge(ply, quantity)
 
 	ply.Entity:PlaySound(1, "sound/items/use_bacta.wav")
 	ply:AddBuff(ply, "refined-heal", 7000, 1.5); --healing buff
+	ply:AddBuff(ply, "standard-slow", 2500, 1.0) --slow us down while applying buff
+    ply:SetAnimUpper("BOTH_USEMED")
 end
 
 function Item_Bacta_Functions()
