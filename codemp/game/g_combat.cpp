@@ -4710,6 +4710,8 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 			attacker->inuse && attacker->client)
 		{ //check for location based damage stuff.
 			isHeadShot = G_LocationBasedDamageModifier(targ, point, mod, dflags, &take, means);
+			if (targ->health < 0)
+				isHeadShot = qfalse;	//don't notify about headshots on corpses
 		}
 	}
 
