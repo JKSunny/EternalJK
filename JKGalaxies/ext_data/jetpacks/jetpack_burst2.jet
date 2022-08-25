@@ -32,7 +32,7 @@
 		"thrustBack": 1.0,
 		"thrustSide": 1.5,
 		"thrustUp": 4.5,
-		"loadBearingAllowed": true
+		"loadBearingAllowed": false
 	},
 
 	"visuals": {

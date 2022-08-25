@@ -33,7 +33,8 @@
 		"thrustSide": 1.0,
 		"thrustUp": 1.0,
 
-		"fwdThrustAmt": 3.0
+		"fwdThrustAmt": 3.0,
+		"loadBearingAllowed": false
 	},
 
 	"visuals": {

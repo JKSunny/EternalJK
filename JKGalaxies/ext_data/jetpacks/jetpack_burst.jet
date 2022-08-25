@@ -38,7 +38,7 @@
 		
 		"fwdThrustAllowed": 0,
 		"fwdThrustAmt": 2.0,
-		"loadBearingAllowed": true
+		"loadBearingAllowed": false
 	},
 
 	"visuals": {
