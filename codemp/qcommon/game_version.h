@@ -49,7 +49,7 @@ suffix:			This represents a small patch or hotfix on the server.  Used for serve
 */
 
 // Current version of the multi player game
-#define JKG_VERSION "1.3.23"
+#define JKG_VERSION "1.3.24"
 
 #ifdef _DEBUG
 	#define JK_VERSION "" GIT_BRANCH " / " GIT_HASH " (debug)"
