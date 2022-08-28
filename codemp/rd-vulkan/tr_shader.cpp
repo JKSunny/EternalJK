@@ -1784,6 +1784,11 @@ static qboolean ParseStage(shaderStage_t *stage, const char **text)
 				else
 				{
 					shader.portalRange = atof(token);
+
+					if ( shader.portalRange < 0.001f )
+						shader.portalRangeR = 0.0f;
+					else
+						shader.portalRangeR = 1.0f / shader.portalRange;
 				}
 			}
 			else
@@ -4495,7 +4500,7 @@ shader_t *FinishShader( void )
 			}
 
 			// this will be a copy of the vk_pipeline[0] but with faceculling disabled
-			pStage->vk_2d_pipeline = VK_NULL_HANDLE;
+			pStage->vk_2d_pipeline = NULL;
 
 #ifdef USE_VK_PBR
 			if( pStage->tessFlags & TESS_PBR ) {

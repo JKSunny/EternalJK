@@ -1145,7 +1145,6 @@ void RE_Shutdown( qboolean destroyWindow, qboolean restarting ) {
 
 	if (destroyWindow) {
 		vk_shutdown();
-		Com_Memset(&vk_world, 0, sizeof(vk_world));
 		Com_Memset(&glState, 0, sizeof(glState));
 
 		if (destroyWindow && !restarting) {
