@@ -5,7 +5,7 @@ on:
   push:
     tags-ignore:
     branches:
-      - master
+      - development
     paths-ignore:
       - '**.md'
       - '*.txt'
