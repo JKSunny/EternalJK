@@ -24,6 +24,9 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #ifndef TR_LOCAL_H
 #define TR_LOCAL_H
 
+// ImGui
+#define USE_VK_IMGUI
+
 #define USE_VBO					// store static world geometry in VBO
 #define USE_FOG_ONLY
 #define USE_FOG_COLLAPSE		// not compatible with legacy dlights
@@ -1574,6 +1577,10 @@ extern cvar_t	*r_roundImagesDown;
 extern cvar_t	*r_nomip;				// apply picmip only on worldspawn textures
 #ifdef USE_VBO
 extern cvar_t	*r_vbo;
+#endif
+
+#ifdef USE_VK_IMGUI
+extern cvar_t	*in_imgui;
 #endif
 
 /*

@@ -361,6 +361,11 @@ extern PFN_vkGetImageMemoryRequirements2KHR				qvkGetImageMemoryRequirements2KHR
 
 extern PFN_vkDebugMarkerSetObjectNameEXT				qvkDebugMarkerSetObjectNameEXT;
 
+#ifdef USE_VK_IMGUI
+extern PFN_vkFlushMappedMemoryRanges					qvkFlushMappedMemoryRanges;
+extern PFN_vkResetCommandPool							qvkResetCommandPool;
+#endif
+
 typedef union floatint_u
 {
 	int32_t		i;
@@ -979,3 +984,17 @@ void		vk_set_object_name( uint64_t obj, const char *objName, VkDebugReportObject
 void		vk_debug( const char *msg, ... );
 void		vk_create_debug_callback( void );
 void		R_DebugGraphics( void );
+
+#ifdef USE_VK_IMGUI
+struct ImGuiGlobal {
+	qboolean		skip; // skip rendering on map loading
+	qboolean		input_state;
+};
+
+extern ImGuiGlobal	imguiGlobal;
+
+void		vk_imgui_initialize( void );
+void		vk_imgui_shutdown( void );
+void		vk_imgui_begin_frame( void );
+void		vk_imgui_draw( void );
+#endif

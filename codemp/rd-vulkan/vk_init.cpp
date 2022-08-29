@@ -500,6 +500,9 @@ void vk_initialize( void )
 	vk_create_attachments();
 	vk_create_render_passes();
 	vk_create_framebuffers();
+#ifdef USE_VK_IMGUI
+	vk_imgui_initialize();
+#endif
 
 	vk.active = qtrue;
 }
@@ -568,4 +571,7 @@ __cleanup:
 	Com_Memset(&vk_world, 0, sizeof(vk_world));
 
 	vk_deinit_library();
+#ifdef USE_VK_IMGUI
+	vk_imgui_shutdown();
+#endif
 }

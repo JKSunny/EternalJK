@@ -1036,6 +1036,10 @@ void vk_begin_frame( void )
     // other stats
     vk.stats.push_size = 0;
 #endif
+
+#ifdef USE_VK_IMGUI
+    vk_imgui_begin_frame();
+#endif
 }
 
 void vk_end_render_pass( void )
@@ -1188,6 +1192,10 @@ void vk_end_frame( void )
                     vk.pipeline_layout_post_process, 0, 1, &vk.color_descriptor, 0, NULL );
 
                 qvkCmdDraw( vk.cmd->command_buffer, 4, 1, 0, 0 );
+
+#ifdef USE_VK_IMGUI
+                vk_imgui_draw();
+#endif
             }
         }
     }

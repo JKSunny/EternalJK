@@ -76,6 +76,7 @@ set(MPVulkanRendererFiles
 	"${MPDir}/rd-vulkan/vk_frame.cpp"
 	"${MPDir}/rd-vulkan/vk_image.cpp"
 	"${MPDir}/rd-vulkan/vk_image_process.cpp"
+        "${MPDir}/rd-vulkan/vk_imgui.cpp"
 	"${MPDir}/rd-vulkan/vk_info.cpp"
 	"${MPDir}/rd-vulkan/vk_init.cpp"
 	"${MPDir}/rd-vulkan/vk_instance.cpp"
@@ -156,6 +157,18 @@ list(APPEND MPVulkanRendererLibraries          ${ZLIB_LIBRARIES})
 # Transparently use our bundled minizip.
 list(APPEND MPVulkanRendererIncludeDirectories ${MINIZIP_INCLUDE_DIRS})
 list(APPEND MPVulkanRendererLibraries          ${MINIZIP_LIBRARIES})
+
+
+# Add SDL2
+list(APPEND MPVulkanRendererIncludeDirectories ${OpenJKLibDir}/SDL2/include)
+
+if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+	list(APPEND MPVulkanRendererLibraries ${OpenJKLibDir}/SDL2/lib/x86/SDL2main.lib)
+	list(APPEND MPVulkanRendererLibraries ${OpenJKLibDir}/SDL2/lib/x86/SDL2.lib)		
+else()
+	list(APPEND MPVulkanRendererLibraries ${OpenJKLibDir}/SDL2/lib/x64/SDL2main.lib)
+	list(APPEND MPVulkanRendererLibraries ${OpenJKLibDir}/SDL2/lib/x64/SDL2.lib)	
+endif()
 
 #find_package(OpenGL REQUIRED)
 #set(MPVulkanRendererIncludeDirectories ${MPVulkanRendererIncludeDirectories} ${OPENGL_INCLUDE_DIR})

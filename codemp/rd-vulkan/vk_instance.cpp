@@ -146,6 +146,11 @@ PFN_vkGetImageMemoryRequirements2KHR			qvkGetImageMemoryRequirements2KHR;
 
 PFN_vkDebugMarkerSetObjectNameEXT				qvkDebugMarkerSetObjectNameEXT;
 
+#ifdef USE_VK_IMGUI
+PFN_vkFlushMappedMemoryRanges					qvkFlushMappedMemoryRanges;
+PFN_vkResetCommandPool							qvkResetCommandPool;
+#endif
+
 static char *Q_stradd( char *dst, const char *src )
 {
     char c;
@@ -904,6 +909,11 @@ void vk_init_library( void )
 	if (vk.debugMarkers) {
 		INIT_DEVICE_FUNCTION_EXT(vkDebugMarkerSetObjectNameEXT)
 	}
+
+#ifdef USE_VK_IMGUI
+	INIT_DEVICE_FUNCTION(vkFlushMappedMemoryRanges)
+	INIT_DEVICE_FUNCTION(vkResetCommandPool)
+#endif
 }
 
 #undef INIT_INSTANCE_FUNCTION
@@ -1021,6 +1031,11 @@ void vk_deinit_library( void )
 	qvkGetImageMemoryRequirements2KHR = NULL;
 
 	qvkDebugMarkerSetObjectNameEXT = NULL;
+
+#ifdef USE_VK_IMGUI
+	qvkFlushMappedMemoryRanges = NULL;
+	qvkResetCommandPool = NULL;
+#endif
 }
 
 #define FORMAT_DEPTH(format, r_bits, g_bits, b_bits) case(VK_FORMAT_##format): *r = r_bits; *b = b_bits; *g = g_bits; return qtrue;

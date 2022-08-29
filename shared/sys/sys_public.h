@@ -176,7 +176,9 @@ typedef enum graphicsApi_e
 typedef struct window_s
 {
 	void *handle; // OS-dependent window handle
+	void *sdl_handle;
 	graphicsApi_t api;
+	//uint32_t id;
 } window_t;
 
 typedef enum glProfile_e

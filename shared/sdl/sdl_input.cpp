@@ -35,6 +35,7 @@ static qboolean mouseActive = qfalse;
 static cvar_t *in_mouse				= NULL;
 static cvar_t *in_nograb;
 static cvar_t *in_mouserepeat		= NULL;
+static cvar_t *in_imgui				= NULL;
 
 cvar_t *in_joystick					= NULL;
 static cvar_t *in_joystickThreshold = NULL;
@@ -644,6 +645,9 @@ void IN_Init( void *windowData )
 	Cvar_SetValue( "com_minimized", ( appState & SDL_WINDOW_MINIMIZED ) != 0 );
 
 	IN_InitJoystick( );
+
+	in_imgui = Cvar_Get( "in_imgui", "0", CVAR_ARCHIVE_ND );
+
 	Com_DPrintf( "------------------------------------\n" );
 }
 
@@ -1184,6 +1188,13 @@ void IN_Frame (void) {
 
 	// If not DISCONNECTED (main menu) or ACTIVE (in game), we're loading
 	loading = (qboolean)( cls.state != CA_DISCONNECTED && cls.state != CA_ACTIVE );
+
+	// imgui
+	if ( in_imgui->integer ){
+		eventTime = Sys_Milliseconds( );
+
+		return;
+	}
 
 	if( !cls.glconfig.isFullscreen && ( Key_GetCatcher( ) & KEYCATCH_CONSOLE ) )
 	{
