@@ -516,6 +516,9 @@ void vk_shutdown( void )
 		goto __cleanup;
 	}
 
+#ifdef USE_VK_IMGUI
+	vk_imgui_shutdown();
+#endif
 	vk_destroy_framebuffers();
 	vk_destroy_pipelines( qtrue ); // reset counter
 	vk_destroy_render_passes();
@@ -571,7 +574,4 @@ __cleanup:
 	Com_Memset(&vk_world, 0, sizeof(vk_world));
 
 	vk_deinit_library();
-#ifdef USE_VK_IMGUI
-	vk_imgui_shutdown();
-#endif
 }

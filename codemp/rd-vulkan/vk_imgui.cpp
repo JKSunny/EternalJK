@@ -228,7 +228,14 @@ void vk_imgui_begin_frame( void ) {
 	}
 
 	ImGui_ImplVulkan_NewFrame();
-	ImGui_ImplSDL2_NewFrame( screen );
+	ImGui_ImplSDL2_NewFrame();
+
+#if defined( __linux__ ) || defined( __APPLE__ )
+    // SDL_GetWindowSize returns invalid size causing an ImGui assert
+    ImGuiIO& io = ImGui::GetIO();
+    io.DisplaySize = ImVec2( glConfig.vidWidth, glConfig.vidHeight );
+#endif
+
 	ImGui::NewFrame();
 }
 
@@ -259,6 +266,7 @@ static void vk_imgui_create_gui( void )
 
 void vk_imgui_draw( void ) 
 {
+	vk_imgui_begin_frame();
 	vk_imgui_create_gui();
 	
 	ImGui::Render();

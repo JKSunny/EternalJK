@@ -76,7 +76,7 @@ set(MPVulkanRendererFiles
 	"${MPDir}/rd-vulkan/vk_frame.cpp"
 	"${MPDir}/rd-vulkan/vk_image.cpp"
 	"${MPDir}/rd-vulkan/vk_image_process.cpp"
-        "${MPDir}/rd-vulkan/vk_imgui.cpp"
+    "${MPDir}/rd-vulkan/vk_imgui.cpp"
 	"${MPDir}/rd-vulkan/vk_info.cpp"
 	"${MPDir}/rd-vulkan/vk_init.cpp"
 	"${MPDir}/rd-vulkan/vk_instance.cpp"
@@ -160,14 +160,20 @@ list(APPEND MPVulkanRendererLibraries          ${MINIZIP_LIBRARIES})
 
 
 # Add SDL2
-list(APPEND MPVulkanRendererIncludeDirectories ${OpenJKLibDir}/SDL2/include)
+if(UseInternalSDL2)
+	if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+		list(APPEND MPVulkanRendererLibraries ${OpenJKLibDir}/SDL2/lib/x86/SDL2main.lib)
+		list(APPEND MPVulkanRendererLibraries ${OpenJKLibDir}/SDL2/lib/x86/SDL2.lib)		
+	else()
+		list(APPEND MPVulkanRendererLibraries ${OpenJKLibDir}/SDL2/lib/x64/SDL2main.lib)
+		list(APPEND MPVulkanRendererLibraries ${OpenJKLibDir}/SDL2/lib/x64/SDL2.lib)	
+	endif()
 
-if(CMAKE_SIZEOF_VOID_P EQUAL 4)
-	list(APPEND MPVulkanRendererLibraries ${OpenJKLibDir}/SDL2/lib/x86/SDL2main.lib)
-	list(APPEND MPVulkanRendererLibraries ${OpenJKLibDir}/SDL2/lib/x86/SDL2.lib)		
+	list(APPEND MPVulkanRendererIncludeDirectories ${OpenJKLibDir}/SDL2/include)
 else()
-	list(APPEND MPVulkanRendererLibraries ${OpenJKLibDir}/SDL2/lib/x64/SDL2main.lib)
-	list(APPEND MPVulkanRendererLibraries ${OpenJKLibDir}/SDL2/lib/x64/SDL2.lib)	
+	find_package(SDL2 REQUIRED)
+	list(APPEND MPVulkanRendererIncludeDirectories ${SDL2_INCLUDE_DIR})
+	list(APPEND MPVulkanRendererLibraries ${SDL2_LIBRARY})
 endif()
 
 #find_package(OpenGL REQUIRED)

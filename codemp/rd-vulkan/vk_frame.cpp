@@ -1036,10 +1036,6 @@ void vk_begin_frame( void )
     // other stats
     vk.stats.push_size = 0;
 #endif
-
-#ifdef USE_VK_IMGUI
-    vk_imgui_begin_frame();
-#endif
 }
 
 void vk_end_render_pass( void )
