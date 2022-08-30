@@ -408,6 +408,19 @@ void ItemUse_Jetpack(gentity_t *ent)
 {
 	assert(ent && ent->client);
 
+	if (!ent->client->ps.jetpack) {
+		// they don't have a jetpack equipped
+		return;
+	}
+
+	if (ent->health <= 0 ||
+		ent->client->ps.stats[STAT_HEALTH] <= 0 ||
+		(ent->client->ps.eFlags & EF_DEAD) ||
+		ent->client->ps.pm_type == PM_DEAD)
+	{ //can't use it when dead under any circumstances.
+		return;
+	}
+
 	jetpackData_t* jet = &jetpackTable[ent->client->ps.jetpack - 1];	//get jetpack data
 
 	//still on cooldown
@@ -425,19 +438,6 @@ void ItemUse_Jetpack(gentity_t *ent)
 
 			return;
 		}
-	}
-
-	if (ent->health <= 0 ||
-		ent->client->ps.stats[STAT_HEALTH] <= 0 ||
-		(ent->client->ps.eFlags & EF_DEAD) ||
-		ent->client->ps.pm_type == PM_DEAD)
-	{ //can't use it when dead under any circumstances.
-		return;
-	}
-
-	if (!ent->client->ps.jetpack) {
-		// they don't have a jetpack equipped
-		return;
 	}
 
 	//too low on fuel to start it up
@@ -481,6 +481,7 @@ void ItemUse_Jetpack(gentity_t *ent)
 		}
 	}
 
+	//okay we got here, actually change the jetpacks on/off status
 	if (ent->client->ps.eFlags & EF_JETPACK_ACTIVE)
 	{
 		Jetpack_Off(ent);
