@@ -14,8 +14,8 @@
 ### Downloads ###
 The most update links are available on the download page on the website, under the [test releases section](https://www.jkgalaxies.net/download.html#testdiv), but you can also use the following links which are occasionally updated:
 
-[Binaries](https://github.com/JKGDevs/JediKnightGalaxies/releases/) , [Assets](https://uvu.box.com/shared/static/ctdly3jwnhjcji560sx1czfdgnahbtzi.zip) , 
-[Map Bundle #1](http://jkhub.org/files/file/2652-jedi-knight-galaxies-map-bundle-1/) , [Map Bundle #2](https://uvu.box.com/shared/static/kb0wvyqtz0sarzs0kn1c8h03wrpjgb7c.zip)
+[Binaries](https://github.com/JKGDevs/JediKnightGalaxies/releases/) , [Assets](https://uvu.box.com/shared/static/geejtm8xcovvcyt9jra4e6f585beatx1.zip) , 
+[Map Bundle #1](http://jkhub.org/files/file/2652-jedi-knight-galaxies-map-bundle-1/) , [Map Bundle #2](https://jkhub.org/files/file/3778-jedi-knight-galaxies-map-bundle-2/)
 
 
 ### What is Jedi Knight Galaxies? ###
