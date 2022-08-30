@@ -555,6 +555,7 @@ Each .jet file contains information about one jetpack. The "ref" field links thi
  - thrustConsumption (float): How fast to consume fuel while thrusting DO NOT set this to 0.
  - fuelRegeneration (float): How fast to regenerate fuel. DO NOT set this to 0.
  - movement (object): Contains the following fields:
+  - cooldown (int): How many ms to wait before the jetpack can be reactivated, (can be switched off immediately). Default: 200
   - thrustAllowed (boolean): Whether or not the jetpack is allowed to use thrust.
   - fwdThrustAllowed (boolean): Whether the jetpack is allowed to use forward thrust (sprinting)
   - hoverGravity (float): How much to move the player while in air. Defaults to -1.0.

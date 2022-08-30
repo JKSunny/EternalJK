@@ -135,6 +135,8 @@ void JKG_JetpackEquipped(gentity_t* ent, int jetpackItemNumber) {
 	ent->client->jetpackEquipped = qtrue;
 	ent->client->pItemJetpack = &item->id->jetpackData;
 	ent->client->ps.jetpack = ent->client->pItemJetpack->pJetpackData - jetpackTable + 1;
+	if(ent->client->ps.jetpackFuel > jetpackTable[ent->client->ps.jetpack - 1].fuelCapacity)	//if we have more fuel than our capacity, reduce current fuel to that amount
+		ent->client->ps.jetpackFuel = jetpackTable[ent->client->ps.jetpack - 1].fuelCapacity;	
 }
 
 /*
@@ -351,7 +353,6 @@ Jetpack_Off
 
 ====================================
 */
-#define JETPACK_TOGGLE_TIME		200
 void Jetpack_Off(gentity_t *ent)
 { //create effects?
 	assert(ent && ent->client);
@@ -370,7 +371,7 @@ Jetpack_On
 ====================================
 */
 void Jetpack_On(gentity_t *ent)
-{ //create effects?
+{
 	assert(ent && ent->client);
 
 	if (ent->client->ps.fd.forceGripBeingGripped >= level.time)
@@ -384,42 +385,16 @@ void Jetpack_On(gentity_t *ent)
 	}
 
 	jetpackData_t* jet = &jetpackTable[ent->client->ps.jetpack - 1];
-	if (ent->client->ps.powerups[PW_REDFLAG] || ent->client->ps.powerups[PW_BLUEFLAG])
-	{
-		//can't activate certain jetpacks while carrying flag
-		if(!jet->move.loadBearingAllowed)
-		{
-			if (jet->visuals.sputterSound[0])
-				G_Sound(ent, CHAN_AUTO, G_SoundIndex(jet->visuals.sputterSound));
-			return;
-		}
-	}
-
-	//can't activate jetpack if empstaggered by debuff
-	if (ent->client->ps.buffsActive)
-	{
-		for (int i = 0; i < PLAYERBUFF_BITS; i++)
-		{
-			if (ent->client->ps.buffsActive & (1 << i))
-			{
-				jkgBuff_t* pBuff = &buffTable[ent->client->ps.buffs[i].buffID];
-				if (pBuff->passive.empstaggered)
-				{
-					vec3_t higher;
-					VectorCopy(ent->client->ps.origin, higher);
-					higher[2] += 20.0f;
-					G_Sound(ent, CHAN_AUTO, G_SoundIndex("sound/effects/energy_crackle.wav"));
-					G_PlayEffectID(G_EffectIndex( "effects/Player/electrocute.efx"), higher, ent->client->ps.viewangles);
-					return;
-				}
-			}
-		}
-	}
-
-	
 	if (jet->visuals.activateSound[0])
 		G_Sound(ent, CHAN_AUTO, G_SoundIndex(jet->visuals.activateSound));
 
+	int startupCost = static_cast<int>(jetpackTable[ent->client->ps.jetpack - 1].fuelCapacity * 0.1f); //costs 10% of fuelcapacity for startup
+	//cost capped at 5, minimum of 1 required
+	if (startupCost > 5)
+		startupCost = 5;
+	if (startupCost < 1)
+		startupCost = 1;
+	ent->client->ps.jetpackFuel -= startupCost;
 	ent->client->ps.eFlags |= EF_JETPACK_ACTIVE;
 }
 
@@ -433,9 +408,23 @@ void ItemUse_Jetpack(gentity_t *ent)
 {
 	assert(ent && ent->client);
 
+	jetpackData_t* jet = &jetpackTable[ent->client->ps.jetpack - 1];	//get jetpack data
+
+	//still on cooldown
 	if (ent->client->jetPackToggleTime >= level.time)
 	{
-		return;
+		//if the jetpack is on - allow it to be turned off
+		if (ent->client->ps.eFlags & EF_JETPACK_ACTIVE)
+			;
+		
+		//can't turn back on till cooldown done
+		else
+		{
+			if (jet->visuals.sputterSound[0])
+				G_Sound(ent, CHAN_AUTO, G_SoundIndex(jet->visuals.sputterSound));
+
+			return;
+		}
 	}
 
 	if (ent->health <= 0 ||
@@ -451,14 +440,24 @@ void ItemUse_Jetpack(gentity_t *ent)
 		return;
 	}
 
-	if (!(ent->client->ps.eFlags & EF_JETPACK_ACTIVE) &&
-		ent->client->ps.jetpackFuel < 5)
-	{ //too low on fuel to start it up
-		jetpackData_t* jet = &jetpackTable[ent->client->ps.jetpack - 1];
+	//too low on fuel to start it up
+	if (!(ent->client->ps.eFlags & EF_JETPACK_ACTIVE) && ent->client->ps.jetpackFuel < 5)
+	{ 
 		if(jet->visuals.sputterSound[0])
 			G_Sound(ent, CHAN_AUTO, G_SoundIndex(jet->visuals.sputterSound));
 
 		return;
+	}
+
+	//can't activate certain jetpacks while carrying flag
+	if (ent->client->ps.powerups[PW_REDFLAG] || ent->client->ps.powerups[PW_BLUEFLAG])
+	{
+		if (!jet->move.loadBearingAllowed)
+		{
+			if (jet->visuals.sputterSound[0])
+				G_Sound(ent, CHAN_AUTO, G_SoundIndex(jet->visuals.sputterSound));
+			return;
+		}
 	}
 
 	//can't activate jetpack if empstaggered by debuff
@@ -491,5 +490,5 @@ void ItemUse_Jetpack(gentity_t *ent)
 		Jetpack_On(ent);
 	}
 
-	ent->client->jetPackToggleTime = level.time + JETPACK_TOGGLE_TIME;
+	ent->client->jetPackToggleTime = level.time + jet->move.cooldown;
 }

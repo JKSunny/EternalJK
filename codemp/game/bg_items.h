@@ -179,9 +179,9 @@ typedef struct {
 	itemTier_t itemTier;
 	float weight;
 	unsigned int maxStack;
-	bool tradeable;		//can it be traded?
-	bool segregated;	//if an item is segregated, it doesn't exist in the normal inventory space (eg: quest items, blueprints, etc)
-	bool droppable;		//can the item be dropped?
+	bool tradeable;		//can it be traded? (unimplemented)
+	bool segregated;	//if an item is segregated, it doesn't exist in the normal inventory space (eg: quest items, blueprints, etc) (unimplemented)
+	bool droppable;		//can the item be dropped? (unimplemented)
 	char itemDescription[MAX_ITEM_DESCRIPTION];
 
 	// Visual Data

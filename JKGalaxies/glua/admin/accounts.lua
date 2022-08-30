@@ -811,13 +811,15 @@ local function List(ply, argc, argv)
 					while players.GetByID(k) ~= nil do
 						local plysel = players.GetByID(k)
 						if plysel:IsValid() then
+							local plyselname = plysel:GetName()
 							if plysel.isLoggedIn then
-								local plyselname = plysel:GetName()
 								local plyselaccountname = plysel:GetAccount()
 								local plyselaccount = accounts[plyselaccountname]
 								if plyselaccount ~= nil then
-									printstring = printstring .. plysel:GetName() .. " ^7[" .. plyselaccountname .. "--" .. plyselaccount["rank"] .. "], "
+									printstring = printstring .. plysel:GetName() .. " ^7[" .. plyselaccountname .. "^7--" .. plyselaccount["rank"] .. "^7], "
 								end
+							else
+								printstring = printstring .. plysel:GetName() .. "^7[^1Not logged in.^7], "
 							end
 						end
 						k = k + 1
@@ -1340,40 +1342,65 @@ local function teleport(ply, argc, argv)
 		if argc < 2 then
 			local trace = ply:GetEyeTrace()
 			ply:Teleport(trace.EndPos + trace.HitNormal * 25)
-		else
+		end
+
+		if argc == 2 then
+			local target = players.GetByArg(argv[1])
+			if not target then
+				SystemReply(ply,"^1Target player '^7" .. argv[1] .. "^1' " ..  "not found.")
+				return
+			else
+				local trace = ply:GetEyeTrace()
+				target:Teleport(trace.EndPos + trace.HitNormal * 25)
+				return
+			end
+		end
+
+		--teleport admin to a player/client's location (and no clip us)
+		if argc == 3 then
+			local myself = string.lower(argv[1])
+			if myself == "me" then
+				local target = players.GetByArg(argv[2])
+				if not target then
+					SystemReply(ply,"^1Target player '^7" .. argv[2] .. "^1' " ..  "not found.")
+					return
+				else
+					ply.NoClip = true
+					ply:SetPos(target.Origin)
+					ply:SetAngles(target.Angles)
+				end
+			else
+				SystemReply(ply, "^3Syntax: /teleport - self to cursor, /teleport <playername/clientnumber> - target to cursor, /teleport me <playername/clientnumber>, /teleport <playername/clientnumber> <x> <y> <z> <yaw> - target to coords")
+				return
+			end
+		end
+
+		if argc > 3 then
 			local target = players.GetByArg(argv[1])
 			if not target then
 				SystemReply(ply,"^1Target player not found")
 				return
 			end
-			if argc == 2 then
-				local trace = ply:GetEyeTrace()
-				target:Teleport(trace.EndPos + trace.HitNormal * 25)
-				return
-			end
+			local destination = {}
+			local request = table.concat(argv," ",2, argc-1)
 
-			if argc > 2 then
-				local destination = {}
-				local request = table.concat(argv," ",2, argc-1)
-
-				for i in (request .. " "):gmatch("%S+") do
-					if(tonumber(i)) then --make sure it can convert to a number
-						table.insert(destination, tonumber(i))
-					else
-						SystemReply(ply, "^3Syntax: /teleport - self to cursor, /teleport <playername/clientnumber> - target to cursor, /teleport <playername/clientnumber> <x> <y> <z> <yaw> - target to coords")
-						return
-					end
-				end
-
-				if tablelength(destination) == 4 then --check to make sure table is appropriate length
-					target:SetPos(Vector( tostring(destination[1]) .. " " .. tostring(destination[2]) .. " " .. tostring(destination[3]) ))
-					target:SetAngles(Vector("0 " .. tostring(destination[4]) .. " 0"))
+			for i in (request .. " "):gmatch("%S+") do
+				if(tonumber(i)) then --make sure it can convert to a number
+					table.insert(destination, tonumber(i))
+				else
+					SystemReply(ply, "^3Syntax: /teleport - self to cursor, /teleport <playername/clientnumber> - target to cursor, /teleport me <playername/clientnumber>, /teleport <playername/clientnumber> <x> <y> <z> <yaw> - target to coords")
 					return
 				end
+			end
 
-				SystemReply(ply, "^3Syntax: /teleport - self to cursor, /teleport <playername/clientnumber> - target to cursor, /teleport <playername/clientnumber> <x> <y> <z> <yaw> - target to coords")
+			if tablelength(destination) == 4 then --check to make sure table is appropriate length
+				target:SetPos(Vector( tostring(destination[1]) .. " " .. tostring(destination[2]) .. " " .. tostring(destination[3]) ))
+				target:SetAngles(Vector("0 " .. tostring(destination[4]) .. " 0"))
 				return
 			end
+
+			SystemReply(ply, "^3Syntax: /teleport - self to cursor, /teleport <playername/clientnumber> - target to cursor, /teleport me <playername/clientnumber>, /teleport <playername/clientnumber> <x> <y> <z> <yaw> - target to coords")
+			return
 		end
 	else
 		SystemReply(ply, "^1You are not logged in.")
