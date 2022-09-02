@@ -127,6 +127,7 @@
         "sightsFiring":       { "torso": "BOTH_ATTACK3" },
 	"ready":	{ "torso": "BOTH_BASE_RIFLESTANCE", "legs": "BOTH_STAND1" },
 	"firing":	{ "torso": "BOTH_BASE_RIFLESHOOT" },
+	"sprint":	{ "torso": "BOTH_RIFLERUN" },
         "sprintStyle": "5"
     },
     
