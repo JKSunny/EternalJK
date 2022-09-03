@@ -3854,15 +3854,202 @@ void G_CheckForBlowingUp(gentity_t *ent, gentity_t *enemy, vec3_t point, int dam
 }
 //[/FullDismemberment]
 
+
+/*
+G_ArmorDurabilityModifier()
+
+	Check on if low durability (25% or less) is reducing armor's effectiveness, then adjust damage.
+	Check if durability score of armor/item should be reduced (chance based on item tier)
+	Decrease durability if applicable, adjust armor appearance based on current durability
+	If durability is 0, check if armor should break if so delete the equipped item.
+	
+	Reminder: Legendary items cannot take durability damage/be effected by it.
+*/
+void G_ArmorDurabilityModifier(gentity_t* ent, int* damage, const int take, const int armorSlot)
+{
+	for (auto it = ent->inventory->begin(); it != ent->inventory->end(); ++it)
+	{
+		if (it->equipped && (it->id->itemType == ITEM_ARMOR || it->id->itemType == ITEM_CLOTHING /*|| it->id->itemType == ITEM_JETPACK */))	//if we have a piece of armor equipped
+		{
+			if (it->id->armorData.pArm->slot == armorSlot && it->id->itemTier != TIER_LEGENDARY) //if that piece is the one that got hit, and not legendary
+			{
+				//adjust damage based on durability value
+				if (it->durability > 0)
+				{
+					//11-25%
+					if (it->durability > it->id->maxDurability * 0.10f && it->durability <= it->id->maxDurability * 0.25f)
+					{
+						//efx - armor crumble
+						//sound
+						*damage *= 1.25;	//decrease armor's efficiency by 25%
+					}
+
+					//1-10%
+					else if (it->durability <= it->id->maxDurability * 0.10f)
+					{
+						//efx - armor crumbling more
+						//sound
+						*damage *= 1.375;
+					}
+				}
+				else //0 durability
+				{
+					//efx - armor crumble severe
+					//sound
+					*damage *= 1.5;
+
+					//warn the player they're wearing something with 0 durability!
+					trap->SendServerCommand(ent - g_entities, va("chat 100 \"^1Warning:^7 %s is severely damaged, repair immediately (^10/%d^7)!\"", it->id->displayName, it->id->maxDurability));
+					trap->SendServerCommand(ent - g_entities, va("notify 1 \"Low durability!\""));
+				}
+
+				//decrease durability
+				float chance = 0.0f;	//likelihood of taking durability damage
+				int durability_damage = 0;
+				switch (it->id->itemTier)
+				{
+				case TIER_SCRAP:
+					chance = 0.5f;	//50% chance of taking durability damage
+					break;
+				case TIER_COMMON:
+					chance = 0.4f;	//40% etc.
+					break;
+				case TIER_REFINED:
+					chance = 0.3f;
+					break;
+				case TIER_ELITE:
+					chance = 0.2f;
+					break;
+				case TIER_SUPERIOR:
+					chance = 0.1f;
+					break;
+				default:
+					chance = 0.5f;
+					break;
+				}
+
+				//if we have a non-zero chance, check if the dmg exceeded armor value for higher chance
+				if (chance > 0.0f)
+				{
+					if (take > it->id->armorData.pArm->armor)
+						chance += 0.5;
+
+					if (take > it->id->armorData.pArm->armor * 2)
+					{
+						chance = 1.0f;
+						durability_damage = 2;
+					}
+				}
+
+				if (chance >= 1.0)	//guaranteed
+				{
+					if (durability_damage < 1)	//if not previously set
+						durability_damage = 1;
+				}
+				else if (chance <= 0.0f)	//immune
+				{
+					durability_damage = 0;
+				}
+				else	//badluck: it got damaged
+				{
+					if (chance >= Q_flrand(0.0f, 1.0f))
+					{
+						if (durability_damage < 1)	//if not previously set
+							durability_damage = 1;
+					}
+					else
+						durability_damage = 0;
+				}
+
+				if (durability_damage)
+				{
+					it->durability -= durability_damage;
+
+					//1-25% durability
+					if (it->durability > 0 && it->durability <= it->id->maxDurability * 0.25f)
+					{
+						trap->SendServerCommand(ent - g_entities, va("chat 100 \"^3Warning:^7 %s is damaged, repair soon (^3%d/%d^7)!\"", it->id->displayName, it->durability, it->id->maxDurability));
+
+						if (it->durability == 1 || it->durability < it->id->maxDurability * 0.10f) //1-10%
+						{
+							//adjust item appearance to appear heavily damaged
+							//draw crumble/dust efx
+						}
+						else //11-25%
+						{
+							//adjust item appearance to appear damaged
+							//draw crumble/dust efx
+						}
+					}
+
+					//we're at 0 durability, risk of breaking!
+					if (it->durability < 1)
+					{
+						//determine break chance
+						switch (it->id->itemTier)
+						{
+						case TIER_SCRAP:
+							chance = 0.5f;	//50% chance of taking durability damage
+							break;
+						case TIER_COMMON:
+							chance = 0.45f;
+							break;
+						case TIER_REFINED:
+							chance = 0.4f;
+							break;
+						case TIER_ELITE:
+							chance = 0.35f;
+							break;
+						case TIER_SUPERIOR:
+							chance = 0.30f;
+							break;
+						default:
+							chance = 0.5f;
+							break;
+						}
+
+						if (chance >= Q_flrand(0.0f, 1.0f)) //unlucky, it broke!
+						{
+							trap->SendServerCommand(ent - g_entities, va("chat 100 \"^1%s broke!^7\"", it->id->displayName));
+							trap->SendServerCommand(ent - g_entities, va("notify 1 \"%s broke!\"", it->id->displayName));
+							//efx of breaking armor
+							//give scrap item? --phase 2
+							BG_RemoveItemStack(ent, it - ent->inventory->begin());	//destroy the item
+							break;	//get out of loop
+						}
+
+						//adjust item appearance to appear heavily damaged
+						//draw crumble/dust efx
+						trap->SendServerCommand(ent - g_entities, va("chat 100 \"^1Warning:^7 %s is severely damaged, repair immediately (^10/%d^7)!\"", it->id->displayName, it->id->maxDurability));
+						trap->SendServerCommand(ent - g_entities, va("notify 1 \"Low durability!\""));
+					}
+				}
+				else
+					break;	//terminate loop early, no durability damage
+			}
+		}
+	}
+}
+
+
 /*
  *	Modifies the damage based on the location where it hit and also the armor equipped at that location (if any)
     Returns true if a headshot, false if anything else.
  */
 bool G_LocationBasedDamageModifier(gentity_t *ent, vec3_t point, int mod, int dflags, int *damage, meansOfDamage_t* means)
 {
+	///////////////////////////////////////
+	//
+	//	1. Check the hit location
+	//	2. Adjust damage based on hit location
+	//	3. Adjust damage based on equipped armor at hit location
+	//	4. Adjust damage based on durability
+
 	int hitLoc = -1;
 	int armorSlot = 0;
 	qboolean headshot = false;
+	float modifier = 1.0f;	//how much to modify damage by
+	int take = *damage;		//keep track of original damage
 
 	if (!g_locationBasedDamage.integer)
 	{ //then leave it alone
@@ -3950,18 +4137,23 @@ bool G_LocationBasedDamageModifier(gentity_t *ent, vec3_t point, int mod, int df
 		break; //do nothing then
 	}
 
-	if (ent->client && (ent - g_entities) < MAX_CLIENTS && !means->modifiers.ignoreArmor) {
+	
+	//adjust for armor
+	if (ent->client && (ent - g_entities) < MAX_CLIENTS && !means->modifiers.ignoreArmor) 
+	{
 		// Remove damage based on armor
 		int armor = ent->client->ps.armor[armorSlot];
 		if (armor--) {
 			armorData_t* pArm = &armorTable[armor];
 			int armor = pArm->armor;
-			float modifier = (ent->client->ps.stats[STAT_MAX_HEALTH] / (float)(ent->client->ps.stats[STAT_MAX_HEALTH] + armor));
+			modifier = (ent->client->ps.stats[STAT_MAX_HEALTH] / (float)(ent->client->ps.stats[STAT_MAX_HEALTH] + armor));
 
 			modifier *= means->modifiers.armor;
 
 			*damage *= modifier;
 		}
+
+		G_ArmorDurabilityModifier(ent, damage, take, armorSlot);	//calculate durability stuff
 	}
 
 	if (headshot)
@@ -4653,8 +4845,10 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 	///////////////////////////////////////
 	//
 	//	1. Reduce damage by shield amount
-	//	2. Modify damage by location based modifier
-	//	3. Reduce damage by armor reduction
+	//  2. Modify damage by special debuffs
+	//	3. Modify damage by location based modifier
+	//	4. Reduce damage by armor reduction
+	//  5. Modify damage by client type (eg: organic, droid)
 
 	// save some from shield
 	if (targ->client && means->modifiers.shieldBlocks && targ->client->ps.stats[STAT_SHIELD] > 0)
@@ -4703,30 +4897,6 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 
 	take = take + directDmg;	//apply direct damage in case the shield was bypassed
 
-
-	if (take > 0 && !(dflags&DAMAGE_NO_HIT_LOC))
-	{//see if we should modify it by damage location
-		if (targ->client &&
-			attacker->inuse && attacker->client)
-		{ //check for location based damage stuff.
-			isHeadShot = G_LocationBasedDamageModifier(targ, point, mod, dflags, &take, means);
-			if (targ->health < 0)
-				isHeadShot = qfalse;	//don't notify about headshots on corpses
-		}
-	}
-
-	// modify it by the organic or structural modifier for this means
-	if (means && take > 0) {
-		if (client)
-		{
-			take *= means->modifiers.organic;
-		}
-		else
-		{
-			take *= means->modifiers.droid;
-		}
-	}
-
 	// save some from being resistant (eg: carbonite protects us)
 	if (targ->client && take > 0 && JKG_HasResistanceBuff(targ->playerState))
 	{
@@ -4744,6 +4914,30 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 
 		//--Futuza: note that a better version of EMP is available through the standard-emp debuff, this only shorts stuff out once
 		//see how it interacts with jetpacks in jkg_equip.cpp ItemUse_Jetpack()
+	}
+
+	//see if we should modify it by damage location/reduce by worn armor
+	if (take > 0 && !(dflags&DAMAGE_NO_HIT_LOC))
+	{
+		if (targ->client &&
+			attacker->inuse && attacker->client)
+		{ //check for location based damage stuff.
+			isHeadShot = G_LocationBasedDamageModifier(targ, point, mod, dflags, &take, means);	//check for headshot, location based modifiers, and armor
+			if (targ->health < 0)
+				isHeadShot = qfalse;	//don't notify about headshots on corpses
+		}
+	}
+
+	// modify it by the organic or structural modifier for this means
+	if (means && take > 0) {
+		if (client)
+		{
+			take *= means->modifiers.organic;
+		}
+		else
+		{
+			take *= means->modifiers.droid;
+		}
 	}
 
 #ifndef FINAL_BUILD
@@ -4783,7 +4977,7 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 		}
 	}
 
-	// See if it's the player hurting the emeny flag carrier
+	// See if it's the player hurting the enemy flag carrier
 	if( level.gametype == GT_CTF ) {
 		Team_CheckHurtCarrier(targ, attacker);
 	}

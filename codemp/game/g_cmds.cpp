@@ -2233,20 +2233,20 @@ void Cmd_ShowInv_f(gentity_t *ent)
 	if(!ent->client)
 		return;
 
-	Q_strncpyz (buffer, "Inventory ID | Item Num | Instance Name                                 | Quantity | Weight\n", sizeof (buffer));
-	Q_strcat (buffer, sizeof (buffer), "-------------+----------+----------------------------------------------------------+--------\n");
+	Q_strncpyz (buffer, "Inv ID | Item Num | Instance Name                        | Durability | Quantity | Weight\n", sizeof (buffer));
+	Q_strcat (buffer, sizeof (buffer), "-------+----------+--------------------------------------+------------+----------+----------\n");
 	trap->SendServerCommand(ent->s.number, va("print \"%s\n\"", buffer)); //print out
 	memset(buffer, '\0', sizeof(buffer));
 
 
 	for (auto it = ent->inventory->begin(); it != ent->inventory->end(); ++it) {
-		Q_strcat(buffer, sizeof(buffer), va(S_COLOR_WHITE "%12i | %8i | %-45s | %8i | %6.2f\n", it - ent->inventory->begin(), it->id->itemID, it->id->displayName, it->quantity, it->id->weight));
+		Q_strcat(buffer, sizeof(buffer), va(S_COLOR_WHITE "%6i | %8i | %-36s | %4i /%4i | %8i | %6.2f\n", it - ent->inventory->begin(), it->id->itemID, it->id->displayName, (it->id->itemTier == TIER_LEGENDARY ? 999 : it->durability), it->id->maxDurability, it->quantity, it->id->weight));
 		weight = weight + (it->id->weight * it->quantity);
 		if (it->equipped)
 		{
 			armorweight = armorweight + (it->id->weight * it->quantity);
 		}
-
+		
 		//buffer is about to fill - spit out what we got so far
 		if (buffer[MAX_STRING_CHARS-100] != '\0')
 		{

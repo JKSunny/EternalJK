@@ -662,6 +662,9 @@ void BG_GiveItemNonNetworked(gentity_t* ent, itemInstance_t item) {
 			return;
 		}
 	}
+	
+	//--futuza: note that this won't work for player trading, we want durability to be persistent across trades and not reset
+	item.durability = item.id->maxDurability;
 
 	// Add the new item stack to the inventory
 	ent->inventory->push_back(item);
@@ -767,6 +770,10 @@ void BG_GiveItemNonNetworked(itemInstance_t item)
 			return;
 		}
 	}
+
+	//--futuza: note that this won't work for player trading, we want durability to be persistent across trades and not reset
+	item.durability = item.id->maxDurability;
+
 	cg.playerInventory->push_back(item);
 
 	// If this item is a weapon, shield, jetpack or consumable - which is not already in our ACI, and the ACI is not full, add it.
@@ -1267,12 +1274,9 @@ static bool BG_LoadItem(const char *itemFilePath, itemData_t *itemData)
 	jsonNode = cJSON_GetObjectItem(json, "droppable");
 	itemData->droppable = cJSON_ToBooleanOpt(jsonNode, true);
 
-	//legendary items are special
-	if (itemData->itemTier == TIER_LEGENDARY)
-	{
-		itemData->tradeable = true;
-		itemData->droppable = true;
-	}
+	jsonNode = cJSON_GetObjectItem(json, "maxDurability");
+	item = cJSON_ToIntegerOpt(jsonNode, 15);
+	itemData->maxDurability = item;
 
 	jsonNode = cJSON_GetObjectItem(json, "itemDescription");
 	str = cJSON_ToStringOpt(jsonNode, "No description available.");
@@ -1290,6 +1294,14 @@ static bool BG_LoadItem(const char *itemFilePath, itemData_t *itemData)
 	jsonNode = cJSON_GetObjectItem(json, "maxStack");
 	item = cJSON_ToIntegerOpt(jsonNode, 1);
 	itemData->maxStack = item;
+
+	//legendary items are special
+	if (itemData->itemTier == TIER_LEGENDARY)
+	{
+		itemData->tradeable = true;
+		itemData->droppable = true;
+		itemData->maxDurability = 999;	//legendary can't be effected by durability
+	}
 
 	//Equipment Info
 	if (itemData->itemType == ITEM_WEAPON) {

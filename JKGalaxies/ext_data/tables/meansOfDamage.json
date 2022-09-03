@@ -323,9 +323,9 @@
 
 		"modifiers": {
 			"dodgeable": true,
-			"armor": 1.2,
+			"armor": 1.15,
 			"organic": 1.3,
-			"shield": 0.8,
+			"shield": 0.85,
 			"droid": 1.0
 		},
 
@@ -345,7 +345,7 @@
 		"modifiers": {
 			"ignoreShield": true,
 			"dodgeable": true,
-			"armor": 0.6,
+			"armor": 0.65,
 			"organic": 1.15,
 			"droid": 0.2
 		},
@@ -370,8 +370,8 @@
 		"modifiers": {
 			"ignoreShield": false,
 			"dodgeable": true,
-			"armor": 0.8,
-			"organic": 1.2,
+			"armor": 0.85,
+			"organic": 1.1,
 			"shield": 1.2,
 			"droid": 0.8
 		},
@@ -397,8 +397,8 @@
 			"ignoreArmor": true,
 			"dodgeable": true,
 			"organic": 1.1,
-			"shield": 0.8,
-			"droid": 1.1
+			"shield": 0.75,
+			"droid": 1.0
 		},
 
 		"killFeed": {
@@ -440,7 +440,7 @@
 			"isEMP": true,
 			"dodgeable": true,
 			"organic": 0.4,
-			"shield": 1.6,
+			"shield": 1.7,
 			"droid": 1.8
 		},
 
@@ -461,8 +461,8 @@
 			"isEMP": true,
 			"armor": 0.8,
 			"organic": 1.0,
-			"shield": 1.7,
-			"droid": 1.8
+			"shield": 1.8,
+			"droid": 2.0
 		},
 
 		"killFeed": {
@@ -484,7 +484,7 @@
 			"armor": 1.0,
 			"organic": 1.0,
 			"shield": 1.0,
-			"droid": 0.8
+			"droid": 0.7
 		},
 
 		"killFeed": {
@@ -529,7 +529,7 @@
 
 		"modifiers": {
 			"ignoreShield": false,
-			"armor": 0.8,
+			"armor": 0.9,
 			"organic": 1.4,
 			"shield": 0.5,
 			"droid": 0.8
@@ -557,10 +557,11 @@
 		"hitmarkerExplosives": false,	// Special case, don't trigger hitmarkers
 
 		"modifiers": {
-			"ignoreArmor": true,
+			"ignoreArmor": false,
 			"dodgeable": true,
+			"armor": 1.2,
 			"organic": 1.0,
-			"shield": 1.0,
+			"shield": 0.9,
 			"droid": 1.0
 		},
 
@@ -584,10 +585,14 @@
 
 		"modifiers": {
 			"dodgeable": true,
-			"armor": 1.0,
+			"armor": 1.4,
 			"organic": 1.0,
-			"shield": 1.0,
-			"droid": 1.0
+			"shield": 0.9,
+			"droid": 0.9
+		},
+
+		"dismemberment": {
+			"canDismember": true
 		},
 
 		"killFeed": {
@@ -656,7 +661,7 @@
 
 		"modifiers": {
 			"isEMP": true,
-			"armor": 0.6,
+			"armor": 0.7,
 			"organic": 1.0,
 			"shield": 1.7,
 			"droid": 1.8
@@ -683,9 +688,9 @@
 
 		"modifiers": {
 			"shieldBlocks": true,
-			"armor": 0.8,
+			"armor": 0.9,
 			"organic": 1.4,
-			"shield": 0.5,
+			"shield": 0.8,
 			"droid": 0.8
 		},
 

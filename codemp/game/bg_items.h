@@ -178,11 +178,12 @@ typedef struct {
 	jkgItemType_t itemType;
 	itemTier_t itemTier;
 	float weight;
+	int maxDurability;
 	unsigned int maxStack;
 	bool tradeable;		//can it be traded? (unimplemented)
 	bool segregated;	//if an item is segregated, it doesn't exist in the normal inventory space (eg: quest items, blueprints, etc) (unimplemented)
 	bool droppable;		//can the item be dropped? (unimplemented)
-	char itemDescription[MAX_ITEM_DESCRIPTION];
+	char itemDescription[MAX_ITEM_DESCRIPTION];	//flavor text for the item
 
 	// Visual Data
 #ifndef _GAME
@@ -207,8 +208,9 @@ typedef struct {
 // The item instance is what is kept in a player's inventory.
 typedef struct {
 	itemData_t* id;
-	int quantity;		//how many do we have?
-	bool equipped;		//is the item assigned to aci/equipped?
+	int quantity;				//how many do we have?
+	bool equipped;				//is the item assigned to aci/equipped?
+	int durability;	//how much durability is left on this item
 } itemInstance_t;
 
 //todo: make itemLookupTable into a singleton object with properties like size/capacity, etc so we can dynamically allocate additional space if the item table needs to be bigger

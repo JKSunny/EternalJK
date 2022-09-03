@@ -2284,6 +2284,7 @@ typedef enum {
 #define QRAND_MAX 32768
 
 void Rand_Init(int seed);
+float Q_flrand(float min, float max);
 float flrand(float min, float max);
 int irand(int min, int max);
 int Q_irandSafe(int value1, int value2);
