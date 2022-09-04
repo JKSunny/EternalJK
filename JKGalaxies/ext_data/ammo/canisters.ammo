@@ -9,6 +9,13 @@
 			"damage": {
 				"set": 40
 			},
+			"buffs": 
+			[
+				{
+					"buff": "standard-fire",
+					"remove": true
+				}
+			],
 			"splashrange": {
 				"set": 400
 			},
@@ -30,7 +37,8 @@
 					"model": "models/ammo/incendcan_proj.md3",
 					"effect": "explosives/shot_mortar",
 					"miss": "explosives/flechettemedium",
-					"hit": "explosives/flechettemedium"
+					"hit": "explosives/flechettemedium",
+					"runsound": "null"
 				}
 			}
 		}
@@ -46,6 +54,17 @@
 			"damage": {
 				"set": 30
 			},
+			"buffs": 
+			[
+				{
+					"buff": "standard-fire",
+					"addbuff": true,
+					"duration": 
+					{
+						"set": 3000
+					}
+				}
+			],
 			"splashrange": {
 				"set": 400
 			},
@@ -70,7 +89,8 @@
 					"model": "models/ammo/incendcan_proj.md3",
 					"effect": "explosives/shot_mortar",
 					"miss": "explosives/burnmedium",
-					"hit": "explosives/burnmedium"
+					"hit": "explosives/burnmedium",
+					"runsound": "null"
 				}
 			}
 		}
@@ -86,6 +106,13 @@
 			"damage": {
 				"set": 1
 			},
+			"buffs": 
+			[
+				{
+					"buff": "standard-fire",
+					"remove": true
+				}
+			],
 			"splashrange": {
 				"set": 800
 			},
