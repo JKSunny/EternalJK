@@ -340,6 +340,32 @@ static int GLua_Player_SendPrint(lua_State *L) {
 	return 0;
 }
 
+static int GLua_Player_SendNotify(lua_State* L)
+{
+	char buff[980] = { 0 };
+	GLua_Data_Player_t* ply = GLua_CheckPlayer(L, 1);
+	int args = lua_gettop(L);
+	const char* res;
+	int i;
+	if (!ply) return 0;
+
+	GLua_Push_ToString(L);
+	for (i = 2; i <= args; i++)
+	{
+		lua_pushvalue(L, -1);
+		lua_pushvalue(L, i);
+		lua_call(L, 1, 1);
+		res = lua_tostring(L, -1);
+		if (res)
+		{
+			Q_strcat(&buff[0], 980, res);
+		}
+		lua_pop(L, 1);
+	}
+	trap->SendServerCommand(ply->clientNum, va("notify 1 \"%s\"", &buff[0]));
+	return 0;
+}
+
 //incomplete function, need to probably request the map list from the server itself with a cmd (function does nothing atm)
 /*static int GLua_Player_GetMapList(lua_State *L) 
 {
@@ -1847,6 +1873,7 @@ static const struct luaL_reg player_m [] = {
 	{"SendCenterPrint", GLua_Player_SendCenterPrint},
 	{"SendCenterPrintAll", GLua_Player_SendCenterPrintAll},
 	{"SendPrint", GLua_Player_SendPrint},
+	{"SendNotify", GLua_Player_SendNotify},
 	//{"GetMapList", GLua_Player_GetMapList},
 	{"SendCommand", GLua_Player_SendCommand},
 	{"Kill", GLua_Player_Kill},
