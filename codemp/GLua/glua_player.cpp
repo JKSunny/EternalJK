@@ -1787,6 +1787,13 @@ static int GLua_Player_ModifyCreditCount(lua_State *L) {
 	ent = &g_entities[ply->clientNum];
 	
 	ent->client->ps.credits += modify;
+
+	std::string msg;
+	if (modify >= 0)
+		msg = ("+ " + std::to_string(modify) + " Credits");
+	else
+		msg = ("- " + std::to_string(modify) + " Credits");
+	trap->SendServerCommand(ply->clientNum, va("notify 1 \"%s\"", msg));
 	return 1;
 }
 
@@ -1877,7 +1884,7 @@ static const struct luaL_reg player_m [] = {
 	//{"GetMapList", GLua_Player_GetMapList},
 	{"SendCommand", GLua_Player_SendCommand},
 	{"Kill", GLua_Player_Kill},
-	{"Disintegrate", GLua_Player_Disintegrate},
+	{"Disintegrate", GLua_Player_Disintegrate}, //(also kills)
 	{"SetPos", GLua_Player_SetPos},
 	{"GetPos", GLua_Player_GetPos},
 	{"SetOrigin", GLua_Player_SetPos},
@@ -1953,8 +1960,8 @@ static const struct luaL_reg player_m [] = {
 	{"ServerTransfer", GLua_Player_ServerTransfer},
 	// stuff for credits --eez
 	{"GetCreditCount", GLua_Player_GetCreditCount},
-	{"SetCreditCount", GLua_Player_SetCreditCount},
-	{"ModifyCreditCount", GLua_Player_ModifyCreditCount},
+	{"SetCreditCount", GLua_Player_SetCreditCount},		   //silently set credit value, no notification
+	{"ModifyCreditCount", GLua_Player_ModifyCreditCount}, //+= credit amount, also notifies
 	// add 6/2/13
 	{"GetCurrentGunAmmoType", GLua_Player_GetCurrentGunAmmoType},
 	//{"GetGunAmmoType", GLua_Player_GetGunAmmoType},	// removed 12/11/2016
