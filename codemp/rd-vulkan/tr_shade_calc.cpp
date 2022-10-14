@@ -580,6 +580,40 @@ static void Autosprite2Deform( void ) {
 	}
 }
 
+#ifdef USE_VBO_GHOUL2
+qboolean ShaderRequiresCPUDeforms( const shader_t *shader ) {
+
+	// only do this for ghoul2
+	if( tess.vboIndex && tess.surfType == SF_MDX  ){
+
+		if ( shader->numDeforms > 1 )
+			return qtrue;
+
+		if ( shader->numDeforms == 1 ) {
+			// only support the first one
+			deformStage_t *ds = tess.shader->deforms[ 0 ];
+
+			switch ( ds->deformation ) {
+				case DEFORM_NONE:
+				case DEFORM_NORMALS:
+				case DEFORM_WAVE:
+				case DEFORM_BULGE:
+				case DEFORM_MOVE:
+				case DEFORM_PROJECTION_SHADOW:
+					return qfalse;
+				default:
+					return qtrue;
+			}
+		}
+
+		assert( shader->numDeforms == 0 );
+
+		return qfalse;
+	}
+
+	return qtrue;
+}
+#endif
 
 /*
 =====================
@@ -772,6 +806,37 @@ void RB_CalcWaveAlpha( const waveForm_t *wf, unsigned char *dstColors )
 	{
 		dstColors[3] = v;
 	}
+}
+
+/*
+** RB_CalcWaveColorSingle
+*/
+float RB_CalcWaveColorSingle( const waveForm_t *wf )
+{
+	float glow;
+
+	if ( wf->func == GF_NOISE ) {
+		glow = wf->base + R_NoiseGet4f( 0, 0, 0, ( tess.shaderTime + wf->phase ) * wf->frequency ) * wf->amplitude;
+	} else {
+		glow = EvalWaveForm( wf ) * tr.identityLight;
+	}
+	
+	if ( glow < 0 ) {
+		glow = 0;
+	}
+	else if ( glow > 1 ) {
+		glow = 1;
+	}
+
+	return glow;
+}
+
+/*
+** RB_CalcWaveAlphaSingle
+*/
+float RB_CalcWaveAlphaSingle( const waveForm_t *wf )
+{
+	return EvalWaveFormClamped( wf );
 }
 
 /*

@@ -52,7 +52,12 @@ static VkShaderModule SHADER_MODULE( const uint8_t *bytes, const int count ) {
 
 void vk_create_shader_modules( void )
 {
-    int i, j, k, l, m;
+    int i, j, k, l, m, sh_count;
+
+    sh_count = 1;
+#ifdef USE_VBO_GHOUL2
+    sh_count++;
+#endif
 
     vk.shaders.vert.gen[0][0][0][0][0] = SHADER_MODULE(vert_cpu_tx0);
     vk.shaders.vert.gen[0][0][0][0][1] = SHADER_MODULE(vert_cpu_tx0_fog);
@@ -79,8 +84,36 @@ void vk_create_shader_modules( void )
     vk.shaders.vert.gen[0][2][1][1][0] = SHADER_MODULE(vert_cpu_tx2_cl_env);
     vk.shaders.vert.gen[0][2][1][1][1] = SHADER_MODULE(vert_cpu_tx2_cl_env_fog);
 
-    for (i = 0; i < 1; i++) {
-        const char *sh[] = { "cpu" };
+#ifdef USE_VBO_GHOUL2
+    // GPU Ghoul2
+    vk.shaders.vert.gen[1][0][0][0][0] = SHADER_MODULE(vert_gpu_ghoul2_tx0);
+    vk.shaders.vert.gen[1][0][0][0][1] = SHADER_MODULE(vert_gpu_ghoul2_tx0_fog);
+    vk.shaders.vert.gen[1][0][0][1][0] = SHADER_MODULE(vert_gpu_ghoul2_tx0_env);
+    vk.shaders.vert.gen[1][0][0][1][1] = SHADER_MODULE(vert_gpu_ghoul2_tx0_env_fog);
+
+    vk.shaders.vert.gen[1][1][0][0][0] = SHADER_MODULE(vert_gpu_ghoul2_tx1);
+    vk.shaders.vert.gen[1][1][0][0][1] = SHADER_MODULE(vert_gpu_ghoul2_tx1_fog);
+    vk.shaders.vert.gen[1][1][0][1][0] = SHADER_MODULE(vert_gpu_ghoul2_tx1_env);
+    vk.shaders.vert.gen[1][1][0][1][1] = SHADER_MODULE(vert_gpu_ghoul2_tx1_env_fog);
+
+    vk.shaders.vert.gen[1][1][1][0][0] = SHADER_MODULE(vert_gpu_ghoul2_tx1_cl);
+    vk.shaders.vert.gen[1][1][1][0][1] = SHADER_MODULE(vert_gpu_ghoul2_tx1_cl_fog);
+    vk.shaders.vert.gen[1][1][1][1][0] = SHADER_MODULE(vert_gpu_ghoul2_tx1_cl_env);
+    vk.shaders.vert.gen[1][1][1][1][1] = SHADER_MODULE(vert_gpu_ghoul2_tx1_cl_env_fog);
+
+    vk.shaders.vert.gen[1][2][0][0][0] = SHADER_MODULE(vert_gpu_ghoul2_tx2);
+    vk.shaders.vert.gen[1][2][0][0][1] = SHADER_MODULE(vert_gpu_ghoul2_tx2_fog);
+    vk.shaders.vert.gen[1][2][0][1][0] = SHADER_MODULE(vert_gpu_ghoul2_tx2_env);
+    vk.shaders.vert.gen[1][2][0][1][1] = SHADER_MODULE(vert_gpu_ghoul2_tx2_env_fog);
+
+    vk.shaders.vert.gen[1][2][1][0][0] = SHADER_MODULE(vert_gpu_ghoul2_tx2_cl);
+    vk.shaders.vert.gen[1][2][1][0][1] = SHADER_MODULE(vert_gpu_ghoul2_tx2_cl_fog);
+    vk.shaders.vert.gen[1][2][1][1][0] = SHADER_MODULE(vert_gpu_ghoul2_tx2_cl_env);
+    vk.shaders.vert.gen[1][2][1][1][1] = SHADER_MODULE(vert_gpu_ghoul2_tx2_cl_env_fog);
+#endif
+
+    for (i = 0; i < sh_count; i++) {
+        const char *sh[] = { "cpu", "gpu ghoul2" };
         const char *tx[] = { "single", "double", "triple" };
         const char *cl[] = { "", "+cl" };
         const char *env[] = { "", "+env" };
@@ -120,8 +153,26 @@ void vk_create_shader_modules( void )
     vk.shaders.frag.gen[0][2][1][0] = SHADER_MODULE(frag_cpu_tx2_cl);
     vk.shaders.frag.gen[0][2][1][1] = SHADER_MODULE(frag_cpu_tx2_cl_fog);
 
-    for (i = 0; i < 1; i++) {
-        const char *sh[] = { "cpu" };
+    // GPU Ghoul2
+#ifdef USE_VBO_GHOUL2
+    vk.shaders.frag.gen[1][0][0][0] = SHADER_MODULE(frag_gpu_ghoul2_tx0);
+    vk.shaders.frag.gen[1][0][0][1] = SHADER_MODULE(frag_gpu_ghoul2_tx0_fog);
+
+    vk.shaders.frag.gen[1][1][0][0] = SHADER_MODULE(frag_gpu_ghoul2_tx1);
+    vk.shaders.frag.gen[1][1][0][1] = SHADER_MODULE(frag_gpu_ghoul2_tx1_fog);
+
+    vk.shaders.frag.gen[1][1][1][0] = SHADER_MODULE(frag_gpu_ghoul2_tx1_cl);
+    vk.shaders.frag.gen[1][1][1][1] = SHADER_MODULE(frag_gpu_ghoul2_tx1_cl_fog);
+
+    vk.shaders.frag.gen[1][2][0][0] = SHADER_MODULE(frag_gpu_ghoul2_tx2);
+    vk.shaders.frag.gen[1][2][0][1] = SHADER_MODULE(frag_gpu_ghoul2_tx2_fog);
+
+    vk.shaders.frag.gen[1][2][1][0] = SHADER_MODULE(frag_gpu_ghoul2_tx2_cl);
+    vk.shaders.frag.gen[1][2][1][1] = SHADER_MODULE(frag_gpu_ghoul2_tx2_cl_fog);
+#endif
+
+    for (i = 0; i < sh_count; i++) {
+        const char *sh[] = { "cpu", "gpu ghoul2" };
         const char *tx[] = { "single", "double", "triple" };
         const char *cl[] = { "", "+cl" };
         const char *fog[] = { "", "+fog" };
@@ -154,10 +205,14 @@ void vk_create_shader_modules( void )
     VK_SET_OBJECT_NAME(vk.shaders.color_vs, "single-color vertex module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
     VK_SET_OBJECT_NAME(vk.shaders.color_fs, "single-color fragment module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
 
-    vk.shaders.fog_vs = SHADER_MODULE(fog_vert_spv);
+    vk.shaders.fog_vs[0] = SHADER_MODULE(fog_vert_spv);
     vk.shaders.fog_fs = SHADER_MODULE(fog_frag_spv);
-    VK_SET_OBJECT_NAME(vk.shaders.fog_vs, "fog-only vertex module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
+    VK_SET_OBJECT_NAME(vk.shaders.fog_vs[0], "fog-only vertex module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
     VK_SET_OBJECT_NAME(vk.shaders.fog_fs, "fog-only fragment module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
+#ifdef USE_VBO_GHOUL2
+    vk.shaders.fog_vs[1] = SHADER_MODULE(fog_ghoul2_vert_spv);
+    VK_SET_OBJECT_NAME(vk.shaders.fog_vs[1], "fog-only ghoul2 vbo vertex module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
+#endif
 
     vk.shaders.dot_vs = SHADER_MODULE(dot_vert_spv);
     vk.shaders.dot_fs = SHADER_MODULE(dot_frag_spv);
@@ -179,9 +234,14 @@ void vk_create_shader_modules( void )
 
 void vk_destroy_shader_modules( void )
 {
-    int i, j, k, l, m;
+    int i, j, k, l, m, sh_count;
 
-    for (i = 0; i < 1; i++) {
+    sh_count = 1;
+#ifdef USE_VBO_GHOUL2
+    sh_count++;
+#endif
+
+    for (i = 0; i < sh_count; i++) {
         for (j = 0; j < 3; j++) {
             for (k = 0; k < 2; k++) {
                 for (l = 0; l < 2; l++) {
@@ -195,7 +255,7 @@ void vk_destroy_shader_modules( void )
             }
         }
     }
-    for (i = 0; i < 1; i++) {
+   for (i = 0; i < sh_count; i++) {
         for (j = 0; j < 3; j++) {
             for (k = 0; k < 2; k++) {
                 for (l = 0; l < 2; l++) {
@@ -227,8 +287,11 @@ void vk_destroy_shader_modules( void )
     qvkDestroyShaderModule(vk.device, vk.shaders.color_fs, NULL);
     qvkDestroyShaderModule(vk.device, vk.shaders.color_vs, NULL);
 
-    qvkDestroyShaderModule(vk.device, vk.shaders.fog_vs, NULL);
+    qvkDestroyShaderModule(vk.device, vk.shaders.fog_vs[0], NULL);
     qvkDestroyShaderModule(vk.device, vk.shaders.fog_fs, NULL);
+#ifdef USE_VBO_GHOUL2
+    qvkDestroyShaderModule(vk.device, vk.shaders.fog_vs[1], NULL);
+#endif
 
     qvkDestroyShaderModule(vk.device, vk.shaders.dot_vs, NULL);
     qvkDestroyShaderModule(vk.device, vk.shaders.dot_fs, NULL);

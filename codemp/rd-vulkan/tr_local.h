@@ -25,6 +25,17 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define TR_LOCAL_H
 
 #define USE_VBO					// store static world geometry in VBO
+
+#ifdef USE_VBO
+	#define MAX_VBOS      4096
+	#define USE_VBO_GHOUL2
+#ifdef USE_VBO_GHOUL2
+	//#define USE_VBO_GHOUL2_RGBAGEN_CONSTS	// provides a check for vertex shader, need to calculate color. 
+											// if commented, vertex shader decides using a using the switch.
+											// glsl tweaks required when enabled
+#endif
+#endif
+
 #define USE_FOG_ONLY
 #define USE_FOG_COLLAPSE		// not compatible with legacy dlights
 #if defined ( USE_VBO ) && !defined( USE_FOG_ONLY )
@@ -311,6 +322,7 @@ typedef enum {
 	DEFORM_WAVE,
 	DEFORM_NORMALS,
 	DEFORM_BULGE,
+	DEFORM_BULGE_UNIFORM,
 	DEFORM_MOVE,
 	DEFORM_PROJECTION_SHADOW,
 	DEFORM_AUTOSPRITE,
@@ -322,7 +334,8 @@ typedef enum {
 	DEFORM_TEXT4,
 	DEFORM_TEXT5,
 	DEFORM_TEXT6,
-	DEFORM_TEXT7
+	DEFORM_TEXT7,
+	DEFORM_DISINTEGRATION
 } deform_t;
 
 typedef enum {
@@ -356,6 +369,8 @@ typedef enum {
 	CGEN_FOG,				// standard fog
 	CGEN_CONST,				// fixed color
 	CGEN_LIGHTMAPSTYLE,
+	CGEN_DISINTEGRATION_1,
+	CGEN_DISINTEGRATION_2
 } colorGen_t;
 
 typedef enum {
@@ -1020,6 +1035,29 @@ typedef struct world_s {
 
 //======================================================================
 
+#ifdef USE_VBO_GHOUL2
+typedef struct mdxmVBOMesh_s
+{
+	int			numIndexes;
+	int			numVertexes;
+
+	int			iboOffset;
+	int			vboOffset;
+	int			texOffset;
+	int			normalOffset;
+	int			boneOffset;
+	int			weightOffset;
+
+	int			vboMeshIndex;	// vbo model (LOD) index
+	int			vboItemIndex;	// vbo surface index
+} mdxmVBOMesh_t;
+#endif
+
+typedef struct mdxmVBOModel_s
+{
+	mdxmVBOMesh_t *vboMeshes;
+} mdxmVBOModel_t;
+
 typedef enum {
 	MOD_BAD,
 	MOD_BRUSH,
@@ -1046,6 +1084,9 @@ typedef struct model_s {
 /*
 Ghoul2 Insert Start
 */
+#ifdef USE_VBO_GHOUL2
+	mdxmVBOModel_t	*vboModels;
+#endif
 	mdxmHeader_t *mdxm;				// only if type == MOD_GL2M which is a GHOUL II Mesh file NOT a GHOUL II animation file
 	mdxaHeader_t *mdxa;				// only if type == MOD_GL2A which is a GHOUL II Animation file
 /*
@@ -1610,6 +1651,7 @@ extern cvar_t	*r_nomip;				// apply picmip only on worldspawn textures
 #ifdef USE_VBO
 extern cvar_t	*r_vbo;
 #endif
+
 /*
 Ghoul2 Insert Start
 */
@@ -1764,6 +1806,7 @@ struct shaderCommands_s
 	int				vboIndex;
 	int				vboStage;
 	qboolean		allowVBO;
+	const mdxmVBOMesh_t	*mesh_ptr;
 #endif
 
 	shader_t		*shader;
@@ -1940,6 +1983,9 @@ public:
 	const int		ident;				// ident of this surface - required so the materials renderer knows what sort of surface this refers to
 #endif
 	CBoneCache 		*boneCache;
+#ifdef USE_VBO_GHOUL2
+	mdxmVBOMesh_t	*vboMesh;
+#endif
 	mdxmSurface_t	*surfaceData;		// pointer to surface data loaded into file - only used by client renderer DO NOT USE IN GAME SIDE - if there is a vid restart this will be out of wack on the game
 #ifdef _G2_GORE
 	float			*alternateTex;		// alternate texture coordinates.
@@ -1958,6 +2004,9 @@ public:
 		surfaceData		= src.surfaceData;
 		alternateTex	= src.alternateTex;
 		goreChain		= src.goreChain;
+#ifdef USE_VBO_GHOUL2
+		vboMesh			= src.vboMesh;
+#endif
 		return *this;
 	}
 #endif
@@ -1965,6 +2014,9 @@ public:
 CRenderableSurface():
 	ident( SF_MDX ),
 	boneCache( nullptr ),
+#ifdef USE_VBO_GHOUL2
+	vboMesh( nullptr ),
+#endif
 #ifdef _G2_GORE
 	surfaceData( nullptr ),
 	alternateTex( nullptr ),
@@ -1982,6 +2034,9 @@ CRenderableSurface():
 		surfaceData		= nullptr;
 		alternateTex	= nullptr;
 		goreChain		= nullptr;
+#ifdef USE_VBO_GHOUL2
+		vboMesh			= nullptr;
+#endif
 	}
 #endif
 };
@@ -1998,7 +2053,9 @@ Ghoul2 Insert End
 void	R_TransformModelToClip( const vec3_t src, const float *modelMatrix, const float *projectionMatrix,
 							vec4_t eye, vec4_t dst );
 void	R_TransformClipToWindow( const vec4_t clip, const viewParms_t *view, vec4_t normalized, vec4_t window );
-
+#ifdef USE_VBO_GHOUL2
+qboolean ShaderRequiresCPUDeforms( const shader_t *shader );
+#endif
 void	RB_DeformTessGeometry( void );
 void	RB_CalcEnvironmentTexCoords( float *dstTexCoords );
 void	RB_CalcFogTexCoords( float *dstTexCoords );
@@ -2013,6 +2070,8 @@ void	RB_CalcModulateAlphasByFog( unsigned char *dstColors );
 void	RB_CalcModulateRGBAsByFog( unsigned char *dstColors );
 void	RB_CalcWaveAlpha( const waveForm_t *wf, unsigned char *dstColors );
 void	RB_CalcWaveColor( const waveForm_t *wf, unsigned char *dstColors );
+float	RB_CalcWaveColorSingle( const waveForm_t *wf );
+float	RB_CalcWaveAlphaSingle( const waveForm_t *wf );
 void	RB_CalcAlphaFromEntity( unsigned char *dstColors );
 void	RB_CalcAlphaFromOneMinusEntity( unsigned char *dstColors );
 void	RB_CalcColorFromEntity( unsigned char *dstColors );
@@ -2249,8 +2308,9 @@ void		ComputeTexCoords( const int b, const textureBundle_t *bundle );
 #ifdef USE_VBO
 // VBO functions
 extern void R_BuildWorldVBO( msurface_t *surf, int surfCount );
+extern void R_BuildMDXM( model_t *mod, mdxmHeader_t *mdxm );
 
-extern void VBO_PushData( int itemIndex, shaderCommands_t *input );
+extern void VBO_PushData( uint32_t vbo_index, int itemIndex, shaderCommands_t *input );
 extern void VBO_UnBind( void );
 
 extern void VBO_Cleanup( void );

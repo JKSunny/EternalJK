@@ -403,6 +403,7 @@ void RB_SurfaceTriangles( const srfTriangles_t *srf ) {
 		}
 		tess.surfType = SF_TRIANGLES;
 		tess.vboIndex = srf->vboItemIndex;
+		vk_bind_vbo_index( vk.vbo_world_index );
 		VBO_QueueItem(srf->vboItemIndex);
 		return; // no need to tesselate anything
 	}
@@ -1427,6 +1428,7 @@ void RB_SurfaceFace( srfSurfaceFace_t *surf ) {
 		}
 		tess.surfType = SF_FACE;
 		tess.vboIndex = surf->vboItemIndex;
+		vk_bind_vbo_index( vk.vbo_world_index );
 		VBO_QueueItem(surf->vboItemIndex);
 		return; // no need to tesselate anything
 	}
@@ -1626,6 +1628,7 @@ void RB_SurfaceGrid( srfGridMesh_t *cv ) {
 		}
 		tess.surfType = SF_GRID;
 		tess.vboIndex = cv->vboItemIndex;
+		vk_bind_vbo_index( vk.vbo_world_index );
 		VBO_QueueItem(cv->vboItemIndex);
 		return; // no need to tesselate anything
 	}
@@ -1690,7 +1693,7 @@ void RB_SurfaceGrid( srfGridMesh_t *cv ) {
 					// estimate and flush
 #ifdef USE_VBO
 					if (cv->vboItemIndex) {
-						VBO_PushData(cv->vboItemIndex, &tess);
+						VBO_PushData( vk.vbo_world_index, cv->vboItemIndex, &tess );
 						tess.numIndexes = 0;
 						tess.numVertexes = 0;
 					}
