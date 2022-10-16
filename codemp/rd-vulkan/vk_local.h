@@ -774,11 +774,7 @@ typedef struct {
 	// shader modules.
 	struct {
 		struct {
-#ifdef USE_VK_PBR
-			VkShaderModule gen[2][3][2][2][2]; // pbr[0,1], tx[0,1,2], cl[0,1] env0[0,1] fog[0,1]
-#else
-			VkShaderModule gen[3][2][2][2]; // tx[0,1,2], cl[0,1] env0[0,1] fog[0,1]
-#endif
+			VkShaderModule gen[2][3][2][2][2]; // sh[0,1], tx[0,1,2], cl[0,1] env0[0,1] fog[0,1]
 			VkShaderModule light[2]; // fog[0,1]
 			VkShaderModule gen0_ident;
 		}	vert;
@@ -786,11 +782,7 @@ typedef struct {
 		struct {
 			VkShaderModule gen0_ident;
 			VkShaderModule gen0_df;
-#ifdef USE_VK_PBR
-			VkShaderModule gen[2][3][2][2]; // pbr[0,1], tx[0,1,2] cl[0,1] fog[0,1]
-#else
-			VkShaderModule gen[3][2][2]; // tx[0,1,2] cl[0,1] fog[0,1]
-#endif
+			VkShaderModule gen[2][3][2][2]; // sh[0,1], tx[0,1,2] cl[0,1] fog[0,1]
 			VkShaderModule light[2][2]; // linear[0,1] fog[0,1]
 		}	frag;
 
