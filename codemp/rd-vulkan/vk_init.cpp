@@ -392,6 +392,10 @@ void vk_initialize( void )
 	// Memory alignment
 	vk.uniform_alignment = props.limits.minUniformBufferOffsetAlignment;
 	vk.uniform_item_size = PAD( sizeof(vkUniform_t), vk.uniform_alignment );
+#ifdef USE_VBO_GHOUL2
+	vk.uniform_data_item_size = PAD( sizeof(vkUniformData_t), vk.uniform_alignment );
+	vk.uniform_ghoul_item_size = PAD( sizeof(vkUniformGhoul_t), vk.uniform_alignment );
+#endif
 	vk.storage_alignment = MAX( props.limits.minStorageBufferOffsetAlignment, sizeof(uint32_t) ); //for flare visibility tests
 
 	// maxTextureSize must not exceed IMAGE_CHUNK_SIZE
@@ -431,6 +435,16 @@ void vk_initialize( void )
 
 	if ( r_fbo->integer )
 		vk.fboActive = qtrue;		
+
+#ifdef USE_VBO
+	if ( r_vbo->integer && r_vbo->integer <= 2 )
+		vk.vboWorldActive = qtrue;
+
+#ifdef USE_VBO_GHOUL2
+	if ( r_vbo->integer >= 2 )
+		vk.vboGhoul2Active = qtrue;
+#endif
+#endif
 
 #ifdef USE_VK_PBR
 	// if another pbr input attachment has been added
@@ -547,7 +561,7 @@ void vk_shutdown( void )
 #endif
 
 #ifdef USE_VBO	
-	vk_release_vbo();
+	vk_clear_vbo();
 #endif
 
 	vk_release_geometry_buffers();

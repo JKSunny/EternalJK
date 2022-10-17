@@ -72,11 +72,23 @@ qboolean vk_begin_dglow_blur( void )
 		// force depth range and viewport/scissor updates
 		vk.cmd->depth_range = DEPTH_RANGE_COUNT;
 
+		uint32_t offsets[4], offset_count;
+
 		// restore clobbered descriptor sets
 		for ( i = 0; i < ( ( vk.maxBoundDescriptorSets >= 6 ) ? 7 : 4 ); i++ ) {
 			if ( vk.cmd->descriptor_set.current[i] != VK_NULL_HANDLE ) {
-				if ( i == 0 || i == 1 )
-					qvkCmdBindDescriptorSets( vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, i, 1, &vk.cmd->descriptor_set.current[i], 1, &vk.cmd->descriptor_set.offset[i] );
+				if ( i == 0 || i == 1 ) {
+					offset_count = 0;
+
+					offsets[offset_count++] = vk.cmd->descriptor_set.offset[i];
+#ifdef USE_VBO_GHOUL2
+					if ( vk.vboGhoul2Active && i == 1 ) {
+						offsets[offset_count++] = vk.cmd->descriptor_set.offset[i + 1];
+						offsets[offset_count++] = vk.cmd->descriptor_set.offset[i + 2];
+					}
+#endif
+					qvkCmdBindDescriptorSets( vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, i, 1, &vk.cmd->descriptor_set.current[i], offset_count, offsets );
+				}
 				else
 					qvkCmdBindDescriptorSets( vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, i, 1, &vk.cmd->descriptor_set.current[i], 0, NULL );
 			}

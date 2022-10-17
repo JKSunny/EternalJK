@@ -950,7 +950,7 @@ void R_Register( void )
 	r_nomip								= ri.Cvar_Get("r_nomip",							"0",						CVAR_ARCHIVE | CVAR_LATCH, "Apply picmip only on worldspawn textures");
 	ri.Cvar_CheckRange(r_nomip, 0, 1, qtrue);
 #ifdef USE_VBO
-	r_vbo								= ri.Cvar_Get("r_vbo",								"1",						CVAR_ARCHIVE | CVAR_LATCH, "");
+	r_vbo = ri.Cvar_Get("r_vbo",															"0",						CVAR_ARCHIVE | CVAR_LATCH, "Cache static surfaces:\n 0 - off\n 1 - world\n 2 - world + models\n 3 - models");
 #endif
 #ifdef USE_VK_PBR
 	r_pbr								= ri.Cvar_Get("r_pbr",								"0",						CVAR_ARCHIVE_ND | CVAR_LATCH, "Enables Physically Based Rendering. \nRequires " S_COLOR_CYAN "\\r_fbo 1 \n" S_COLOR_GREEN "Optional " S_COLOR_CYAN "\\r_vbo 1 " S_COLOR_GREEN "for static world geometry " S_COLOR_WHITE "*adviced");
@@ -1091,6 +1091,10 @@ void R_Init( void ) {
 	}
 
 	vk_create_window();		// Vulkan
+
+#ifdef USE_VBO
+	vk_clear_vbo();
+#endif
 
 	R_Set2DRatio();
 	R_InitImages();	

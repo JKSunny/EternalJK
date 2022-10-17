@@ -24,7 +24,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "tr_local.h"
 
 #ifdef USE_VK_PBR
-static VkVertexInputBindingDescription bindings[9];
+static VkVertexInputBindingDescription bindings[11];
 static VkVertexInputAttributeDescription attribs[9];
 #else
 static VkVertexInputBindingDescription bindings[8];
@@ -32,23 +32,45 @@ static VkVertexInputAttributeDescription attribs[8];
 #endif
 static uint32_t num_binds;
 static uint32_t num_attrs;
+#ifdef USE_VBO_GHOUL2
+static qboolean is_ghoul2_vbo;
+#endif
 
 static void vk_create_layout_binding( int binding, VkDescriptorType type, 
-    VkShaderStageFlags flags, VkDescriptorSetLayout *layout ) {
-    VkDescriptorSetLayoutBinding descriptor_binding;
+    VkShaderStageFlags flags, VkDescriptorSetLayout *layout ) 
+{
+    uint32_t count = 0;
+    VkDescriptorSetLayoutBinding descriptor_binding[3];
     VkDescriptorSetLayoutCreateInfo desc;
 
-    descriptor_binding.binding = binding;
-    descriptor_binding.descriptorType = type;
-    descriptor_binding.descriptorCount = 1;
-    descriptor_binding.stageFlags = flags;
-    descriptor_binding.pImmutableSamplers = NULL;
+    descriptor_binding[count].binding = binding;
+    descriptor_binding[count].descriptorType = type;
+    descriptor_binding[count].descriptorCount = 1;
+    descriptor_binding[count].stageFlags = flags;
+    descriptor_binding[count].pImmutableSamplers = NULL;
+    count++;
+#ifdef USE_VBO_GHOUL2
+    if ( *layout == vk.set_layout_uniform && vk.vboGhoul2Active ) {
+        descriptor_binding[count].binding = binding + 1; // binding 1 
+        descriptor_binding[count].descriptorType = type;
+        descriptor_binding[count].descriptorCount = 1;
+        descriptor_binding[count].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+        descriptor_binding[count].pImmutableSamplers = NULL;
+        count++;
 
+        descriptor_binding[count].binding = binding + 2; // binding 2 
+        descriptor_binding[count].descriptorType = type;
+        descriptor_binding[count].descriptorCount = 1;
+        descriptor_binding[count].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        descriptor_binding[count].pImmutableSamplers = NULL;
+        count++;  
+    }
+#endif
     desc.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     desc.pNext = NULL;
     desc.flags = 0;
-    desc.bindingCount = 1;
-    desc.pBindings = &descriptor_binding;
+    desc.bindingCount = count;
+    desc.pBindings = descriptor_binding;
     VK_CHECK(qvkCreateDescriptorSetLayout(vk.device, &desc, NULL, layout));
 }
 
@@ -178,6 +200,10 @@ void vk_create_pipeline_layout( void )
 
 static void vk_push_bind( uint32_t binding, uint32_t stride )
 {
+#ifdef USE_VBO_GHOUL2
+    if( is_ghoul2_vbo && ( binding == 1 || binding == 6 || binding == 7 ) )
+        return; // skip in_color bindings
+#endif
     bindings[num_binds].binding = binding;
     bindings[num_binds].stride = stride;
     bindings[num_binds].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
@@ -186,6 +212,10 @@ static void vk_push_bind( uint32_t binding, uint32_t stride )
 
 static void vk_push_attr( uint32_t location, uint32_t binding, VkFormat format )
 {
+#ifdef USE_VBO_GHOUL2
+    if( is_ghoul2_vbo && ( binding == 1 || binding == 6 || binding == 7 ) )
+        return; // skip in_color bindings
+#endif
     attribs[num_attrs].location = location;
     attribs[num_attrs].binding = binding;
     attribs[num_attrs].format = format;
@@ -199,6 +229,9 @@ static void vk_push_attr( uint32_t location, uint32_t binding, VkFormat format )
 // from memory throughout the vertices
 static void vk_push_vertex_input_binding_attribute( const Vk_Pipeline_Def *def ) {
     num_binds = num_attrs = 0; // reset
+#ifdef USE_VBO_GHOUL2
+    is_ghoul2_vbo = vk.vboGhoul2Active ? def->ghoul2 : qfalse;
+#endif
 
     switch ( def->shader_type ) {
         case TYPE_FOG_ONLY:
@@ -404,6 +437,58 @@ static void vk_push_vertex_input_binding_attribute( const Vk_Pipeline_Def *def )
             ri.Error(ERR_DROP, "%s: invalid shader type - %i", __func__, def->shader_type);
             break;
     }
+
+ #ifdef USE_VK_PBR  
+    if ( def->vk_pbr_flags ){    
+        vk_push_bind( 8, sizeof(vec4_t) );                // qtangent
+        vk_push_attr( 8, 8, VK_FORMAT_R32G32B32A32_SFLOAT );
+    }
+#endif
+
+#ifdef USE_VBO_GHOUL2
+    if ( is_ghoul2_vbo ) {
+        if ( def->shader_type == TYPE_FOG_ONLY || 
+             def->shader_type >= TYPE_GENERIC_BEGIN && def->shader_type <= TYPE_GENERIC_END )
+        {
+            // bind attributes for fog and generic gpu shading shaders
+            switch ( def->shader_type ) {
+                case TYPE_FOG_ONLY:
+                case TYPE_SINGLE_TEXTURE_ENV:
+                case TYPE_MULTI_TEXTURE_MUL2_ENV:
+                case TYPE_MULTI_TEXTURE_ADD2_IDENTITY_ENV:
+                case TYPE_MULTI_TEXTURE_ADD2_ENV:
+                case TYPE_MULTI_TEXTURE_MUL3_ENV:
+                case TYPE_MULTI_TEXTURE_ADD3_IDENTITY_ENV:
+                case TYPE_MULTI_TEXTURE_ADD3_ENV:
+                case TYPE_BLEND2_ADD_ENV:
+                case TYPE_BLEND2_MUL_ENV:
+                case TYPE_BLEND2_ALPHA_ENV:
+                case TYPE_BLEND2_ONE_MINUS_ALPHA_ENV:
+                case TYPE_BLEND2_MIX_ALPHA_ENV:
+                case TYPE_BLEND2_MIX_ONE_MINUS_ALPHA_ENV:
+                case TYPE_BLEND2_DST_COLOR_SRC_ALPHA_ENV:
+                case TYPE_BLEND3_ADD_ENV:
+                case TYPE_BLEND3_MUL_ENV:
+                case TYPE_BLEND3_ALPHA_ENV:
+                case TYPE_BLEND3_ONE_MINUS_ALPHA_ENV:
+                case TYPE_BLEND3_MIX_ALPHA_ENV:
+                case TYPE_BLEND3_MIX_ONE_MINUS_ALPHA_ENV:
+                case TYPE_BLEND3_DST_COLOR_SRC_ALPHA_ENV:  
+                    break;
+                default:
+                    vk_push_bind( 5, sizeof( vec4_t ) );// normals
+                    vk_push_attr( 5, 5, VK_FORMAT_R32G32B32A32_SFLOAT );
+                    break;
+            }
+
+            vk_push_bind( 9, sizeof( vec4_t ) );		// bone indexes
+            vk_push_attr( 9, 9, VK_FORMAT_R32G32B32A32_SFLOAT );
+
+            vk_push_bind( 10, sizeof( vec4_t ) );		// bone weights
+            vk_push_attr( 10, 10, VK_FORMAT_R32G32B32A32_SFLOAT );
+        }
+    }
+#endif
 }
 
 static void vk_set_pipeline_color_blend_attachment_factor( const Vk_Pipeline_Def *def, 
@@ -504,7 +589,11 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
     VkPipelineDynamicStateCreateInfo dynamic_state;
     VkDynamicState dynamic_state_array[3] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR, VK_DYNAMIC_STATE_DEPTH_BIAS };
     VkGraphicsPipelineCreateInfo create_info;
+#ifdef USE_VBO_GHOUL2_RGBAGEN_CONSTS
+    int32_t vert_spec_data[3];
+#else
     int32_t vert_spec_data[1]; // clipping (def->clipping_plane). NULL
+#endif
     VkSpecializationInfo vert_spec_info;
     struct FragSpecData {
         int32_t alpha_test_func; 
@@ -536,7 +625,12 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
     unsigned int atest_bits;
     unsigned int state_bits = def->state_bits;
 
-    const int sh = def->vk_pbr_flags ? 1 : 0;
+
+    int sh = def->ghoul2 ? 1 : 0;             // 0: generic, 1: ghoul2-vbo
+    const int use_ghoul2_vbo = def->ghoul2 ? 1 : 0; // 0: fog, 1: fog ghoul2-vbo
+
+    if( def->vk_pbr_flags )
+        sh += 2;   // load pbr shader
 
     switch ( def->shader_type ) {
         case TYPE_SINGLE_TEXTURE_LIGHTING:
@@ -551,8 +645,7 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
 
         case TYPE_SINGLE_TEXTURE_DF:
             state_bits |= GLS_DEPTHMASK_TRUE;
-            // need pbr shader too?
-            vs_module = &vk.shaders.vert.gen[0][0][0][0][0];
+            vs_module = &vk.shaders.vert.gen[0][0][0][0][0];    // need compatible fragment shader
             fs_module = &vk.shaders.frag.gen0_df;
             break;
 
@@ -651,7 +744,7 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
             break;
 
         case TYPE_FOG_ONLY:
-            vs_module = &vk.shaders.fog_vs;
+            vs_module = &vk.shaders.fog_vs[use_ghoul2_vbo];
             fs_module = &vk.shaders.fog_fs;
             break;
 
@@ -690,7 +783,13 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
 
     Com_Memset( vert_spec_data, 0, sizeof(vert_spec_data) ); // clipping
     Com_Memset( &frag_spec_data, 0, sizeof(FragSpecData) );   
-    //vert_spec_data[0] = def->clipping_plane ? 1 : 0; // used by vertex shader.
+#ifdef USE_VBO_GHOUL2_RGBAGEN_CONSTS
+    vert_spec_data[0] = def->rgbaGen[0]; // used by ghoul2-vbo vertex shader.
+    vert_spec_data[1] = def->rgbaGen[1]; // used by ghoul2-vbo vertex shader.
+    vert_spec_data[2] = def->rgbaGen[2]; // used by ghoul2-vbo vertex shader.
+#else
+    //vert_spec_data[0] = def->clipping_plane ? 1 : 0; // used by vertex shader.   
+#endif
 
     // fragment shader specialization data
     atest_bits = state_bits & GLS_ATEST_BITS;
@@ -821,9 +920,9 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
     spec_entries[0].offset = 0 * sizeof( int32_t );
     spec_entries[0].size = sizeof( int32_t );
 
-    vert_spec_info.mapEntryCount = 1;
+    vert_spec_info.mapEntryCount = ARRAY_LEN( vert_spec_data );
     vert_spec_info.pMapEntries = spec_entries + 0;
-    vert_spec_info.dataSize = 1 * sizeof( int32_t );
+    vert_spec_info.dataSize = ARRAY_LEN( vert_spec_data ) * sizeof( int32_t );
     vert_spec_info.pData = &vert_spec_data[0];
     shader_stages[0].pSpecializationInfo = &vert_spec_info;
 
@@ -926,13 +1025,6 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
 
     // vertex input state (binding and attributes)
     vk_push_vertex_input_binding_attribute( def );
-
- #ifdef USE_VK_PBR  // qtangent
-    if( def->vk_pbr_flags ){    
-        vk_push_bind(8, sizeof(vec4_t));
-        vk_push_attr(8, 8, VK_FORMAT_R32G32B32A32_SFLOAT);
-    }
-#endif
 
     vertex_input_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     vertex_input_state.pNext = NULL;
@@ -1827,8 +1919,14 @@ void vk_alloc_persistent_pipelines( void )
                     def.shader_type = TYPE_SINGLE_TEXTURE;
 #endif
                     def.state_bits = fog_state;
-                    vk.std_pipeline.fog_pipelines[i][j][k] = vk_find_pipeline_ext(0, &def, qtrue);
-
+                    def.ghoul2 = qfalse;
+                    vk.std_pipeline.fog_pipelines[0][i][j][k] = vk_find_pipeline_ext(0, &def, qtrue);
+#ifdef USE_VBO_GHOUL2                    
+                    if( vk.vboGhoul2Active ) {
+                        def.ghoul2 = qtrue;
+                        vk.std_pipeline.fog_pipelines[1][i][j][k] = vk_find_pipeline_ext(0, &def, qtrue);
+                    }
+#endif
                    // def.shader_type = TYPE_SINGLE_TEXTURE;
                    // def.state_bits = dlight_state;
                 }
@@ -1837,6 +1935,7 @@ void vk_alloc_persistent_pipelines( void )
 
 #ifdef USE_PMLIGHT
         def.state_bits = GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE | GLS_DEPTHFUNC_EQUAL;
+        def.ghoul2 = qfalse;
         //def.shader_type = TYPE_SIGNLE_TEXTURE_LIGHTING;
         for (i = 0; i < 3; i++) { // cullType
             def.face_culling = (cullType_t)i;

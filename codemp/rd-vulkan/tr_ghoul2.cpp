@@ -2433,6 +2433,19 @@ void G2_ProcessGeneratedSurfaceBolts(CGhoul2Info &ghoul2, mdxaBone_v &bonePtr, m
 #endif
 }
 
+#ifdef USE_VBO_GHOUL2
+static inline void vk_set_ghoul2_vbo_mesh( const CRenderSurface &RS, CRenderableSurface *surf, const int lod, const int surfaceIndex )
+{
+	if ( !vk.vboGhoul2Active )
+		return;
+
+	surf->vboMesh = &RS.currentModel->vboModels[lod].vboMeshes[RS.surfaceNum];
+#ifdef _DEBUG
+	assert( surf->vboMesh != NULL && RS.surfaceNum == surfaceIndex );
+#endif
+}
+#endif
+
 void RenderSurfaces(CRenderSurface &RS) //also ended up just ripping right from SP.
 {
 #ifdef G2_PERFORMANCE_ANALYSIS
@@ -2497,6 +2510,9 @@ void RenderSurfaces(CRenderSurface &RS) //also ended up just ripping right from 
 		{		// set the surface info to point at the where the transformed bone list is going to be for when the surface gets rendered out
 			CRenderableSurface *newSurf = AllocGhoul2RenderableSurface();
 			newSurf->surfaceData = surface;
+#ifdef USE_VBO_GHOUL2
+			vk_set_ghoul2_vbo_mesh( RS, newSurf, RS.lod, surface->thisSurfaceIndex );
+#endif
 			newSurf->boneCache = RS.boneCache;
 			R_AddDrawSurf( (surfaceType_t *)newSurf, (shader_t *)shader, RS.fogNum, qfalse );
 			tr.needScreenMap |= shader->hasScreenMap;
@@ -2586,6 +2602,10 @@ void RenderSurfaces(CRenderSurface &RS) //also ended up just ripping right from 
 #endif
 		}
 
+#ifdef USE_VBO_GHOUL2
+		// stencil/projection shadows are not supported with ghoul2 vbo enabled, yet
+		if( !vk.vboGhoul2Active ) {
+#endif
 		//rww - catch surfaces with bad shaders
 		//assert(shader != tr.defaultShader);
 		//Alright, this is starting to annoy me because of the state of the assets. Disabling for now.
@@ -2604,10 +2624,12 @@ void RenderSurfaces(CRenderSurface &RS) //also ended up just ripping right from 
 			{ //we need numVerts*2 xyz slots free in tess to do shadow, if this surf is going to exceed that then let's try the lowest lod -rww
 				mdxmSurface_t *lowsurface = (mdxmSurface_t *)G2_FindSurface(RS.currentModel, RS.surfaceNum, RS.currentModel->numLods-1);
 				newSurf->surfaceData = lowsurface;
+				//vk_set_ghoul2_vbo_mesh( RS, newSurf, RS.currentModel->numLods-1, lowsurface->thisSurfaceIndex );
 			}
 			else
 			{
 				newSurf->surfaceData = surface;
+				//vk_set_ghoul2_vbo_mesh( RS, newSurf, RS.lod, surface->thisSurfaceIndex );
 			}
 			newSurf->boneCache = RS.boneCache;
 			R_AddDrawSurf( (surfaceType_t *)newSurf, tr.shadowShader, 0, qfalse );
@@ -2621,12 +2643,15 @@ void RenderSurfaces(CRenderSurface &RS) //also ended up just ripping right from 
 		{		// set the surface info to point at the where the transformed bone list is going to be for when the surface gets rendered out
 			CRenderableSurface *newSurf = AllocGhoul2RenderableSurface();
 			newSurf->surfaceData = surface;
+			//vk_set_ghoul2_vbo_mesh( RS, newSurf, RS.lod, surface->thisSurfaceIndex );
 			newSurf->boneCache = RS.boneCache;
 			R_AddDrawSurf( (surfaceType_t *)newSurf, tr.projectionShadowShader, 0, qfalse );
 		}
 
 	}
-
+#ifdef USE_VBO_GHOUL2
+		}
+#endif
 	// if we are turning off all descendants, then stop this recursion now
 	if (offFlags & G2SURFACEFLAG_NODESCENDANTS)
 	{
@@ -3501,12 +3526,77 @@ static inline float G2_GetVertBoneWeightNotSlow( const mdxmVertex_t *pVert, cons
 	return fBoneWeight;
 }
 
+#ifdef USE_VBO_GHOUL2
+static void MDXABoneToMatrix ( const mdxaBone_t &bone, mat4_t &matrix )
+{
+	matrix[0] = bone.matrix[0][0];
+	matrix[1] = bone.matrix[1][0];
+	matrix[2] = bone.matrix[2][0];
+	matrix[3] = 0.0;
+
+	matrix[4] = bone.matrix[0][1];
+	matrix[5] = bone.matrix[1][1];
+	matrix[6] = bone.matrix[2][1];
+	matrix[7] = 0.0;
+
+	matrix[8] = bone.matrix[0][2];
+	matrix[9] = bone.matrix[1][2];
+	matrix[10] = bone.matrix[2][2];
+	matrix[11] = 0.0;
+
+	matrix[12] = bone.matrix[0][3];
+	matrix[13] = bone.matrix[1][3];
+	matrix[14] = bone.matrix[2][3];
+	matrix[15] = 1.0;
+}
+
+#endif
 //This is a slightly mangled version of the same function from the sof2sp base.
 //It provides a pretty significant performance increase over the existing one.
 void RB_SurfaceGhoul(CRenderableSurface* surf)
 {	
 	mdxmSurface_t	*surface;
-	
+
+#ifdef USE_VBO_GHOUL2
+	if ( vk.vboGhoul2Active && surf->vboMesh != NULL && surf->vboMesh->vboItemIndex )
+	{
+		surface = surf->surfaceData;
+
+		// transition to vbo render list
+		if ( tess.vboIndex == 0 ) {
+			RB_EndSurface();
+			RB_BeginSurface( tess.shader, tess.fogNum );
+			// set some dummy parameters for RB_EndSurface
+			tess.numIndexes = 1;
+			tess.numVertexes = 0;
+			VBO_ClearQueue();
+		}
+
+		tess.surfType = SF_MDX;
+		tess.shader->iboOffset = surf->vboMesh->iboOffset;
+		tess.vboIndex = surf->vboMesh->vboItemIndex;
+		tess.mesh_ptr = surf->vboMesh;
+
+		vk_bind_vbo_index( (uint32_t)surf->vboMesh->vboMeshIndex );
+		VBO_QueueItem( surf->vboMesh->vboItemIndex );
+
+		mat4_t *boneMatrices = vk_get_uniform_ghoul_bones();
+		int *boneReferences = (int *)( (byte *)surface + surface->ofsBoneReferences );
+
+		for ( uint32_t i = 0; i < surface->numBoneReferences; i++ ) {
+			const mdxaBone_t& bone = surf->boneCache->EvalRender( boneReferences[i] );
+			MDXABoneToMatrix( bone, boneMatrices[i] );
+		}
+
+		tess.shader->optimalStageIteratorFunc();
+		tess.numIndexes = 0;
+		tess.numVertexes = 0;
+		tess.vboIndex = 0;
+
+		return;		
+	}
+#endif
+
 #ifdef G2_PERFORMANCE_ANALYSIS
 	G2PerformanceTimer_RB_SurfaceGhoul.Start();
 #endif
@@ -4221,7 +4311,14 @@ qboolean R_LoadMDXM( model_t *mod, void *buffer, const char *mod_name, qboolean 
 
 	if (bAlreadyFound)
 	{
-		return qtrue;	// All done. Stop, go no further, do not LittleLong(), do not pass Go...
+#ifdef USE_VBO_GHOUL2
+		// hotfix, returning here, results in an invalid vbo mesh pointer. 
+		// test using model kyle 
+		if ( !vk.vboGhoul2Active )
+			return qtrue;	// All done. Stop, go no further, do not LittleLong(), do not pass Go...
+#else
+		return qtrue;		// All done. Stop, go no further, do not LittleLong(), do not pass Go...
+#endif	
 	}
 
 	bool isAnOldModelFile = false;
@@ -4378,6 +4475,11 @@ qboolean R_LoadMDXM( model_t *mod, void *buffer, const char *mod_name, qboolean 
 		// find the next LOD
 		lod = (mdxmLOD_t *)( (byte *)lod + lod->ofsEnd );
 	}
+
+#ifdef USE_VBO_GHOUL2
+	R_BuildMDXM( mod, mdxm );
+#endif
+
 	return qtrue;
 }
 

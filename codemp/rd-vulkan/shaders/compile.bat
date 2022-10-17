@@ -69,9 +69,13 @@ for %%f in (%glsl%*.frag) do (
 
 @rem template shader identifiers and flags
 set "sh[0]="
-set "sh[1]=-DUSE_VK_PBR"
+set "sh[1]=-DUSE_VBO_GHOUL2"
+set "sh[2]=-DUSE_VK_PBR"
+set "sh[3]=-DUSE_VK_PBR -DUSE_VBO_GHOUL2"
 set "sh_id[0]=cpu_"
-set "sh_id[1]=pbr_"
+set "sh_id[1]=gpu_ghoul2_"
+set "sh_id[2]=cpu_pbr_"
+set "sh_id[3]=gpu_pbr_ghoul2_"
 
 set "tx[0]="
 set "tx[1]=-DUSE_TX1"
@@ -99,7 +103,7 @@ SETLOCAL EnableDelayedExpansion
 
 @rem compile generic shader variations from templates
 @rem vertex shader
-for /L %%i in ( 0,1,1 ) do (                @rem shading mode 
+for /L %%i in ( 0,1,3 ) do (                @rem shading mode 
     for /L %%j in ( 0,1,2 ) do (            @rem tx   
         for /L %%k in ( 0,1,1 ) do (        @rem +env
             for /L %%m in ( 0,1,1 ) do (    @rem +fog
@@ -110,7 +114,7 @@ for /L %%i in ( 0,1,1 ) do (                @rem shading mode
 )
 
 @rem fragment shader
-for /L %%i in ( 0,1,1 ) do (                @rem shading mode
+for /L %%i in ( 0,1,3 ) do (                @rem shading mode
     for /L %%j in ( 0,1,2 ) do (            @rem tx 
         for /L %%k in ( 0,1,1 ) do (        @rem +fog
             call :compile_fragment_shader %%i, %%j, %%k

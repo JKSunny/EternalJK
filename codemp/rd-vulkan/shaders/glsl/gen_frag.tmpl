@@ -98,7 +98,7 @@ struct NTB {
 };
 
 layout(location = 9) in vec3 in_position;
-layout(location = 10) in NTB in_ntb;
+layout(location = 13) in NTB in_ntb;
 
 layout(set = 6, binding = 0) uniform sampler2D brdflut_texture;
 layout(set = 7, binding = 0) uniform sampler2D normal_texture;
@@ -258,6 +258,33 @@ float CorrectAlpha(float threshold, float alpha, vec2 tc)
 	float scale = max(1.0 / dxy, 1.0);
 	float ac = threshold + (alpha - threshold) * scale;
 	return ac;
+}
+#endif
+
+#ifdef USE_VBO_GHOUL2
+layout(set = 1, binding = 1) uniform UBOG2 {
+	vec4 eyePos2;
+	vec4 ambientLight;
+	vec4 directedLight;
+	vec4 lightDir;
+	vec4 rgbGen; 
+	vec4 alphaGen;
+	vec4 baseColor[3];
+	vec4 vertColor[3];
+	vec4 disintegrationInfo;
+	vec4 deformInfo[3];
+};	
+
+layout(location = 10) in vec3 N;
+layout(location = 11) in vec3 L;
+layout(location = 12) in vec3 V;
+
+float CalcLightAttenuation(float point, float normDist)
+{
+	// zero light at 1.0, approximating q3 style
+	// also don't attenuate directional light
+	float attenuation = (0.5 * normDist - 1.5) * point + 1.0;
+	return clamp(attenuation, 0.0, 1.0);
 }
 #endif
 
@@ -481,6 +508,28 @@ void main() {
 
 	gl_FragDepth = gl_FragCoord.z;
 #else
+
+#ifdef USE_VBO_GHOUL2
+	if( int( rgbGen[0]) >= 9 ) {
+		vec3 nL = normalize( L);
+		vec3 nV = normalize( V );
+		vec3 R = reflect( -nL, N );
+		float LdotL = dot(L, L);
+		float NdotL = clamp( dot( N, L ), 0.001, 1.0 );
+
+		vec3 diffuse = max( dot( N, nL ), 0.25 ) * vec3(1.5);
+		vec3 specular = pow( max( dot( R, nV ), 0.0 ), 1.0 ) * vec3(0.2);
+
+		float attenuation 	= CalcLightAttenuation(float(lightDir.w > 0.0), lightDir.w / LdotL) * 4.0;
+		vec3 lightColor 	= ( directedLight.xyz * 1.0 ) * base.rgb;
+		vec3 ambientColor 	= ( ambientLight.rgb * 3.0 ) * base.rgb;
+
+		vec3 color = lightColor * specular * (attenuation * NdotL);
+		color += ambientColor * diffuse;
+
+		base.rgb = color;
+	}
+#endif
 
 #ifdef USE_VK_PBR
 	float perceptualRoughness;
