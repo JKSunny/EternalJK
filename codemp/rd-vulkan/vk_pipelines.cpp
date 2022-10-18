@@ -627,7 +627,7 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
 
 
     int sh = def->ghoul2 ? 1 : 0;             // 0: generic, 1: ghoul2-vbo
-    const int use_ghoul2_vbo = def->ghoul2 ? 1 : 0; // 0: fog, 1: fog ghoul2-vbo
+    const int sh_fog = def->ghoul2 ? 1 : 0; // 0: fog, 1: fog ghoul2-vbo
 
     if( def->vk_pbr_flags )
         sh += 2;   // load pbr shader
@@ -744,7 +744,7 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
             break;
 
         case TYPE_FOG_ONLY:
-            vs_module = &vk.shaders.fog_vs[use_ghoul2_vbo];
+            vs_module = &vk.shaders.fog_vs[sh_fog];
             fs_module = &vk.shaders.fog_fs;
             break;
 

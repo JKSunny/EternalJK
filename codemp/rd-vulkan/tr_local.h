@@ -1085,6 +1085,9 @@ typedef struct mdxmVBOMesh_s
 	int			normalOffset;
 	int			boneOffset;
 	int			weightOffset;
+#ifdef USE_VK_PBR
+	int			qtangentOffset;
+#endif
 
 	int			vboMeshIndex;	// vbo model (LOD) index
 	int			vboItemIndex;	// vbo surface index

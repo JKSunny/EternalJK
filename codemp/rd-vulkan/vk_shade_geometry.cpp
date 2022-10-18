@@ -228,7 +228,7 @@ static void vk_vbo_bind_geometry_ghoul2( uint32_t flags )
 
 #ifdef USE_VK_PBR
 	if (flags & TESS_PBR) {
-		vk.cmd->vbo_offset[8] = tess.shader->qtangentOffset;
+		vk.cmd->vbo_offset[8] = tess.mesh_ptr->qtangentOffset;
 	}
 #endif
 
@@ -1297,10 +1297,10 @@ RB_FogPass
 Blends a fog texture on top of everything else
 ===================
 */
-static vkUniform_t			uniform;
+static vkUniform_t		uniform;
 #ifdef USE_VBO_GHOUL2
-static vkUniformData_t		uniform_data;
-static vkUniformGhoul_t		uniform_ghoul;
+static vkUniformData_t	uniform_data;
+static vkUniformGhoul_t	uniform_ghoul;
 
 mat4_t *vk_get_uniform_ghoul_bones( void ) {
 	return uniform_ghoul.boneMatrices;
@@ -1542,7 +1542,7 @@ static void vk_set_attr_color( color4ub_t *dest, const qboolean skip ){
 	numVerts = ( tess.vboIndex && tess.surfType == SF_MDX ) ? 
 		tess.mesh_ptr->numVertexes : tess.numVertexes;
 
-	if ( skip ){
+	if ( skip ) {
 		Com_Memset( dest, 0, numVerts * sizeof(color4ub_t) );
 		return;
 	}
@@ -1561,7 +1561,9 @@ static void vk_compute_colors( const int b, const shaderStage_t *pStage, int for
 		return;
 
 	float *baseColor, *vertColor;
+#ifdef USE_VBO_GHOUL2_RGBAGEN_CONSTS
 	qboolean skipInColor = qtrue;
+#endif
 
 	int rgbGen = forceRGBGen;
 	int alphaGen = pStage->bundle[b].alphaGen;
@@ -1689,6 +1691,7 @@ static void vk_compute_colors( const int b, const shaderStage_t *pStage, int for
 			break;
 	}
 
+#ifdef USE_VBO_GHOUL2_RGBAGEN_CONSTS
 	switch ( rgbGen) {
 		case CGEN_EXACT_VERTEX:
 		case CGEN_VERTEX:
@@ -1702,7 +1705,8 @@ static void vk_compute_colors( const int b, const shaderStage_t *pStage, int for
 	}
 
 	// skip ghoul2 vbo glsl in_colors for now
-	//vk_set_attr_color( tess.svars.colors[b], skipInColor );
+	vk_set_attr_color( tess.svars.colors[b], skipInColor );
+#endif
 
 	if ( backEnd.currentEntity && backEnd.currentEntity->e.renderfx & RF_FORCE_ENT_ALPHA ) {
 		baseColor[3] = backEnd.currentEntity->e.shaderRGBA[3] / 255.0f; 
@@ -1830,13 +1834,12 @@ static void vk_compute_deform( void ) {
 }
 
 static void vk_compute_disintegration( int *forceRGBGen ){
+	float	*info;
 
 	if ( backEnd.currentEntity->e.renderfx & RF_DISINTEGRATE1 )
 		*forceRGBGen = (int)CGEN_DISINTEGRATION_1;
 	else
 		*forceRGBGen = (int)CGEN_DISINTEGRATION_2;
-
-	float	*info;
 
 	info = (float*)uniform_data.disintegrationInfo;
 
@@ -1986,7 +1989,9 @@ void RB_StageIteratorGeneric( void )
 		VectorCopy( backEnd.currentEntity->lightDir, tmp ); tmp[3] = 0.0f;
 		Com_Memcpy( &uniform_data.lightDir, tmp, sizeof(vec4_t) );
 
-		Com_Memcpy( &uniform_ghoul.modelMatrix, backEnd.ori.modelMatrix, sizeof(float) * 16 );
+		//Com_Memcpy( &uniform_ghoul.modelMatrix, backEnd.ori.modelMatrix, sizeof(float) * 16 );
+		Com_Memcpy( &uniform_ghoul.modelMatrix, backEnd.viewParms.world.modelMatrix, sizeof(float) * 16 );
+		
 		vk_push_uniform_ghoul2( &uniform_ghoul );
 
 		vk_compute_deform();	
@@ -2085,9 +2090,14 @@ void RB_StageIteratorGeneric( void )
 		else if ( backEnd.currentEntity ) {
 			if ( backEnd.viewParms.portalView == PV_MIRROR )
 				vk_get_pipeline_def(pStage->vk_mirror_pipeline[fog_stage], &def);
-			else
-				vk_get_pipeline_def(pStage->vk_pipeline[fog_stage], &def);
-
+			else{
+#ifdef USE_VBO_GHOUL2
+				if( tess_flags & TESS_PBR && is_ghoul2_vbo )
+					vk_get_pipeline_def(pStage->vk_pbr_pipeline[fog_stage], &def);
+				else
+#endif
+					vk_get_pipeline_def(pStage->vk_pipeline[fog_stage], &def);
+			}
 			// we want to be able to rip a hole in the thing being disintegrated,
 			// and by doing the depth-testing it avoids some kinds of artefacts, but will probably introduce others?
 			if ( backEnd.currentEntity->e.renderfx & RF_DISINTEGRATE1 )
@@ -2151,29 +2161,29 @@ void RB_StageIteratorGeneric( void )
 
 		// PBR
 #ifdef USE_VK_PBR
-		if( tess_flags & TESS_PBR ) 
+		if ( tess_flags & TESS_PBR ) 
 		{
-			if( backEnd.isGlowPass )
+			if ( backEnd.isGlowPass )
 				tess_flags &= ~TESS_PBR;
 
 			// discard unsuported pbr geometry for now
-			if( backEnd.projection2D )
+			if ( backEnd.projection2D )
 				tess_flags &= ~TESS_PBR;
 
-			if( backEnd.viewParms.portalView == PV_MIRROR)
+			if ( backEnd.viewParms.portalView == PV_MIRROR)
 				tess_flags &= ~TESS_PBR;
 
-			if( backEnd.currentEntity){
-				if ( backEnd.currentEntity != &tr.worldEntity )
+			if ( backEnd.currentEntity ){
+				if ( backEnd.currentEntity != &tr.worldEntity && !is_ghoul2_vbo )
 					tess_flags &= ~TESS_PBR;
 			}
 			
 			vk_get_pipeline_def( pipeline, &def );
-			if( def.shader_type < TYPE_GENERIC_BEGIN )
+			if ( def.shader_type < TYPE_GENERIC_BEGIN )
 				tess_flags &= ~TESS_PBR;
 
 			// check if pbr hasn't been discarded
-			if( tess_flags & TESS_PBR ) {
+			if ( tess_flags & TESS_PBR ) {
 
 				if ( fogCollapse || !(tess_flags & TESS_VPOS) ) {
 					VectorCopy( backEnd.ori.viewOrigin, uniform.eyePos );
@@ -2189,27 +2199,28 @@ void RB_StageIteratorGeneric( void )
 				// find a better way to mark unused descriptors 
 				// following THE last valid descriptor set
 				// for now, send a 2x2 pixel white texture
-				if( pStage->vk_pbr_flags & PBR_HAS_NORMALMAP )
+				if ( pStage->vk_pbr_flags & PBR_HAS_NORMALMAP )
 					vk_update_pbr_descriptor(7, pStage->normalMap->descriptor_set);
 				else
 					vk_update_pbr_descriptor(7, tr.emptyImage->descriptor_set);
 
-				if( pStage->vk_pbr_flags & PBR_HAS_ROUGHNESSMAP )
+				if ( pStage->vk_pbr_flags & PBR_HAS_ROUGHNESSMAP )
 					vk_update_pbr_descriptor(8, pStage->roughnessMap->descriptor_set);
 				else
 					vk_update_pbr_descriptor(8, tr.emptyImage->descriptor_set);
 			
-				if( pStage->vk_pbr_flags & PBR_HAS_METALLICMAP )
+				if ( pStage->vk_pbr_flags & PBR_HAS_METALLICMAP )
 					vk_update_pbr_descriptor(9, pStage->metallicMap->descriptor_set);
 				else
 					vk_update_pbr_descriptor(9, tr.emptyImage->descriptor_set);
 			
-				if( pStage->vk_pbr_flags & PBR_HAS_OCCLUSIONMAP )
+				if ( pStage->vk_pbr_flags & PBR_HAS_OCCLUSIONMAP )
 					vk_update_pbr_descriptor(10, pStage->occlusionMap->descriptor_set);
 				else
 					vk_update_pbr_descriptor(10, tr.emptyImage->descriptor_set);
 
-				pipeline = pStage->vk_pbr_pipeline[fog_stage];
+				if ( !is_ghoul2_vbo )
+					pipeline = pStage->vk_pbr_pipeline[fog_stage];
 			}
 		}
 #endif

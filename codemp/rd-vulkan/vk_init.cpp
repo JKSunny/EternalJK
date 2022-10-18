@@ -449,7 +449,7 @@ void vk_initialize( void )
 #ifdef USE_VK_PBR
 	// if another pbr input attachment has been added
 	// up the maxBoundDescriptorSets here as well
-	if( vk.fboActive && r_pbr->integer && vk.maxBoundDescriptorSets >= 10 )
+	if( vk.fboActive && r_pbr->integer && vk.maxBoundDescriptorSets >= 11 )
 		vk.pbrActive = qtrue;
 #endif
 

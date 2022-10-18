@@ -402,7 +402,14 @@ void main() {
 		in_weights.z * boneMatrices[int(in_bones.z)] +
 		in_weights.w * boneMatrices[int(in_bones.w)];
 
+	
+#ifdef USE_VK_PBR
+	out_ntb.normal = normalize(transpose(inverse(mat3(modelMatrix * skin_matrix))) * out_ntb.normal);
+	out_ntb.tangent = normalize(transpose(inverse(mat3(modelMatrix * skin_matrix))) * out_ntb.tangent);
+	N = out_ntb.normal;
+#else
 	N = normalize(transpose(inverse(mat3(modelMatrix * skin_matrix))) * in_normal);
+#endif
 	L = (modelMatrix  * vec4(lightDir.xyz, 0.0)).rgb;
 	V =	eyePos2.xyz - in_position;
 

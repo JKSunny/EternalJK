@@ -568,6 +568,63 @@ static void VBO_CalculateBonesMDXM( vbo_t *vbo, const mdxmSurface_t *surf, const
 #endif
 }
 
+#ifdef USE_VK_PBR
+static void VBO_CalculateTangentsMDXM( vbo_t *vbo, const mdxmSurface_t *surf, const mdxmVBOMesh_t *mesh )
+{
+	if ( !vk.pbrActive )
+		return;
+
+	vec3_t	*xyz0, *xyz1, *xyz2;
+	vec2_t	*st0, *st1, *st2;
+	vec3_t	*normal0, *normal1, *normal2;
+	vec4_t	*qtangent0, *qtangent1, *qtangent2;
+	int		i, i0, i1, i2;
+	vec3_t	tangent, binormal;
+
+	mdxmTriangle_t *triangle = (mdxmTriangle_t *)((byte *)surf + surf->ofsTriangles);
+	mdxmVertex_t *vert = (mdxmVertex_t*)( (byte*)surf + surf->ofsVerts );
+	mdxmVertexTexCoord_t *tc = (mdxmVertexTexCoord_t*)(vert + surf->numVerts);
+	
+	// revisit this
+	for ( i = 0; i < surf->numTriangles; i++ ) {
+		i0 = triangle[i].indexes[0];
+		i1 = triangle[i].indexes[1];
+		i2 = triangle[i].indexes[2];
+
+		if ( i0 >= surf->numVerts || i1 >= surf->numVerts || i2 >= surf->numVerts )
+			continue;
+
+		xyz0 = &vert[i0].vertCoords;
+		xyz1 = &vert[i1].vertCoords;
+		xyz2 = &vert[i2].vertCoords;
+
+		normal0 = &vert[i0].normal;
+		normal1 = &vert[i1].normal;
+		normal2 = &vert[i2].normal;
+
+		st0 = &tc[i0].texCoords;
+		st1 = &tc[i1].texCoords;
+		st2 = &tc[i2].texCoords;
+
+		qtangent0 = tess.qtangent + i0;
+		qtangent1 = tess.qtangent + i1;
+		qtangent2 = tess.qtangent + i2;
+		
+		R_CalcTangents( tangent, binormal,
+			(float*)xyz0, (float*)xyz1, (float*)xyz2, 
+			(float*)st0, (float*)st1, (float*)st2 );
+
+		if ( tangent[0] == 0.0f && tangent[1] == 0.0f && tangent[2] == 0.0f ){
+			continue;
+		}
+
+		R_TBNtoQtangents( tangent, binormal, (float*)normal0, (float*)qtangent0  );
+		R_TBNtoQtangents( tangent, binormal, (float*)normal1, (float*)qtangent1 );
+		R_TBNtoQtangents( tangent, binormal, (float*)normal2, (float*)qtangent2 );
+	}
+}
+#endif
+
 static void VBO_TesselateMDXM( const mdxmSurface_t *surf  )
 {
 	glIndex_t				*tessIndexes;
@@ -610,12 +667,18 @@ static void VBO_AddGeometryMDXM( vbo_t *vbo, vbo_item_t *vi, mdxmVBOMesh_t *mesh
 	// allocate xyz + normals + texCoords + bones + weights
 	mesh->vboOffset = vbo->vbo_offset;
 	vbo->vbo_offset += mesh->numVertexes * ( sizeof(tess.xyz[0]) + sizeof(tess.normal[0]) + sizeof(vec2_t) + sizeof(vec4_t) + sizeof(vec4_t) );
-
+#ifdef USE_VK_PBR
+	if ( vk.pbrActive )
+		vbo->vbo_offset += mesh->numVertexes  * sizeof(vec4_t);
+#endif
 	mesh->normalOffset = mesh->vboOffset + mesh->numVertexes * sizeof(tess.xyz[0]);
 	mesh->texOffset = mesh->normalOffset + mesh->numVertexes * sizeof(tess.normal[0]);
 	mesh->boneOffset = mesh->texOffset + mesh->numVertexes * sizeof(vec2_t);
 	mesh->weightOffset = mesh->boneOffset + mesh->numVertexes * sizeof(vec4_t);
-
+#ifdef USE_VK_PBR	
+	if ( vk.pbrActive )
+		mesh->qtangentOffset = mesh->weightOffset + mesh->numVertexes * sizeof(vec4_t);
+#endif
 	vi->index_offset = 0;
 	vi->soft_offset = vbo->ibo_offset;
 
@@ -656,6 +719,18 @@ static void VBO_AddGeometryMDXM( vbo_t *vbo, vbo_item_t *vi, mdxmVBOMesh_t *mesh
 	}
 	memcpy( vbo->vbo_buffer + offs, tess.texCoords, size );
 
+#ifdef USE_VK_PBR
+	// qtangent
+	if ( vk.pbrActive ) {	
+		offs = mesh->qtangentOffset;
+		size = tess.numVertexes * sizeof( tess.qtangent[0] );
+		if (offs + size > vbo->vbo_size) {
+			ri.Error(ERR_DROP, "Qtangent overflow");
+		}
+		memcpy(vbo->vbo_buffer + offs, tess.qtangent, size);
+	}
+#endif
+
 	vi->num_indexes = mesh->numIndexes;
 	vi->num_vertexes = mesh->numVertexes;
 }
@@ -665,6 +740,9 @@ static void VBO_PushDataMDXM( mdxmSurface_t *surf, mdxmVBOMesh_t *mesh )
 	vbo_t		*vbo = vbos[mesh->vboMeshIndex];
 	vbo_item_t	*vi = vbo->items + mesh->vboItemIndex;
 
+#ifdef USE_VK_PBR
+	VBO_CalculateTangentsMDXM( vbo, surf, mesh );
+#endif
 	VBO_AddGeometryMDXM( vbo, vi, mesh );
 
 	VBO_CalculateBonesMDXM( vbo, surf, mesh );
@@ -712,6 +790,12 @@ void R_BuildMDXM( model_t *mod, mdxmHeader_t *mdxm )
 			numStaticIndexes += surf->numTriangles * 3;
 
 			vbo_size += surf->numVerts * ( sizeof(tess.xyz[0]) + sizeof( tess.normal[0] ) + sizeof( vec2_t ) + sizeof( vec4_t ) + sizeof( vec4_t ) );
+			
+#ifdef USE_VK_PBR
+			if( vk.pbrActive )
+				vbo_size += surf->numVerts * sizeof(vec4_t);
+#endif
+
 			mesh->numVertexes = surf->numVerts;
 			mesh->numIndexes = surf->numTriangles * 3;
 
