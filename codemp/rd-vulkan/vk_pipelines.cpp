@@ -582,8 +582,7 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
     unsigned int atest_bits;
     unsigned int state_bits = def->state_bits;
 
-    const int sh = def->ghoul2 ? 1 : 0;             // 0: generic, 1: ghoul2-vbo
-    const int use_ghoul2_vbo = def->ghoul2 ? 1 : 0; // 0: fog, 1: fog ghoul2-vbo
+    const int sh = def->ghoul2 ? 1 : 0; // 0: generic, 1: ghoul2-vbo
 
     switch ( def->shader_type ) {
         case TYPE_SINGLE_TEXTURE_LIGHTING:
@@ -697,7 +696,7 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
             break;
 
         case TYPE_FOG_ONLY:
-            vs_module = &vk.shaders.fog_vs[use_ghoul2_vbo];
+            vs_module = &vk.shaders.fog_vs[sh];
             fs_module = &vk.shaders.fog_fs;
             break;
 

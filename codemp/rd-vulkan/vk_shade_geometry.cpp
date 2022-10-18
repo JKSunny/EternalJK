@@ -1239,10 +1239,10 @@ RB_FogPass
 Blends a fog texture on top of everything else
 ===================
 */
-static vkUniform_t			uniform;
+static vkUniform_t		uniform;
 #ifdef USE_VBO_GHOUL2
-static vkUniformData_t		uniform_data;
-static vkUniformGhoul_t		uniform_ghoul;
+static vkUniformData_t	uniform_data;
+static vkUniformGhoul_t	uniform_ghoul;
 
 mat4_t *vk_get_uniform_ghoul_bones( void ) {
 	return uniform_ghoul.boneMatrices;
@@ -1485,7 +1485,7 @@ static void vk_set_attr_color( color4ub_t *dest, const qboolean skip ){
 	numVerts = ( tess.vboIndex && tess.surfType == SF_MDX ) ? 
 		tess.mesh_ptr->numVertexes : tess.numVertexes;
 
-	if ( skip ){
+	if ( skip ) {
 		Com_Memset( dest, 0, numVerts * sizeof(color4ub_t) );
 		return;
 	}
@@ -1504,8 +1504,9 @@ static void vk_compute_colors( const int b, const shaderStage_t *pStage, int for
 		return;
 
 	float *baseColor, *vertColor;
+#ifdef USE_VBO_GHOUL2_RGBAGEN_CONSTS
 	qboolean skipInColor = qtrue;
-
+#endif
 	int rgbGen = forceRGBGen;
 	int alphaGen = pStage->bundle[b].alphaGen;
 
@@ -1632,6 +1633,7 @@ static void vk_compute_colors( const int b, const shaderStage_t *pStage, int for
 			break;
 	}
 
+#ifdef USE_VBO_GHOUL2_RGBAGEN_CONSTS
 	switch ( rgbGen) {
 		case CGEN_EXACT_VERTEX:
 		case CGEN_VERTEX:
@@ -1643,10 +1645,11 @@ static void vk_compute_colors( const int b, const shaderStage_t *pStage, int for
 		case AGEN_ONE_MINUS_VERTEX:
 			skipInColor = qfalse; break;
 	}
-	
+
 	// skip ghoul2 vbo glsl in_colors for now
-	//vk_set_attr_color( tess.svars.colors[b], skipInColor );
-	
+	vk_set_attr_color( tess.svars.colors[b], skipInColor );
+#endif
+
 	if ( backEnd.currentEntity && backEnd.currentEntity->e.renderfx & RF_FORCE_ENT_ALPHA ) {
 		baseColor[3] = backEnd.currentEntity->e.shaderRGBA[3] / 255.0f; 
 		vertColor[3] = 0.0f;
@@ -1772,14 +1775,14 @@ static void vk_compute_deform( void ) {
 	}
 }
 
-static void vk_compute_disintegration( int *forceRGBGen ){
+static void vk_compute_disintegration( int *forceRGBGen )
+{
+	float	*info;
 
 	if ( backEnd.currentEntity->e.renderfx & RF_DISINTEGRATE1 )
 		*forceRGBGen = (int)CGEN_DISINTEGRATION_1;
 	else
 		*forceRGBGen = (int)CGEN_DISINTEGRATION_2;
-
-	float	*info;
 
 	info = (float*)uniform_data.disintegrationInfo;
 
@@ -1930,7 +1933,9 @@ void RB_StageIteratorGeneric( void )
 		VectorCopy( backEnd.currentEntity->lightDir, tmp ); tmp[3] = 0.0f;
 		Com_Memcpy( &uniform_data.lightDir, tmp, sizeof(vec4_t) );
 
-		Com_Memcpy( &uniform_ghoul.modelMatrix, backEnd.ori.modelMatrix, sizeof(float) * 16 );
+		//Com_Memcpy( &uniform_ghoul.modelMatrix, backEnd.ori.modelMatrix, sizeof(float) * 16 );
+		Com_Memcpy( &uniform_ghoul.modelMatrix, backEnd.viewParms.world.modelMatrix, sizeof(float) * 16 );
+		
 		vk_push_uniform_ghoul2( &uniform_ghoul );
 
 		vk_compute_deform();	
