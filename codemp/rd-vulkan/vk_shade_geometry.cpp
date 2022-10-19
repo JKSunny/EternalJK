@@ -1650,7 +1650,7 @@ static void vk_compute_colors( const int b, const shaderStage_t *pStage, int for
 			break;
 		case AGEN_CONST:
 			if ( rgbGen != CGEN_CONST ) {
-				baseColor[3] = pStage->bundle[b].constantColor[3];
+				baseColor[3] = pStage->bundle[b].constantColor[3] / 255.0f;
 				vertColor[3] = 0.0f;
 			}
 			break;

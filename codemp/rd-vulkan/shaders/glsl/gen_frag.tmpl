@@ -279,6 +279,10 @@ layout(location = 10) in vec3 N;
 layout(location = 11) in vec3 L;
 layout(location = 12) in vec3 V;
 
+bool needsShading( in int rgbType ) {
+	return (rgbType != 11 && rgbType != 12 && rgbType != 13) ? true : false;
+}
+
 float CalcLightAttenuation(float point, float normDist)
 {
 	// zero light at 1.0, approximating q3 style
@@ -510,19 +514,19 @@ void main() {
 #else
 
 #ifdef USE_VBO_GHOUL2
-	if( int( rgbGen[0]) >= 9 ) {
+	if ( needsShading( int( rgbGen[0] ) ) ) {
 		vec3 nL = normalize( L);
 		vec3 nV = normalize( V );
 		vec3 R = reflect( -nL, N );
 		float LdotL = dot(L, L);
 		float NdotL = clamp( dot( N, L ), 0.001, 1.0 );
 
-		vec3 diffuse = max( dot( N, nL ), 0.25 ) * vec3(1.5);
-		vec3 specular = pow( max( dot( R, nV ), 0.0 ), 1.0 ) * vec3(0.2);
+		vec3 diffuse = max( dot( N, nL ), 0.25 ) * vec3(1.7);
+		vec3 specular = pow( max( dot( R, nV ), 0.0 ), 1.0 ) * vec3(0.3);
 
-		float attenuation 	= CalcLightAttenuation(float(lightDir.w > 0.0), lightDir.w / LdotL) * 4.0;
+		float attenuation 	= CalcLightAttenuation(float(lightDir.w > 0.0), lightDir.w / LdotL);
 		vec3 lightColor 	= ( directedLight.xyz * 1.0 ) * base.rgb;
-		vec3 ambientColor 	= ( ambientLight.rgb * 3.0 ) * base.rgb;
+		vec3 ambientColor 	= ( ambientLight.rgb * 2.0 ) * base.rgb;
 
 		vec3 color = lightColor * specular * (attenuation * NdotL);
 		color += ambientColor * diffuse;
