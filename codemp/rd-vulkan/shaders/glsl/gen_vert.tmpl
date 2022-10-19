@@ -178,12 +178,10 @@ vec4 CalcColor( int index, in vec3 position, in vec3 normal ) {
 		case 6: // AGEN_LIGHTING_SPECULAR
 		{
 			vec3 viewer = normalize( eyePos2.xyz - position );
-			vec3 lightDir = normalize( vec3( -960.0, 1980.0, 96.0 ) - position );
-			vec3 reflected = -reflect( lightDir, normal );
-
+			float d = dot( normal, viewer );
+			vec3 lightDir = normalize( vec3(-960.0, 1980.0, 96.0) - position );
+			vec3 reflected = -reflect( lightDir, normal * d - viewer );
 			color.a = clamp( dot( reflected, normalize( viewer ) ), 0.0, 1.0 );
-			color.a *= color.a;
-			color.a *= color.a;
 			break;
 		}
 		case 8: // AGEN_PORTAL
