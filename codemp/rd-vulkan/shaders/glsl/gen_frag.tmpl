@@ -515,20 +515,17 @@ void main() {
 
 #ifdef USE_VBO_GHOUL2
 	if ( needsShading( int( rgbGen[0] ) ) ) {
-		vec3 nL = normalize( L);
-		vec3 nV = normalize( V );
-		vec3 R = reflect( -nL, N );
-		float LdotL = dot(L, L);
+		vec3 nL = normalize( L );
+		float LdotL = dot( L, L );
 		float NdotL = clamp( dot( N, L ), 0.001, 1.0 );
 
-		vec3 diffuse = max( dot( N, nL ), 0.25 ) * vec3(1.7);
-		vec3 specular = pow( max( dot( R, nV ), 0.0 ), 1.0 ) * vec3(0.3);
+		vec3 diffuse = max( dot( N, nL ), 0.5 ) * vec3(1.7);
+		float attenuation 	= CalcLightAttenuation( float( lightDir.w > 0.0 ), lightDir.w / LdotL );
 
-		float attenuation 	= CalcLightAttenuation(float(lightDir.w > 0.0), lightDir.w / LdotL);
-		vec3 lightColor 	= ( directedLight.xyz * 1.0 ) * base.rgb;
-		vec3 ambientColor 	= ( ambientLight.rgb * 2.0 ) * base.rgb;
+		vec3 lightColor 	= ( directedLight.xyz * 1.2 ) * base.rgb;
+		vec3 ambientColor 	= ( ambientLight.rgb * 1.2 ) * base.rgb;
 
-		vec3 color = lightColor * specular * (attenuation * NdotL);
+		vec3 color = lightColor * ( attenuation * NdotL );
 		color += ambientColor * diffuse;
 
 		base.rgb = color;
