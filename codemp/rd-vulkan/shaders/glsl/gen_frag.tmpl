@@ -277,18 +277,17 @@ layout(set = 1, binding = 1) uniform UBOG2 {
 
 layout(location = 10) in vec3 N;
 layout(location = 11) in vec3 L;
-layout(location = 12) in vec3 V;
 
 bool needsShading( in int rgbType ) {
-	return (rgbType != 11 && rgbType != 12 && rgbType != 13) ? true : false;
+	return ( rgbType >= 9 && rgbType != 11 && rgbType != 12 && rgbType != 13 ) ? true : false;
 }
 
 float CalcLightAttenuation(float point, float normDist)
 {
 	// zero light at 1.0, approximating q3 style
 	// also don't attenuate directional light
-	float attenuation = (0.5 * normDist - 1.5) * point + 1.0;
-	return clamp(attenuation, 0.0, 1.0);
+	float attenuation = ( 0.5 * normDist - 1.5 ) * point + 1.0;
+	return clamp( attenuation, 0.0, 1.0 );
 }
 #endif
 
@@ -519,11 +518,11 @@ void main() {
 		float LdotL = dot( L, L );
 		float NdotL = clamp( dot( N, L ), 0.001, 1.0 );
 
-		vec3 diffuse = max( dot( N, nL ), 0.5 ) * vec3(1.7);
+		vec3 diffuse = max( dot( N, nL ), 0.5 ) * vec3( 1.7 );
 		float attenuation 	= CalcLightAttenuation( float( lightDir.w > 0.0 ), lightDir.w / LdotL );
 
 		vec3 lightColor 	= ( directedLight.xyz * 1.2 ) * base.rgb;
-		vec3 ambientColor 	= ( ambientLight.rgb * 1.2 ) * base.rgb;
+		vec3 ambientColor 	= ( ambientLight.rgb ) * base.rgb;
 
 		vec3 color = lightColor * ( attenuation * NdotL );
 		color += ambientColor * diffuse;
@@ -590,7 +589,7 @@ void main() {
 #ifdef USE_VBO_GHOUL2
 	vec3 l = normalize( L ); 
 	//vec3 l = normalize( vec3( 1.9399, 0.3427, 0.99827 ) );
-	vec3 v = normalize( V ); 
+	vec3 v = normalize( eyePos2.xyz - in_position );
 #else
 	vec3 l = normalize( u_lightDir.xyz );			// Vector from surface point to light
 	vec3 v = normalize( eyePos.xyz - in_position );	// Vector from surface point to camera
@@ -656,10 +655,6 @@ void main() {
 	//color = color * ( 1.0f / AcesTonemap( vec3( 11.2f ) ) );
 
 	out_color = vec4( color, base.a );
-#ifdef USE_VBO_GHOUL2
-	//out_color = vec4( N, base.a );
-	//out_color = vec4( in_ntb.tangent, base.a );
-#endif
 #else
 	out_color = base;
 #endif

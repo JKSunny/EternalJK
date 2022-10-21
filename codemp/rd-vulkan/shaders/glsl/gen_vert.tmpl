@@ -55,7 +55,6 @@ const ivec3 rgbaGen = ivec3(rgbaGen0, rgbaGen1, rgbaGen2);
 
 layout(location = 10) out vec3 N;
 layout(location = 11) out vec3 L;
-layout(location = 12) out vec3 V;
 
 layout(set = 1, binding = 2) uniform UBOG3 {
 	mat4 modelMatrix;
@@ -409,7 +408,6 @@ void main() {
 	N = normalize(transpose(inverse(mat3(modelMatrix * skin_matrix))) * in_normal);
 #endif
 	L = (modelMatrix  * vec4(lightDir.xyz, 0.0)).rgb;
-	V =	eyePos2.xyz - in_position;
 
 	#ifdef USE_ENV
 	vec3 viewer = normalize(eyePos.xyz - in_position);
