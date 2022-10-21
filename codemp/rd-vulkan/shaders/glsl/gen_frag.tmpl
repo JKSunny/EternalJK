@@ -41,10 +41,9 @@ layout(set = 1, binding = 1) uniform UBOG2 {
 
 layout(location = 7) in vec3 N;
 layout(location = 8) in vec3 L;
-layout(location = 9) in vec3 V;
 
 bool needsShading( in int rgbType ) {
-	return (rgbType != 11 && rgbType != 12 && rgbType != 13) ? true : false;
+	return ( rgbType >= 9 && rgbType != 11 && rgbType != 12 && rgbType != 13 ) ? true : false;
 }
 
 float CalcLightAttenuation(float point, float normDist)
@@ -361,7 +360,7 @@ void main() {
 		float attenuation 	= CalcLightAttenuation( float( lightDir.w > 0.0 ), lightDir.w / LdotL );
 
 		vec3 lightColor 	= ( directedLight.xyz * 1.2 ) * base.rgb;
-		vec3 ambientColor 	= ( ambientLight.rgb * 1.2 ) * base.rgb;
+		vec3 ambientColor 	= ( ambientLight.rgb ) * base.rgb;
 
 		vec3 color = lightColor * ( attenuation * NdotL );
 		color += ambientColor * diffuse;
