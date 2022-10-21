@@ -27,6 +27,7 @@ layout(location = 2) in vec3 in_normal;
 layout(location = 0) out vec2 frag_tex_coord;
 layout(location = 1) out vec3 N; // normal array 
 layout(location = 2) out vec4 L; // object-space light vector
+layout(location = 3) out vec4 V; // object-space view vector
 
 #ifdef USE_FOG
 layout(location = 4) out vec2 fog_tex_coord;
@@ -42,6 +43,7 @@ void main() {
 	frag_tex_coord = in_tex_coord;
 	N = in_normal;
 	L = lightPos - vec4(in_position, 1.0);
+	V = eyePos - vec4(in_position, 1.0);
 
 #ifdef USE_FOG
 	float s = dot(in_position, fogDistanceVector.xyz) + fogDistanceVector.w;
