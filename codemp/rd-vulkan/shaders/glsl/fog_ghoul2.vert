@@ -22,7 +22,7 @@ layout(set = 1, binding = 0) uniform UBO {
 
 layout(set = 1, binding = 2) uniform UBOG3 {
 	mat4 modelMatrix;
-	mat4 boneMatrices[20];
+	mat4 boneMatrices[72];
 };	
 
 layout(location = 0) in vec3 in_position;
