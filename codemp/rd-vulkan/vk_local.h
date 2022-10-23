@@ -447,7 +447,7 @@ typedef struct vkUniformData_s {
 
 typedef struct vkUniformGhoul_s {
 	mat4_t modelMatrix;
-	mat4_t boneMatrices[20];
+	mat4_t boneMatrices[72];
 } vkUniformGhoul_t;
 #endif
 

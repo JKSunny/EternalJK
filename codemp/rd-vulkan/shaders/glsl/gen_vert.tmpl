@@ -60,7 +60,7 @@ layout(location = 8) out vec3 L;
 #ifdef USE_VBO_GHOUL2
 layout(set = 1, binding = 2) uniform UBOG3 {
 	mat4 modelMatrix;
-	mat4 boneMatrices[20];
+	mat4 boneMatrices[72];
 };
 #endif
 
@@ -138,13 +138,6 @@ vec4 CalcColor( int index, in vec3 position, in vec3 normal ) {
 #endif
 
 	switch ( int( rgbGen[index] ) ) {
-		case 9:	// CGEN_LIGHTING_DIFFUSE;
-		{
-			break;
-			float incoming = clamp( dot( normal, lightDir.xyz ), 0.0, 1.0 );
-			color.rgb = clamp( directedLight.rgb * incoming + ambientLight.rgb, 0.0, 1.0 );
-			break;
-		}
 		case 14:// CGEN_DISINTEGRATION_1
 		{
 			vec3 delta = disintegrationInfo.xyz - position;
@@ -177,10 +170,11 @@ vec4 CalcColor( int index, in vec3 position, in vec3 normal ) {
 		case 6: // AGEN_LIGHTING_SPECULAR
 		{
 			vec3 viewer = normalize( eyePos2.xyz - position );
-			float d = dot( normal, viewer );
-			vec3 lightDir = normalize( vec3(-960.0, 1980.0, 96.0) - position );
-			vec3 reflected = -reflect( lightDir, normal * d - viewer );
+			vec3 lightDirection = normalize( lightDir.xyz );
+			vec3 reflected = -reflect( lightDirection, normal );
 			color.a = clamp( dot( reflected, normalize( viewer ) ), 0.0, 1.0 );
+			color.a *= color.a;
+			color.a *= color.a;
 			break;
 		}
 		case 8: // AGEN_PORTAL
@@ -371,7 +365,7 @@ void main() {
 		in_weights.z * boneMatrices[int(in_bones.z)] +
 		in_weights.w * boneMatrices[int(in_bones.w)];
 
-	N = normalize(transpose(inverse(mat3(modelMatrix * skin_matrix))) * in_normal);
+	N = normalize(transpose(inverse(mat3(skin_matrix))) * in_normal);
 	L = (modelMatrix  * vec4(lightDir.xyz, 0.0)).rgb;
 
 #ifdef USE_ENV
@@ -392,15 +386,17 @@ void main() {
 
 	gl_Position = mvp * skin_matrix * vec4(position, 1.0);
 
-	#ifndef USE_CL0_IDENT
-		frag_color0 = CalcColor( 0, position, N );
-	#endif
-	#ifdef USE_CL1
-		frag_color1 = CalcColor( 1, position, N );
-	#endif
-	#ifdef USE_CL2
-		frag_color2 = CalcColor( 2, position, N );
-	#endif
+    #ifndef USE_CL0_IDENT
+        frag_color0 = CalcColor( 0, position, N );
+    #endif
+    #ifdef USE_CL1
+        frag_color1 = CalcColor( 1, position, N );
+    #endif
+    #ifdef USE_CL2
+        frag_color2 = CalcColor( 2, position, N );
+    #endif
+
+    N = normalize( mat3( modelMatrix ) * N );
 #else
 	gl_Position = mvp * vec4(in_position, 1.0);
 

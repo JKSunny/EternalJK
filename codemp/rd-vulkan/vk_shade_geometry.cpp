@@ -1933,8 +1933,8 @@ void RB_StageIteratorGeneric( void )
 		VectorCopy( backEnd.currentEntity->lightDir, tmp ); tmp[3] = 0.0f;
 		Com_Memcpy( &uniform_data.lightDir, tmp, sizeof(vec4_t) );
 
-		//Com_Memcpy( &uniform_ghoul.modelMatrix, backEnd.ori.modelMatrix, sizeof(float) * 16 );
-		Com_Memcpy( &uniform_ghoul.modelMatrix, backEnd.viewParms.world.modelMatrix, sizeof(float) * 16 );
+		Com_Memcpy( &uniform_ghoul.modelMatrix, backEnd.ori.modelMatrix, sizeof(float) * 16 );
+		//Com_Memcpy( &uniform_ghoul.modelMatrix,backEnd.viewParms.world.modelMatrix , sizeof(float) * 16 );
 		
 		vk_push_uniform_ghoul2( &uniform_ghoul );
 
