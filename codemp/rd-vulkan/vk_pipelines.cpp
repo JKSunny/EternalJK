@@ -94,6 +94,11 @@ void vk_create_descriptor_layout( void )
         pool_size[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         pool_size[1].descriptorCount = NUM_COMMAND_BUFFERS;
 
+#ifdef USE_VBO_GHOUL2
+        if ( vk.vboGhoul2Active )
+            pool_size[1].descriptorCount += NUM_COMMAND_BUFFERS * 2;
+#endif
+
         pool_size[2].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
         pool_size[2].descriptorCount = 1;
 
