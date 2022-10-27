@@ -102,18 +102,13 @@ layout(location = 13) in NTB in_ntb;
 
 layout(set = 6, binding = 0) uniform sampler2D brdflut_texture;
 layout(set = 7, binding = 0) uniform sampler2D normal_texture;
-layout(set = 8, binding = 0) uniform sampler2D roughness_texture;
-layout(set = 9, binding = 0) uniform sampler2D metallic_texture;
-layout(set = 10, binding = 0) uniform sampler2D occlusion_texture;
+layout(set = 8, binding = 0) uniform sampler2D physical_texture;
 
 layout (constant_id = 9) const float metallic_value = 1.0;
 layout (constant_id = 10) const float roughness_value = 1.0;
 
 layout (constant_id = 11) const int normal_texture_set = 0;
-layout (constant_id = 12) const int metallic_texture_set = 0;
-layout (constant_id = 13) const int roughness_texture_set = 0;
-layout (constant_id = 14) const int occlusion_texture_set = 0;
-
+layout (constant_id = 12) const int physical_texture_set = 0;
 // PBR shader source from SaschaWillems https://github.com/SaschaWillems/Vulkan-glTF-PBR
 struct PBRInfo
 {
@@ -539,34 +534,16 @@ void main() {
 	{
 		perceptualRoughness = roughness_value;
 		metallic = metallic_value;
+	
+		if ( physical_texture_set > -1 ) {
+			vec2 mrSample = texture(physical_texture, frag_tex_coord0).rg;
 
-		// if  texture
-		{
-			// combine these two in one texture as future optimization
-			// roughness in g channel
-			// metallic in b channel
-			// r channel for future occulusion 
-			
-			// roughness
-			if( roughness_texture_set > -1 ) {
-				float roughnessSample = texture(roughness_texture, frag_tex_coord0).r;
-				perceptualRoughness = roughnessSample * perceptualRoughness;
-			}else{
-				perceptualRoughness = clamp(perceptualRoughness, min_roughness, 1.0);
-			}
-
-			// metallic
-			if( metallic_texture_set > -1 ) {
-				float metallicSample = texture(metallic_texture, frag_tex_coord0).r;
-				metallic = metallicSample * metallic;
-			}else{
-				metallic = clamp(metallic, 0.0, 1.0);
-			}
-		}
-		// else
-		//	perceptualRoughness = clamp(perceptualRoughness, min_roughness, 1.0);
-		//	metallic = clamp(metallic, 0.0, 1.0);
-		// end
+			perceptualRoughness = mrSample.r * perceptualRoughness;
+			metallic = mrSample.g * metallic;
+		} else {
+			perceptualRoughness = clamp(perceptualRoughness, min_roughness, 1.0);
+			metallic = clamp(metallic, 0.0, 1.0);
+		}	
 	}
 
 	diffuseColor = base.rgb * (vec3(1.0) - f0);
@@ -593,7 +570,6 @@ void main() {
 #else
 	vec3 l = normalize( u_lightDir.xyz );			// Vector from surface point to light
 	vec3 v = normalize( eyePos.xyz - in_position );	// Vector from surface point to camera
-
 #endif
 	vec3 h = normalize( l + v );                    // Half vector between both l and v
 	vec3 r = -normalize( reflect( v, n ) );
@@ -635,8 +611,8 @@ void main() {
 	color += getIBLContribution( pbrInputs, n, r );
 
 	const float u_OcclusionStrength = 1.0f;
-	if ( occlusion_texture_set > -1 ) {
-		float ao = texture( occlusion_texture, frag_tex_coord0 ).r;
+	if( physical_texture_set > -1 ) {
+		float ao = texture(physical_texture, frag_tex_coord0).b;
 		color = mix( color, color * ao, u_OcclusionStrength );
 	}
 

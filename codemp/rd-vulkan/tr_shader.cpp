@@ -1205,6 +1205,12 @@ static qboolean ParseStage(shaderStage_t *stage, const char **text)
 	int depthMaskBits = GLS_DEPTHMASK_TRUE, blendSrcBits = 0, blendDstBits = 0, atestBits = 0, depthFuncBits = 0;
 	qboolean depthMaskExplicit = qfalse;
 
+#ifdef USE_VK_PBR
+	uint32_t			physicalMapBits = PHYS_NONE;
+	char				physicalAlbedoName[MAX_QPATH];
+	qboolean			physicalAlbedo = qfalse;
+#endif
+
 	stage->active = qtrue;
 
 	while (1)
@@ -1277,6 +1283,11 @@ static qboolean ParseStage(shaderStage_t *stage, const char **text)
 					vk_debug("WARNING: R_FindImageFile could not find '%s' in shader '%s'\n", token, shader.name);
 					return qfalse;
 				}
+
+#ifdef USE_VK_PBR
+				Q_strncpyz( physicalAlbedoName, token, sizeof(physicalAlbedoName) );
+				physicalAlbedo = qtrue;
+#endif
 			}
 		}
 #ifdef USE_VK_PBR
@@ -1309,80 +1320,30 @@ static qboolean ParseStage(shaderStage_t *stage, const char **text)
 		else if ( !Q_stricmp(token, "roughnessMap") && vk.pbrActive )
 		{
 			token = COM_ParseExt(text, qfalse);
+			Q_strncpyz( stage->roughnessMapName, token, sizeof(stage->roughnessMapName) );
 
-			imgFlags_t flags = IMGFLAG_NONE;
-
-			if (!shader.noMipMaps)
-				flags |= IMGFLAG_MIPMAP;
-
-			if (!shader.noPicMip)
-				flags |= IMGFLAG_PICMIP;
-
-			if (shader.noTC)
-				flags |= IMGFLAG_NO_COMPRESSION;
-
-			flags |= IMGFLAG_NOLIGHTSCALE;
-			stage->roughnessMap = R_FindImageFile(token, flags);
-
-			if (!stage->roughnessMap)
-			{
-				ri.Printf(PRINT_WARNING, "WARNING: R_FindImageFile could not find roughnessMap '%s' in shader '%s'\n", token, shader.name);
-				return qfalse;
-			}
-
-			stage->vk_pbr_flags |= PBR_HAS_ROUGHNESSMAP;
+			physicalMapBits |= PHYS_ROUGHNESS;
 		}
 		else if ( !Q_stricmp(token, "metallicMap") && vk.pbrActive )
 		{
 			token = COM_ParseExt(text, qfalse);
+			Q_strncpyz( stage->metallicMapName, token, sizeof(stage->metallicMapName) );
 
-			imgFlags_t flags = IMGFLAG_NONE;
-
-			if (!shader.noMipMaps)
-				flags |= IMGFLAG_MIPMAP;
-
-			if (!shader.noPicMip)
-				flags |= IMGFLAG_PICMIP;
-
-			if (shader.noTC)
-				flags |= IMGFLAG_NO_COMPRESSION;
-
-			flags |= IMGFLAG_NOLIGHTSCALE;
-			stage->metallicMap = R_FindImageFile(token, flags);
-
-			if (!stage->metallicMap)
-			{
-				ri.Printf(PRINT_WARNING, "WARNING: R_FindImageFile could not find metallicMap '%s' in shader '%s'\n", token, shader.name);
-				return qfalse;
-			}
-
-			stage->vk_pbr_flags |= PBR_HAS_METALLICMAP;
+			physicalMapBits |= PHYS_METALLIC;
 		}
 		else if ( !Q_stricmp(token, "occlusionMap") && vk.pbrActive )
 		{
 			token = COM_ParseExt(text, qfalse);
+			Q_strncpyz( stage->occlusionMapName, token, sizeof(stage->occlusionMapName) );
 
-			imgFlags_t flags = IMGFLAG_NONE;
+			physicalMapBits |= PHYS_OCCLUSION;
+		}
+		else if ( !Q_stricmp(token, "rmoMap") && vk.pbrActive )
+		{
+			token = COM_ParseExt(text, qfalse);
+			Q_strncpyz( stage->physicalMapName, token, sizeof(stage->physicalMapName) );
 
-			if (!shader.noMipMaps)
-				flags |= IMGFLAG_MIPMAP;
-
-			if (!shader.noPicMip)
-				flags |= IMGFLAG_PICMIP;
-
-			if (shader.noTC)
-				flags |= IMGFLAG_NO_COMPRESSION;
-
-			flags |= IMGFLAG_NOLIGHTSCALE;
-			stage->occlusionMap = R_FindImageFile(token, flags);
-
-			if (!stage->occlusionMap)
-			{
-				ri.Printf(PRINT_WARNING, "WARNING: R_FindImageFile could not find occlusionMap '%s' in shader '%s'\n", token, shader.name);
-				return qfalse;
-			}
-
-			stage->vk_pbr_flags |= PBR_HAS_OCCLUSIONMAP;
+			physicalMapBits |= PHYS_RMO;
 		}
 		else if ( !Q_stricmp(token, "metallicValue")  && vk.pbrActive ) {
 			token = COM_ParseExt(text, qfalse);
@@ -1936,6 +1897,23 @@ static qboolean ParseStage(shaderStage_t *stage, const char **text)
 			return qfalse;
 		}
 	}
+
+#ifdef USE_VK_PBR
+	if ( physicalAlbedo && physicalMapBits != PHYS_NONE ) {
+		imgFlags_t flags = IMGFLAG_NOLIGHTSCALE;
+
+		if (!shader.noMipMaps)
+			flags |= IMGFLAG_MIPMAP;
+
+		if (!shader.noPicMip)
+			flags |= IMGFLAG_PICMIP;
+
+		if (shader.noTC)
+			flags |= IMGFLAG_NO_COMPRESSION;
+
+		vk_create_phyisical_texture( stage, physicalAlbedoName, flags, physicalMapBits );
+	}
+#endif
 
 	//
 	// if cgen isn't explicitly specified, use either identity or identitylighting
@@ -3607,9 +3585,7 @@ static int CollapseMultitexture( unsigned int st0bits, shaderStage_t *st0, shade
 	if( st1->vk_pbr_flags ) {
 		st0->vk_pbr_flags = st1->vk_pbr_flags;
 		st0->normalMap = st1->normalMap;
-		st0->roughnessMap = st1->roughnessMap;
-		st0->metallicMap = st1->metallicMap;
-		st0->occlusionMap = st1->occlusionMap;
+		st0->physicalMap = st1->physicalMap;
 		st0->metallic_value = st1->metallic_value;
 		st0->roughness_value = st1->roughness_value;
 	}

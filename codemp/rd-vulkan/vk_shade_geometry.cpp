@@ -2186,7 +2186,9 @@ void RB_StageIteratorGeneric( void )
 			if ( tess_flags & TESS_PBR ) {
 
 				if ( fogCollapse || !(tess_flags & TESS_VPOS) ) {
-					VectorCopy( backEnd.ori.viewOrigin, uniform.eyePos );
+					Com_Memcpy( &uniform.eyePos, backEnd.ori.viewOrigin, sizeof( vec3_t) );
+					uniform.eyePos[3] = 0.0;
+
 					//VectorCopy(tr.sunDirection, uniform.lightPos); 
 					//uniform.lightPos[3] = 0.0f;
 					vk_push_uniform( &uniform );	
@@ -2201,23 +2203,11 @@ void RB_StageIteratorGeneric( void )
 				// for now, send a 2x2 pixel white texture
 				if ( pStage->vk_pbr_flags & PBR_HAS_NORMALMAP )
 					vk_update_pbr_descriptor(7, pStage->normalMap->descriptor_set);
-				else
-					vk_update_pbr_descriptor(7, tr.emptyImage->descriptor_set);
 
-				if ( pStage->vk_pbr_flags & PBR_HAS_ROUGHNESSMAP )
-					vk_update_pbr_descriptor(8, pStage->roughnessMap->descriptor_set);
+				if ( pStage->vk_pbr_flags & PBR_HAS_PHYSICALMAP )
+					vk_update_pbr_descriptor(8, pStage->physicalMap->descriptor_set);
 				else
 					vk_update_pbr_descriptor(8, tr.emptyImage->descriptor_set);
-			
-				if ( pStage->vk_pbr_flags & PBR_HAS_METALLICMAP )
-					vk_update_pbr_descriptor(9, pStage->metallicMap->descriptor_set);
-				else
-					vk_update_pbr_descriptor(9, tr.emptyImage->descriptor_set);
-			
-				if ( pStage->vk_pbr_flags & PBR_HAS_OCCLUSIONMAP )
-					vk_update_pbr_descriptor(10, pStage->occlusionMap->descriptor_set);
-				else
-					vk_update_pbr_descriptor(10, tr.emptyImage->descriptor_set);
 
 				if ( !is_ghoul2_vbo )
 					pipeline = pStage->vk_pbr_pipeline[fog_stage];

@@ -545,9 +545,13 @@ typedef struct shaderStage_s {
 	uint32_t		vk_pbr_flags;
 	uint32_t		vk_pbr_pipeline[2];
 	image_t			*normalMap;
-	image_t			*roughnessMap;
-	image_t			*metallicMap;
-	image_t			*occlusionMap;
+	image_t			*physicalMap;
+
+	char			physicalMapName[MAX_QPATH];
+	char			roughnessMapName[MAX_QPATH];
+	char			metallicMapName[MAX_QPATH];
+	char			occlusionMapName[MAX_QPATH];
+
 	float			roughness_value;
 	float			metallic_value;
 #endif
@@ -1767,6 +1771,9 @@ void    	R_Init( void );
 
 image_t		*R_FindImageFile( const char *name, imgFlags_t flags );
 image_t		*R_CreateImage( const char *name, byte *pic, int width, int height, imgFlags_t flags );
+#ifdef USE_VK_PBR
+void		vk_create_phyisical_texture( shaderStage_t *stage, const char *albedoMapName, imgFlags_t flags, const uint32_t physicalMapBits );
+#endif
 
 qboolean	R_GetModeInfo( int *width, int *height, int mode );
 

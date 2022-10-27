@@ -87,7 +87,7 @@ void vk_create_descriptor_layout( void )
 
         pool_size[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 #ifdef USE_VK_PBR
-        pool_size[0].descriptorCount = MAX_DRAWIMAGES + 1 + 1 + 1 + ( VK_NUM_BLUR_PASSES * 4 ) + 1 + 4; // + 4: roughness, metallic, brdf-lut, ambient-occlusion
+        pool_size[0].descriptorCount = MAX_DRAWIMAGES + 1 + 1 + 1 + ( VK_NUM_BLUR_PASSES * 4 ) + 1 + 2; // + 2:  brdf-lut, physical
 #else
         pool_size[0].descriptorCount = MAX_DRAWIMAGES + 1 + 1 + 1 + ( VK_NUM_BLUR_PASSES * 4 ) + 1;
 #endif
@@ -145,9 +145,7 @@ void vk_create_pipeline_layout( void )
     set_layouts[6] = vk.set_layout_sampler; // empty or brdfLUT
 #ifdef USE_VK_PBR
     set_layouts[7] = vk.set_layout_sampler; // normalMap
-    set_layouts[8] = vk.set_layout_sampler; // roughnessMap
-    set_layouts[9] = vk.set_layout_sampler; // metallicMap
-    set_layouts[10] = vk.set_layout_sampler;// occlusionMap
+    set_layouts[8] = vk.set_layout_sampler; // physicalMap
 #endif
     desc.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     desc.pNext = NULL;
@@ -614,14 +612,12 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
         float   metallic_value;
         float   roughness_value;
         int32_t normal_texture_set;
-        int32_t metallic_texture_set;
-        int32_t roughness_texture_set;
-        int32_t occlusion_texture_set;
+        int32_t physical_texture_set;
 #endif
     } frag_spec_data; 
 
 #ifdef USE_VK_PBR
-    VkSpecializationMapEntry spec_entries[16];
+    VkSpecializationMapEntry spec_entries[14];
 #else
     VkSpecializationMapEntry spec_entries[10];
 #endif
@@ -973,7 +969,7 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
     frag_spec_info.mapEntryCount = 9;
 #ifdef USE_VK_PBR
     {
-        frag_spec_info.mapEntryCount += 6;
+        frag_spec_info.mapEntryCount += 4;
 
         spec_entries[10].constantID = 9;
         spec_entries[10].offset = offsetof(struct FragSpecData, metallic_value);
@@ -988,16 +984,8 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
         spec_entries[12].size = sizeof(frag_spec_data.normal_texture_set);
     
         spec_entries[13].constantID = 12;
-        spec_entries[13].offset = offsetof(struct FragSpecData, metallic_texture_set);
-        spec_entries[13].size = sizeof(frag_spec_data.metallic_texture_set);
-
-        spec_entries[14].constantID = 13;
-        spec_entries[14].offset = offsetof(struct FragSpecData, roughness_texture_set);
-        spec_entries[14].size = sizeof(frag_spec_data.roughness_texture_set);
-   
-        spec_entries[15].constantID = 15;
-        spec_entries[15].offset = offsetof(struct FragSpecData, occlusion_texture_set);
-        spec_entries[15].size = sizeof(frag_spec_data.occlusion_texture_set);
+        spec_entries[13].offset = offsetof(struct FragSpecData, physical_texture_set);
+        spec_entries[13].size = sizeof(frag_spec_data.physical_texture_set);
 
         // set pbr info
         frag_spec_data.roughness_value = 1.0;
@@ -1013,14 +1001,8 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
 	    if( ( def->vk_pbr_flags & PBR_HAS_NORMALMAP ) == 0 )
             frag_spec_data.normal_texture_set = -1;
 
-        if( ( def->vk_pbr_flags & PBR_HAS_METALLICMAP ) == 0 )
-	        frag_spec_data.metallic_texture_set = -1;
-
-        if( ( def->vk_pbr_flags & PBR_HAS_ROUGHNESSMAP ) == 0 )
-            frag_spec_data.roughness_texture_set = -1;   
-
-        if( ( def->vk_pbr_flags & PBR_HAS_OCCLUSIONMAP ) == 0 )
-            frag_spec_data.occlusion_texture_set = -1;  
+	    if( ( def->vk_pbr_flags & PBR_HAS_PHYSICALMAP ) == 0 )
+            frag_spec_data.physical_texture_set = -1;
     }
 #endif
     frag_spec_info.pMapEntries = spec_entries + 1;
