@@ -393,6 +393,7 @@ void vk_initialize( void )
 	vk.uniform_alignment = props.limits.minUniformBufferOffsetAlignment;
 	vk.uniform_item_size = PAD( sizeof(vkUniform_t), vk.uniform_alignment );
 #ifdef USE_VBO_GHOUL2
+	vk.uniform_camera_item_size = PAD( sizeof(vkUniformCamera_t), vk.uniform_alignment );
 	vk.uniform_data_item_size = PAD( sizeof(vkUniformData_t), vk.uniform_alignment );
 	vk.uniform_ghoul_item_size = PAD( sizeof(vkUniformGhoul_t), vk.uniform_alignment );
 #endif

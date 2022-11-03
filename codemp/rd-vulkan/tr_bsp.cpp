@@ -334,7 +334,7 @@ static shader_t *ShaderForShaderNum( int shaderNum, const int *lightmapNum, cons
 #ifdef USE_VK_PBR
 static void GenerateFaceTangents( srfSurfaceFace_t *face )
 {
-	if( !vk.pbrActive )
+	if ( !vk.pbrActive )
 		return;
 
 	float		*xyz0, *xyz1, *xyz2;
@@ -352,7 +352,7 @@ static void GenerateFaceTangents( srfSurfaceFace_t *face )
 		i1 = indices[i + 1];
 		i2 = indices[i + 2];
 
-		if (i0 >= face->numPoints || i1 >= face->numPoints || i2 >= face->numPoints)
+		if ( i0 >= face->numPoints || i1 >= face->numPoints || i2 >= face->numPoints )
 			continue;
 
 		xyz0 = face->points[i0];		// xyz
@@ -384,19 +384,19 @@ static void GenerateFaceTangents( srfSurfaceFace_t *face )
 
 static void GenerateTriTangents( srfTriangles_t *tri )
 {
-	if( !vk.pbrActive )
+	if ( !vk.pbrActive )
 		return;
 
 	srfVert_t	*dv0, *dv1, *dv2;
 	int			i, i0, i1, i2;
 	vec3_t		tangent, binormal;
 
-	for (i = 0; i < tri->numIndexes; i += 3) {
+	for ( i = 0; i < tri->numIndexes; i += 3 ) {
 		i0 = tri->indexes[ i + 0 ];
 		i1 = tri->indexes[ i + 1 ];
 		i2 = tri->indexes[ i + 2 ];
 
-		if (i0 >= tri->numVerts || i1 >= tri->numVerts || i2 >= tri->numVerts)
+		if ( i0 >= tri->numVerts || i1 >= tri->numVerts || i2 >= tri->numVerts )
 			continue;
 
 		dv0 = &tri->verts[i0];
@@ -413,7 +413,61 @@ static void GenerateTriTangents( srfTriangles_t *tri )
 	}
 }
 
+static void GenerateFaceLightDirs( srfSurfaceFace_t *face, world_t &worldData ) {
+	face->lightdir = (float*)ri.Hunk_Alloc( face->numPoints * sizeof(tess.lightdir[0]), h_low );
 
+	for ( int i = 0; i < face->numPoints; i++ )
+		R_LightDirForPoint( face->points[i], face->lightdir + i * 4, face->points[i] + 3, worldData );
+}
+
+static void GenerateTriLightDirs( srfTriangles_t *tri, world_t &worldData ) {
+	for ( int i = 0; i < tri->numVerts; i++ )
+		R_LightDirForPoint( tri->verts[i].xyz, tri->verts[i].lightdir, tri->verts[i].normal, worldData );
+}
+
+static void GenerateGridLightDirs( srfGridMesh_t *grid, world_t &worldData ) {
+	int	width, height, numPoints;
+
+	width = LittleLong( grid->width );
+	height = LittleLong( grid->height );
+	numPoints = width * height;
+
+	for ( int i = 0; i < numPoints; i++ )
+		R_LightDirForPoint( grid->verts[i].xyz, grid->verts[i].lightdir, grid->verts[i].normal, worldData );
+							
+}
+
+static void vk_generate_light_directions( world_t &worldData )
+{
+	if ( !vk.pbrActive )
+		return;
+
+	srfSurfaceFace_t *face;
+	srfTriangles_t *tris;
+	srfGridMesh_t *grid;
+	msurface_t *sf;
+	int i, n;
+
+	for ( i = 0, sf = &worldData.surfaces[0]; i < worldData.numsurfaces; i++, sf++ ) {
+		face = (srfSurfaceFace_t *)sf->data;
+		if ( face->surfaceType == SF_FACE ) {
+			GenerateFaceLightDirs( face, worldData );
+			continue;
+		}
+		
+		tris = (srfTriangles_t *)sf->data;
+		if ( tris->surfaceType == SF_TRIANGLES) {
+			GenerateTriLightDirs( tris, worldData ); 
+			continue;
+		}
+		
+		grid = (srfGridMesh_t *)sf->data;
+		if ( grid->surfaceType == SF_GRID ) {
+			GenerateGridLightDirs( grid, worldData ); 
+			continue;
+		}
+	}
+}
 #endif
 
 static void GenerateNormals( srfSurfaceFace_t *face )
@@ -1899,27 +1953,17 @@ static	void R_LoadFogs( const lump_t *l, const lump_t *brushesLump, lump_t *side
 		shader = R_FindShader( fogs->shader, lightmaps, stylesDefault, qtrue );
 
 
-		if (!shader->fogParms)
-		{//bad shader!!
-			assert(shader->fogParms);
-			out->parms.color[0] = 1.0f;
-			out->parms.color[1] = 0.0f;
-			out->parms.color[2] = 0.0f;
 
-			out->parms.depthForOpaque = 250.0f;
+		if (r_mapGreyScale->value > 0) {
+			float luminance;
+			luminance = LUMA(out->parms.color[0], out->parms.color[1], out->parms.color[2]);
+			out->parms.color[0] = LERP(out->parms.color[0], luminance, r_mapGreyScale->value);
+			out->parms.color[1] = LERP(out->parms.color[1], luminance, r_mapGreyScale->value);
+			out->parms.color[2] = LERP(out->parms.color[2], luminance, r_mapGreyScale->value);
 		}
-		else
-		{
-			if (r_mapGreyScale->value > 0) {
-				float luminance;
-				luminance = LUMA(out->parms.color[0], out->parms.color[1], out->parms.color[2]);
-				out->parms.color[0] = LERP(out->parms.color[0], luminance, r_mapGreyScale->value);
-				out->parms.color[1] = LERP(out->parms.color[1], luminance, r_mapGreyScale->value);
-				out->parms.color[2] = LERP(out->parms.color[2], luminance, r_mapGreyScale->value);
-			}
 
-			out->parms = *shader->fogParms;
-		}
+		out->parms = shader->fogParms;
+		
 
 		out->colorInt = ColorBytes4 (	out->parms.color[0] * tr.identityLight,
 										out->parms.color[1] * tr.identityLight,
@@ -2238,10 +2282,6 @@ void RE_LoadWorldMap_Actual( const char *name, world_t &worldData, int index )
 	R_LoadSubmodels (&header->lumps[LUMP_MODELS], worldData, index);
 	R_LoadVisibility( &header->lumps[LUMP_VISIBILITY], worldData );
 
-#ifdef USE_VBO
-	R_BuildWorldVBO(s_worldData.surfaces, s_worldData.numsurfaces);
-#endif
-
 	worldData.dataSize = (byte *)Hunk_Alloc(0, h_low) - startMarker;
 
 	if (!index)
@@ -2250,11 +2290,19 @@ void RE_LoadWorldMap_Actual( const char *name, world_t &worldData, int index )
 		R_LoadLightGrid( &header->lumps[LUMP_LIGHTGRID], worldData );
 		R_LoadLightGridArray( &header->lumps[LUMP_LIGHTARRAY], worldData );
 
+#ifdef USE_VK_PBR
+		vk_generate_light_directions( worldData );
+#endif	
+
 		// only set tr.world now that we know the entire level has loaded properly
 		tr.world = &worldData;
 
 		tr.mapLoading = qfalse;
 	}
+
+#ifdef USE_VBO
+	R_BuildWorldVBO(s_worldData.surfaces, s_worldData.numsurfaces);
+#endif
 
 	if (ri.CM_GetCachedMapDiskImage())
 	{

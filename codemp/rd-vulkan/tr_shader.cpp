@@ -1290,8 +1290,9 @@ static qboolean ParseStage(shaderStage_t *stage, const char **text)
 #endif
 			}
 		}
-#ifdef USE_VK_PBR
-		else if ( !Q_stricmp(token, "normalMap") && vk.pbrActive )
+		
+#ifdef USE_VK_PBR 
+		else if ( (!Q_stricmp(token, "normalMap") || !Q_stricmp(token, "normalHeightMap")) && vk.pbrActive )
 		{
 			token = COM_ParseExt(text, qfalse);
 
@@ -1344,20 +1345,6 @@ static qboolean ParseStage(shaderStage_t *stage, const char **text)
 			Q_strncpyz( stage->physicalMapName, token, sizeof(stage->physicalMapName) );
 
 			physicalMapBits |= PHYS_RMO;
-		}
-		else if ( !Q_stricmp(token, "metallicValue")  && vk.pbrActive ) {
-			token = COM_ParseExt(text, qfalse);
-			if (token[0]) {
-				stage->metallic_value = atof(token);
-				stage->vk_pbr_flags |= PBR_HAS_METALLIC_VALUE;
-			}
-		}
-		else if ( !Q_stricmp(token, "roughnessValue")  && vk.pbrActive ) {
-			token = COM_ParseExt(text, qfalse);
-			if (token[0]) {
-				stage->roughness_value = atof(token);
-				stage->vk_pbr_flags |= PBR_HAS_ROUGHNESS_VALUE;
-			}
 		}
 #endif
 		//
@@ -1596,6 +1583,145 @@ static qboolean ParseStage(shaderStage_t *stage, const char **text)
 			{
 				depthMaskBits = 0;
 			}
+		}
+
+		else if ( ( !Q_stricmp(token, "metallic") || !Q_stricmp(token, "gloss" ) ) )
+		{
+			token = COM_ParseExt(text, qfalse);
+			if (token[0]) {
+				stage->metallic_value = atof(token);
+				stage->vk_pbr_flags |= PBR_HAS_METALLIC_VALUE;
+			}
+		}
+		else if ( !Q_stricmp(token, "roughness") )
+		{
+			token = COM_ParseExt(text, qfalse);
+			if (token[0]) {
+				stage->roughness_value = atof(token);
+				stage->vk_pbr_flags |= PBR_HAS_ROUGHNESS_VALUE;
+			}
+		}
+		else if (!Q_stricmp(token, "specularreflectance"))
+		{
+			token = COM_ParseExt(text, qfalse);
+			if ( token[0] == 0 )
+			{
+				ri.Printf( PRINT_WARNING, "WARNING: missing parameter for specular reflectance in shader '%s'\n", shader.name );
+				continue;
+			}
+			stage->specularScale[0] = 
+			stage->specularScale[1] = 
+			stage->specularScale[2] = Com_Clamp( 0.0f, 1.0f, atof( token ) );
+		}
+		else if (!Q_stricmp(token, "specularexponent"))
+		{
+			float exponent;
+
+			token = COM_ParseExt(text, qfalse);
+			if ( token[0] == 0 )
+			{
+				ri.Printf( PRINT_WARNING, "WARNING: missing parameter for specular exponent in shader '%s'\n", shader.name );
+				continue;
+			}
+			exponent = atof( token );
+
+			// Change shininess to gloss 
+			// FIXME: assumes max exponent of 8192 and min of 1, must change here if altered in gen_frag.glsl 
+			exponent = Com_Clamp( 1.0f, 8192.0f, exponent );
+			stage->specularScale[3] = log(exponent) / log(8192.0);
+		}
+		else if ( !Q_stricmp(token, "parallaxdepth") )
+		{
+			token = COM_ParseExt(text, qfalse);
+			if ( token[0] == 0 )
+			{
+				ri.Printf( PRINT_WARNING, "WARNING: missing parameter for parallaxDepth in shader '%s'\n", shader.name );
+				continue;
+			}
+
+			stage->normalScale[3] = atof( token );
+		}
+		else if ( !Q_stricmp(token, "parallaxbias") )
+		{
+			token = COM_ParseExt(text, qfalse);
+			if (token[0] == 0)
+			{
+				ri.Printf(PRINT_WARNING, "WARNING: missing parameter for parallaxBias in shader '%s'\n", shader.name);
+				continue;
+			}
+
+			stage->parallaxBias = atof(token);
+		}
+		else if ( !Q_stricmp(token, "normalscale") )
+		{
+			token = COM_ParseExt(text, qfalse);
+			if ( token[0] == 0 )
+			{
+				ri.Printf( PRINT_WARNING, "WARNING: missing parameter for normalScale in shader '%s'\n", shader.name );
+				continue;
+			}
+
+			stage->normalScale[0] = atof( token );
+
+			token = COM_ParseExt(text, qfalse);
+			if ( token[0] == 0 )
+			{
+				// one value, applies to X/Y
+				stage->normalScale[1] = stage->normalScale[0];
+				continue;
+			}
+
+			stage->normalScale[1] = atof( token );
+
+			token = COM_ParseExt(text, qfalse);
+			if ( token[0] == 0 )
+			{
+				// two values, no height
+				continue;
+			}
+
+			stage->normalScale[3] = atof( token );
+		}
+		else if ( !Q_stricmp(token, "specularscale") )
+		{
+			token = COM_ParseExt(text, qfalse);
+			if ( token[0] == 0 )
+			{
+				ri.Printf( PRINT_WARNING, "WARNING: missing parameter for specularScale in shader '%s'\n", shader.name );
+				continue;
+			}
+
+			stage->specularScale[0] = atof( token );
+
+			token = COM_ParseExt(text, qfalse);
+			if ( token[0] == 0 )
+			{
+				ri.Printf( PRINT_WARNING, "WARNING: missing parameter for specularScale in shader '%s'\n", shader.name );
+				continue;
+			}
+
+			stage->specularScale[1] = atof( token );
+
+			token = COM_ParseExt(text, qfalse);
+			if ( token[0] == 0 )
+			{
+				// two values, rgb then gloss
+				stage->specularScale[3] = stage->specularScale[1];
+				stage->specularScale[1] =
+				stage->specularScale[2] = stage->specularScale[0];
+				continue;
+			}
+
+			stage->specularScale[2] = atof( token );
+
+			token = COM_ParseExt(text, qfalse);
+			if ( token[0] == 0 )
+			{
+				// three values, rgb
+				continue;
+			}
+
+			stage->specularScale[3] = atof( token );
 		}
 		//
 		// rgbGen
@@ -1899,7 +2025,7 @@ static qboolean ParseStage(shaderStage_t *stage, const char **text)
 	}
 
 #ifdef USE_VK_PBR
-	if ( physicalAlbedo && physicalMapBits != PHYS_NONE ) {
+	if ( physicalAlbedo  ) {
 		imgFlags_t flags = IMGFLAG_NOLIGHTSCALE;
 
 		if (!shader.noMipMaps)
@@ -1911,7 +2037,11 @@ static qboolean ParseStage(shaderStage_t *stage, const char **text)
 		if (shader.noTC)
 			flags |= IMGFLAG_NO_COMPRESSION;
 
-		vk_create_phyisical_texture( stage, physicalAlbedoName, flags, physicalMapBits );
+		if( physicalMapBits != PHYS_NONE )
+			vk_create_phyisical_texture( stage, physicalAlbedoName, flags, physicalMapBits );
+	
+		if( ( stage->vk_pbr_flags & PBR_HAS_NORMALMAP ) == 0 )
+			vk_create_normal_texture( stage, physicalAlbedoName, flags );
 	}
 #endif
 
@@ -2681,8 +2811,8 @@ static qboolean ParseShader( const char **text )
 		// fogParms
 		else if (!Q_stricmp(token, "fogParms"))
 		{
-			shader.fogParms = (fogParms_t*)Hunk_Alloc(sizeof(fogParms_t), h_low);
-			if (!ParseVector(text, 3, shader.fogParms->color)) {
+			//shader.fogParms = (fogParms_t*)Hunk_Alloc(sizeof(fogParms_t), h_low);
+			if (!ParseVector(text, 3, shader.fogParms.color)) {
 				return qfalse;
 			}
 
@@ -2692,7 +2822,7 @@ static qboolean ParseShader( const char **text )
 				vk_debug("WARNING: missing parm for 'fogParms' keyword in shader '%s'\n", shader.name);
 				continue;
 			}
-			shader.fogParms->depthForOpaque = atof(token);
+			shader.fogParms.depthForOpaque = atof(token);
 
 			// skip any old gradient directions
 			SkipRestOfLine(text);
@@ -4448,9 +4578,6 @@ shader_t *FinishShader( void )
 			}
 
 #ifdef USE_VK_PBR
-			if( pStage->vk_pbr_flags )
-				pStage->tessFlags |= TESS_PBR;
-				
 			def.vk_pbr_flags = 0;
 #endif
 
@@ -4479,7 +4606,10 @@ shader_t *FinishShader( void )
 			pStage->vk_2d_pipeline = NULL;
 
 #ifdef USE_VK_PBR
-			if( pStage->tessFlags & TESS_PBR ) {
+			if ( pStage->vk_pbr_flags && def.shader_type >= TYPE_GENERIC_BEGIN ) {
+				pStage->tessFlags |= TESS_PBR;
+				shader.hasPBR = qtrue;
+
 				def.mirror = qfalse;
 				def.vk_pbr_flags = pStage->vk_pbr_flags;
 				def.metallic_value = pStage->metallic_value;
@@ -4513,8 +4643,8 @@ shader_t *FinishShader( void )
 			vk_get_pipeline_def(pStage->vk_pipeline[0], &def_pbr);
 			def_pbr.fog_stage = 1;
 			def_pbr.vk_pbr_flags = pStage->vk_pbr_flags;
-			def.metallic_value = pStage->metallic_value;
-			def.roughness_value = pStage->roughness_value;
+			def_pbr.metallic_value = pStage->metallic_value;
+			def_pbr.roughness_value = pStage->roughness_value;
 			pStage->vk_pbr_pipeline[1] = vk_find_pipeline_ext(0, &def_pbr, qfalse);
 		}
 #endif

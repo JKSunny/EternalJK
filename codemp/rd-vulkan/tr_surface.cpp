@@ -388,6 +388,7 @@ void RB_SurfaceTriangles( const srfTriangles_t *srf ) {
 	float				*xyz, *normal, *texCoords0, *texCoords1, *texCoords2, *texCoords3, *texCoords4;
 #ifdef USE_VK_PBR
 	float				*qtangent;
+	float				*lightdir;
 #endif
 	byte				*color;
 
@@ -432,6 +433,7 @@ void RB_SurfaceTriangles( const srfTriangles_t *srf ) {
 	normal = tess.normal[ tess.numVertexes ];
 #ifdef USE_VK_PBR
 	qtangent = tess.qtangent[ tess.numVertexes ];
+	lightdir = tess.lightdir[ tess.numVertexes ];
 #endif
 	texCoords0 = tess.texCoords[0][tess.numVertexes];
 	texCoords1 = tess.texCoords[1][tess.numVertexes];
@@ -459,6 +461,12 @@ void RB_SurfaceTriangles( const srfTriangles_t *srf ) {
 			qtangent[2] = dv->qtangent[2];
 			qtangent[3] = dv->qtangent[3];
 			qtangent += 4;
+
+			lightdir[0] = dv->lightdir[0];
+			lightdir[1] = dv->lightdir[1];
+			lightdir[2] = dv->lightdir[2];
+			lightdir[3] = 0.0;
+			lightdir += 4;
 		}
 #endif
 
@@ -1485,6 +1493,9 @@ void RB_SurfaceFace( srfSurfaceFace_t *surf ) {
 #ifdef USE_VK_PBR
 		if( vk.pbrActive && surf->qtangents )	
 			memcpy( &tess.qtangent[ tess.numVertexes ], surf->qtangents, numPoints * sizeof( vec4_t ) );	
+
+		if( vk.pbrActive && surf->lightdir )	
+			memcpy( &tess.lightdir[ tess.numVertexes ], surf->lightdir, numPoints * sizeof( vec4_t ) );	
 #endif
 
 	for ( i = 0, v = surf->points[0], ndx = tess.numVertexes; i < numPoints; i++, v += VERTEXSIZE, ndx++ )
@@ -1632,6 +1643,7 @@ void RB_SurfaceGrid( srfGridMesh_t *cv ) {
 	float	*xyz, *normal;
 #ifdef USE_VK_PBR
 	float	*qtangent;
+	float	*lightdir;
 #endif
 	float	*texCoords0, *texCoords1, *texCoords2, *texCoords3, *texCoords4;
 	unsigned char *color;
@@ -1753,6 +1765,7 @@ void RB_SurfaceGrid( srfGridMesh_t *cv ) {
 		normal = tess.normal[numVertexes];
 #ifdef USE_VK_PBR
 		qtangent = tess.qtangent[numVertexes];
+		lightdir = tess.lightdir[numVertexes];
 #endif
 		texCoords0 = tess.texCoords[0][numVertexes];
 		texCoords1 = tess.texCoords[1][numVertexes];
@@ -1809,6 +1822,12 @@ void RB_SurfaceGrid( srfGridMesh_t *cv ) {
 					qtangent[2] = dv->qtangent[2];
 					qtangent[3] = dv->qtangent[3];
 					qtangent += 4;
+
+					lightdir[0] = dv->lightdir[0];
+					lightdir[1] = dv->lightdir[1];
+					lightdir[2] = dv->lightdir[2];
+					lightdir[3] = 0.0;
+					lightdir += 4;
 				}
 #endif
 
@@ -1995,7 +2014,7 @@ static bool RB_TestZFlare( vec3_t point) {
 
 	// if the point is off the screen, don't bother adding it
 	// calculate screen coordinates and depth
-	R_TransformModelToClip( point, backEnd.ori.modelMatrix,
+	R_TransformModelToClip( point, backEnd.ori.modelViewMatrix,
 		backEnd.viewParms.projectionMatrix, eye, clip );
 
 	// check to see if the point is completely off screen

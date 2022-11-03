@@ -20,14 +20,13 @@ layout(set = 1, binding = 0) uniform UBO {
 	vec4 lightVector;
 };
 
-layout(set = 1, binding = 2) uniform UBOG3 {
-	mat4 modelMatrix;
+layout(set = 1, binding = 3) uniform UBOG3 {
 	mat4 boneMatrices[72];
 };	
 
 layout(location = 0) in vec3 in_position;
-layout(location = 9) in vec4 in_bones;
-layout(location = 10) in vec4 in_weights;
+layout(location = 10) in vec4 in_bones;
+layout(location = 11) in vec4 in_weights;
 
 layout(location = 4) out vec2 fog_tex_coord;
 

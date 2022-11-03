@@ -206,6 +206,7 @@ typedef struct orientationr_s {
 	vec3_t		origin;			// in world coordinates
 	matrix3_t	axis;		// orientation in world
 	vec3_t		viewOrigin;		// viewParms->or.origin in local coordinates
+	float		modelViewMatrix[16];
 	float		modelMatrix[16];
 } orientationr_t;
 
@@ -554,6 +555,10 @@ typedef struct shaderStage_s {
 
 	float			roughness_value;
 	float			metallic_value;
+
+	vec4_t normalScale;
+	vec4_t specularScale;
+	float  parallaxBias;
 #endif
 #ifdef USE_VBO
 	uint32_t		rgb_offset[NUM_TEXTURE_BUNDLES]; // within current shader
@@ -609,7 +614,7 @@ typedef struct shader_s {
 
 	qboolean	isSky;
 	skyParms_t	*sky;
-	fogParms_t	*fogParms;
+	fogParms_t	fogParms;
 
 	float		portalRange;						// distance to fog out at
 	float		portalRangeR;
@@ -650,6 +655,10 @@ typedef struct shader_s {
 
 	int			hasScreenMap;
 
+#ifdef USE_VK_PBR
+	qboolean	hasPBR;
+#endif
+
 #ifdef USE_VBO
 	// VBO structures
 	qboolean	isStaticShader;
@@ -663,6 +672,7 @@ typedef struct shader_s {
 	int			curIndexes;
 #ifdef USE_VK_PBR
 	int			qtangentOffset;
+	int			lightdirOffset;
 #endif
 #endif
 
@@ -884,6 +894,7 @@ typedef struct srfVert_s {
 	vec3_t		normal;
 #ifdef USE_VK_PBR
 	vec4_t		qtangent;
+	vec4_t		lightdir;
 #endif
 	byte		color[MAXLIGHTMAPS][4];
 } srfVert_t;
@@ -927,6 +938,7 @@ typedef struct srfSurfaceFace_s {
 	float			*normals;
 #ifdef USE_VK_PBR
 	float			*qtangents;
+	float			*lightdir;
 #endif
 
 	// triangle definitions (no normals at points)
@@ -1773,6 +1785,7 @@ image_t		*R_FindImageFile( const char *name, imgFlags_t flags );
 image_t		*R_CreateImage( const char *name, byte *pic, int width, int height, imgFlags_t flags );
 #ifdef USE_VK_PBR
 void		vk_create_phyisical_texture( shaderStage_t *stage, const char *albedoMapName, imgFlags_t flags, const uint32_t physicalMapBits );
+void		vk_create_normal_texture( shaderStage_t *stage, const char *albedoMapName, imgFlags_t flags );
 #endif
 
 qboolean	R_GetModeInfo( int *width, int *height, int mode );
@@ -1849,6 +1862,7 @@ struct shaderCommands_s
 	vec4_t			normal[SHADER_MAX_VERTEXES]						QALIGN(16);
 #ifdef USE_VK_PBR
 	vec4_t			qtangent[SHADER_MAX_VERTEXES]					QALIGN(16);
+	vec4_t			lightdir[SHADER_MAX_VERTEXES]					QALIGN(16);
 #endif
 	vec2_t			texCoords[NUM_TEX_COORDS][SHADER_MAX_VERTEXES]	QALIGN(16);
 	vec2_t			texCoords00[SHADER_MAX_VERTEXES]				QALIGN(16);
@@ -1948,7 +1962,8 @@ LIGHTS
 void R_DlightBmodel( bmodel_t *bmodel, bool NoLight );
 void R_SetupEntityLighting( const trRefdef_t *refdef, trRefEntity_t *ent );
 void R_TransformDlights( int count, dlight_t *dl, orientationr_t *ori );
-int	R_LightForPoint( vec3_t point, vec3_t ambientLight, vec3_t directedLight, vec3_t lightDir );
+int R_LightForPoint( vec3_t point, vec3_t ambientLight, vec3_t directedLight, vec3_t lightDir );
+int R_LightDirForPoint( vec3_t point, vec3_t lightDir, vec3_t normal, world_t &world );
 
 /*
 ============================================================
@@ -2105,7 +2120,7 @@ Ghoul2 Insert End
 =============================================================
 =============================================================
 */
-void	R_TransformModelToClip( const vec3_t src, const float *modelMatrix, const float *projectionMatrix,
+void	R_TransformModelToClip( const vec3_t src, const float *modelViewMatrix, const float *projectionMatrix,
 							vec4_t eye, vec4_t dst );
 void	R_TransformClipToWindow( const vec4_t clip, const viewParms_t *view, vec4_t normalized, vec4_t window );
 

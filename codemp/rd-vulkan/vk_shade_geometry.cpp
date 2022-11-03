@@ -23,7 +23,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include "tr_local.h"
 
-static VkBuffer shade_bufs[11];	// +3 bones, weight, qtangents
+static VkBuffer shade_bufs[12];	// +4 qtangents, lightdir, bones, weight
 
 static int bind_base;
 static int bind_count;
@@ -212,13 +212,13 @@ static void vk_bind_attr_ghoul2_vbo( int index, unsigned int item_size, const vo
 
 static void vk_vbo_bind_geometry_ghoul2( uint32_t flags )
 {
-	shade_bufs[8] = shade_bufs[9] = shade_bufs[10] = vk.vbo[vk.vbo_index].vertex_buffer;
+	shade_bufs[8] = shade_bufs[9] = shade_bufs[10] = shade_bufs[11] = vk.vbo[vk.vbo_index].vertex_buffer;
 
 	vk.cmd->vbo_offset[0] = tess.mesh_ptr->vboOffset + 0;
 	vk.cmd->vbo_offset[2] = tess.mesh_ptr->texOffset;
 	vk.cmd->vbo_offset[5] = tess.mesh_ptr->normalOffset;
-	vk.cmd->vbo_offset[9] = tess.mesh_ptr->boneOffset;
-	vk.cmd->vbo_offset[10] = tess.mesh_ptr->weightOffset;
+	vk.cmd->vbo_offset[10] = tess.mesh_ptr->boneOffset;
+	vk.cmd->vbo_offset[11] = tess.mesh_ptr->weightOffset;
 
 	if (flags & TESS_ST1)
 		vk.cmd->vbo_offset[3] = tess.mesh_ptr->texOffset;
@@ -232,7 +232,7 @@ static void vk_vbo_bind_geometry_ghoul2( uint32_t flags )
 	}
 #endif
 
-	qvkCmdBindVertexBuffers( vk.cmd->command_buffer, 0, 11, shade_bufs, vk.cmd->vbo_offset + 0 );
+	qvkCmdBindVertexBuffers( vk.cmd->command_buffer, 0, 12, shade_bufs, vk.cmd->vbo_offset + 0 );
 
 #if 0
 	// use the vertex buffer for rgba ..
@@ -281,6 +281,7 @@ void vk_bind_geometry( uint32_t flags )
 
 #ifdef USE_VK_PBR
 		shade_bufs[8] = vk.vbo[vk.vbo_index].vertex_buffer;
+		shade_bufs[9] = vk.vbo[vk.vbo_index].vertex_buffer;
 #endif
 
 		if (flags & TESS_XYZ) {  // 0
@@ -326,6 +327,9 @@ void vk_bind_geometry( uint32_t flags )
 		if (flags & TESS_PBR) {
 			vk.cmd->vbo_offset[8] = tess.shader->qtangentOffset;
 			vk_bind_index_attr(8);
+
+			vk.cmd->vbo_offset[9] = tess.shader->lightdirOffset;
+			vk_bind_index_attr(9);
 		}
 #endif
 		qvkCmdBindVertexBuffers(vk.cmd->command_buffer, bind_base, bind_count, shade_bufs, vk.cmd->vbo_offset + bind_base);
@@ -336,6 +340,7 @@ void vk_bind_geometry( uint32_t flags )
 		shade_bufs[0] = shade_bufs[1] = shade_bufs[2] = shade_bufs[3] = shade_bufs[4] = shade_bufs[5] = shade_bufs[6] = shade_bufs[7] = vk.cmd->vertex_buffer;
 #ifdef USE_VK_PBR
 		shade_bufs[8] = vk.cmd->vertex_buffer;
+		shade_bufs[9] = vk.cmd->vertex_buffer;
 #endif
 
 		if (flags & TESS_XYZ)
@@ -362,8 +367,10 @@ void vk_bind_geometry( uint32_t flags )
 		if (flags & TESS_RGBA2)
 			vk_bind_attr(7, sizeof(color4ub_t), tess.svars.colors[2]);
 #ifdef USE_VK_PBR
-		if (flags & TESS_PBR)
+		if (flags & TESS_PBR) {
 			vk_bind_attr(8, sizeof(tess.qtangent[0]), tess.qtangent);
+			vk_bind_attr(9, sizeof(tess.lightdir[0]), tess.lightdir);
+		}
 #endif
 		qvkCmdBindVertexBuffers(vk.cmd->command_buffer, bind_base, bind_count, shade_bufs, vk.cmd->buf_offset + bind_base);
 	}
@@ -399,21 +406,11 @@ void vk_bind_lighting( int stage, int bundle )
 	}
 }
 
-void vk_update_uniform_descriptor( VkDescriptorSet descriptor, VkBuffer buffer )
+static void vk_write_uniform_descriptor( VkWriteDescriptorSet *desc, VkDescriptorBufferInfo *info, VkDescriptorSet descriptor, const uint32_t binding )
 {
-	VkDescriptorBufferInfo *info, infos[3];
-	VkWriteDescriptorSet *desc, descs[3];
-	uint32_t count = 1;
-
-	info = &infos[0];
-	info->buffer = buffer;
-	info->offset = 0;
-	info->range = sizeof(vkUniform_t);
-
-	desc = &descs[0];
 	desc->sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	desc->dstSet = descriptor;
-	desc->dstBinding = 0;
+	desc->dstBinding = binding;
 	desc->dstArrayElement = 0;
 	desc->descriptorCount = 1;
 	desc->pNext = NULL;
@@ -421,6 +418,30 @@ void vk_update_uniform_descriptor( VkDescriptorSet descriptor, VkBuffer buffer )
 	desc->pImageInfo = NULL;
 	desc->pBufferInfo = info;
 	desc->pTexelBufferView = NULL;
+}
+
+void vk_update_uniform_descriptor( VkDescriptorSet descriptor, VkBuffer buffer )
+{
+	VkDescriptorBufferInfo *info, infos[4];
+	VkWriteDescriptorSet desc[4];
+	uint32_t count = 0;
+
+	info = &infos[0];
+	info->buffer = buffer;
+	info->offset = 0;
+	info->range = sizeof(vkUniform_t);
+
+	vk_write_uniform_descriptor( desc + 0, info, descriptor, 0 );
+	count++;
+
+	// camera
+	info++;
+	info->buffer = buffer;
+	info->offset = 0;
+	info->range = sizeof(vkUniformCamera_t);
+
+	vk_write_uniform_descriptor( desc + 1, info, descriptor, 1 );
+	count++;
 
 #ifdef USE_VBO_GHOUL2
 	if ( vk.vboGhoul2Active ) {
@@ -430,17 +451,7 @@ void vk_update_uniform_descriptor( VkDescriptorSet descriptor, VkBuffer buffer )
 		info->offset = 0;
 		info->range = sizeof(vkUniformData_t);
 
-		desc++;
-		desc->sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		desc->dstSet = descriptor;
-		desc->dstBinding = 1;
-		desc->dstArrayElement = 0;
-		desc->descriptorCount = 1;
-		desc->pNext = NULL;
-		desc->descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-		desc->pImageInfo = NULL;
-		desc->pBufferInfo = info;
-		desc->pTexelBufferView = NULL;
+		vk_write_uniform_descriptor( desc + 2, info, descriptor, 2 );
 		count++;
 
 		// bones
@@ -449,22 +460,12 @@ void vk_update_uniform_descriptor( VkDescriptorSet descriptor, VkBuffer buffer )
 		info->offset = 0;
 		info->range = sizeof(vkUniformGhoul_t);
 
-		desc++;
-		desc->sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		desc->dstSet = descriptor;
-		desc->dstBinding = 2;
-		desc->dstArrayElement = 0;
-		desc->descriptorCount = 1;
-		desc->pNext = NULL;
-		desc->descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-		desc->pImageInfo = NULL;
-		desc->pBufferInfo = info;
-		desc->pTexelBufferView = NULL;
+		vk_write_uniform_descriptor( desc + 3, info, descriptor, 3 );
 		count++;
 	}
 #endif
 
-	qvkUpdateDescriptorSets(vk.device, count, descs, 0, NULL);
+	qvkUpdateDescriptorSets(vk.device, count, desc, 0, NULL);
 }
 
 void vk_create_storage_buffer( uint32_t size )
@@ -768,7 +769,7 @@ void vk_update_descriptor_offset( int index, uint32_t offset )
 
 void vk_bind_descriptor_sets( void ) 
 {
-	uint32_t offsets[4], offset_count;
+	uint32_t offsets[5], offset_count;
 	uint32_t start, end, count;
 
 	start = vk.cmd->descriptor_set.start;
@@ -780,12 +781,17 @@ void vk_bind_descriptor_sets( void )
 	offset_count = 0;
 	if (start <= 1) { // uniform offset or storage offset
 		offsets[offset_count++] = vk.cmd->descriptor_set.offset[start];
-#ifdef USE_VBO_GHOUL2
-		if ( vk.vboGhoul2Active && start == 1 ){
+
+		if ( start == 1 ){
 			offsets[offset_count++] = vk.cmd->descriptor_set.offset[start+1];
-			offsets[offset_count++] = vk.cmd->descriptor_set.offset[start+2];
-		}
+
+#ifdef USE_VBO_GHOUL2
+			if ( vk.vboGhoul2Active ){
+				offsets[offset_count++] = vk.cmd->descriptor_set.offset[start+2];
+				offsets[offset_count++] = vk.cmd->descriptor_set.offset[start+3];
+			}
 #endif
+		}
 	}
 
 	count = end - start + 1;
@@ -1141,6 +1147,26 @@ static uint32_t vk_push_uniform( const vkUniform_t *uniform ) {
 
 	return offset;
 }
+
+#if defined(USE_VBO_GHOUL2) && defined(USE_VK_PBR)
+static uint32_t vk_push_uniform_camera( const vkUniformCamera_t *uniform ) {	
+	const uint32_t offset = vk.cmd->uniform_read_offset = PAD(vk.cmd->vertex_buffer_offset, vk.uniform_alignment);
+
+	if ( offset + vk.uniform_camera_item_size > vk.geometry_buffer_size )
+		return ~0U;
+
+	Com_Memcpy( vk.cmd->vertex_buffer_ptr + offset, uniform, sizeof(*uniform) );
+	vk.cmd->vertex_buffer_offset = offset + vk.uniform_camera_item_size;
+
+	vk_reset_descriptor( 1 );
+	vk_update_descriptor( 1, vk.cmd->uniform_descriptor );
+	vk_update_descriptor_offset( 1, 0 );
+	vk_update_descriptor_offset( 2, vk.cmd->uniform_read_offset );
+
+	return offset;
+}
+#endif
+
 #ifdef USE_VBO_GHOUL2
 static uint32_t vk_push_uniform_data( const vkUniformData_t *uniform ) {	
 	const uint32_t offset = vk.cmd->uniform_read_offset = PAD(vk.cmd->vertex_buffer_offset, vk.uniform_alignment);
@@ -1154,7 +1180,7 @@ static uint32_t vk_push_uniform_data( const vkUniformData_t *uniform ) {
 	vk_reset_descriptor( 1 );
 	vk_update_descriptor( 1, vk.cmd->uniform_descriptor );
 	vk_update_descriptor_offset( 1, 0 );
-	vk_update_descriptor_offset( 2, vk.cmd->uniform_read_offset );
+	vk_update_descriptor_offset( 3, vk.cmd->uniform_read_offset );
 
 	return offset;
 }
@@ -1171,7 +1197,7 @@ static uint32_t vk_push_uniform_ghoul2( const vkUniformGhoul_t *uniform ) {
 	vk_reset_descriptor( 1 );
 	vk_update_descriptor( 1, vk.cmd->uniform_descriptor );
 	vk_update_descriptor_offset( 1, 0 );
-	vk_update_descriptor_offset( 3, vk.cmd->uniform_read_offset );
+	vk_update_descriptor_offset( 4, vk.cmd->uniform_read_offset );
 
 	return offset;
 }
@@ -1194,9 +1220,9 @@ const fogProgramParms_t *RB_CalcFogProgramParms( void )
 
 	// all fogging distance is based on world Z units
 	VectorSubtract(backEnd.ori.origin, backEnd.viewParms.ori.origin, local);
-	parm.fogDistanceVector[0] = -backEnd.ori.modelMatrix[2];
-	parm.fogDistanceVector[1] = -backEnd.ori.modelMatrix[6];
-	parm.fogDistanceVector[2] = -backEnd.ori.modelMatrix[10];
+	parm.fogDistanceVector[0] = -backEnd.ori.modelViewMatrix[2];
+	parm.fogDistanceVector[1] = -backEnd.ori.modelViewMatrix[6];
+	parm.fogDistanceVector[2] = -backEnd.ori.modelViewMatrix[10];
 	parm.fogDistanceVector[3] = DotProduct(local, backEnd.viewParms.ori.axis[0]);
 
 	// scale the fog vectors based on the fog's thickness
@@ -1297,10 +1323,11 @@ RB_FogPass
 Blends a fog texture on top of everything else
 ===================
 */
-static vkUniform_t		uniform;
+static vkUniform_t			uniform;
+static vkUniformCamera_t	uniform_camera;
 #ifdef USE_VBO_GHOUL2
-static vkUniformData_t	uniform_data;
-static vkUniformGhoul_t	uniform_ghoul;
+static vkUniformData_t		uniform_data;
+static vkUniformGhoul_t		uniform_ghoul;
 
 mat4_t *vk_get_uniform_ghoul_bones( void ) {
 	return uniform_ghoul.boneMatrices;
@@ -1927,6 +1954,27 @@ void ForceAlpha(unsigned char *dstColors, int TR_ForceEntAlpha)
 	}
 }
 
+static qboolean vk_is_valid_pbr_surface( const qboolean hasPBR, const qboolean is_ghoul2_vbo ) {
+	if( !vk.pbrActive || !hasPBR )
+		return qfalse;
+	
+	if ( backEnd.isGlowPass )
+		return qfalse;
+			
+	if ( backEnd.projection2D )
+		return qfalse;
+
+	if ( backEnd.viewParms.portalView == PV_MIRROR)
+		return qfalse;
+
+	if ( backEnd.currentEntity ){
+		if ( backEnd.currentEntity != &tr.worldEntity && !is_ghoul2_vbo )
+			return qfalse;
+	}
+	
+	return qtrue;
+}
+
 static ss_input ssInput;
 void RB_StageIteratorGeneric( void )
 {
@@ -1937,7 +1985,8 @@ void RB_StageIteratorGeneric( void )
 	int						tess_flags, i;
 	int						fog_stage = 0;
 	qboolean				fogCollapse;
-	qboolean				is_ghoul2_vbo = qfalse;
+	qboolean				is_ghoul2_vbo;
+	qboolean				is_pbr_surface;
 
 #ifdef USE_VBO
 	if (tess.vboIndex != 0) {
@@ -1963,6 +2012,7 @@ void RB_StageIteratorGeneric( void )
 
 	fogCollapse = qfalse;
 	is_ghoul2_vbo = qfalse;
+	is_pbr_surface = qfalse;
 
 #ifdef USE_FOG_COLLAPSE
 	if ( tess.fogNum && tess.shader->fogPass && tess.shader->fogCollapse && r_drawfog->value == 2 ) {
@@ -1977,9 +2027,6 @@ void RB_StageIteratorGeneric( void )
 		vec4_t tmp;	
 		Com_Memset( &uniform_data, 0, sizeof(uniform_data) );
 
-		Com_Memcpy( &uniform_data.eyePos, backEnd.ori.viewOrigin, sizeof( vec3_t) );
-		uniform_data.eyePos[3] = 0.0;
-
 		VectorScale( backEnd.currentEntity->ambientLight, 1.0f / 255.0, tmp );
 		Com_Memcpy( &uniform_data.ambientLight, tmp, sizeof(vec4_t) );
 
@@ -1988,15 +2035,27 @@ void RB_StageIteratorGeneric( void )
 
 		VectorCopy( backEnd.currentEntity->lightDir, tmp ); tmp[3] = 0.0f;
 		Com_Memcpy( &uniform_data.lightDir, tmp, sizeof(vec4_t) );
-
-		Com_Memcpy( &uniform_ghoul.modelMatrix, backEnd.ori.modelMatrix, sizeof(float) * 16 );
-		//Com_Memcpy( &uniform_ghoul.modelMatrix, backEnd.viewParms.world.modelMatrix, sizeof(float) * 16 );
 		
-		vk_push_uniform_ghoul2( &uniform_ghoul );
+		Com_Memcpy( &uniform_camera.modelMatrix, backEnd.ori.modelMatrix, sizeof(float) * 16 );
+		Com_Memcpy( &uniform_camera.localViewOrigin, backEnd.ori.viewOrigin, sizeof( vec3_t) );
+		uniform_camera.localViewOrigin[3] = 0.0;
 
+		vk_push_uniform_ghoul2( &uniform_ghoul ); // bone matrices
 		vk_compute_deform();	
 	}
 #endif
+
+#ifdef USE_VK_PBR
+	is_pbr_surface = vk_is_valid_pbr_surface( tess.shader->hasPBR, is_ghoul2_vbo );
+
+	if ( is_pbr_surface && !is_ghoul2_vbo ) {
+		Com_Memcpy( &uniform_camera.modelMatrix, backEnd.ori.modelMatrix, sizeof(float) * 16 );
+		Com_Memcpy( &uniform_camera.viewOrigin, backEnd.refdef.vieworg, sizeof( vec3_t) );
+		uniform_camera.viewOrigin[3] = 0.0;
+	}
+#endif
+	if ( is_pbr_surface || is_ghoul2_vbo )
+		vk_push_uniform_camera( &uniform_camera );
 
 	if ( fogCollapse ) {
 		vk_set_fog_params( &uniform, &fog_stage );
@@ -2161,57 +2220,19 @@ void RB_StageIteratorGeneric( void )
 
 		// PBR
 #ifdef USE_VK_PBR
-		if ( tess_flags & TESS_PBR ) 
-		{
-			if ( backEnd.isGlowPass )
-				tess_flags &= ~TESS_PBR;
-
-			// discard unsuported pbr geometry for now
-			if ( backEnd.projection2D )
-				tess_flags &= ~TESS_PBR;
-
-			if ( backEnd.viewParms.portalView == PV_MIRROR)
-				tess_flags &= ~TESS_PBR;
-
-			if ( backEnd.currentEntity ){
-				if ( backEnd.currentEntity != &tr.worldEntity && !is_ghoul2_vbo )
-					tess_flags &= ~TESS_PBR;
-			}
-			
-			vk_get_pipeline_def( pipeline, &def );
-			if ( def.shader_type < TYPE_GENERIC_BEGIN )
-				tess_flags &= ~TESS_PBR;
-
-			// check if pbr hasn't been discarded
-			if ( tess_flags & TESS_PBR ) {
-
-				if ( fogCollapse || !(tess_flags & TESS_VPOS) ) {
-					Com_Memcpy( &uniform.eyePos, backEnd.ori.viewOrigin, sizeof( vec3_t) );
-					uniform.eyePos[3] = 0.0;
-
-					//VectorCopy(tr.sunDirection, uniform.lightPos); 
-					//uniform.lightPos[3] = 0.0f;
-					vk_push_uniform( &uniform );	
-				}
-
-				// brdf lut
-				vk_update_pbr_descriptor(6, vk.brdflut_image_descriptor);
+		if ( is_pbr_surface && pStage->vk_pbr_flags ) {
+			vk_update_pbr_descriptor(6, vk.brdflut_image_descriptor);
 				
-				// unused preceeding descriptor sets is invalid API behaivior
-				// find a better way to mark unused descriptors 
-				// following THE last valid descriptor set
-				// for now, send a 2x2 pixel white texture
-				if ( pStage->vk_pbr_flags & PBR_HAS_NORMALMAP )
-					vk_update_pbr_descriptor(7, pStage->normalMap->descriptor_set);
+			if ( pStage->vk_pbr_flags & PBR_HAS_NORMALMAP )
+				vk_update_pbr_descriptor(7, pStage->normalMap->descriptor_set);
 
-				if ( pStage->vk_pbr_flags & PBR_HAS_PHYSICALMAP )
-					vk_update_pbr_descriptor(8, pStage->physicalMap->descriptor_set);
-				else
-					vk_update_pbr_descriptor(8, tr.emptyImage->descriptor_set);
+			if ( pStage->vk_pbr_flags & PBR_HAS_PHYSICALMAP )
+				vk_update_pbr_descriptor(8, pStage->physicalMap->descriptor_set);
+			else
+				vk_update_pbr_descriptor(8, tr.emptyImage->descriptor_set);
 
-				if ( !is_ghoul2_vbo )
-					pipeline = pStage->vk_pbr_pipeline[fog_stage];
-			}
+			if ( !is_ghoul2_vbo )
+				pipeline = pStage->vk_pbr_pipeline[fog_stage];
 		}
 #endif
 

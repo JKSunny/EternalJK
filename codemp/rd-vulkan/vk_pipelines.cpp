@@ -24,7 +24,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "tr_local.h"
 
 #ifdef USE_VK_PBR
-static VkVertexInputBindingDescription bindings[11];
+static VkVertexInputBindingDescription bindings[12];
 static VkVertexInputAttributeDescription attribs[9];
 #else
 static VkVertexInputBindingDescription bindings[8];
@@ -40,7 +40,7 @@ static void vk_create_layout_binding( int binding, VkDescriptorType type,
     VkShaderStageFlags flags, VkDescriptorSetLayout *layout ) 
 {
     uint32_t count = 0;
-    VkDescriptorSetLayoutBinding descriptor_binding[3];
+    VkDescriptorSetLayoutBinding descriptor_binding[4];
     VkDescriptorSetLayoutCreateInfo desc;
 
     descriptor_binding[count].binding = binding;
@@ -49,23 +49,34 @@ static void vk_create_layout_binding( int binding, VkDescriptorType type,
     descriptor_binding[count].stageFlags = flags;
     descriptor_binding[count].pImmutableSamplers = NULL;
     count++;
-#ifdef USE_VBO_GHOUL2
-    if ( *layout == vk.set_layout_uniform && vk.vboGhoul2Active ) {
-        descriptor_binding[count].binding = binding + 1; // binding 1 
-        descriptor_binding[count].descriptorType = type;
-        descriptor_binding[count].descriptorCount = 1;
-        descriptor_binding[count].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-        descriptor_binding[count].pImmutableSamplers = NULL;
-        count++;
 
-        descriptor_binding[count].binding = binding + 2; // binding 2 
+    if ( *layout == vk.set_layout_uniform ) {
+        descriptor_binding[count].binding = binding + 1; // binding 1 
         descriptor_binding[count].descriptorType = type;
         descriptor_binding[count].descriptorCount = 1;
         descriptor_binding[count].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
         descriptor_binding[count].pImmutableSamplers = NULL;
-        count++;  
-    }
+        count++;    
+
+#ifdef USE_VBO_GHOUL2      
+        if ( vk.vboGhoul2Active  ) {
+            descriptor_binding[count].binding = binding + 2; // binding 2 
+            descriptor_binding[count].descriptorType = type;
+            descriptor_binding[count].descriptorCount = 1;
+            descriptor_binding[count].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+            descriptor_binding[count].pImmutableSamplers = NULL;
+            count++;
+
+            descriptor_binding[count].binding = binding + 3; // binding 3 
+            descriptor_binding[count].descriptorType = type;
+            descriptor_binding[count].descriptorCount = 1;
+            descriptor_binding[count].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+            descriptor_binding[count].pImmutableSamplers = NULL;
+            count++;  
+        }
 #endif
+    }
+
     desc.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     desc.pNext = NULL;
     desc.flags = 0;
@@ -86,13 +97,15 @@ void vk_create_descriptor_layout( void )
         uint32_t i, maxSets;
 
         pool_size[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-#ifdef USE_VK_PBR
-        pool_size[0].descriptorCount = MAX_DRAWIMAGES + 1 + 1 + 1 + ( VK_NUM_BLUR_PASSES * 4 ) + 1 + 2; // + 2:  brdf-lut, physical
-#else
         pool_size[0].descriptorCount = MAX_DRAWIMAGES + 1 + 1 + 1 + ( VK_NUM_BLUR_PASSES * 4 ) + 1;
+#ifdef USE_VK_PBR
+        if ( vk.pbrActive )
+            pool_size[0].descriptorCount += 1 + ( MAX_DRAWIMAGES * 2 ); // + 1:  brdf-lut | MAX_DRAWIMAGES * (physical + normal)
 #endif
+
         pool_size[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         pool_size[1].descriptorCount = NUM_COMMAND_BUFFERS;
+        pool_size[1].descriptorCount += NUM_COMMAND_BUFFERS;    // camera uniform
 
 #ifdef USE_VBO_GHOUL2
         if ( vk.vboGhoul2Active )
@@ -445,6 +458,9 @@ static void vk_push_vertex_input_binding_attribute( const Vk_Pipeline_Def *def )
     if ( def->vk_pbr_flags ){    
         vk_push_bind( 8, sizeof(vec4_t) );                // qtangent
         vk_push_attr( 8, 8, VK_FORMAT_R32G32B32A32_SFLOAT );
+
+        vk_push_bind( 9, sizeof(vec4_t) );                // lightdir
+        vk_push_attr( 9, 9, VK_FORMAT_R32G32B32A32_SFLOAT );
     }
 #endif
 
@@ -484,11 +500,11 @@ static void vk_push_vertex_input_binding_attribute( const Vk_Pipeline_Def *def )
                     break;
             }
 
-            vk_push_bind( 9, sizeof( vec4_t ) );		// bone indexes
-            vk_push_attr( 9, 9, VK_FORMAT_R32G32B32A32_SFLOAT );
-
-            vk_push_bind( 10, sizeof( vec4_t ) );		// bone weights
+            vk_push_bind( 10, sizeof( vec4_t ) );		// bone indexes
             vk_push_attr( 10, 10, VK_FORMAT_R32G32B32A32_SFLOAT );
+
+            vk_push_bind( 11, sizeof( vec4_t ) );		// bone weights
+            vk_push_attr( 11, 11, VK_FORMAT_R32G32B32A32_SFLOAT );
         }
     }
 #endif

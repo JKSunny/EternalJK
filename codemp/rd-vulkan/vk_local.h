@@ -124,8 +124,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #define PBR_HAS_NORMALMAP				( 1 )
 #define PBR_HAS_PHYSICALMAP				( 2 )
-#define PBR_HAS_ROUGHNESS_VALUE			( 16 )
-#define PBR_HAS_METALLIC_VALUE			( 32 )
+#define PBR_HAS_ROUGHNESS_VALUE			( 4 )
+#define PBR_HAS_METALLIC_VALUE			( 8 )
 
 #define PHYS_NONE						( 1 )
 #define PHYS_ROUGHNESS					( 2 )
@@ -461,9 +461,14 @@ typedef struct vkUniform_s {
 	vec4_t lightVector;
 } vkUniform_t;
 
+typedef struct vkUniformCamera_s {
+	vec4_t viewOrigin;
+	vec4_t localViewOrigin;
+	mat4_t modelMatrix;
+} vkUniformCamera_t;
+
 #ifdef USE_VBO_GHOUL2
 typedef struct vkUniformData_s {
-	vec4_t eyePos;
 	vec4_t ambientLight;
 	vec4_t directedLight;
 	vec4_t lightDir;
@@ -476,7 +481,6 @@ typedef struct vkUniformData_s {
 } vkUniformData_t;
 
 typedef struct vkUniformGhoul_s {
-	mat4_t modelMatrix;
 	mat4_t boneMatrices[72];
 } vkUniformGhoul_t;
 #endif
@@ -554,7 +558,7 @@ typedef struct vk_tess_s {
 	uint32_t			uniform_read_offset;
 
 	VkDeviceSize		buf_offset[9];
-	VkDeviceSize		vbo_offset[11];
+	VkDeviceSize		vbo_offset[12];
 
 	VkBuffer			curr_index_buffer;
 	uint32_t			curr_index_offset;
@@ -562,7 +566,7 @@ typedef struct vk_tess_s {
 	struct {
 		uint32_t		start, end;
 		VkDescriptorSet	current[VK_LAYOUT_COUNT];	// 0:storage, 1:uniform, 2:color0, 3:color1, 4:color2, 5:fog, 6:brdf lut, 7:normal, 8:physical
-		uint32_t		offset[4]; // 0:storage, 1:uniform, 2:data uniform, 3:ghoul2 uniform
+		uint32_t		offset[5]; // 0:storage, 1:uniform, 2: camera uniform, 3: data uniform, 4:ghoul2 uniform
 	} descriptor_set;
 	
 	uint32_t			num_indexes; // value from most recent vk_bind_index() call
@@ -801,6 +805,7 @@ typedef struct {
 
 	uint32_t storage_alignment;
 	uint32_t uniform_item_size;
+	uint32_t uniform_camera_item_size;
 #ifdef USE_VBO_GHOUL2
 	uint32_t uniform_data_item_size;
 	uint32_t uniform_ghoul_item_size;
