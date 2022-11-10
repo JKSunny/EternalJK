@@ -376,21 +376,11 @@ void vk_bind_lighting( int stage, int bundle )
 	}
 }
 
-void vk_update_uniform_descriptor( VkDescriptorSet descriptor, VkBuffer buffer )
+static void vk_write_uniform_descriptor( VkWriteDescriptorSet *desc, VkDescriptorBufferInfo *info, VkDescriptorSet descriptor, const uint32_t binding )
 {
-	VkDescriptorBufferInfo *info, infos[3];
-	VkWriteDescriptorSet *desc, descs[3];
-	uint32_t count = 1;
-
-	info = &infos[0];
-	info->buffer = buffer;
-	info->offset = 0;
-	info->range = sizeof(vkUniform_t);
-
-	desc = &descs[0];
 	desc->sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	desc->dstSet = descriptor;
-	desc->dstBinding = 0;
+	desc->dstBinding = binding;
 	desc->dstArrayElement = 0;
 	desc->descriptorCount = 1;
 	desc->pNext = NULL;
@@ -398,50 +388,42 @@ void vk_update_uniform_descriptor( VkDescriptorSet descriptor, VkBuffer buffer )
 	desc->pImageInfo = NULL;
 	desc->pBufferInfo = info;
 	desc->pTexelBufferView = NULL;
+}
+
+void vk_update_uniform_descriptor( VkDescriptorSet descriptor, VkBuffer buffer )
+{
+	uint32_t count = 0;
+	VkDescriptorBufferInfo info[3];
+	VkWriteDescriptorSet desc[3];
+
+	info[count].buffer = buffer;
+	info[count].offset = 0;
+	info[count].range = sizeof(vkUniform_t);
+
+	vk_write_uniform_descriptor( desc + 0, info + 0, descriptor, 0 );
+	count++;
 
 #ifdef USE_VBO_GHOUL2
 	if ( vk.vboGhoul2Active ) {
 		// data
-		info++;
-		info->buffer = buffer;
-		info->offset = 0;
-		info->range = sizeof(vkUniformData_t);
+		info[count].buffer = buffer;
+		info[count].offset = 0;
+		info[count].range = sizeof(vkUniformData_t);
 
-		desc++;
-		desc->sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		desc->dstSet = descriptor;
-		desc->dstBinding = 1;
-		desc->dstArrayElement = 0;
-		desc->descriptorCount = 1;
-		desc->pNext = NULL;
-		desc->descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-		desc->pImageInfo = NULL;
-		desc->pBufferInfo = info;
-		desc->pTexelBufferView = NULL;
+		vk_write_uniform_descriptor( desc + 1, info + 1, descriptor, 1 );
 		count++;
 
 		// bones
-		info++;
-		info->buffer = buffer;
-		info->offset = 0;
-		info->range = sizeof(vkUniformGhoul_t);
+		info[count].buffer = buffer;
+		info[count].offset = 0;
+		info[count].range = sizeof(vkUniformGhoul_t);
 
-		desc++;
-		desc->sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		desc->dstSet = descriptor;
-		desc->dstBinding = 2;
-		desc->dstArrayElement = 0;
-		desc->descriptorCount = 1;
-		desc->pNext = NULL;
-		desc->descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-		desc->pImageInfo = NULL;
-		desc->pBufferInfo = info;
-		desc->pTexelBufferView = NULL;
+		vk_write_uniform_descriptor( desc + 2, info + 2, descriptor, 2 );
 		count++;
 	}
 #endif
 
-	qvkUpdateDescriptorSets(vk.device, count, descs, 0, NULL);
+	qvkUpdateDescriptorSets(vk.device, count, desc, 0, NULL);
 }
 
 void vk_create_storage_buffer( uint32_t size )

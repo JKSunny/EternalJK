@@ -35,29 +35,29 @@ static void vk_create_layout_binding( int binding, VkDescriptorType type,
     VkShaderStageFlags flags, VkDescriptorSetLayout *layout ) 
 {
     uint32_t count = 0;
-    VkDescriptorSetLayoutBinding descriptor_binding[3];
+    VkDescriptorSetLayoutBinding bind[3];
     VkDescriptorSetLayoutCreateInfo desc;
     
-    descriptor_binding[count].binding = binding;
-    descriptor_binding[count].descriptorType = type;
-    descriptor_binding[count].descriptorCount = 1;
-    descriptor_binding[count].stageFlags = flags;
-    descriptor_binding[count].pImmutableSamplers = NULL;
+    bind[count].binding = binding;
+    bind[count].descriptorType = type;
+    bind[count].descriptorCount = 1;
+    bind[count].stageFlags = flags;
+    bind[count].pImmutableSamplers = NULL;
     count++;
 #ifdef USE_VBO_GHOUL2
     if ( *layout == vk.set_layout_uniform && vk.vboGhoul2Active ) {
-        descriptor_binding[count].binding = binding + 1; // binding 1 
-        descriptor_binding[count].descriptorType = type;
-        descriptor_binding[count].descriptorCount = 1;
-        descriptor_binding[count].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-        descriptor_binding[count].pImmutableSamplers = NULL;
+        bind[count].binding = binding + 1; // binding 1 
+        bind[count].descriptorType = type;
+        bind[count].descriptorCount = 1;
+        bind[count].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+        bind[count].pImmutableSamplers = NULL;
         count++;
 
-        descriptor_binding[count].binding = binding + 2; // binding 2 
-        descriptor_binding[count].descriptorType = type;
-        descriptor_binding[count].descriptorCount = 1;
-        descriptor_binding[count].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-        descriptor_binding[count].pImmutableSamplers = NULL;
+        bind[count].binding = binding + 2; // binding 2 
+        bind[count].descriptorType = type;
+        bind[count].descriptorCount = 1;
+        bind[count].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        bind[count].pImmutableSamplers = NULL;
         count++;  
     }
 #endif
@@ -65,7 +65,7 @@ static void vk_create_layout_binding( int binding, VkDescriptorType type,
     desc.pNext = NULL;
     desc.flags = 0;
     desc.bindingCount = count;
-    desc.pBindings = descriptor_binding;
+    desc.pBindings = bind;
     VK_CHECK(qvkCreateDescriptorSetLayout(vk.device, &desc, NULL, layout));
 }
 
