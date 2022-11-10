@@ -422,45 +422,41 @@ static void vk_write_uniform_descriptor( VkWriteDescriptorSet *desc, VkDescripto
 
 void vk_update_uniform_descriptor( VkDescriptorSet descriptor, VkBuffer buffer )
 {
-	VkDescriptorBufferInfo *info, infos[4];
-	VkWriteDescriptorSet desc[4];
 	uint32_t count = 0;
+	VkDescriptorBufferInfo info[4];
+	VkWriteDescriptorSet desc[4];
 
-	info = &infos[0];
-	info->buffer = buffer;
-	info->offset = 0;
-	info->range = sizeof(vkUniform_t);
+	info[count].buffer = buffer;
+	info[count].offset = 0;
+	info[count].range = sizeof(vkUniform_t);
 
-	vk_write_uniform_descriptor( desc + 0, info, descriptor, 0 );
+	vk_write_uniform_descriptor( desc + 0, info + 0, descriptor, 0 );
 	count++;
 
 	// camera
-	info++;
-	info->buffer = buffer;
-	info->offset = 0;
-	info->range = sizeof(vkUniformCamera_t);
+	info[count].buffer = buffer;
+	info[count].offset = 0;
+	info[count].range = sizeof(vkUniformCamera_t);
 
-	vk_write_uniform_descriptor( desc + 1, info, descriptor, 1 );
+	vk_write_uniform_descriptor( desc + 1, info + 1, descriptor, 1 );
 	count++;
 
 #ifdef USE_VBO_GHOUL2
 	if ( vk.vboGhoul2Active ) {
 		// data
-		info++;
-		info->buffer = buffer;
-		info->offset = 0;
-		info->range = sizeof(vkUniformData_t);
+		info[count].buffer = buffer;
+		info[count].offset = 0;
+		info[count].range = sizeof(vkUniformData_t);
 
-		vk_write_uniform_descriptor( desc + 2, info, descriptor, 2 );
+		vk_write_uniform_descriptor( desc + 2, info + 2, descriptor, 2 );
 		count++;
 
 		// bones
-		info++;
-		info->buffer = buffer;
-		info->offset = 0;
-		info->range = sizeof(vkUniformGhoul_t);
+		info[count].buffer = buffer;
+		info[count].offset = 0;
+		info[count].range = sizeof(vkUniformGhoul_t);
 
-		vk_write_uniform_descriptor( desc + 3, info, descriptor, 3 );
+		vk_write_uniform_descriptor( desc + 3, info + 3, descriptor, 3 );
 		count++;
 	}
 #endif
