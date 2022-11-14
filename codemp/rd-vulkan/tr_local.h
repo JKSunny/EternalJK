@@ -38,7 +38,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define MAX_REAL_DLIGHTS		( MAX_DLIGHTS*2 )
 #define MAX_LITSURFS			( MAX_DRAWSURFS )
 #define	MAX_FLARES				256
-	
+
 #define MAX_TEXTURE_SIZE		2048 // must be less or equal to 32768
 #define MAX_TEXTURE_UNITS		8
 
@@ -253,7 +253,7 @@ typedef struct image_s {
 	VkDescriptorSet			descriptor_set;
 	qboolean				isLightmap;
 	uint32_t				mipLevels;		// gl texture binding
-	VkSamplerAddressMode	wrapClampMode;	
+	VkSamplerAddressMode	wrapClampMode;
 } image_t;
 
 //===============================================================================
@@ -474,7 +474,7 @@ typedef struct textureBundle_s {
 
 	bool			oneShotAnimMap;				// check this
 	bool			vertexLightmap;				// check this
-	
+
 	waveForm_t		rgbWave;
 	colorGen_t		rgbGen;
 
@@ -598,7 +598,7 @@ typedef struct shader_s {
 
 	qboolean	fogCollapse;
 	int			tessFlags;
-	
+
 	shaderStage_t	*stages[MAX_SHADER_STAGES];
 	deformStage_t	*deforms[MAX_SHADER_DEFORMS];
 
@@ -615,7 +615,7 @@ typedef struct shader_s {
 	float		clampTime;							// time this shader is clamped to
 	float		timeOffset;                         // current time offset for this shader
 
-	
+
 	qboolean	hasGlow;							// True if this shader has a stage with glow in it (just an optimization).
 
 	int			hasScreenMap;
@@ -743,7 +743,7 @@ typedef struct viewParms_s {
 	orientationr_t	ori;					// Can't use "or" as it is a reserved word with gcc DREWS 2/2/2002
 	orientationr_t	world;
 	vec3_t			pvsOrigin;				// may be different than or.origin for portals
-	portalView_t	portalView;				// define view type for default, portal or mirror 
+	portalView_t	portalView;				// define view type for default, portal or mirror
 	int				frameSceneNum;			// copied from tr.frameSceneNum
 	int				frameCount;				// copied from tr.frameCount
 	cplane_t		portalPlane;			// clip anything behind this if mirroring
@@ -968,7 +968,6 @@ typedef struct
 	byte		latLong[2];
 } mgrid_t;
 
-
 typedef struct world_s {
 	char		name[MAX_QPATH];		// ie: maps/tim_dm2.bsp
 	char		baseName[MAX_QPATH];	// ie: tim_dm2
@@ -1023,6 +1022,42 @@ typedef struct world_s {
 } world_t;
 
 //======================================================================
+
+typedef enum {
+	MOD_BAD,
+	MOD_BRUSH,
+	MOD_MESH,
+	/*
+	Ghoul2 Insert Start
+	*/
+	MOD_MDXM,
+	MOD_MDXA
+	/*
+	Ghoul2 Insert End
+	*/
+
+} modtype_t;
+
+typedef struct model_s {
+	char		name[MAX_QPATH];
+	modtype_t	type;
+	int			index;				// model = tr.models[model->mod_index]
+
+	int			dataSize;			// just for listing purposes
+	bmodel_t	*bmodel;			// only if type == MOD_BRUSH
+	md3Header_t	*md3[MD3_MAX_LODS];	// only if type == MOD_MESH
+/*
+Ghoul2 Insert Start
+*/
+	mdxmHeader_t *mdxm;				// only if type == MOD_GL2M which is a GHOUL II Mesh file NOT a GHOUL II animation file
+	mdxaHeader_t *mdxa;				// only if type == MOD_GL2A which is a GHOUL II Animation file
+/*
+Ghoul2 Insert End
+*/
+	unsigned char	numLods;
+	bool			bspInstance;			// model is a bsp instance
+} model_t;
+
 
 #define	MAX_MOD_KNOWN	1024
 
@@ -1146,7 +1181,7 @@ typedef struct {
 
 	textureCompressionRef_t textureCompression;
 	qboolean				textureFloat;
-	
+
 	qboolean swizzleNormalmap;
 
 	qboolean framebufferMultisample;
@@ -1272,7 +1307,7 @@ typedef struct trGlobals_s {
 	image_t					*dlightImage;		// inverse-quare highlight for projective adding
 	image_t					*flareImage;
 	image_t					*whiteImage;		// full of 0xff
-	image_t					*blackImage;			
+	image_t					*blackImage;
 	image_t					*identityLightImage;// full of tr.identityLightByte
 
 	shader_t				*defaultShader;
@@ -1520,7 +1555,7 @@ extern	cvar_t	*r_shadows;				// controls shadows: 0 = none, 1 = blur, 2 = stenci
 extern	cvar_t	*r_flares;				// light flares
 extern	cvar_t	*r_flareSize;			// light flare size
 extern cvar_t	*r_flareFade;
-extern cvar_t	*r_flareCoeff;			// coefficient for the flare intensity falloff function. 
+extern cvar_t	*r_flareCoeff;			// coefficient for the flare intensity falloff function.
 
 extern	cvar_t	*r_intensity;
 
@@ -1931,18 +1966,17 @@ public:
 		surfaceData		= src.surfaceData;
 		alternateTex	= src.alternateTex;
 		goreChain		= src.goreChain;
-
 		return *this;
 	}
 #endif
 
 CRenderableSurface():
 	ident( SF_MDX ),
-	boneCache( 0 ),
+	boneCache( nullptr ),
 #ifdef _G2_GORE
-	surfaceData( 0 ),
-	alternateTex( 0 ),
-	goreChain( 0 )
+	surfaceData( nullptr ),
+	alternateTex( nullptr ),
+	goreChain( nullptr )
 #else
 	surfaceData( 0 )
 #endif
@@ -1952,10 +1986,10 @@ CRenderableSurface():
 	void Init()
 	{
 		ident			= SF_MDX;
-		boneCache		= 0;
-		surfaceData		= 0;
-		alternateTex	= 0;
-		goreChain		= 0;
+		boneCache		= nullptr;
+		surfaceData		= nullptr;
+		alternateTex	= nullptr;
+		goreChain		= nullptr;
 	}
 #endif
 };
@@ -2013,7 +2047,7 @@ RENDERER BACK END COMMAND QUEUE
 
 =============================================================
 */
-#define	MAX_RENDER_COMMANDS	0x40000
+#define	MAX_RENDER_COMMANDS	0x80000
 
 typedef struct renderCommandList_s {
 	byte		cmds[MAX_RENDER_COMMANDS];
@@ -2141,13 +2175,14 @@ void			Multiply_3x4Matrix( mdxaBone_t *out, mdxaBone_t *in2, mdxaBone_t *in );
 extern qboolean R_LoadMDXM ( model_t *mod, void *buffer, const char *name, qboolean &bAlreadyCached );
 extern qboolean R_LoadMDXA ( model_t *mod, void *buffer, const char *name, qboolean &bAlreadyCached );
 void			RE_InsertModelIntoHash( const char *name, model_t *mod );
+void			ResetGhoul2RenderableSurfaceHeap( void );
 /*
 Ghoul2 Insert End
 */
 
 void R_InitDecals( void );
 void RE_ClearDecals( void );
-void RE_AddDecalToScene( qhandle_t shader, const vec3_t origin, const vec3_t dir, float orientation, 
+void RE_AddDecalToScene( qhandle_t shader, const vec3_t origin, const vec3_t dir, float orientation,
 	float r, float g, float b, float a, qboolean alphaFade, float radius, qboolean temporary );
 void R_AddDecals( void );
 
@@ -2200,8 +2235,6 @@ void		vk_upload_image( image_t *image, byte *pic );
 void		vk_upload_image_data( image_t *image, int x, int y, int width, int height, int mipmaps, byte *pixels, int size ) ;
 void		vk_generate_image_upload_data( image_t *image, byte *data, Image_Upload_Data *upload_data );
 void		vk_create_image( image_t *image, int width, int height, int mip_levels );
-
-byte		*vk_resample_image_data( const image_t *image, byte *data, const int data_size, int *bytes_per_pixel );
 
 static QINLINE unsigned int log2pad(unsigned int v, int roundup)
 {
