@@ -101,6 +101,8 @@ typedef struct refexport_s {
 	int					(*MarkFragments)						( int numPoints, const vec3_t *points, const vec3_t projection, int maxPoints, vec3_t pointBuffer, int maxFragments, markFragment_t *fragmentBuffer );
 
 	int					(*LerpTag)								( orientation_t *tag,  qhandle_t model, int startFrame, int endFrame, float frac, const char *tagName );
+	void *				(*GetImGuiContext)						( void );
+	
 	void				(*ModelBounds)							( qhandle_t model, vec3_t mins, vec3_t maxs );
 	void				(*ModelBoundsRef)						( refEntity_t *model, vec3_t mins, vec3_t maxs );
 
@@ -269,6 +271,7 @@ typedef struct refimport_s {
 	void			(*Z_MorphMallocTag)					( void *pvBuffer, memtag_t eDesiredTag );
 
 	void			(*Cmd_ExecuteString)				( const char *text );
+	void			(*Cbuf_ExecuteText)					( int exec_when, const char *text );
 	int				(*Cmd_Argc)							( void );
 	char *			(*Cmd_Argv)							( int arg );
 	void			(*Cmd_ArgsBuffer)					( char *buffer, int bufferLength );

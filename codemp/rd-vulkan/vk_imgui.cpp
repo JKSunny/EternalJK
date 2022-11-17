@@ -22,15 +22,15 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 #include "tr_local.h"
 
-#include <imgui/imgui.h>
-#include <imgui/imgui.cpp>
-#include <imgui/imgui_draw.cpp>
-#include <imgui/imgui_widgets.cpp>
-#include <imgui/imgui_tables.cpp>
-#include <imgui/backends/imgui_impl_vulkan.cpp>
-#include <imgui/backends/imgui_impl_sdl.cpp>
-#include "imgui/icons/FontAwesome5/IconsFontAwesome5.h"
-#include "imgui/icons/FontAwesome5/fa5solid900.cpp"
+#include <imgui.h>
+#include <imgui.cpp>
+#include <imgui_draw.cpp>
+#include <imgui_widgets.cpp>
+#include <imgui_tables.cpp>
+#include <backends/imgui_impl_vulkan.cpp>
+#include <backends/imgui_impl_sdl.cpp>
+#include "icons/FontAwesome5/IconsFontAwesome5.h"
+#include "icons/FontAwesome5/fa5solid900.cpp"
 
 #include <SDL_video.h>
 #include <typeinfo>
@@ -38,13 +38,55 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 SDL_Window			*screen;
 VkDescriptorPool	imguiPool;
 ImGuiGlobal			imguiGlobal;
+ImGuiContext		*ImContext;
 
-static SDL_Window *vk_imgui_get_sdl_window( void ) {
+static void vk_imgui_execute_cmd( const char *text ){
+	ri.Cbuf_ExecuteText( EXEC_APPEND, va( "%s\n", text ) );	
+}
+
+static void vk_imgui_create_gui( void ) 
+{
+	ImGuiIO& io = ImGui::GetIO();
+
+	ImGui::Begin("Debug information");
+
+	ImGui::SetWindowSize(ImVec2((float)350, (float)230));
+	ImGui::Text(va("Input state: %s", ( imguiGlobal.input_state ? "enabled" : "disabled" ) ) );
+	ImGui::Text(va("Input value: %d", in_imgui->integer) );
+	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
+	ImGui::Text("Mouse x:%d y:%d", (int)io.MousePos.x, (int)io.MousePos.y);
+    
+	ImGui::PushStyleVar( ImGuiStyleVar_FramePadding, ImVec2( 15, 8.5 ) );
+	
+	static char str0[128] = "";
+    ImGui::InputText("##console-text", str0, IM_ARRAYSIZE(str0));
+	ImGui::PopStyleVar();
+
+	ImGui::SameLine();
+
+	if ( ImGui::Button( ICON_FA_PAPER_PLANE, ImVec2{ 30, 30 } ) )
+		vk_imgui_execute_cmd( va("say %s", str0) );
+	
+	ImGui::SameLine();
+
+	if ( ImGui::Button( ICON_FA_JEDI, ImVec2{ 30, 30 } ) )
+		vk_imgui_execute_cmd( "connect 135.125.145.49" );	
+
+	ImGui::End();
+}
+
+static SDL_Window *vk_imgui_get_sdl_window( void )
+{
 	//return SDL_GetWindowFromID( window.id );
 	return (SDL_Window*)window.sdl_handle;
 }
 
-static void vk_imgui_dark_theme( void ){
+void *R_GetImGuiContext( void  ) {
+	return ImContext;
+}
+
+static void vk_imgui_dark_theme( void )
+{
 	auto& colors = ImGui::GetStyle().Colors;
 	colors[ImGuiCol_WindowBg] = ImVec4{ 0.1f, 0.105f, 0.11f, 1.0f };
 
@@ -86,7 +128,8 @@ static void vk_imgui_dark_theme( void ){
 	io.Fonts->AddFontFromMemoryCompressedTTF( FA5SOLID900_compressed_data, FA5SOLID900_compressed_size, 12.0f, &icons_config, icons_ranges );	
 }
 
-void vk_imgui_initialize( void ) {
+void vk_imgui_initialize( void )
+{
 	VkSubmitInfo end_info;
 	VkCommandBuffer command_buffer;
 	VkCommandBufferBeginInfo begin_info;
@@ -121,9 +164,12 @@ void vk_imgui_initialize( void ) {
 
 	ri.Printf( PRINT_ALL, S_COLOR_CYAN "\n\nDear ImGui library is added to extend the excisting GUI.\n" );
 	ri.Printf( PRINT_ALL, S_COLOR_CYAN "Github page & License are referenced here https://github.com/ocornut/imgui \n\n" );
+	ri.Printf( PRINT_ALL, S_COLOR_CYAN "\n\nCIMGUI is a thin c-api wrapper for ImGui.\n" );
+	ri.Printf( PRINT_ALL, S_COLOR_CYAN "Github page & License are referenced here https://github.com/cimgui/cimgui \n\n" );
 
-	ImGui::CreateContext();
+	ImContext = ImGui::CreateContext();
 	ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+
 	// https://github.com/ocornut/imgui/issues/3492
 	//ImGui::StyleColorsDark();
 	vk_imgui_dark_theme();
@@ -168,21 +214,19 @@ void vk_imgui_initialize( void ) {
 	}
 }
 
-void vk_imgui_shutdown( void ){
-
+void vk_imgui_shutdown( void )
+{
 	ImGui_ImplVulkan_DestroyFontUploadObjects();
-
 	qvkDestroyDescriptorPool( vk.device, imguiPool, nullptr );
 	ImGui_ImplVulkan_Shutdown();
-
     ImGui_ImplSDL2_Shutdown();
-    ImGui::DestroyContext();
+    ImGui::DestroyContext( ImContext );
 
 	Com_Memset( &imguiGlobal, 0, sizeof(imguiGlobal) );
 }
 
-static void vk_imgui_get_input_state( void ) {
-
+static void vk_imgui_get_input_state( void )
+{
 	if ( in_imgui->integer && !imguiGlobal.input_state ){
 		imguiGlobal.input_state = qtrue;
 
@@ -194,26 +238,12 @@ static void vk_imgui_get_input_state( void ) {
 
 		SDL_SetRelativeMouseMode( SDL_TRUE );
 	}
-
-	/*if( !r_imgui->integer ){
-		// when not in drawing state, but were to enable input state. 
-		// disable it right away.
-		if ( imguiGlobal.input_state ){
-			ri.Cvar_Set( "in_imgui", "0" );
-			SDL_SetRelativeMouseMode( SDL_TRUE );
-			imguiGlobal.input_state = qfalse;
-		}
-	}*/
 }
 
-void vk_imgui_begin_frame( void ) {
-	
+void vk_imgui_begin_frame( void )
+{
 	vk_imgui_get_input_state();
 	
-	//if( !r_imgui->integer )
-	//	return;
-
-	// input state is enabled
 	if ( imguiGlobal.input_state ){
 		SDL_Event e;
 
@@ -222,7 +252,7 @@ void vk_imgui_begin_frame( void ) {
 			ImGui_ImplSDL2_ProcessEvent( &e );
 
 			// disable input state
-			if( e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_F1 )
+			if ( e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_F1 )
 				ri.Cvar_Set( "in_imgui", "0" );
 		}
 	}
@@ -239,36 +269,14 @@ void vk_imgui_begin_frame( void ) {
 	ImGui::NewFrame();
 }
 
-static void vk_imgui_create_gui( void ) 
-{
-	ImGuiIO& io = ImGui::GetIO();
-
-	ImGui::Begin("Debug information");
-
-	ImGui::SetWindowSize(ImVec2((float)350, (float)130));
-	ImGui::Text(va("Input state: %s", ( imguiGlobal.input_state ? "enabled" : "disabled" ) ) );
-	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
-	ImGui::Text("Mouse x:%d y:%d", (int)io.MousePos.x, (int)io.MousePos.y);
-    
-	ImGui::PushStyleVar( ImGuiStyleVar_FramePadding, ImVec2( 15, 8.5 ) );
-	
-	static char str0[128] = "";
-    ImGui::InputText("##console-text", str0, IM_ARRAYSIZE(str0));
-	ImGui::PopStyleVar();
-
-	ImGui::SameLine();
-
-	if( ImGui::Button( ICON_FA_PAPER_PLANE, ImVec2{ 30, 30 } ) )
-		ri.Cmd_ExecuteString( va("say %s", str0) );
-
-	ImGui::End();
+static void vk_imgui_end_frame( void ) {
+	ImGui::Render();
+	ImGui_ImplVulkan_RenderDrawData( ImGui::GetDrawData(), vk.cmd->command_buffer );
 }
 
 void vk_imgui_draw( void ) 
 {
-	vk_imgui_begin_frame();
 	vk_imgui_create_gui();
-	
-	ImGui::Render();
-	ImGui_ImplVulkan_RenderDrawData( ImGui::GetDrawData(), vk.cmd->command_buffer );
+
+	vk_imgui_end_frame();
 }

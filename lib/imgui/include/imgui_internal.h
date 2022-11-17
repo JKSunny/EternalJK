@@ -3174,6 +3174,14 @@ namespace ImGui
     IMGUI_API void          DebugNodeViewport(ImGuiViewportP* viewport);
     IMGUI_API void          DebugRenderViewportThumbnail(ImDrawList* draw_list, ImGuiViewportP* viewport, const ImRect& bb);
 
+    // Extended
+    IMGUI_API void          BeginPieMenuEx( bool released );
+    IMGUI_API void          EndPieMenuEx( void );
+    IMGUI_API bool          BeginPiePopup(const char* pName, ImVec2 center, int iMouseButton, bool released);
+    IMGUI_API void          EndPiePopup();
+    IMGUI_API bool          BeginPieMenu(const char* pName, bool bEnabled);
+    IMGUI_API void          EndPieMenu();
+    IMGUI_API bool          PieMenuItem(const char* pName, bool bEnabled);
 } // namespace ImGui
 
 

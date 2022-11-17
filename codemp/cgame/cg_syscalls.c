@@ -111,6 +111,9 @@ void trap_SendClientCommand( const char *s ) {
 void trap_UpdateScreen( void ) {
 	Q_syscall( CG_UPDATESCREEN );
 }
+void trap_R_GetImGuiContext( void ) {
+	return Q_syscall( CG_R_GETIMGUICONTEXT );
+}
 void trap_CM_LoadMap( const char *mapname, qboolean SubBSP ) {
 	Q_syscall( CG_CM_LOADMAP, mapname, SubBSP );
 }
@@ -769,6 +772,7 @@ static void TranslateSyscalls( void ) {
 	trap->FS_Read							= CGSyscall_FS_Read;
 	trap->FS_Write							= CGSyscall_FS_Write;
 	trap->UpdateScreen						= trap_UpdateScreen;
+	trap->R_GetImGuiContext					= trap_R_GetImGuiContext;
 	trap->CM_InlineModel					= trap_CM_InlineModel;
 	trap->CM_LoadMap						= trap_CM_LoadMap;
 	trap->CM_NumInlineModels				= trap_CM_NumInlineModels;

@@ -467,6 +467,8 @@ extern cvar_t	*cl_afkTimeUnfocused;
 
 extern cvar_t	*cl_logChat;
 
+extern cvar_t	*in_imgui;
+
 #if defined(DISCORD) && !defined(_DEBUG)
 extern cvar_t	*cl_discordRichPresence;
 #endif

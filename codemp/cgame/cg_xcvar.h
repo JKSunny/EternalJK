@@ -380,5 +380,7 @@ XCVAR_DEF( ui_tm2_c5_cnt,						"0",					NULL,					CVAR_ROM|CVAR_INTERNAL )
 XCVAR_DEF( ui_tm2_cnt,							"0",					NULL,					CVAR_ROM|CVAR_INTERNAL )
 XCVAR_DEF( ui_tm3_cnt,							"0",					NULL,					CVAR_ROM|CVAR_INTERNAL )
 
+XCVAR_DEF( in_imgui,							"0",					NULL,					CVAR_ARCHIVE_ND )
+
 
 #undef XCVAR_DEF

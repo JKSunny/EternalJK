@@ -184,6 +184,9 @@ void trap_UpdateScreen( void ) {
 int trap_CM_LerpTag( orientation_t *tag, clipHandle_t mod, int startFrame, int endFrame, float frac, const char *tagName ) {
 	return Q_syscall( UI_CM_LERPTAG, tag, mod, startFrame, endFrame, PASSFLOAT(frac), tagName );
 }
+void trap_R_GetImGuiContext( void ) {
+	return Q_syscall( UI_R_GETIMGUICONTEXT );
+}
 void trap_S_StartLocalSound( sfxHandle_t sfx, int channelNum ) {
 	Q_syscall( UI_S_STARTLOCALSOUND, sfx, channelNum );
 }
@@ -602,6 +605,8 @@ static void TranslateSyscalls( void ) {
 	trap->R_Font_StrLenChars				= trap_R_Font_StrLenChars;
 	trap->R_Font_StrLenPixels				= trap_R_Font_StrLenPixels;
 	trap->R_LerpTag							= trap_CM_LerpTag;
+	trap->R_GetImGuiContext					= trap_R_GetImGuiContext;
+
 	trap->R_ModelBounds						= trap_R_ModelBounds;
 	trap->R_RegisterFont					= trap_R_RegisterFont;
 	trap->R_RegisterModel					= trap_R_RegisterModel;

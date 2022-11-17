@@ -224,6 +224,7 @@ typedef enum cgameImportLegacy_e {
 	CG_REMOVECOMMAND,
 	CG_SENDCLIENTCOMMAND,
 	CG_UPDATESCREEN,
+	CG_R_GETIMGUICONTEXT,
 	CG_CM_LOADMAP,
 	CG_CM_NUMINLINEMODELS,
 	CG_CM_INLINEMODEL,
@@ -575,6 +576,7 @@ typedef struct cgameImport_s {
 	qboolean		(*R_Language_IsAsian)					( void );
 	qboolean		(*R_Language_UsesSpaces)				( void );
 	int				(*R_LerpTag)							( orientation_t *tag,  qhandle_t model, int startFrame, int endFrame, float frac, const char *tagName );
+	void *			(*R_GetImGuiContext)					( void );	
 	int				(*R_LightForPoint)						( vec3_t point, vec3_t ambientLight, vec3_t directedLight, vec3_t lightDir );
 	void			(*R_LoadWorld)							( const char *name );
 	int				(*R_MarkFragments)						( int numPoints, const vec3_t *points, const vec3_t projection, int maxPoints, vec3_t pointBuffer, int maxFragments, markFragment_t *fragmentBuffer );

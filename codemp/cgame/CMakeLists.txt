@@ -63,6 +63,7 @@ set(MPCGameCgameFiles
 	"${MPDir}/cgame/cg_effects.c"
 	"${MPDir}/cgame/cg_ents.c"
 	"${MPDir}/cgame/cg_event.c"
+	"${MPDir}/cgame/cg_imgui.c"
 	"${MPDir}/cgame/cg_info.c"
 	"${MPDir}/cgame/cg_light.c"
 	"${MPDir}/cgame/cg_localents.c"
@@ -138,6 +139,10 @@ set(MPCGameGFiles
 	)
 source_group("ghoul2" FILES ${MPCGameG2Files})
 set(MPCGameFiles ${MPCGameFiles} ${MPCGameG2Files})
+
+# Transparently use our bundled imgui library.
+list(APPEND MPCGameIncludeDirectories ${IMGUI_INCLUDE_DIRS})
+list(APPEND MPCGameLibraries          ${IMGUI_LIBRARIES})
 
 add_library(${MPCGame} SHARED ${MPCGameFiles})
 

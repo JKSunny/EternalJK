@@ -1189,14 +1189,16 @@ void IN_Frame (void) {
 	// If not DISCONNECTED (main menu) or ACTIVE (in game), we're loading
 	loading = (qboolean)( cls.state != CA_DISCONNECTED && cls.state != CA_ACTIVE );
 
-	// imgui
-	if ( in_imgui->integer ){
+	if ( in_imgui->integer == 1 ) { // disable all application inputs
 		eventTime = Sys_Milliseconds( );
 
 		return;
 	}
 
-	if( !cls.glconfig.isFullscreen && ( Key_GetCatcher( ) & KEYCATCH_CONSOLE ) )
+	if ( in_imgui->integer == 2 ) { // disable mouse only
+		IN_DeactivateMouse( );
+	}
+	else if( !cls.glconfig.isFullscreen && ( Key_GetCatcher( ) & KEYCATCH_CONSOLE ) )
 	{
 		// Console is down in windowed mode
 		IN_DeactivateMouse( );

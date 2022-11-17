@@ -361,6 +361,9 @@ void RE_BeginFrame( stereoFrame_t stereoFrame ) {
 	
 	ResetGhoul2RenderableSurfaceHeap();
 
+	if ( vk.active && !ri.VK_IsMinimized() )
+		vk_imgui_begin_frame();
+
 	backEnd.doneBloom = qfalse;
 
 	tr.frameCount++;

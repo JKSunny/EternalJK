@@ -1218,6 +1218,10 @@ typedef struct cg_s {
 	float			invenSelectTime;
 	float			forceSelectTime;
 
+	// ImGui
+	qboolean		igShowEmotes;
+	qboolean		igHideEmotes;
+
 	vec3_t			lastFPFlashPoint;
 
 /*

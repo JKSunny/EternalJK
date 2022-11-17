@@ -997,4 +997,6 @@ void		vk_imgui_initialize( void );
 void		vk_imgui_shutdown( void );
 void		vk_imgui_begin_frame( void );
 void		vk_imgui_draw( void );
+
+void		*R_GetImGuiContext( void );
 #endif

@@ -418,3 +418,7 @@ qboolean UI_SaberTypeForSaber( const char *saberName, char *saberType );
 // new ui
 
 extern uiImport_t *trap;
+
+void UI_ImGuiInitMenus( qboolean reset );
+void UI_ImGuiFrame( void );
+void UI_ImGuiFindMenu( menuDef_t *menu );

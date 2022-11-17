@@ -158,6 +158,9 @@ list(APPEND MPVulkanRendererLibraries          ${ZLIB_LIBRARIES})
 list(APPEND MPVulkanRendererIncludeDirectories ${MINIZIP_INCLUDE_DIRS})
 list(APPEND MPVulkanRendererLibraries          ${MINIZIP_LIBRARIES})
 
+# Transparently use our bundled imgui library.
+list(APPEND MPVulkanRendererIncludeDirectories ${IMGUI_INCLUDE_DIRS})
+list(APPEND MPVulkanRendererLibraries          ${IMGUI_LIBRARIES})
 
 # Add SDL2
 if(UseInternalSDL2)

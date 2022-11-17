@@ -1499,6 +1499,9 @@ void UI_LoadMenus(const char *menuFile, qboolean reset) {
 		}
 	}
 
+
+	UI_ImGuiInitMenus( reset );
+
 	if (reset) {
 		Menu_Reset();
 	}
@@ -11747,6 +11750,8 @@ void UI_Refresh( int realtime )
 	}
 
 	UI_UpdateCvars();
+
+	UI_ImGuiFrame();
 
 	if (Menu_Count() > 0) {
 		// paint all the menus
