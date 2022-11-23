@@ -90,7 +90,7 @@ uint64_t R_GetImGuiTexture( qhandle_t hShader ) {
 	image_t *image = shader->stages[0]->bundle[0].image[0];
 
 	if ( image->descriptor_set != VK_NULL_HANDLE )
-		return image->descriptor_set;
+		return (uint64_t)image->descriptor_set;
 
 	return NULL;
 }
