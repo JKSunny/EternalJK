@@ -998,6 +998,6 @@ void		vk_imgui_shutdown( void );
 void		vk_imgui_begin_frame( void );
 void		vk_imgui_draw( void );
 
-void			*R_GetImGuiContext( void );
-VkDescriptorSet	R_GetImGuiTexture( qhandle_t hShader );
+void		*R_GetImGuiContext( void );
+uint64_t	R_GetImGuiTexture( qhandle_t hShader );
 #endif

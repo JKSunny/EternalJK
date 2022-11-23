@@ -102,7 +102,7 @@ typedef struct refexport_s {
 
 	int					(*LerpTag)								( orientation_t *tag,  qhandle_t model, int startFrame, int endFrame, float frac, const char *tagName );
 	void *				(*GetImGuiContext)						( void );
-	VkDescriptorSet		(*GetImGuiTexture)						( qhandle_t hShader );
+	uint64_t			(*GetImGuiTexture)						( qhandle_t hShader );
 	
 	void				(*ModelBounds)							( qhandle_t model, vec3_t mins, vec3_t maxs );
 	void				(*ModelBoundsRef)						( refEntity_t *model, vec3_t mins, vec3_t maxs );

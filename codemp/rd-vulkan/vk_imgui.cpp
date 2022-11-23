@@ -85,7 +85,7 @@ void *R_GetImGuiContext( void  ) {
 	return ImContext;
 }
 
-VkDescriptorSet R_GetImGuiTexture( qhandle_t hShader ) {
+uint64_t R_GetImGuiTexture( qhandle_t hShader ) {
 	shader_t *shader = R_GetShaderByHandle( hShader );
 	image_t *image = shader->stages[0]->bundle[0].image[0];
 
