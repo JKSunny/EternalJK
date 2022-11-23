@@ -85,6 +85,16 @@ void *R_GetImGuiContext( void  ) {
 	return ImContext;
 }
 
+VkDescriptorSet R_GetImGuiTexture( qhandle_t hShader ) {
+	shader_t *shader = R_GetShaderByHandle( hShader );
+	image_t *image = shader->stages[0]->bundle[0].image[0];
+
+	if ( image->descriptor_set != VK_NULL_HANDLE )
+		return image->descriptor_set;
+
+	return NULL;
+}
+
 static void vk_imgui_dark_theme( void )
 {
 	auto& colors = ImGui::GetStyle().Colors;
@@ -125,7 +135,7 @@ static void vk_imgui_dark_theme( void )
 	// merge in icons from Font Awesome
 	static const ImWchar icons_ranges[] = { ICON_MIN_FA, ICON_MAX_16_FA, 0 };
 	ImFontConfig icons_config; icons_config.MergeMode = true; icons_config.PixelSnapH = true;
-	io.Fonts->AddFontFromMemoryCompressedTTF( FA5SOLID900_compressed_data, FA5SOLID900_compressed_size, 12.0f, &icons_config, icons_ranges );	
+	io.Fonts->AddFontFromMemoryCompressedTTF( FA5SOLID900_compressed_data, FA5SOLID900_compressed_size, 16.0f, &icons_config, icons_ranges );	
 }
 
 void vk_imgui_initialize( void )

@@ -11715,6 +11715,8 @@ void UI_Init( qboolean inGameLoad ) {
 	uiInfo.uiDC.cursory = (SCREEN_HEIGHT / 2);
 
 	UI_GetCharacterCvars();
+
+	UI_ImGuiInit( inGameLoad );
 }
 
 #define	UI_FPS_FRAMES	4

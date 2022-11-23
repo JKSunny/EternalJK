@@ -180,7 +180,7 @@ typedef int ImGuiTableRowFlags;
 typedef int ImGuiTreeNodeFlags;
 typedef int ImGuiViewportFlags;
 typedef int ImGuiWindowFlags;
-typedef void* ImTextureID;
+typedef ImU64 ImTextureID;
 typedef unsigned short ImDrawIdx;
 typedef unsigned int ImGuiID;
 typedef signed char ImS8;

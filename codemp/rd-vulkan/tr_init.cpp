@@ -1264,6 +1264,7 @@ Q_EXPORT refexport_t* QDECL GetRefAPI( int apiVersion, refimport_t *rimp ) {
 	re.MarkFragments						= R_MarkFragments;
 	re.LerpTag								= R_LerpTag;
 	re.GetImGuiContext						= R_GetImGuiContext;
+	re.GetImGuiTexture						= R_GetImGuiTexture;
 	re.ModelBounds							= R_ModelBounds;
 	re.DrawRotatePic						= RE_RotatePic;
 	re.DrawRotatePic2						= RE_RotatePic2;

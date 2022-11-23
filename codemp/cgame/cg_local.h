@@ -953,6 +953,7 @@ typedef struct loadableEmoji_s
 {
 	char		name[MAX_EMOJI_LENGTH];
 	qhandle_t	emoji;
+	uint64_t	emoji_ig;	// cached texture id for ImGui
 } loadableEmoji_t;
 
 loadableEmoji_t emojis[MAX_LOADABLE_EMOJIS];
@@ -1221,6 +1222,9 @@ typedef struct cg_s {
 	// ImGui
 	qboolean		igShowEmotes;
 	qboolean		igHideEmotes;
+
+	qboolean		igShowMessagemode;
+	qboolean		igFocusMessagemode;
 
 	vec3_t			lastFPFlashPoint;
 

@@ -3632,6 +3632,13 @@ static ImVec2 InputTextCalcTextSizeW(const ImWchar* text_begin, const ImWchar* t
         if (c == '\r')
             continue;
 
+        //https://github.com/ocornut/imgui/issues/902#issuecomment-316835510
+        if (c == '^' && *(s) && *(s) != '^')
+        {
+            ++s;
+            continue;
+        }
+
         const float char_width = font->GetCharAdvance((ImWchar)c) * scale;
         line_width += char_width;
     }

@@ -420,5 +420,6 @@ qboolean UI_SaberTypeForSaber( const char *saberName, char *saberType );
 extern uiImport_t *trap;
 
 void UI_ImGuiInitMenus( qboolean reset );
+void UI_ImGuiInit( qboolean inGameLoad );
 void UI_ImGuiFrame( void );
 void UI_ImGuiFindMenu( menuDef_t *menu );

@@ -211,6 +211,7 @@ typedef enum uiImportLegacy_e {
 	UI_G2_ATTACHG2MODEL,
 
 	UI_R_GETIMGUICONTEXT,
+	UI_R_GETIMGUITEXTURE,
 } uiImportLegacy_t;
 
 typedef enum uiExportLegacy_e {
@@ -343,6 +344,7 @@ typedef struct uiImport_s {
 
 	// ImGui
 	void *			(*R_GetImGuiContext)					( void );
+	uint64_t		(*R_GetImGuiTexture)					( qhandle_t hShader );
 
 	void			(*G2_ListModelSurfaces)					( void *ghlInfo );
 	void			(*G2_ListModelBones)					( void *ghlInfo, int frame );

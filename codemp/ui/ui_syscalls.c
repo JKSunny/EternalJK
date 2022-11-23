@@ -187,6 +187,9 @@ int trap_CM_LerpTag( orientation_t *tag, clipHandle_t mod, int startFrame, int e
 void trap_R_GetImGuiContext( void ) {
 	return Q_syscall( UI_R_GETIMGUICONTEXT );
 }
+uint64_t trap_R_GetImGuiTexture( qhandle_t hShader ) {
+	return Q_syscall( UI_R_GETIMGUITEXTURE, hShader );
+}
 void trap_S_StartLocalSound( sfxHandle_t sfx, int channelNum ) {
 	Q_syscall( UI_S_STARTLOCALSOUND, sfx, channelNum );
 }
@@ -606,6 +609,7 @@ static void TranslateSyscalls( void ) {
 	trap->R_Font_StrLenPixels				= trap_R_Font_StrLenPixels;
 	trap->R_LerpTag							= trap_CM_LerpTag;
 	trap->R_GetImGuiContext					= trap_R_GetImGuiContext;
+	trap->R_GetImGuiTexture					= trap_R_GetImGuiTexture;
 
 	trap->R_ModelBounds						= trap_R_ModelBounds;
 	trap->R_RegisterFont					= trap_R_RegisterFont;

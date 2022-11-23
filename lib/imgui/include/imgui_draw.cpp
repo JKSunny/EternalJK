@@ -3549,6 +3549,23 @@ void ImFont::RenderChar(ImDrawList* draw_list, float size, const ImVec2& pos, Im
 // Note: as with every ImDrawList drawing function, this expects that the font atlas texture is bound.
 void ImFont::RenderText(ImDrawList* draw_list, float size, const ImVec2& pos, ImU32 col, const ImVec4& clip_rect, const char* text_begin, const char* text_end, float wrap_width, bool cpu_fine_clip) const
 {
+    // https://github.com/ocornut/imgui/issues/902#issuecomment-316835510
+    const ImU32 alpha = (col >> 24);
+    const ImU32 color_codes[10] =
+    {
+        //col,                              // default 0
+        ImColor(  0,   0,   0,      alpha), // black   0
+        ImColor(255,   0,   0,      alpha), // red     1
+        ImColor(  0, 255,   0,      alpha), // green   2
+        ImColor(255, 255,   0,      alpha), // yellow  3
+        ImColor(  0,   0, 255,      alpha), // blue    4
+        ImColor(  0, 255, 255,      alpha), // cyan    5
+        ImColor(255,   0, 255,      alpha), // magenta 6
+        ImColor(255, 255, 255,      alpha), // white   7
+        ImColor(255,  128,   0,     alpha), // orange  8
+        ImColor(128,   128,   128,  alpha), // md.grey 9
+    };
+
     if (!text_end)
         text_end = text_begin + strlen(text_begin); // ImGui:: functions generally already provides a valid text_end, so this is merely to handle direct calls.
 
@@ -3605,6 +3622,13 @@ void ImFont::RenderText(ImDrawList* draw_list, float size, const ImVec2& pos, Im
 
     while (s < text_end)
     {
+        if (*s == '^' && *(s + 1) && *(s + 1) != '^')
+        {
+            col = color_codes[(*(s + 1) - '0') % 8];
+            s += 2;
+            continue;
+        }
+
         if (word_wrap_enabled)
         {
             // Calculate how far we can render. Requires two passes on the string data but keeps the code simple and not intrusive for what's essentially an uncommon feature.
@@ -3650,6 +3674,7 @@ void ImFont::RenderText(ImDrawList* draw_list, float size, const ImVec2& pos, Im
             {
                 x = start_x;
                 y += line_height;
+                col = color_codes[0]; // reset color code on new line
                 if (y > clip_rect.w)
                     break; // break out of main loop
                 continue;
