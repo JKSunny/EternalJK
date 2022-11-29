@@ -128,8 +128,6 @@ cvar_t	*cl_afkTimeUnfocused;
 
 cvar_t	*cl_logChat;
 
-cvar_t	*in_imgui;
-
 #if defined(DISCORD) && !defined(_DEBUG)
 cvar_t	*cl_discordRichPresence;
 #endif
@@ -2455,13 +2453,6 @@ void CL_Frame ( int msec ) {
 	// see if we need to update any userinfo
 	CL_CheckUserinfo();
 
-	/*if ( in_imgui->modified ) {
-		if( in_imgui->integer == 1 )
-			Key_ClearStates();
-
-		 in_imgui->modified = qfalse;
-	}*/
-
 	// if we haven't gotten a packet in a long time,
 	// drop the connection
 	if (!clc.demoplaying) {
@@ -3372,9 +3363,6 @@ void CL_Init( void ) {
 	cl_unfocusedTime = 0;
 
 	cl_logChat = Cvar_Get("cl_logChat", "0", CVAR_ARCHIVE, "Toggle engine chat logs");
-
-	in_imgui = Cvar_Get ("in_imgui", "0", CVAR_ARCHIVE_ND, "" );
-
 
 #if defined(DISCORD) && !defined(_DEBUG)
 	cl_discordRichPresence = Cvar_Get("cl_discordRichPresence", "1", CVAR_ARCHIVE, "Allow/disallow sharing current game information on Discord profile status");

@@ -278,7 +278,7 @@ static uint32_t igChatEmojiPopup( char *buf, const ImVec2 pos ) {
 						row_count = x_offset = 0;
 				} 
 
-				if ( igImageButtonEx( igGetID_Str(va( "##emoji%d", i )), (ImTextureID)emojis[i].emoji_ig, size, uv0, uv1, (ImVec2){0.0f,0.0f}, bg_col, tint_col ) )
+				if ( igImageButton( va( "##emoji%d", i ), (ImTextureID)emojis[i].emoji_ig, size, uv0, uv1, bg_col, tint_col ) )
 					emoji_index = i;
 			}
 		}

@@ -22,6 +22,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 #include "tr_local.h"
 
+// need to define  ImTextureID ImU64 in imconfig.h:105
+// need to typedef ImTextureID ImU64 in cimgui.h:182
 #include <imgui.h>
 #include <imgui.cpp>
 #include <imgui_draw.cpp>
