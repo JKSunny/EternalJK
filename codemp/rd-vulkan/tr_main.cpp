@@ -357,10 +357,10 @@ void Matrix16Identity( mat4_t out )
 
 void Matrix16Copy( const mat4_t in, mat4_t out )
 {
-	out[ 0] = in[ 0]; out[ 4] = in[ 4]; out[ 8] = in[ 8]; out[12] = in[12]; 
-	out[ 1] = in[ 1]; out[ 5] = in[ 5]; out[ 9] = in[ 9]; out[13] = in[13]; 
-	out[ 2] = in[ 2]; out[ 6] = in[ 6]; out[10] = in[10]; out[14] = in[14]; 
-	out[ 3] = in[ 3]; out[ 7] = in[ 7]; out[11] = in[11]; out[15] = in[15]; 
+	out[ 0] = in[ 0]; out[ 4] = in[ 4]; out[ 8] = in[ 8]; out[12] = in[12];
+	out[ 1] = in[ 1]; out[ 5] = in[ 5]; out[ 9] = in[ 9]; out[13] = in[13];
+	out[ 2] = in[ 2]; out[ 6] = in[ 6]; out[10] = in[10]; out[14] = in[14];
+	out[ 3] = in[ 3]; out[ 7] = in[ 7]; out[11] = in[11]; out[15] = in[15];
 }
 
 /*
@@ -373,7 +373,7 @@ Called by both the front end and the back end
 =================
 */
 void R_RotateForEntity( const trRefEntity_t *ent, const viewParms_t *viewParms,
-	orientationr_t *ori ) 
+	orientationr_t *ori )
 {
 	vec3_t	delta;
 	float	axisLength;
@@ -526,7 +526,7 @@ static void R_SetFarClip( void )
 			farthestCornerDistance = distance;
 		}
 	}
-	
+
 	//tr.viewParms.zFar = sqrt(farthestCornerDistance);
 
 	// Bring in the zFar to the distanceCull distance
@@ -540,7 +540,7 @@ Set up the culling frustum planes for the current view using the results we got 
 the projection matrix.
 ================ =
 */
-static void R_SetupFrustum( viewParms_t *dest, const float xmin, const float xmax, 
+static void R_SetupFrustum( viewParms_t *dest, const float xmin, const float xmax,
 	const float ymax, const float zProj )
 {
 	vec3_t		ofsorigin;
@@ -675,7 +675,7 @@ static void R_SetupProjectionZ( viewParms_t *dest ) {
 		dest->projectionMatrix[10] = -(dest->projectionMatrix[10] + 1.0);
 		dest->projectionMatrix[14] = -dest->projectionMatrix[14];
 #endif
-	}	
+	}
 }
 
 /*
@@ -1477,13 +1477,13 @@ void R_AddDrawSurf( surfaceType_t *surface, shader_t *shader,
 R_DecomposeSort
 =================
 */
-void R_DecomposeSort( unsigned sort, int *entityNum, shader_t **shader, 
+void R_DecomposeSort( unsigned sort, int *entityNum, shader_t **shader,
 											int *fogNum, int *dlightMap )
 {
-	*fogNum = (sort >> QSORT_FOGNUM_SHIFT) & 31;
-	*shader = tr.sortedShaders[(sort >> QSORT_SHADERNUM_SHIFT) & (MAX_SHADERS - 1)];
-	*entityNum = (sort >> QSORT_REFENTITYNUM_SHIFT) & REFENTITYNUM_MASK;
-	*dlightMap = sort & 3;
+	*fogNum = ( sort >> QSORT_FOGNUM_SHIFT ) & FOGNUM_MASK;
+	*shader = tr.sortedShaders[ ( sort >> QSORT_SHADERNUM_SHIFT ) & SHADERNUM_MASK ];
+	*entityNum = ( sort >> QSORT_REFENTITYNUM_SHIFT ) & REFENTITYNUM_MASK;
+	*dlightMap = sort & DLIGHT_MASK;
 }
 
 /*
@@ -1492,7 +1492,7 @@ R_SortDrawSurfs
 =================
 */
 void R_SortDrawSurfs( drawSurf_t *drawSurfs, int numDrawSurfs ) {
-	shader_t		*shader; 
+	shader_t		*shader;
 	int				fogNum;
 	int				entityNum;
 	int				dlighted;
@@ -1503,13 +1503,6 @@ void R_SortDrawSurfs( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 		// we still need to add it for hyperspace cases
 		R_AddDrawSurfCmd(drawSurfs, numDrawSurfs);
 		return;
-	}
-
-	// if we overflowed MAX_DRAWSURFS, the drawsurfs
-	// wrapped around in the buffer and we will be missing
-	// the first surfaces, not the last ones
-	if (numDrawSurfs > MAX_DRAWSURFS) {
-		numDrawSurfs = MAX_DRAWSURFS;
 	}
 
 	// sort the drawsurfs by sort type, then orientation, then shader
@@ -1713,6 +1706,7 @@ or a mirror / remote location
 */
 void R_RenderView( const viewParms_t *parms ) {
 	int		firstDrawSurf;
+	int		numDrawSurfs;
 
 	if ( parms->viewportWidth <= 0 || parms->viewportHeight <= 0 )
 		return;
@@ -1728,8 +1722,16 @@ void R_RenderView( const viewParms_t *parms ) {
 	R_RotateForViewer( &tr.ori, &tr.viewParms );
 
 	R_SetupProjection( &tr.viewParms, r_zproj->value, qtrue );
-	
+
 	R_GenerateDrawSurfs();
 
-	R_SortDrawSurfs( tr.refdef.drawSurfs + firstDrawSurf, tr.refdef.numDrawSurfs - firstDrawSurf );
+	// if we overflowed MAX_DRAWSURFS, the drawsurfs
+	// wrapped around in the buffer and we will be missing
+	// the first surfaces, not the last ones
+	numDrawSurfs = tr.refdef.numDrawSurfs;
+	if ( numDrawSurfs > MAX_DRAWSURFS ) {
+		numDrawSurfs = MAX_DRAWSURFS;
+	}
+
+	R_SortDrawSurfs( tr.refdef.drawSurfs + firstDrawSurf, numDrawSurfs - firstDrawSurf );
 }
