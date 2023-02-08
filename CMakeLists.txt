@@ -16,7 +16,7 @@
 # along with this program; if not, see <http://www.gnu.org/licenses/>.
 #============================================================================
 
-cmake_minimum_required(VERSION 2.8.8)
+cmake_minimum_required(VERSION 3.0.0)
 
 # For checks in subdirectories
 set(InOpenJK TRUE)
@@ -123,8 +123,9 @@ message("Architecture is ${Architecture}")
 # Current Git SHA1 hash
 include(GetGitRevisionDescription)
 get_git_head_revision(GIT_REFSPEC GIT_SHA1)
-message("Git revision is ${GIT_SHA1}")
-message("Git refspec is ${GIT_REFSPEC}")
+#this information is shown later on, see codemp\CMakeLists.txt
+#message("Git revision is ${GIT_SHA1}")
+#message("Git refspec is ${GIT_REFSPEC}")
 
 # Binary names
 set(MPEngine "jkgalaxies.${Architecture}")

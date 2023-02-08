@@ -16,7 +16,7 @@
 # along with this program; if not, see <http://www.gnu.org/licenses/>.
 #============================================================================
 
-cmake_minimum_required(VERSION 2.8.8)
+cmake_minimum_required(VERSION 3.0.0)
 
 # Make sure the user is not executing this script directly
 if(NOT InOpenJK)
@@ -29,17 +29,34 @@ set(git_rev_parse "rev-parse")
 set(git_branch_arg "--abbrev-ref")
 set(git_hash_arg "HEAD")
 
-execute_process(COMMAND ${git_cmd} ${git_rev_parse} ${git_branch_arg} "HEAD"
+#Check that git is available and generate git.h for versioning
+execute_process(
+	COMMAND ${git_cmd} "--version"
+	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+	RESULT_VARIABLE git_installed
+)
+if(git_installed GREATER 0)
+	message("git is not installed or available on the path!")
+endif()
+
+execute_process(
+	COMMAND ${git_cmd} ${git_rev_parse} ${git_branch_arg} ${git_hash_arg}
 	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 	OUTPUT_VARIABLE git_branch
-	OUTPUT_STRIP_TRAILING_WHITESPACE)
-execute_process(COMMAND ${git_cmd} ${git_rev_parse} ${git_hash_arg}
+	OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+message("git branch: " ${git_branch})
+execute_process(
+	COMMAND ${git_cmd} ${git_rev_parse} ${git_hash_arg}
 	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 	OUTPUT_VARIABLE git_hash
-	OUTPUT_STRIP_TRAILING_WHITESPACE)
+	OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+message("git SHA1: " ${git_hash})
 
 set(git_file "./git.h")
-file(WRITE ${git_file} "\#define GIT_BRANCH \"${git_branch}\"\n#define GIT_HASH \"${git_hash}\"\n")
+file(WRITE ${git_file} "//git.h is auto-generated, do not modify directly. See /codemp/CMakeLists.txt\n\#define GIT_BRANCH \"${git_branch}\"\n#define GIT_HASH \"${git_hash}\"\n")
+message("Generated " ${git_file})
 
 set(MPSharedDefines ${SharedDefines})
 

@@ -51,6 +51,8 @@ If you're stuck, you can also watch [this video](https://www.youtube.com/watch?v
 
 ## Dependencies ##
 
+* CMake (3.0.0+) (for build system)
+* Git (2.22.0+) (for build system)
 * SDL2 (2.0.14+) (included on Windows)
 * OpenGL
 * OpenAL (included on Windows)
