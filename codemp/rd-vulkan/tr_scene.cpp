@@ -454,38 +454,8 @@ void RE_AddAdditiveLightToScene( const vec3_t org, float intensity, float r, flo
 	RE_AddDynamicLightToScene( org, intensity, r, g, b, qtrue );
 }
 
-/*
-@@@@@@@@@@@@@@@@@@@@@
-RE_RenderScene
-
-Draw a 3D view into a part of the window, then return
-to 2D drawing.
-
-Rendering a scene may require multiple views to be rendered
-to handle mirrors,
-@@@@@@@@@@@@@@@@@@@@@
-*/
-void RE_RenderWorldEffects( void );
-void RE_RenderAutoMap( void );
-void RE_RenderScene( const refdef_t *fd ) {
-	renderCommand_t	lastRenderCommand;
-	viewParms_t		parms;
-	int				startTime;
+void RE_BeginScene( const refdef_t *fd ) {
 	static	int		lastTime = 0;
-
-	if (!tr.registered) {
-		return;
-	}
-
-	if (r_norefresh->integer) {
-		return;
-	}
-
-	startTime = ri.Milliseconds() * ri.Cvar_VariableValue("timescale");
-
-	if (!tr.world && !(fd->rdflags & RDF_NOWORLDMODEL)) {
-		Com_Error(ERR_DROP, "R_RenderScene: NULL worldmodel");
-	}
 
 	memcpy(tr.refdef.text, fd->text, sizeof(tr.refdef.text));
 
@@ -597,6 +567,52 @@ void RE_RenderScene( const refdef_t *fd ) {
 	// each scene / view.
 	tr.frameSceneNum++;
 	tr.sceneCount++;
+}
+
+void RE_EndScene( void ) {
+	// the next scene rendered in this frame will tack on after this one
+	r_firstSceneDrawSurf = tr.refdef.numDrawSurfs;
+#ifdef USE_PMLIGHT
+	r_firstSceneLitSurf = tr.refdef.numLitSurfs;
+#endif
+	r_firstSceneEntity = r_numentities;
+	r_firstSceneMiniEntity = r_numminientities;
+	r_firstSceneDlight = r_numdlights;
+	r_firstScenePoly = r_numpolys;
+}
+/*
+@@@@@@@@@@@@@@@@@@@@@
+RE_RenderScene
+
+Draw a 3D view into a part of the window, then return
+to 2D drawing.
+
+Rendering a scene may require multiple views to be rendered
+to handle mirrors,
+@@@@@@@@@@@@@@@@@@@@@
+*/
+void RE_RenderWorldEffects( void );
+void RE_RenderAutoMap( void );
+void RE_RenderScene( const refdef_t *fd ) {
+	renderCommand_t	lastRenderCommand;
+	viewParms_t		parms;
+	int				startTime;
+	
+	if (!tr.registered) {
+		return;
+	}
+
+	if (r_norefresh->integer) {
+		return;
+	}
+
+	startTime = ri.Milliseconds() * ri.Cvar_VariableValue("timescale");
+
+	if (!tr.world && !(fd->rdflags & RDF_NOWORLDMODEL)) {
+		Com_Error(ERR_DROP, "R_RenderScene: NULL worldmodel");
+	}
+
+	RE_BeginScene( fd );
 
 	// setup view parms for the initial view
 	//
@@ -664,14 +680,7 @@ void RE_RenderScene( const refdef_t *fd ) {
 	}
 
 	// the next scene rendered in this frame will tack on after this one
-	r_firstSceneDrawSurf = tr.refdef.numDrawSurfs;
-#ifdef USE_PMLIGHT
-	r_firstSceneLitSurf = tr.refdef.numLitSurfs;
-#endif
-	r_firstSceneEntity = r_numentities;
-	r_firstSceneMiniEntity = r_numminientities;
-	r_firstSceneDlight = r_numdlights;
-	r_firstScenePoly = r_numpolys;
+	RE_EndScene();
 
 	refEntParent = -1;
 

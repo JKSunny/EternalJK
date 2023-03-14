@@ -319,6 +319,18 @@ void vk_create_shader_modules( void )
     vk.shaders.brdflut_fs = SHADER_MODULE(brdflut_frag_spv);
     VK_SET_OBJECT_NAME(vk.shaders.brdflut_fs, "brdf LUT fragment module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
 #endif
+
+    vk.shaders.filtercube_vs = SHADER_MODULE(filtercube_vert_spv);
+    VK_SET_OBJECT_NAME(vk.shaders.filtercube_vs, "filter cube vertex module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
+
+    vk.shaders.prefilterenvmap_fs = SHADER_MODULE(prefilterenvmap_frag_spv);
+    VK_SET_OBJECT_NAME(vk.shaders.prefilterenvmap_fs, "prefilter env map fragment module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
+
+    vk.shaders.irradiancecube_fs = SHADER_MODULE(irradiancecube_frag_spv);
+    VK_SET_OBJECT_NAME(vk.shaders.irradiancecube_fs, "irradiance cube fragment module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
+
+    vk.shaders.filtercube_gm = SHADER_MODULE(filtercube_geom_spv);
+    VK_SET_OBJECT_NAME(vk.shaders.filtercube_gm, "filter cube geometry shader", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
 }
 
 void vk_destroy_shader_modules( void )
@@ -399,4 +411,9 @@ void vk_destroy_shader_modules( void )
 #ifdef VK_PBR_BRDFLUT
     qvkDestroyShaderModule(vk.device, vk.shaders.brdflut_fs, NULL);
 #endif
+
+    qvkDestroyShaderModule(vk.device, vk.shaders.filtercube_vs, NULL);
+    qvkDestroyShaderModule(vk.device, vk.shaders.filtercube_gm, NULL);
+    qvkDestroyShaderModule(vk.device, vk.shaders.prefilterenvmap_fs, NULL);
+    qvkDestroyShaderModule(vk.device, vk.shaders.irradiancecube_fs, NULL);
 }

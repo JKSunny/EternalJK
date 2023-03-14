@@ -1206,12 +1206,13 @@ static qboolean ParseStage(shaderStage_t *stage, const char **text)
 	qboolean depthMaskExplicit = qfalse;
 
 #ifdef USE_VK_PBR
-	uint32_t			physicalMapBits = PHYS_NONE;
 	char				physicalAlbedoName[MAX_QPATH];
 	qboolean			physicalAlbedo = qfalse;
+	char				bufferPackedTextureName[MAX_QPATH];
 #endif
 
 	stage->active = qtrue;
+	stage->physicalMapType = PHYS_NONE;
 
 	while (1)
 	{
@@ -1318,33 +1319,26 @@ static qboolean ParseStage(shaderStage_t *stage, const char **text)
 
 			stage->vk_pbr_flags |= PBR_HAS_NORMALMAP;
 		}
-		else if ( !Q_stricmp(token, "roughnessMap") && vk.pbrActive )
+		else if ( (!Q_stricmp(token, "rmoMap") || !Q_stricmp(token, "rmosMap")) && vk.pbrActive )
 		{
 			token = COM_ParseExt(text, qfalse);
-			Q_strncpyz( stage->roughnessMapName, token, sizeof(stage->roughnessMapName) );
+			Q_strncpyz( bufferPackedTextureName, token, sizeof(bufferPackedTextureName) );
 
-			physicalMapBits |= PHYS_ROUGHNESS;
+			stage->physicalMapType = !Q_stricmp(token, "rmosMap") ? PHYS_RMOS : PHYS_RMO;
 		}
-		else if ( !Q_stricmp(token, "metallicMap") && vk.pbrActive )
+		else if ( (!Q_stricmp(token, "moxrMap") || !Q_stricmp(token, "mosrMap")) && vk.pbrActive )
 		{
 			token = COM_ParseExt(text, qfalse);
-			Q_strncpyz( stage->metallicMapName, token, sizeof(stage->metallicMapName) );
+			Q_strncpyz( bufferPackedTextureName, token, sizeof(bufferPackedTextureName) );
 
-			physicalMapBits |= PHYS_METALLIC;
+			stage->physicalMapType = !Q_stricmp(token, "mosrMap") ? PHYS_MOSR : PHYS_MOXR;
 		}
-		else if ( !Q_stricmp(token, "occlusionMap") && vk.pbrActive )
+		else if ( (!Q_stricmp(token, "ormMap") || !Q_stricmp(token, "ormsMap")) && vk.pbrActive )
 		{
 			token = COM_ParseExt(text, qfalse);
-			Q_strncpyz( stage->occlusionMapName, token, sizeof(stage->occlusionMapName) );
+			Q_strncpyz( bufferPackedTextureName, token, sizeof(bufferPackedTextureName) );
 
-			physicalMapBits |= PHYS_OCCLUSION;
-		}
-		else if ( !Q_stricmp(token, "rmoMap") && vk.pbrActive )
-		{
-			token = COM_ParseExt(text, qfalse);
-			Q_strncpyz( stage->physicalMapName, token, sizeof(stage->physicalMapName) );
-
-			physicalMapBits |= PHYS_RMO;
+			stage->physicalMapType = !Q_stricmp(token, "ormsMap") ? PHYS_ORMS : PHYS_ORM;
 		}
 #endif
 		//
@@ -1476,7 +1470,7 @@ static qboolean ParseStage(shaderStage_t *stage, const char **text)
 			if (handle != -1) {
 				if (!tr.scratchImage[handle]) {
 					tr.scratchImage[handle] = R_CreateImage(va("*scratch%i", handle), NULL, 256, 256, 
-						IMGFLAG_CLAMPTOEDGE | IMGFLAG_RGB | IMGFLAG_NOSCALE | IMGFLAG_NO_COMPRESSION);
+						IMGFLAG_CLAMPTOEDGE | IMGFLAG_RGB | IMGFLAG_NOSCALE | IMGFLAG_NO_COMPRESSION, 0, 0);
 				}
 
 				stage->bundle[0].isVideoMap = qtrue;
@@ -1584,22 +1578,27 @@ static qboolean ParseStage(shaderStage_t *stage, const char **text)
 				depthMaskBits = 0;
 			}
 		}
+		else if ( !Q_stricmp( token, "gloss" ) )
+		{
+			token = COM_ParseExt(text, qfalse);
+			if ( token[0] == 0 )
+			{
+				ri.Printf( PRINT_WARNING, "WARNING: missing parameter for gloss in shader '%s'\n", shader.name );
+				continue;
+			}
 
-		else if ( ( !Q_stricmp(token, "metallic") || !Q_stricmp(token, "gloss" ) ) )
-		{
-			token = COM_ParseExt(text, qfalse);
-			if (token[0]) {
-				stage->metallic_value = atof(token);
-				stage->vk_pbr_flags |= PBR_HAS_METALLIC_VALUE;
-			}
+			stage->specularScale[3] = Com_Clamp( 0.0f, 1.0f, 1.0 - atof( token ) );
 		}
-		else if ( !Q_stricmp(token, "roughness") )
+		else if (!Q_stricmp(token, "roughness"))
 		{
 			token = COM_ParseExt(text, qfalse);
-			if (token[0]) {
-				stage->roughness_value = atof(token);
-				stage->vk_pbr_flags |= PBR_HAS_ROUGHNESS_VALUE;
+			if (token[0] == 0)
+			{
+				ri.Printf(PRINT_WARNING, "WARNING: missing parameter for roughness in shader '%s'\n", shader.name);
+				continue;
 			}
+
+			stage->specularScale[3] = Com_Clamp(0.0f, 1.0f, atof(token));
 		}
 		else if (!Q_stricmp(token, "specularreflectance"))
 		{
@@ -2025,7 +2024,7 @@ static qboolean ParseStage(shaderStage_t *stage, const char **text)
 	}
 
 #ifdef USE_VK_PBR
-	if ( physicalAlbedo  ) {
+	if ( vk.pbrActive && physicalAlbedo ) {
 		imgFlags_t flags = IMGFLAG_NOLIGHTSCALE;
 
 		if (!shader.noMipMaps)
@@ -2037,11 +2036,27 @@ static qboolean ParseStage(shaderStage_t *stage, const char **text)
 		if (shader.noTC)
 			flags |= IMGFLAG_NO_COMPRESSION;
 
-		if( physicalMapBits != PHYS_NONE )
-			vk_create_phyisical_texture( stage, physicalAlbedoName, flags, physicalMapBits );
+		if ( stage->physicalMapType == PHYS_NONE ) {
+			COM_StripExtension( physicalAlbedoName, bufferPackedTextureName, MAX_QPATH );
+			Q_strcat( bufferPackedTextureName, MAX_QPATH, "_rmo" );
+			stage->physicalMapType = PHYS_RMO;
+		}
+
+		if ( !vk_create_phyisical_texture( stage, bufferPackedTextureName, flags ) )
+		{
+			COM_StripExtension( physicalAlbedoName, bufferPackedTextureName, MAX_QPATH );
+			Q_strcat( bufferPackedTextureName, MAX_QPATH, "_orm" );
+			stage->physicalMapType = PHYS_ORM;
+
+			if ( !vk_create_phyisical_texture( stage, bufferPackedTextureName, flags ) ){
+			}
+		}
 	
-		if( ( stage->vk_pbr_flags & PBR_HAS_NORMALMAP ) == 0 )
+		if( ( stage->vk_pbr_flags & PBR_HAS_NORMALMAP ) == 0 ) {
+			flags |= IMGFLAG_NO_COMPRESSION;
+
 			vk_create_normal_texture( stage, physicalAlbedoName, flags );
+		}
 	}
 #endif
 
@@ -3317,6 +3332,15 @@ static void InitShader( const char *name, const int *lightmapIndex, const byte *
 	for (i = 0; i < MAX_SHADER_STAGES; i++) {
 		stages[i].bundle[0].texMods = texMods[i];
 		stages[i].bundle[0].mGLFogColorOverride = GLFOGOVERRIDE_NONE;
+
+#ifdef USE_VK_PBR
+		// default normal/specular
+		VectorSet4(stages[i].normalScale, 0.0f, 0.0f, 0.0f, 0.0f);
+		stages[i].specularScale[0] = 
+		stages[i].specularScale[1] =
+		stages[i].specularScale[2] = r_baseSpecular->value;
+		stages[i].specularScale[3] = 0.99;
+#endif
 	}
 
 	shader.contentFlags = CONTENTS_SOLID | CONTENTS_OPAQUE;
@@ -3716,8 +3740,7 @@ static int CollapseMultitexture( unsigned int st0bits, shaderStage_t *st0, shade
 		st0->vk_pbr_flags = st1->vk_pbr_flags;
 		st0->normalMap = st1->normalMap;
 		st0->physicalMap = st1->physicalMap;
-		st0->metallic_value = st1->metallic_value;
-		st0->roughness_value = st1->roughness_value;
+		VectorCopy4( st1->specularScale, st0->specularScale );
 	}
 #endif
 
@@ -4612,8 +4635,11 @@ shader_t *FinishShader( void )
 
 				def.mirror = qfalse;
 				def.vk_pbr_flags = pStage->vk_pbr_flags;
-				def.metallic_value = pStage->metallic_value;
-				def.roughness_value = pStage->roughness_value;
+				VectorCopy4( pStage->specularScale, def.specularScale );
+
+				if ( hasLightmapStage ) 
+					def.vk_pbr_flags |= PBR_HAS_LIGHTMAP;
+
 				pStage->vk_pbr_pipeline[0] = vk_find_pipeline_ext(0, &def, qfalse);
 			}
 #endif
@@ -4643,8 +4669,11 @@ shader_t *FinishShader( void )
 			vk_get_pipeline_def(pStage->vk_pipeline[0], &def_pbr);
 			def_pbr.fog_stage = 1;
 			def_pbr.vk_pbr_flags = pStage->vk_pbr_flags;
-			def_pbr.metallic_value = pStage->metallic_value;
-			def_pbr.roughness_value = pStage->roughness_value;
+			VectorCopy4( pStage->specularScale, def_pbr.specularScale );
+
+			if ( hasLightmapStage ) 
+				def_pbr.vk_pbr_flags |= PBR_HAS_LIGHTMAP;
+
 			pStage->vk_pbr_pipeline[1] = vk_find_pipeline_ext(0, &def_pbr, qfalse);
 		}
 #endif
@@ -4871,7 +4900,6 @@ shader_t *GeneratePermanentShader( void )
 		}
 		newShader->stages[i] = (shaderStage_t*)ri.Hunk_Alloc( sizeof(stages[i]), h_low );
 		*newShader->stages[i] = stages[i];
-
 		for ( b = 0; b < NUM_TEXTURE_BUNDLES; b++ )
 		{
 			if ( newShader->stages[i]->bundle[b].numTexMods )

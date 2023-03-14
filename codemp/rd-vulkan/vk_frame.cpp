@@ -482,6 +482,18 @@ void vk_create_render_passes()
 #ifdef VK_PBR_BRDFLUT
     if( vk.pbrActive )
     {
+
+    #ifdef VK_CUBEMAP 
+        if ( vk.cubemapActive ) 
+        {   
+            attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+            attachments[2].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+
+            VK_CHECK(qvkCreateRenderPass(device, &desc, NULL, &vk.render_pass.cubemap));
+            VK_SET_OBJECT_NAME(vk.render_pass.cubemap, "render pass - cubemap", VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT);
+        }  
+    #endif
+
         deps[0].srcSubpass = VK_SUBPASS_EXTERNAL;
         deps[0].dstSubpass = 0;
         deps[0].srcStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
@@ -618,6 +630,35 @@ void vk_create_framebuffers()
 
         VK_CHECK(qvkCreateFramebuffer(vk.device, &desc, NULL, &vk.framebuffers.screenmap));
         VK_SET_OBJECT_NAME(vk.framebuffers.screenmap, "framebuffer - screenmap", VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT);
+
+#ifdef VK_CUBEMAP
+        if ( vk.cubemapActive )
+        {
+            // cubemap
+            desc.renderPass = vk.render_pass.cubemap;
+            desc.attachmentCount = 2;
+            desc.width = REF_CUBEMAP_SIZE;
+            desc.height = REF_CUBEMAP_SIZE;
+        
+            attachments[1] = vk.cubeMap.depth_image_view;
+
+            if ( vk.msaaActive )
+                desc.attachmentCount = 3;
+
+            for ( int j = 0; j < 6; j++  ) 
+            {
+                attachments[0] = vk.cubeMap.color_image_view[j+1];
+
+                if ( vk.msaaActive ) {
+                    attachments[2] = vk.cubeMap.color_image_view_msaa[0];
+                }
+
+                VK_CHECK( qvkCreateFramebuffer( vk.device, &desc, NULL, &vk.framebuffers.cubemap[j] ) );
+                VK_SET_OBJECT_NAME( vk.framebuffers.cubemap[j], va( "framebuffer - cubemap face %d", j ), VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT );
+            } 
+        }
+#endif
+
 
         if ( vk.capture.image != VK_NULL_HANDLE )
         {
@@ -799,6 +840,13 @@ void vk_destroy_render_passes( void )
         vk.render_pass.brdflut = VK_NULL_HANDLE;
     }
 #endif
+
+#ifdef VK_CUBEMAP
+    if ( vk.render_pass.cubemap != VK_NULL_HANDLE ) {
+        qvkDestroyRenderPass( vk.device, vk.render_pass.cubemap, NULL );
+        vk.render_pass.cubemap = VK_NULL_HANDLE;
+    }
+#endif
 }
 
 void vk_destroy_framebuffers( void )
@@ -861,6 +909,15 @@ void vk_destroy_framebuffers( void )
         vk.framebuffers.brdflut = VK_NULL_HANDLE;
     }
 #endif
+
+#ifdef VK_CUBEMAP
+    for ( i = 0; i < ARRAY_LEN( vk.framebuffers.cubemap ); i++ ) {
+        if ( vk.framebuffers.cubemap[i] != VK_NULL_HANDLE ) {
+            qvkDestroyFramebuffer( vk.device, vk.framebuffers.cubemap[i], NULL );
+            vk.framebuffers.cubemap[i] = VK_NULL_HANDLE;
+        }
+    }
+#endif
 }
 
 static qboolean vk_find_screenmap_drawsurfs( void )
@@ -915,8 +972,10 @@ static void vk_begin_render_pass( VkRenderPass renderPass, VkFramebuffer frameBu
                     clear_values[ (int)( vk.msaaActive ? 2 : 0 )  ].color = { { 0.75f, 0.75f, 0.75f, 1.0f } };
                 break;
             case RENDER_PASS_DGLOW:
-
                     clear_values[ (int)( vk.msaaActive ? 2 : 0 )  ].color = { { 0.0f, 0.0f, 0.0f, 1.0f } };
+                break;
+            case RENDER_PASS_CUBEMAP:
+                    clear_values[ (int)( vk.msaaActive ? 2 : 0 )  ].color = { { 1.0f, 0.0f, 0.0f, 1.0f } };
                 break;
         }
 #endif
@@ -957,6 +1016,23 @@ static void vk_begin_screenmap_render_pass( void )
 
     vk_begin_render_pass(vk.render_pass.screenmap, frameBuffer, qtrue, vk.renderWidth, vk.renderHeight);
 }
+
+#ifdef VK_CUBEMAP
+void vk_begin_cubemap_render_pass( void )
+{
+    VkFramebuffer frameBuffer = vk.framebuffers.cubemap[backEnd.viewParms.targetCubeLayer];
+
+    vk.renderPassIndex = RENDER_PASS_CUBEMAP;
+
+    vk.renderWidth = REF_CUBEMAP_SIZE;
+    vk.renderHeight = REF_CUBEMAP_SIZE;
+    vk.renderScaleX = vk.renderScaleY = 1.0f;
+
+    vk_begin_render_pass(vk.render_pass.cubemap, frameBuffer, qtrue, vk.renderWidth, vk.renderHeight);
+
+    Com_Printf("render cube face %d\n", backEnd.viewParms.targetCubeLayer );
+}
+#endif
 
 void vk_begin_main_render_pass( void )
 {

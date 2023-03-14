@@ -191,6 +191,27 @@ void	R_AddDrawSurfCmd( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 	}
 }
 
+#ifdef VK_CUBEMAP
+/*
+=============
+R_AddConvolveCubemapsCmd
+
+=============
+*/
+void R_AddConvolveCubemapCmd( cubemap_t *cubemap , int cubemapId ) {
+	convolveCubemapCommand_t	*cmd;
+	
+	cmd = (convolveCubemapCommand_t *)R_GetCommandBuffer( sizeof( *cmd ));
+	if ( !cmd ) {
+		return;
+	}
+	cmd->commandId = RC_CONVOLVECUBEMAP;
+	
+	cmd->cubemap = cubemap;
+	cmd->cubemapId = cubemapId;
+}
+#endif
+
 /*
 =============
 RE_SetColor

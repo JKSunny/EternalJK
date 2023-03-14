@@ -27,7 +27,13 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define USE_VK_PBR
 #ifdef USE_VK_PBR
 	#define VK_PBR_BRDFLUT		// for inspecting codebase, does not toggle brdflut. 
-	//#define VK_PBR_FORCE
+//	#define VK_PBR_FORCE		// debug purposes, deprecated
+	#define VK_CUBEMAP	
+
+#ifdef VK_CUBEMAP
+	#define REF_CUBEMAP_IRRADIANCE_SIZE 64
+	#define REF_CUBEMAP_SIZE       256
+#endif
 #endif
 
 #define USE_VBO					// store static world geometry in VBO
@@ -215,14 +221,15 @@ typedef enum
 	IMGFLAG_NONE			= 0x0000,
 	IMGFLAG_MIPMAP			= 0x0001,
 	IMGFLAG_PICMIP			= 0x0002,
-	IMGFLAG_CLAMPTOEDGE		= 0x0004,
-	IMGFLAG_CLAMPTOBORDER	= 0x0008,
-	IMGFLAG_NO_COMPRESSION	= 0x0010,
-	IMGFLAG_NOLIGHTSCALE	= 0x0020,
-	IMGFLAG_LIGHTMAP		= 0x0040,
-	IMGFLAG_NOSCALE			= 0x0080,
-	IMGFLAG_RGB				= 0x0100,
-	IMGFLAG_COLORSHIFT		= 0x0200,
+	IMGFLAG_CUBEMAP			= 0x0004,
+	IMGFLAG_CLAMPTOEDGE		= 0x0008,
+	IMGFLAG_CLAMPTOBORDER	= 0x0010,
+	IMGFLAG_NO_COMPRESSION	= 0x0020,
+	IMGFLAG_NOLIGHTSCALE	= 0x0040,
+	IMGFLAG_LIGHTMAP		= 0x0080,
+	IMGFLAG_NOSCALE			= 0x0100,
+	IMGFLAG_RGB				= 0x0200,
+	IMGFLAG_COLORSHIFT		= 0x0400,
 } imgFlags_t;
 
 #if defined( _WIN32 )
@@ -261,6 +268,8 @@ typedef struct image_s {
 
 	short					iLastLevelUsedOn;
 
+	uint32_t				swizzle;
+	uint32_t				layers;
 	VkImage					handle;
 	VkImageView				view;
 	VkDescriptorSet			descriptor_set;
@@ -268,6 +277,14 @@ typedef struct image_s {
 	uint32_t				mipLevels;		// gl texture binding
 	VkSamplerAddressMode	wrapClampMode;	
 } image_t;
+
+typedef struct cubemap_s {
+	char		name[MAX_QPATH];
+	vec3_t		origin;
+	float		parallaxRadius;
+	image_t		*prefiltered_image;
+	image_t		*irradiance_image;
+} cubemap_t;
 
 //===============================================================================
 
@@ -548,17 +565,11 @@ typedef struct shaderStage_s {
 	image_t			*normalMap;
 	image_t			*physicalMap;
 
-	char			physicalMapName[MAX_QPATH];
-	char			roughnessMapName[MAX_QPATH];
-	char			metallicMapName[MAX_QPATH];
-	char			occlusionMapName[MAX_QPATH];
+	uint32_t		physicalMapType;
 
-	float			roughness_value;
-	float			metallic_value;
-
-	vec4_t normalScale;
-	vec4_t specularScale;
-	float  parallaxBias;
+	vec4_t			normalScale;
+	vec4_t			specularScale;
+	float			parallaxBias;
 #endif
 #ifdef USE_VBO
 	uint32_t		rgb_offset[NUM_TEXTURE_BUNDLES]; // within current shader
@@ -802,6 +813,9 @@ typedef struct viewParms_s {
 	unsigned int	num_dlights;
 	struct dlight_s	*dlights;
 #endif
+
+	cubemap_t		*targetCube;
+	int				targetCubeLayer;
 } viewParms_t;
 
 /*
@@ -1363,6 +1377,12 @@ typedef struct backEndState_s {
 
 typedef struct drawSurfsCommand_s drawSurfsCommand_t;
 
+typedef struct convolveCubemapCommand_s {
+	int			commandId;
+	cubemap_t	*cubemap;
+	int			cubemapId;
+} convolveCubemapCommand_t;
+
 /*
 ** trGlobals_t
 **
@@ -1407,6 +1427,9 @@ typedef struct trGlobals_s {
 	image_t					*identityLightImage;// full of tr.identityLightByte
 #ifdef USE_VK_PBR
 	image_t					*emptyImage;		// full of 0xff
+#ifdef VK_CUBEMAP
+	image_t					*emptyCubemap;
+#endif
 #endif
 
 	shader_t				*defaultShader;
@@ -1421,6 +1444,11 @@ typedef struct trGlobals_s {
 
 	int						numLightmaps;
 	image_t					*lightmaps[MAX_LIGHTMAPS];
+
+#ifdef VK_CUBEMAP
+	int                     numCubemaps;
+	cubemap_t               *cubemaps;
+#endif
 
 	trRefEntity_t			*currentEntity;
 	trRefEntity_t			worldEntity;		// point currentEntity at this when rendering world
@@ -1714,7 +1742,12 @@ extern cvar_t	*r_vbo;
 #endif
 #ifdef USE_VK_PBR
 extern cvar_t	*r_pbr;
+extern cvar_t	*r_baseSpecular;
+#ifdef VK_CUBEMAP
+extern cvar_t	*r_cubeMapping;
 #endif
+#endif
+
 /*
 Ghoul2 Insert Start
 */
@@ -1784,9 +1817,9 @@ model_t		*R_AllocModel( void );
 void    	R_Init( void );
 
 image_t		*R_FindImageFile( const char *name, imgFlags_t flags );
-image_t		*R_CreateImage( const char *name, byte *pic, int width, int height, imgFlags_t flags );
+image_t		*R_CreateImage( const char *name, byte *pic, int width, int height, imgFlags_t flags, int format, uint32_t swizzle_mode );
 #ifdef USE_VK_PBR
-void		vk_create_phyisical_texture( shaderStage_t *stage, const char *albedoMapName, imgFlags_t flags, const uint32_t physicalMapBits );
+qboolean	vk_create_phyisical_texture( shaderStage_t *stage, const char *albedoMapName, imgFlags_t flags );
 void		vk_create_normal_texture( shaderStage_t *stage, const char *albedoMapName, imgFlags_t flags );
 #endif
 
@@ -2034,6 +2067,8 @@ void RE_AddPolyToScene( qhandle_t hShader , int numVerts, const polyVert_t *vert
 void RE_AddLightToScene( const vec3_t org, float intensity, float r, float g, float b );
 void RE_AddAdditiveLightToScene( const vec3_t org, float intensity, float r, float g, float b );
 void RE_RenderScene( const refdef_t *fd );
+void RE_BeginScene( const refdef_t *fd );
+void RE_EndScene( void );
 
 /*
 =============================================================
@@ -2250,7 +2285,8 @@ typedef enum {
 	RC_WORLD_EFFECTS,
 	RC_AUTO_MAP,
 	RC_VIDEOFRAME,
-	RC_CLEARCOLOR
+	RC_CLEARCOLOR,
+	RC_CONVOLVECUBEMAP
 } renderCommand_t;
 
 // all of the information needed by the back end must be
@@ -2333,6 +2369,7 @@ void		R_CalcTangents( vec3_t tangent, vec3_t binormal,
 				const vec2_t t0, const vec2_t t1, const vec2_t t2 );
 void		R_TBNtoQtangents( const vec3_t tangent, const vec3_t binormal,
 		       const vec3_t normal, vec4_t qtangent );
+void		R_AddConvolveCubemapCmd( cubemap_t *cubemap , int cubemapId );
 #endif
 
 // debug
@@ -2366,6 +2403,10 @@ void		vk_upload_image( image_t *image, byte *pic );
 void		vk_upload_image_data( image_t *image, int x, int y, int width, int height, int mipmaps, byte *pixels, int size ) ;
 void		vk_generate_image_upload_data( image_t *image, byte *data, Image_Upload_Data *upload_data );
 void		vk_create_image( image_t *image, int width, int height, int mip_levels );
+
+#ifdef VK_CUBEMAP
+void		vk_generate_cubemaps( cubemap_t *cube );
+#endif
 
 static QINLINE unsigned int log2pad(unsigned int v, int roundup)
 {

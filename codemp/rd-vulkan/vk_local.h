@@ -69,7 +69,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define USE_VK_STATS
 
 #ifdef USE_VK_PBR
-#define VK_LAYOUT_COUNT					9
+#define VK_LAYOUT_COUNT					10	// use 11 for irradiance testing
 #else
 #define VK_LAYOUT_COUNT					7
 #endif
@@ -87,7 +87,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define MAX_VK_PIPELINES				( 1024 + 128 )
 #define USE_DEDICATED_ALLOCATION
 // depth + msaa + msaa-resolve + screenmap.msaa + screenmap.resolve + screenmap.depth + (bloom_extract + blur pairs + dglow_extract + blur pairs) + dglow-msaa
-#define MAX_ATTACHMENTS_IN_POOL			( 6 + ( ( 1 + VK_NUM_BLUR_PASSES * 2 ) * 2 ) + 1  ) 
+#define MAX_ATTACHMENTS_IN_POOL			( 9 + ( ( 1 + VK_NUM_BLUR_PASSES * 2 ) * 2 ) + 1 ) // (6+3=9: cubemap.msaa + cubemap.resolve + cubemap.depth)
 
 #define VK_SAMPLER_LAYOUT_BEGIN			2
 //#define MIN_IMAGE_ALIGN				( 128 * 1024 )
@@ -124,14 +124,17 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #define PBR_HAS_NORMALMAP				( 1 )
 #define PBR_HAS_PHYSICALMAP				( 2 )
-#define PBR_HAS_ROUGHNESS_VALUE			( 4 )
-#define PBR_HAS_METALLIC_VALUE			( 8 )
+#define PBR_HAS_LIGHTMAP				( 4 )
 
 #define PHYS_NONE						( 1 )
-#define PHYS_ROUGHNESS					( 2 )
-#define PHYS_METALLIC					( 4 )
-#define PHYS_OCCLUSION					( 8 )
-#define PHYS_RMO						( 16 )
+#define PHYS_RMO						( 2 )
+#define PHYS_RMOS   					( 4 )
+#define PHYS_MOXR   					( 8 )
+#define PHYS_MOSR   					( 16 )
+#define PHYS_ORM  						( 32 )	
+#define PHYS_ORMS   					( 64 )	
+#define PHYS_NORMAL   					( 128 )	
+
 
 #define ByteToFloat(a)					((float)(a) * 1.0f/255.0f)
 #define FloatToByte(a)					(byte)((a) * 255.0f)
@@ -385,6 +388,9 @@ extern PFN_vkGetImageMemoryRequirements2KHR				qvkGetImageMemoryRequirements2KHR
 
 extern PFN_vkDebugMarkerSetObjectNameEXT				qvkDebugMarkerSetObjectNameEXT;
 
+extern PFN_vkCmdClearColorImage							qvkCmdClearColorImage;
+
+
 typedef float mat4_t[16];
 typedef union floatint_u
 {
@@ -407,6 +413,7 @@ typedef enum {
 	RENDER_PASS_MAIN,
 	RENDER_PASS_POST_BLEND,
 	RENDER_PASS_DGLOW,
+	RENDER_PASS_CUBEMAP,
 	RENDER_PASS_COUNT
 } renderPass_t;
 
@@ -432,8 +439,7 @@ typedef struct {
 
 #ifdef USE_VK_PBR
 	uint32_t				vk_pbr_flags;
-	float					roughness_value;
-	float					metallic_value;
+	vec4_t					specularScale;	
 #endif
 } Vk_Pipeline_Def;
 
@@ -565,7 +571,7 @@ typedef struct vk_tess_s {
 
 	struct {
 		uint32_t		start, end;
-		VkDescriptorSet	current[VK_LAYOUT_COUNT];	// 0:storage, 1:uniform, 2:color0, 3:color1, 4:color2, 5:fog, 6:brdf lut, 7:normal, 8:physical
+		VkDescriptorSet	current[VK_LAYOUT_COUNT];	// 0:storage, 1:uniform, 2:color0, 3:color1, 4:color2, 5:fog, 6:brdf lut, 7:normal, 8:physical, 9:prefilterd envmap, !10:irradiance envmap
 		uint32_t		offset[5]; // 0:storage, 1:uniform, 2: camera uniform, 3: data uniform, 4:ghoul2 uniform
 	} descriptor_set;
 	
@@ -652,6 +658,19 @@ typedef struct {
 		VkImageView		color_image_view;
 	} screenMap;
 
+	// cubemap
+	struct {
+		VkImage			depth_image;
+		VkImageView		depth_image_view;
+
+		VkImage			color_image_msaa;
+		VkImageView		color_image_view_msaa[7];
+
+		VkDescriptorSet color_descriptor;
+		VkImage			color_image;
+		VkImageView		color_image_view[7];
+	} cubeMap;
+
 	vk_tess_t tess[NUM_COMMAND_BUFFERS], *cmd;
 	int cmd_index;
 
@@ -664,6 +683,8 @@ typedef struct {
 #ifdef VK_PBR_BRDFLUT
 		VkRenderPass brdflut;
 #endif
+		
+		VkRenderPass cubemap;
 
 		struct {
 			VkRenderPass blur[VK_NUM_BLUR_PASSES * 2];
@@ -692,6 +713,8 @@ typedef struct {
 #ifdef VK_PBR_BRDFLUT
 		VkFramebuffer brdflut;
 #endif
+
+		VkFramebuffer cubemap[6];
 
 		struct {
 			VkFramebuffer blur[VK_NUM_BLUR_PASSES * 2];
@@ -728,7 +751,6 @@ typedef struct {
 	VkDescriptorPool		descriptor_pool;
 	VkDescriptorSetLayout	set_layout_sampler;
 	VkDescriptorSetLayout	set_layout_uniform;
-	VkDescriptorSetLayout	set_layout;
 	VkDescriptorSetLayout	set_layout_storage;
 
 	// pipeline(s)
@@ -847,6 +869,12 @@ typedef struct {
 #ifdef VK_PBR_BRDFLUT
 		VkShaderModule brdflut_fs;
 #endif
+		VkShaderModule filtercube_vs;
+		VkShaderModule filtercube_gm;
+		VkShaderModule irradiancecube_fs;
+		VkShaderModule prefilterenvmap_fs;
+		
+
 	} shaders;
 
 	uint32_t frame_count;
@@ -881,6 +909,9 @@ typedef struct {
 	qboolean msaaActive;
 	qboolean bloomActive;
 	qboolean dglowActive;
+#ifdef VK_CUBEMAP
+	qboolean cubemapActive;
+#endif
 
 	qboolean	offscreenRender;
 	qboolean	windowAdjusted;
@@ -1061,6 +1092,13 @@ qboolean	vk_bloom( void );
 void		vk_begin_dglow_extract_render_pass( void );
 void		vk_begin_dglow_blur_render_pass( uint32_t index );
 qboolean	vk_begin_dglow_blur( void );
+
+// cubemap
+#ifdef VK_CUBEMAP
+void		vk_begin_cubemap_render_pass( void );
+void		vk_create_cubemap_prefilter( void );
+void		vk_destroy_cubemap_prefilter( void );
+#endif
 
 #ifdef VK_PBR_BRDFLUT
 void		vk_create_brfdlut( void );

@@ -41,6 +41,9 @@ void vk_restart_swapchain( const char *funcname )
     vk_destroy_attachments();
     vk_destroy_swapchain();
     vk_destroy_sync_primitives();
+#ifdef VK_CUBEMAP	
+    vk_destroy_cubemap_prefilter();
+#endif
 
     vk_select_surface_format( vk.physical_device, vk.surface );
     vk_setup_surface_formats( vk.physical_device );
@@ -55,9 +58,15 @@ void vk_restart_swapchain( const char *funcname )
 #ifdef VK_PBR_BRDFLUT
     vk_create_brdflut_pipeline();
 #endif
-
+#ifdef VK_CUBEMAP
+    vk_create_cubemap_prefilter();
+#endif
     vk_update_attachment_descriptors();
     vk_update_post_process_pipelines();
+
+#ifdef VK_PBR_BRDFLUT
+	vk_create_brfdlut();
+#endif
 }
 
 static const char *vk_pmode_to_str( VkPresentModeKHR mode )

@@ -577,9 +577,15 @@ void vk_update_attachment_descriptors( void ) {
 #ifdef VK_PBR_BRDFLUT
 		if( vk.pbrActive )
 		{
+			// brdf
 			info.imageView = vk.brdflut_image_view;
 			desc.dstSet = vk.brdflut_image_descriptor;
 
+			qvkUpdateDescriptorSets( vk.device, 1, &desc, 0, NULL );	
+
+			// cubemap
+			info.imageView = vk.cubeMap.color_image_view[0];
+			desc.dstSet = vk.cubeMap.color_descriptor;
 			qvkUpdateDescriptorSets( vk.device, 1, &desc, 0, NULL );	
 		}
 #endif
@@ -657,6 +663,9 @@ void vk_init_descriptors( void ) {
 		if( vk.pbrActive )
 			VK_CHECK( qvkAllocateDescriptorSets( vk.device, &alloc, &vk.brdflut_image_descriptor ) );
 #endif
+
+		// cubemap
+		VK_CHECK( qvkAllocateDescriptorSets( vk.device, &alloc, &vk.cubeMap.color_descriptor ) );
 
 		vk_update_attachment_descriptors();
 	}
@@ -1951,7 +1960,7 @@ void ForceAlpha(unsigned char *dstColors, int TR_ForceEntAlpha)
 }
 
 static qboolean vk_is_valid_pbr_surface( const qboolean hasPBR, const qboolean is_ghoul2_vbo ) {
-	if( !vk.pbrActive || !hasPBR )
+	if ( !vk.pbrActive || !hasPBR )
 		return qfalse;
 	
 	if ( backEnd.isGlowPass )
@@ -2216,6 +2225,11 @@ void RB_StageIteratorGeneric( void )
 
 		// PBR
 #ifdef USE_VK_PBR
+		// todo:
+		// use the bundles, and proper collapsing
+		// - assign cubemap index per surface
+		// - current situation will do for development purposes
+		//
 		if ( is_pbr_surface && pStage->vk_pbr_flags ) {
 			vk_update_pbr_descriptor(6, vk.brdflut_image_descriptor);
 				
@@ -2224,8 +2238,17 @@ void RB_StageIteratorGeneric( void )
 
 			if ( pStage->vk_pbr_flags & PBR_HAS_PHYSICALMAP )
 				vk_update_pbr_descriptor(8, pStage->physicalMap->descriptor_set);
-			else
-				vk_update_pbr_descriptor(8, tr.emptyImage->descriptor_set);
+
+			if ( !tr.numCubemaps || backEnd.viewParms.targetCube != nullptr ) {
+				vk_update_pbr_descriptor(9, tr.emptyCubemap->descriptor_set);
+				//vk_update_pbr_descriptor(10, tr.emptyCubemap->descriptor_set);
+			}
+			// currently use the frist cubemap for every surface
+			// use the first cubemap index, indexes are not assigned per surface yet
+			else { 
+				vk_update_pbr_descriptor(9, tr.cubemaps[0].prefiltered_image->descriptor_set);
+				//vk_update_pbr_descriptor(10, tr.cubemaps[0].irradiance_image->descriptor_set);
+			}
 
 			if ( !is_ghoul2_vbo )
 				pipeline = pStage->vk_pbr_pipeline[fog_stage];

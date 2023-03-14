@@ -847,6 +847,19 @@ const void	*RB_DrawSurfs( const void *data ) {
 	// clear the z buffer, set the modelview, etc
 	RB_BeginDrawingView();
 
+#ifdef VK_CUBEMAP
+	if ( backEnd.viewParms.targetCube != nullptr ) 
+	{
+		vk_end_render_pass();
+		vk_begin_cubemap_render_pass();
+
+		RB_RenderDrawSurfList( cmd->drawSurfs, cmd->numDrawSurfs );
+
+		backEnd.doneSurfaces = qtrue; // for bloom
+
+		return (const void*)(cmd + 1);
+	}
+#endif
 	RB_RenderDrawSurfList( cmd->drawSurfs, cmd->numDrawSurfs );
 
 #ifdef USE_VBO
@@ -1027,6 +1040,48 @@ static const void *RB_ClearColor( const void *data )
 	return (const void*)(cmd + 1);
 }
 
+#ifdef VK_CUBEMAP
+/*
+=============
+RB_PrefilterEnvMap
+=============
+*/
+static const void *RB_PrefilterEnvMap( const void *data )
+{
+	const convolveCubemapCommand_t *cmd = (const convolveCubemapCommand_t *)data;
+
+	// finish any 2D drawing if needed
+	if ( tess.numIndexes )
+		RB_EndSurface();
+
+	vk_set_2d();
+
+	Com_Printf("prefilter cubemaps\n");
+
+	if ( !cmd->cubemap->prefiltered_image )
+		cmd->cubemap->prefiltered_image = R_CreateImage( 
+			va("cubemap prefitlered - %s", cmd->cubemap->name ), 
+			NULL, REF_CUBEMAP_SIZE, REF_CUBEMAP_SIZE, 
+			IMGFLAG_CUBEMAP | IMGFLAG_MIPMAP, 
+			VK_FORMAT_R16G16B16A16_SFLOAT, 0 );
+	
+	if ( !cmd->cubemap->irradiance_image )
+		cmd->cubemap->irradiance_image = R_CreateImage( 
+			va("cubemap irradiance - %s", cmd->cubemap->name ), 
+			NULL, REF_CUBEMAP_IRRADIANCE_SIZE, REF_CUBEMAP_IRRADIANCE_SIZE, 
+			IMGFLAG_CUBEMAP | IMGFLAG_MIPMAP, 
+			VK_FORMAT_R32G32B32A32_SFLOAT, 0 );
+
+#ifdef _DEBUG
+	assert( cmd->cubemap->irradiance_image );
+	assert( cmd->cubemap->prefiltered_image );
+#endif
+
+	vk_generate_cubemaps( cmd->cubemap );
+
+	return (const void *)(cmd + 1);
+}
+#endif
 /*
 ====================
 RB_ExecuteRenderCommands
@@ -1072,6 +1127,11 @@ void RB_ExecuteRenderCommands( const void *data ) {
 		case RC_AUTO_MAP:
 			data = R_DrawWireframeAutomap(data);
 			break;
+#ifdef VK_CUBEMAP
+		case RC_CONVOLVECUBEMAP:
+			data = RB_PrefilterEnvMap( data );
+			break;
+#endif
 		case RC_CLEARCOLOR:
 			data = RB_ClearColor(data);
 			break;

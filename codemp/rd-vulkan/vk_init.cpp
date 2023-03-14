@@ -452,6 +452,11 @@ void vk_initialize( void )
 	// up the maxBoundDescriptorSets here as well
 	if( vk.fboActive && r_pbr->integer && vk.maxBoundDescriptorSets >= 11 )
 		vk.pbrActive = qtrue;
+
+#ifdef VK_CUBEMAP
+	if ( vk.pbrActive && r_cubeMapping->integer )
+		vk.cubemapActive = qtrue;
+#endif
 #endif
 
 	//if (r_ext_multisample->integer && !r_ext_supersample->integer)
@@ -523,6 +528,10 @@ void vk_initialize( void )
 	vk_create_render_passes();
 	vk_create_framebuffers();
 
+#ifdef VK_CUBEMAP
+	vk_create_cubemap_prefilter();
+#endif
+
 	vk.active = qtrue;
 }
 
@@ -540,6 +549,9 @@ void vk_shutdown( void )
 	vk_destroy_render_passes();
 	vk_destroy_attachments();
 	vk_destroy_swapchain();
+#ifdef VK_CUBEMAP	
+	vk_destroy_cubemap_prefilter();
+#endif
 
 	if (vk.pipelineCache != VK_NULL_HANDLE) {
 		qvkDestroyPipelineCache(vk.device, vk.pipelineCache, NULL);
