@@ -23,7 +23,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include "tr_local.h"
 
-const enum Target { IRRADIANCE = 0, PREFILTEREDENV = 1 };
+enum Target { IRRADIANCE = 0, PREFILTEREDENV = 1 };
 
 typedef struct {
 	uint32_t target;
