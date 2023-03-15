@@ -180,14 +180,14 @@ static void vk_render_splash( void )
 	ratio = ( (float)( SCREEN_WIDTH * glConfig.vidHeight ) / (float)( SCREEN_HEIGHT * glConfig.vidWidth ) );
 
 	if ( cl_ratioFix->integer && ratio >= 0.74f && ratio <= 0.76f ){
-		splashImage = R_FindImageFile("menu/splash_16_9", IMGFLAG_CLAMPTOEDGE);
+		splashImage = R_FindImageFile( "menu/splash_16_9", IMGFLAG_CLAMPTOEDGE, 0 );
 
 		if ( !splashImage ){
-			splashImage = R_FindImageFile("menu/splash", IMGFLAG_CLAMPTOEDGE);
+			splashImage = R_FindImageFile( "menu/splash", IMGFLAG_CLAMPTOEDGE, 0 );
 		}
 	}
 	else{
-		splashImage = R_FindImageFile("menu/splash", IMGFLAG_CLAMPTOEDGE);
+		splashImage = R_FindImageFile( "menu/splash", IMGFLAG_CLAMPTOEDGE, 0 );
 	}
 
 	if( !splashImage ){

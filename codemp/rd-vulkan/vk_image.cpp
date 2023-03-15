@@ -51,25 +51,10 @@ textureMode_t modes[] = {
 	{"GL_LINEAR_MIPMAP_LINEAR", GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR}
 };
 
-typedef struct swizzleMode_s {
-	uint32_t type;
-	VkComponentMapping mapping;
-} swizzleMode_t;
-
-static const swizzleMode_t swizzleModes[5] = {
-	{ 0, { VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, } },
-#ifdef USE_VK_PBR
-	{ PHYS_RMO,  { VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_ONE,	} },
-	{ PHYS_RMOS, { VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_A,		} },
-	{ PHYS_MOXR, { VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_A, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_ONE,	} },
-	{ PHYS_MOSR, { VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_A, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_B,		} },
-#endif
-};
-
-static uint32_t vk_find_swizzle_mode( const uint32_t type ) {
+static uint32_t vk_find_texture_type( const uint32_t type ) {
 #ifdef USE_VK_PBR	
-	for ( uint32_t i = 0 ; i < ARRAY_LEN( swizzleModes ) ; i++ ) {
-		if ( swizzleModes[i].type == type )
+	for ( uint32_t i = 0 ; i < ARRAY_LEN( textureMapTypes ) ; i++ ) {
+		if ( textureMapTypes[i].type == type )
 			return i;
 	}
 #endif
@@ -995,7 +980,7 @@ void vk_create_image( image_t *image, int width, int height, int mip_levels ) {
 		desc.image = image->handle;
 		desc.viewType = (VkImageViewType)view_type;
 		desc.format = format;
-		desc.components = swizzleModes[image->swizzle].mapping;
+		desc.components = textureMapTypes[image->type].swizzle;
 		desc.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		desc.subresourceRange.baseMipLevel = 0;
 		desc.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
@@ -1084,7 +1069,7 @@ image_t *R_GetLoadedImage( const char *name, int flags ) {
 	return NULL;
 }
 
-image_t *R_CreateImage( const char *name, byte *pic, int width, int height, imgFlags_t flags, int format, uint32_t swizzle_mode ) {
+image_t *R_CreateImage( const char *name, byte *pic, int width, int height, imgFlags_t flags, int format, uint32_t type ) {
     image_t				*image;
     int					namelen;
     long				hash;
@@ -1122,7 +1107,7 @@ image_t *R_CreateImage( const char *name, byte *pic, int width, int height, imgF
     image->flags = flags;
     image->width = width;
     image->height = height;
-    image->swizzle = vk_find_swizzle_mode( swizzle_mode );
+    image->type = vk_find_texture_type( type );
 
     if (namelen > 6 && Q_stristr(image->imgName, "maps/") == image->imgName && Q_stristr(image->imgName + 6, "/lm_") != NULL) {
         // external lightmap atlases stored in maps/<mapname>/lm_XXXX textures
@@ -1157,7 +1142,7 @@ image_t *R_CreateImage( const char *name, byte *pic, int width, int height, imgF
     return image;
 }
 
-image_t *R_FindImageFile( const char *name, imgFlags_t flags ){
+image_t *R_FindImageFile( const char *name, imgFlags_t flags, uint32_t type ){
         image_t		*image;
         int			width, height;
         byte		*pic;
@@ -1225,49 +1210,32 @@ image_t *R_FindImageFile( const char *name, imgFlags_t flags ){
             }
 		}
 
-        image = R_CreateImage(name, pic, width, height, flags, 0, 0);
+        image = R_CreateImage(name, pic, width, height, flags, 0, type);
         ri.Z_Free(pic);
         return image;
 }
 
-void vk_create_normal_texture( shaderStage_t *stage, const char *albedoMapName, imgFlags_t flags ) {
-	if ( !albedoMapName )
-		return;
-
-	char normalName[MAX_QPATH];
-
-	COM_StripExtension( albedoMapName, normalName, sizeof(normalName) );
-	Q_strcat( normalName, sizeof(normalName), "_n" );
-
-	stage->normalMap = R_FindImageFile( normalName, flags );
-
-	if ( !stage->normalMap  )
-		return;
-
-	stage->vk_pbr_flags |= PBR_HAS_NORMALMAP;
-}
-
-static void vk_set_physical_specular_scale( shaderStage_t *stage, const uint32_t type ){
-	switch ( stage->physicalMapType )
-	{
-		case PHYS_RMOS:
-		case PHYS_MOSR:
-		case PHYS_ORMS:
-			stage->specularScale[3] = 1.0f;	// Don't scale base specular
+qboolean vk_create_normal_texture( shaderStage_t *stage, const char *name, imgFlags_t flags )
+{
+	switch ( stage->normalMapType ) {
+		case PHYS_NORMAL:
+		case PHYS_NORMALHEIGHT:
 			break;
 		default:
-			stage->specularScale[3] = 0.5f; // Basespecular is assumed to be 0.04 and shader assumes 0.08
-			break;
+			return qfalse;
 	}
 
-	// Don't scale occlusion, roughness and metalness 
-	// currently unused
-	stage->specularScale[0] =
-	stage->specularScale[1] =
-	stage->specularScale[2] = 1.0f;
+	stage->normalMap = R_FindImageFile( name, flags, stage->normalMapType );
+
+	if ( !stage->normalMap )
+		return qfalse;
+
+	stage->vk_pbr_flags |= PBR_HAS_NORMALMAP;
+	return qtrue;
 }
 
-qboolean vk_create_phyisical_texture( shaderStage_t *stage, const char *name, imgFlags_t flags ) {
+qboolean vk_create_phyisical_texture( shaderStage_t *stage, const char *name, imgFlags_t flags )
+{
 	char	packedName[MAX_QPATH];
 	int		packedWidth, packedHeight;
 	byte	*packedPic;
@@ -1276,32 +1244,58 @@ qboolean vk_create_phyisical_texture( shaderStage_t *stage, const char *name, im
 	if ( !name ) 
 		return qfalse;
 
-	COM_StripExtension( name, packedName, sizeof(packedName) );
-	Q_strcat( packedName, sizeof(packedName), "_ORMS" );
-
-	image = R_GetLoadedImage( packedName, flags );
-	if ( image != NULL )
-	{
-		vk_set_physical_specular_scale( stage, stage->physicalMapType );
-		stage->physicalMap = image;
-		stage->vk_pbr_flags |= PBR_HAS_PHYSICALMAP;
-
-		return qtrue;
+	switch ( stage->physicalMapType ) {
+		case PHYS_RMO:
+		case PHYS_RMOS:
+		case PHYS_MOXR:
+		case PHYS_MOSR:
+		case PHYS_ORM:
+		case PHYS_ORMS:
+			break;
+		default:
+			return qfalse;
 	}
 
 	R_LoadImage( name, &packedPic, &packedWidth, &packedHeight );
 	if ( packedPic == NULL )
 		return qfalse;
 
-	vk_set_physical_specular_scale( stage, stage->physicalMapType );
+	switch ( stage->physicalMapType )
+	{
+		case PHYS_RMOS:
+		case PHYS_MOSR:
+		case PHYS_ORMS:
+			stage->specularScale[1] = 1.0f;	// Don't scale base specular
+			break;
+		default:
+			stage->specularScale[1] = 0.5f; // Basespecular is assumed to be 0.04 and shader assumes 0.08
+			break;
+	}
 
-	stage->physicalMap = R_CreateImage( packedName, packedPic, packedWidth, packedHeight, flags, 0, stage->physicalMapType );	
+	// Don't scale occlusion, roughness and metalness 
+	// currently unused
+	stage->specularScale[0] =
+	stage->specularScale[2] =
+	stage->specularScale[3] = 1.0f;
 
-	stage->vk_pbr_flags |= PBR_HAS_PHYSICALMAP;
+	COM_StripExtension( name, packedName, sizeof(packedName) );
+	Q_strcat( packedName, sizeof(packedName), "_ORMS" );
+
+	//
+	// see if the image is already loaded
+	//
+	image = R_GetLoadedImage( packedName, flags );
+	if ( image != NULL )
+		stage->physicalMap = image;
+	else
+		stage->physicalMap = R_CreateImage( packedName, packedPic, packedWidth, packedHeight, flags, 0, stage->physicalMapType );
+
 	Z_Free( packedPic );
 
+	stage->vk_pbr_flags |= PBR_HAS_PHYSICALMAP;
 	return qtrue;
 }
+
 
 void RE_UploadCinematic( int cols, int rows, const byte *data, int client, qboolean dirty )
 {
@@ -1422,7 +1416,7 @@ static void R_CreateDefaultImage( void )
 			return;
 
 		// load from external file
-		tr.defaultImage = R_FindImageFile(r_defaultImage->string, IMGFLAG_MIPMAP | IMGFLAG_PICMIP);
+		tr.defaultImage = R_FindImageFile( r_defaultImage->string, IMGFLAG_MIPMAP | IMGFLAG_PICMIP, 0 );
 		if (tr.defaultImage)
 			return;
 	}

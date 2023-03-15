@@ -268,7 +268,7 @@ typedef struct image_s {
 
 	short					iLastLevelUsedOn;
 
-	uint32_t				swizzle;
+	uint32_t				type;
 	uint32_t				layers;
 	VkImage					handle;
 	VkImageView				view;
@@ -565,6 +565,7 @@ typedef struct shaderStage_s {
 	image_t			*normalMap;
 	image_t			*physicalMap;
 
+	uint32_t		normalMapType;
 	uint32_t		physicalMapType;
 
 	vec4_t			normalScale;
@@ -1816,11 +1817,11 @@ model_t		*R_AllocModel( void );
 
 void    	R_Init( void );
 
-image_t		*R_FindImageFile( const char *name, imgFlags_t flags );
-image_t		*R_CreateImage( const char *name, byte *pic, int width, int height, imgFlags_t flags, int format, uint32_t swizzle_mode );
+image_t		*R_FindImageFile( const char *name, imgFlags_t flags, uint32_t type );
+image_t		*R_CreateImage( const char *name, byte *pic, int width, int height, imgFlags_t flags, int format, uint32_t type );
 #ifdef USE_VK_PBR
-qboolean	vk_create_phyisical_texture( shaderStage_t *stage, const char *albedoMapName, imgFlags_t flags );
-void		vk_create_normal_texture( shaderStage_t *stage, const char *albedoMapName, imgFlags_t flags );
+qboolean	vk_create_phyisical_texture( shaderStage_t *stage, const char *name, imgFlags_t flags );
+qboolean	vk_create_normal_texture( shaderStage_t *stage, const char *name, imgFlags_t flags );
 #endif
 
 qboolean	R_GetModeInfo( int *width, int *height, int mode );

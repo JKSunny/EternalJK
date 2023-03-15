@@ -814,7 +814,7 @@ public:
 
 		flags = IMGFLAG_NONE;
 
-		mImage = R_FindImageFile(texturePath, flags);
+		mImage = R_FindImageFile(texturePath, flags, 0);
 		if (!mImage)
 		{
 			vk_debug("CWeatherParticleCloud: Could not texture %s", texturePath);
