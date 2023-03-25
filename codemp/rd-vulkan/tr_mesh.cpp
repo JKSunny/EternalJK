@@ -167,7 +167,7 @@ void RE_GetModelBounds( refEntity_t *refEnt, vec3_t bounds1, vec3_t bounds2 )
 
 	model = R_GetModelByHandle( refEnt->hModel );
 	assert(model);
-	header = model->md3[0];
+	header = model->data.md3[0];
 	assert(header);
 	frame = ( md3Frame_t * ) ( ( byte * ) header + header->ofsFrames ) + refEnt->frame;
 	assert(frame);
@@ -199,7 +199,7 @@ int R_ComputeLOD( trRefEntity_t *ent ) {
 		// multiple LODs exist, so compute projected bounding sphere
 		// and use that as a criteria for selecting LOD
 
-		frame = ( md3Frame_t * ) ( ( ( unsigned char * ) tr.currentModel->md3[0] ) + tr.currentModel->md3[0]->ofsFrames );
+		frame = ( md3Frame_t * ) ( ( ( unsigned char * ) tr.currentModel->data.md3[0] ) + tr.currentModel->data.md3[0]->ofsFrames );
 
 		frame += ent->e.frame;
 
@@ -313,8 +313,8 @@ void R_AddMD3Surfaces( trRefEntity_t *ent ) {
 	personalModel = (qboolean)((ent->e.renderfx & RF_THIRD_PERSON) && (tr.viewParms.portalView == PV_NONE));
 
 	if ( ent->e.renderfx & RF_WRAP_FRAMES ) {
-		ent->e.frame %= tr.currentModel->md3[0]->numFrames;
-		ent->e.oldframe %= tr.currentModel->md3[0]->numFrames;
+		ent->e.frame %= tr.currentModel->data.md3[0]->numFrames;
+		ent->e.oldframe %= tr.currentModel->data.md3[0]->numFrames;
 	}
 
 	//
@@ -323,9 +323,9 @@ void R_AddMD3Surfaces( trRefEntity_t *ent ) {
 	// when the surfaces are rendered, they don't need to be
 	// range checked again.
 	//
-	if ( (ent->e.frame >= tr.currentModel->md3[0]->numFrames)
+	if ( (ent->e.frame >= tr.currentModel->data.md3[0]->numFrames)
 		|| (ent->e.frame < 0)
-		|| (ent->e.oldframe >= tr.currentModel->md3[0]->numFrames)
+		|| (ent->e.oldframe >= tr.currentModel->data.md3[0]->numFrames)
 		|| (ent->e.oldframe < 0) ) {
 			ri.Printf( PRINT_DEVELOPER, S_COLOR_RED "R_AddMD3Surfaces: no such frame %d to %d for '%s'\n",
 				ent->e.oldframe, ent->e.frame,
@@ -339,7 +339,7 @@ void R_AddMD3Surfaces( trRefEntity_t *ent ) {
 	//
 	lod = R_ComputeLOD( ent );
 
-	header = tr.currentModel->md3[lod];
+	header = tr.currentModel->data.md3[lod];
 
 	//
 	// cull the entire model if merged bounding box of both frames

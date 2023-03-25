@@ -772,7 +772,7 @@ void R_BuildMDXM( model_t *mod, mdxmHeader_t *mdxm )
 	int					numStaticSurfaces, numStaticIndexes, numStaticVertexes;
 
 	lod = (mdxmLOD_t *)( (byte *)mdxm + mdxm->ofsLODs );
-	mod->vboModels = (mdxmVBOModel_t *)ri.Hunk_Alloc( sizeof (mdxmVBOModel_t) * mdxm->numLODs, h_low );
+	mod->data.glm->vboModels = (mdxmVBOModel_t *)ri.Hunk_Alloc( sizeof (mdxmVBOModel_t) * mdxm->numLODs, h_low );
 
 	for ( i = 0; i < mdxm->numLODs; i++ )
 	{
@@ -783,7 +783,7 @@ void R_BuildMDXM( model_t *mod, mdxmHeader_t *mdxm )
 		vbo_t *vbo = vbos[vk.vbo_count] = (vbo_t *)ri.Hunk_Alloc( sizeof(*vbo), h_low );
 		Com_Memset( vbo, 0, sizeof( *vbo ) );
 
-		vboModel = &mod->vboModels[i];
+		vboModel = &mod->data.glm->vboModels[i];
 		vboModel->vboMeshes = (mdxmVBOMesh_t *)ri.Hunk_Alloc( sizeof (mdxmVBOMesh_t) * (mdxm->numSurfaces ), h_low );
 
 		vbo_size = 0;

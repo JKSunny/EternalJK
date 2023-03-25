@@ -695,7 +695,7 @@ qboolean ServerLoadMDXA( model_t *mod, void *buffer, const char *mod_name, qbool
 	mod->dataSize  += size;
 
 	qboolean bAlreadyFound = qfalse;
-	mdxa = mod->mdxa = (mdxaHeader_t*) //Hunk_Alloc( size );
+	mdxa = mod->data.gla = (mdxaHeader_t*) //Hunk_Alloc( size );
 										RE_RegisterServerModels_Malloc(size, buffer, mod_name, &bAlreadyFound, TAG_MODEL_GLA);
 
 	assert(bAlreadyCached == bAlreadyFound);	// I should probably eliminate 'bAlreadyFound', but wtf?
@@ -834,10 +834,12 @@ qboolean ServerLoadMDXM( model_t *mod, void *buffer, const char *mod_name, qbool
 	mod->dataSize += size;
 
 	qboolean bAlreadyFound = qfalse;
-	mdxm = mod->mdxm = (mdxmHeader_t*) //Hunk_Alloc( size );
-										RE_RegisterServerModels_Malloc(size, buffer, mod_name, &bAlreadyFound, TAG_MODEL_GLM);
+	mdxm = (mdxmHeader_t*)RE_RegisterServerModels_Malloc(size, buffer, mod_name, &bAlreadyFound, TAG_MODEL_GLM);
+	mod->data.glm = (mdxmData_t *)ri.Hunk_Alloc (sizeof (mdxmData_t), h_low);
+	mod->data.glm->header = mdxm;
+
 #ifdef USE_VBO_GHOUL2	
-	mod->vboModels = (mdxmVBOModel_t *)ri.Hunk_Alloc( sizeof (mdxmVBOModel_t) * mdxm->numLODs, h_low );
+	mod->data.glm->vboModels = (mdxmVBOModel_t *)ri.Hunk_Alloc( sizeof (mdxmVBOModel_t) * mdxm->numLODs, h_low );
 #endif
 	assert(bAlreadyCached == bAlreadyFound);	// I should probably eliminate 'bAlreadyFound', but wtf?
 
@@ -1133,7 +1135,7 @@ Ghoul2 Insert End
 		// loaded, in case the user changes r_lodbias on the fly
 		for ( lod-- ; lod >= 0 ; lod-- ) {
 			mod->numLods++;
-			mod->md3[lod] = mod->md3[lod+1];
+			mod->data.md3[lod] = mod->data.md3[lod+1];
 		}
 
 /*
@@ -1359,7 +1361,7 @@ Ghoul2 Insert End
 		// loaded, in case the user changes r_lodbias on the fly
 		for ( lod-- ; lod >= 0 ; lod-- ) {
 			mod->numLods++;
-			mod->md3[lod] = mod->md3[lod+1];
+			mod->data.md3[lod] = mod->data.md3[lod+1];
 		}
 
 /*
@@ -1453,7 +1455,7 @@ static qboolean R_LoadMD3 ( model_t *mod, int lod, void *buffer, const char *mod
 	mod->dataSize += size;
 
 	qboolean bAlreadyFound = qfalse;
-	mod->md3[lod] = (md3Header_t *) //Hunk_Alloc( size );
+	mod->data.md3[lod] = (md3Header_t *) //Hunk_Alloc( size );
 										RE_RegisterModels_Malloc(size, buffer, mod_name, &bAlreadyFound, TAG_MODEL_MD3);
 
 	assert(bAlreadyCached == bAlreadyFound);	// I should probably eliminate 'bAlreadyFound', but wtf?
@@ -1467,21 +1469,21 @@ static qboolean R_LoadMD3 ( model_t *mod, int lod, void *buffer, const char *mod
 		// Aaaargh. Kill me now...
 		//
 		bAlreadyCached = qtrue;
-		assert( mod->md3[lod] == buffer );
+		assert( mod->data.md3[lod] == buffer );
 //		memcpy( mod->md3[lod], buffer, size );	// and don't do this now, since it's the same thing
 
-		LL(mod->md3[lod]->ident);
-		LL(mod->md3[lod]->version);
-		LL(mod->md3[lod]->numFrames);
-		LL(mod->md3[lod]->numTags);
-		LL(mod->md3[lod]->numSurfaces);
-		LL(mod->md3[lod]->ofsFrames);
-		LL(mod->md3[lod]->ofsTags);
-		LL(mod->md3[lod]->ofsSurfaces);
-		LL(mod->md3[lod]->ofsEnd);
+		LL(mod->data.md3[lod]->ident);
+		LL(mod->data.md3[lod]->version);
+		LL(mod->data.md3[lod]->numFrames);
+		LL(mod->data.md3[lod]->numTags);
+		LL(mod->data.md3[lod]->numSurfaces);
+		LL(mod->data.md3[lod]->ofsFrames);
+		LL(mod->data.md3[lod]->ofsTags);
+		LL(mod->data.md3[lod]->ofsSurfaces);
+		LL(mod->data.md3[lod]->ofsEnd);
 	}
 
-	if ( mod->md3[lod]->numFrames < 1 ) {
+	if ( mod->data.md3[lod]->numFrames < 1 ) {
 		ri.Printf( PRINT_ALL, S_COLOR_YELLOW  "R_LoadMD3: %s has no frames\n", mod_name );
 		return qfalse;
 	}
@@ -1516,8 +1518,8 @@ static qboolean R_LoadMD3 ( model_t *mod, int lod, void *buffer, const char *mod
 #endif
 
 	// swap all the surfaces
-	surf = (md3Surface_t *) ( (byte *)mod->md3[lod] + mod->md3[lod]->ofsSurfaces );
-	for ( i = 0 ; i < mod->md3[lod]->numSurfaces ; i++) {
+	surf = (md3Surface_t *) ( (byte *)mod->data.md3[lod] + mod->data.md3[lod]->ofsSurfaces );
+	for ( i = 0 ; i < mod->data.md3[lod]->numSurfaces ; i++) {
         LL(surf->flags);
         LL(surf->numFrames);
         LL(surf->numShaders);
@@ -1690,7 +1692,7 @@ void R_Modellist_f( void ) {
 		mod = tr.models[i];
 		lods = 1;
 		for ( j = 1 ; j < MD3_MAX_LODS ; j++ ) {
-			if ( mod->md3[j] && mod->md3[j] != mod->md3[j-1] ) {
+			if ( mod->data.md3[j] && mod->data.md3[j] != mod->data.md3[j-1] ) {
 				lods++;
 			}
 		}
@@ -1745,14 +1747,14 @@ int R_LerpTag( orientation_t *tag, qhandle_t handle, int startFrame, int endFram
 	model_t		*model;
 
 	model = R_GetModelByHandle( handle );
-	if ( !model->md3[0] ) {
+	if ( !model->data.md3[0] ) {
 		AxisClear( tag->axis );
 		VectorClear( tag->origin );
 		return qfalse;
 	}
 
-	start = R_GetTag( model->md3[0], startFrame, tagName );
-	end = R_GetTag( model->md3[0], endFrame, tagName );
+	start = R_GetTag( model->data.md3[0], startFrame, tagName );
+	end = R_GetTag( model->data.md3[0], endFrame, tagName );
 	if ( !start || !end ) {
 		AxisClear( tag->axis );
 		VectorClear( tag->origin );
@@ -1786,19 +1788,19 @@ void R_ModelBounds( qhandle_t handle, vec3_t mins, vec3_t maxs ) {
 
 	model = R_GetModelByHandle( handle );
 
-	if ( model->bmodel ) {
-		VectorCopy( model->bmodel->bounds[0], mins );
-		VectorCopy( model->bmodel->bounds[1], maxs );
+	if ( model->data.bmodel ) {
+		VectorCopy( model->data.bmodel->bounds[0], mins );
+		VectorCopy( model->data.bmodel->bounds[1], maxs );
 		return;
 	}
 
-	if ( !model->md3[0] ) {
+	if ( !model->data.md3[0] ) {
 		VectorClear( mins );
 		VectorClear( maxs );
 		return;
 	}
 
-	header = model->md3[0];
+	header = model->data.md3[0];
 
 	frame = (md3Frame_t *)( (byte *)header + header->ofsFrames );
 

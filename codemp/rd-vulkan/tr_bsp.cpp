@@ -1633,7 +1633,7 @@ static	void R_LoadSubmodels( const lump_t *l, world_t &worldData, int index ) {
 		}
 
 		model->type = MOD_BRUSH;
-		model->bmodel = out;
+		model->data.bmodel = out;
 		if (index)
 		{
 			Com_sprintf( model->name, sizeof( model->name ), "*%d-%d", index, i );
