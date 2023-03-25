@@ -1053,12 +1053,21 @@ typedef struct mdxmVBOMesh_s
 	int			vboMeshIndex;	// vbo model (LOD) index
 	int			vboItemIndex;	// vbo surface index
 } mdxmVBOMesh_t;
-#endif
 
 typedef struct mdxmVBOModel_s
 {
 	mdxmVBOMesh_t *vboMeshes;
 } mdxmVBOModel_t;
+#endif
+
+typedef struct mdxmData_s
+{
+	mdxmHeader_t	*header;
+#ifdef USE_VBO_GHOUL2
+	mdxmVBOModel_t	*vboModels;
+#endif
+} mdxmData_t;
+
 
 typedef enum {
 	MOD_BAD,
@@ -1081,19 +1090,15 @@ typedef struct model_s {
 	int			index;				// model = tr.models[model->mod_index]
 
 	int			dataSize;			// just for listing purposes
-	bmodel_t	*bmodel;			// only if type == MOD_BRUSH
-	md3Header_t	*md3[MD3_MAX_LODS];	// only if type == MOD_MESH
-/*
-Ghoul2 Insert Start
-*/
-#ifdef USE_VBO_GHOUL2
-	mdxmVBOModel_t	*vboModels;
-#endif
-	mdxmHeader_t *mdxm;				// only if type == MOD_GL2M which is a GHOUL II Mesh file NOT a GHOUL II animation file
-	mdxaHeader_t *mdxa;				// only if type == MOD_GL2A which is a GHOUL II Animation file
-/*
-Ghoul2 Insert End
-*/
+
+	union
+	{
+		bmodel_t		*bmodel;			// only if type == MOD_BRUSH
+		md3Header_t		*md3[MD3_MAX_LODS];	// only if type == MOD_MESH
+		mdxmData_t		*glm;				// only if type == MOD_GL2M which is a GHOUL II Mesh file NOT a GHOUL II animation file
+		mdxaHeader_t	*gla;				// only if type == MOD_GL2A which is a GHOUL II Animation file
+	} data;
+
 	unsigned char	numLods;
 	bool			bspInstance;			// model is a bsp instance
 } model_t;
