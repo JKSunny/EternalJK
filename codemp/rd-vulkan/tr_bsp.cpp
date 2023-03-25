@@ -2179,17 +2179,19 @@ R_GetEntityToken
 =================
 */
 qboolean R_GetEntityToken( char *buffer, int size ) {
-	const char	*s;
+	char	*s;
+	world_t *worldData = &s_worldData;
 
 	if (size == -1)
 	{ //force reset
-		s_worldData.entityParsePoint = s_worldData.entityString;
+		worldData->entityParsePoint = worldData->entityString;
 		return qtrue;
 	}
 
-	s = COM_Parse( (const char **) &s_worldData.entityParsePoint );
+	s = COM_Parse( (const char **)&worldData->entityParsePoint );
 	Q_strncpyz( buffer, s, size );
-	if ( !s_worldData.entityParsePoint || !s[0] ) {
+	if ( !worldData->entityParsePoint && !s[0] ) {
+		worldData->entityParsePoint = worldData->entityString;
 		return qfalse;
 	} else {
 		return qtrue;
@@ -2348,7 +2350,7 @@ static void R_LoadEnvironmentJson( const char *baseName )
 	ri.FS_FreeFile(buffer.v);
 }
 
-static void R_LoadCubemapEntities( char *cubemapEntityName )
+static void R_LoadCubemapEntities( const char *cubemapEntityName )
 {
 	char spawnVarChars[2048];
 	int numSpawnVars;
@@ -2630,8 +2632,24 @@ void RE_LoadWorldMap_Actual( const char *name, world_t &worldData, int index )
 			// Try loading an env.json file first
 			R_LoadEnvironmentJson( worldData.baseName );
 
-			if ( !tr.numCubemaps )
-				R_LoadCubemapEntities( "misc_cubemap" );
+			const int numCubemapEntities = 5;
+			const char *cubemapEntities[numCubemapEntities] =
+			{
+				"misc_cubemap",
+				"info_player_deathmatch",
+				"info_player_start",
+				"info_player_duel",
+				"info_player_intermission",
+			};
+
+			if ( !tr.numCubemaps ) {
+				for ( int i = 0; i < numCubemapEntities; i++ )
+				{
+					R_LoadCubemapEntities( cubemapEntities[i] );
+					if ( tr.numCubemaps )
+						break;
+				}
+			}
 		}
 	#endif
 #endif	
