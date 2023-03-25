@@ -1637,7 +1637,6 @@ static	void R_LoadSubmodels( const lump_t *l, world_t &worldData, int index ) {
 		if (index)
 		{
 			Com_sprintf( model->name, sizeof( model->name ), "*%d-%d", index, i );
-			model->bspInstance = qtrue;
 		}
 		else
 		{

@@ -21,7 +21,7 @@ layout(set = 1, binding = 0) uniform UBO {
 };
 
 layout(set = 1, binding = 3) uniform UBOG3 {
-	mat4 boneMatrices[72];
+	mat3x4 u_BoneMatrices[72];
 };	
 
 layout(location = 0) in vec3 in_position;
@@ -34,14 +34,25 @@ out gl_PerVertex {
 	vec4 gl_Position;
 };
 
-void main() {
-	mat4 skin_matrix = 
-		in_weights.x * boneMatrices[int(in_bones.x)] +
-		in_weights.y * boneMatrices[int(in_bones.y)] +
-		in_weights.z * boneMatrices[int(in_bones.z)] +
-		in_weights.w * boneMatrices[int(in_bones.w)];
+mat4x3 GetBoneMatrix(uint index)
+{
+	mat3x4 bone = u_BoneMatrices[index];
+	return mat4x3(
+		bone[0].x, bone[1].x, bone[2].x,
+		bone[0].y, bone[1].y, bone[2].y,
+		bone[0].z, bone[1].z, bone[2].z,
+		bone[0].w, bone[1].w, bone[2].w);
+}
 
-	gl_Position = mvp * skin_matrix * vec4(in_position, 1.0);
+void main() {
+	mat4x3 skin_matrix =
+		GetBoneMatrix(uint(in_bones[0])) * in_weights[0] +
+        GetBoneMatrix(uint(in_bones[1])) * in_weights[1] +
+        GetBoneMatrix(uint(in_bones[2])) * in_weights[2] +
+        GetBoneMatrix(uint(in_bones[3])) * in_weights[3];
+
+	vec3 position = skin_matrix * vec4(in_position, 1.0);
+	gl_Position = mvp * vec4(position, 1.0);
 
 	float s = dot(in_position, fogDistanceVector.xyz) + fogDistanceVector.w;
 	float t = dot(in_position, fogDepthVector.xyz) + fogDepthVector.w;

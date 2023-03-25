@@ -196,7 +196,8 @@ typedef struct trRefEntity_s {
 
 	float		axisLength;		// compensate for non-normalized axis
 	qboolean	lightingCalculated;
-	vec3_t		lightDir;		// normalized direction towards light
+	vec3_t		lightDir;			// normalized direction towards light, original
+	vec3_t		modelLightDir;  // normalized direction towards light, in model space
 	vec3_t		ambientLight;	// color normalized to 0-255
 	int			ambientLightInt;	// 32 bit rgba packed
 	vec3_t		directedLight;
@@ -1160,17 +1161,15 @@ typedef struct model_s {
 	int			index;				// model = tr.models[model->mod_index]
 
 	int			dataSize;			// just for listing purposes
-
-	union
+	struct // union presents issues with glm world models like weapons ..
 	{
-		bmodel_t		*bmodel;			// only if type == MOD_BRUSH
-		md3Header_t		*md3[MD3_MAX_LODS];	// only if type == MOD_MESH
-		mdxmData_t		*glm;				// only if type == MOD_GL2M which is a GHOUL II Mesh file NOT a GHOUL II animation file
-		mdxaHeader_t	*gla;				// only if type == MOD_GL2A which is a GHOUL II Animation file
+		bmodel_t		*bmodel;			// type == MOD_BRUSH
+		md3Header_t		*md3[MD3_MAX_LODS];	// type == MOD_MESH
+		mdxmData_t		*glm;				// type == MOD_MDXM which is a GHOUL II Mesh file NOT a GHOUL II animation file
+		mdxaHeader_t	*gla;				// type == MOD_MDXA which is a GHOUL II Animation file
 	} data;
 
-	unsigned char	numLods;
-	bool			bspInstance;			// model is a bsp instance
+	int	numLods;
 } model_t;
 
 #define	MAX_MOD_KNOWN	1024

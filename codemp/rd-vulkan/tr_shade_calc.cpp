@@ -1155,7 +1155,7 @@ void RB_CalcSpecularAlpha( unsigned char *alphas ) {
 		if (backEnd.currentEntity &&
 			(backEnd.currentEntity->e.hModel||backEnd.currentEntity->e.ghoul2) )	//this is a model so we can use world lights instead fake light
 		{
-			VectorCopy (backEnd.currentEntity->lightDir, lightDir);
+			VectorCopy (backEnd.currentEntity->modelLightDir, lightDir);
 		} else {
 			VectorSubtract( lightOrigin, v, lightDir );
 			VectorNormalizeFast( lightDir );
@@ -1210,7 +1210,7 @@ void RB_CalcDiffuseColor( unsigned char *colors )
 	ambientLightInt = ent->ambientLightInt;
 	VectorCopy( ent->ambientLight, ambientLight );
 	VectorCopy( ent->directedLight, directedLight );
-	VectorCopy( ent->lightDir, lightDir );
+	VectorCopy( ent->modelLightDir, lightDir );
 
 	v = tess.xyz[0];
 	normal = tess.normal[0];
@@ -1270,7 +1270,7 @@ void RB_CalcDiffuseEntityColor( unsigned char *colors )
 	ent = backEnd.currentEntity;
 	VectorCopy( ent->ambientLight, ambientLight );
 	VectorCopy( ent->directedLight, directedLight );
-	VectorCopy( ent->lightDir, lightDir );
+	VectorCopy( ent->modelLightDir, lightDir );
 
 	r = backEnd.currentEntity->e.shaderRGBA[0]/255.0f;
 	g = backEnd.currentEntity->e.shaderRGBA[1]/255.0f;

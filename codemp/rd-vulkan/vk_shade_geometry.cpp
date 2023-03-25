@@ -1334,7 +1334,7 @@ static vkUniformCamera_t	uniform_camera;
 static vkUniformData_t		uniform_data;
 static vkUniformGhoul_t		uniform_ghoul;
 
-mat4_t *vk_get_uniform_ghoul_bones( void ) {
+mat3x4_t *vk_get_uniform_ghoul_bones( void ) {
 	return uniform_ghoul.boneMatrices;
 }
 #endif
@@ -1844,7 +1844,7 @@ static void vk_compute_deform( void ) {
 				info[3] = backEnd.ori.origin[2] - backEnd.currentEntity->e.shadowPlane;
 
 				vec3_t lightDir;
-				VectorCopy( backEnd.currentEntity->lightDir, lightDir );
+				VectorCopy( backEnd.currentEntity->modelLightDir, lightDir );
 				lightDir[2] = 0.0f;
 				VectorNormalize( lightDir );
 				VectorSet( lightDir, lightDir[0] * 0.3f, lightDir[1] * 0.3f, 1.0f );
@@ -2029,20 +2029,30 @@ void RB_StageIteratorGeneric( void )
 	is_ghoul2_vbo = (qboolean)( tess.vboIndex && tess.surfType == SF_MDX );
 
 	if( is_ghoul2_vbo ) {
-		vec4_t tmp;	
+		trRefEntity_t *refEntity = backEnd.currentEntity;
+		orientationr_t ori;
+		vec4_t tmp;
+
 		Com_Memset( &uniform_data, 0, sizeof(uniform_data) );
 
-		VectorScale( backEnd.currentEntity->ambientLight, 1.0f / 255.0, tmp );
+		VectorScale( refEntity->ambientLight, 1.0f / 255.0, tmp );
 		Com_Memcpy( &uniform_data.ambientLight, tmp, sizeof(vec4_t) );
 
-		VectorScale( backEnd.currentEntity->directedLight, 1.0f / 255.0, tmp );
+		VectorScale( refEntity->directedLight, 1.0f / 255.0, tmp );
 		Com_Memcpy( &uniform_data.directedLight, tmp, sizeof(vec4_t) );
 
-		VectorCopy( backEnd.currentEntity->lightDir, tmp ); tmp[3] = 0.0f;
+		VectorCopy( refEntity->lightDir, tmp ); tmp[3] = 0.0f;
 		Com_Memcpy( &uniform_data.lightDir, tmp, sizeof(vec4_t) );
 		
-		Com_Memcpy( &uniform_camera.modelMatrix, backEnd.ori.modelMatrix, sizeof(float) * 16 );
-		Com_Memcpy( &uniform_camera.localViewOrigin, backEnd.ori.viewOrigin, sizeof( vec3_t) );
+		if ( refEntity == &tr.worldEntity ) {
+			ori = backEnd.viewParms.world;
+			Matrix16Identity( uniform_camera.modelMatrix );
+		}else{
+			R_RotateForEntity( refEntity, &backEnd.viewParms, &ori );
+			Matrix16Copy(ori.modelMatrix, uniform_camera.modelMatrix );
+		}
+
+		Com_Memcpy( &uniform_camera.localViewOrigin, ori.viewOrigin, sizeof( vec3_t) );
 		uniform_camera.localViewOrigin[3] = 0.0;
 
 		vk_push_uniform_ghoul2( &uniform_ghoul ); // bone matrices

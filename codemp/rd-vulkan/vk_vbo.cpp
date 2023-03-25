@@ -515,25 +515,28 @@ static inline float G2_GetVertBoneWeightNotSlow( const mdxmVertex_t *vert, const
 
 static void VBO_CalculateBonesMDXM( vbo_t *vbo, const mdxmSurface_t *surf, const mdxmVBOMesh_t *mesh )
 {
-	int		i, j, boneOffs, weightOffs;
+	int		i, j, w, boneOffs, weightOffs;
 	vec4_t	indexes, weights;
 
 	boneOffs = mesh->boneOffset;
 	weightOffs = mesh->weightOffset;
 
 	mdxmVertex_t *vert = (mdxmVertex_t *)( (byte *)surf + surf->ofsVerts );
-#if 0
+	int *boneRef = (int *)((byte *)surf + surf->ofsBoneReferences);
+
+#if 1
 	int numWeights, lastWeight, lastInfluence;
-	for ( int i = 0; i < surf->numVerts; i++ )
+	for ( i = 0; i < surf->numVerts; i++ )
 	{
 		int numWeights = G2_GetVertWeights( &vert[i] );
-		int lastWeight = 255;
+		float lastWeight = 1;
 		int lastInfluence = numWeights - 1;
-		for ( int j = 0; j < lastInfluence; j++ )
+		for ( j = 0; j < lastInfluence; j++ )
 		{
 			float weight = G2_GetVertBoneWeightNotSlow( &vert[i], j );
-			weights[j] = weight * 255.0f;
-			indexes[j] = G2_GetVertBoneIndex( &vert[i], j );
+			weights[j] = weight;
+			int packedIndex = G2_GetVertBoneIndex( &vert[i], j );
+			indexes[j] = boneRef[packedIndex];
 
 			lastWeight -= weights[j];
 		}
@@ -542,13 +545,14 @@ static void VBO_CalculateBonesMDXM( vbo_t *vbo, const mdxmSurface_t *surf, const
 
 		// Ensure that all the weights add up to 1.0
 		weights[lastInfluence] = lastWeight;
-		indexes[lastInfluence] = G2_GetVertBoneIndex( &vert[i], lastInfluence );
+		int packedIndex = G2_GetVertBoneIndex(&vert[i], lastInfluence);
+		indexes[lastInfluence] = boneRef[packedIndex];
 
 		// Fill in the rest of the info with zeroes.
-		for ( int j = numWeights; j < 4; j++ )
+		for ( w = numWeights; w < 4; w++ )
 		{
-			weights[j] = 0;
-			indexes[j] = 0;
+			weights[w] = 0;
+			indexes[w] = 0;
 		}
 
 		Com_Memcpy( vbo->vbo_buffer + weightOffs, weights, sizeof(vec4_t) );
@@ -562,7 +566,8 @@ static void VBO_CalculateBonesMDXM( vbo_t *vbo, const mdxmSurface_t *surf, const
 		for ( j = 0; j < 4; j++ ) {
 			if ( j < G2_GetVertWeights( &vert[i] ) ) {
 				weights[j] = G2_GetVertBoneWeightNotSlow( &vert[i], j );
-				indexes[j] = G2_GetVertBoneIndex( &vert[i], j );
+				int packedIndex = G2_GetVertBoneIndex(&vert[i], j);
+				indexes[j] = boneRef[packedIndex];
 			}
 			else {
 				weights[j] = indexes[j] = 0;

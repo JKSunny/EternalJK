@@ -32,10 +32,14 @@ layout(set = 1, binding = 0) uniform UBO {
 
 #if defined(USE_VBO_GHOUL2) || defined(USE_VK_PBR)
 layout(set = 1, binding = 1) uniform UBO_Camera {
-	vec4 viewOrigin;
-	vec4 localViewOrigin;
-	mat4 modelMatrix;
+	vec4 u_ViewOrigin;
+	vec4 u_localViewOrigin;
+	mat4 u_ModelMatrix;
 };	
+
+layout(location = 10) out vec4 var_Normal;
+layout(location = 11) out vec4 var_LightDir;
+layout(location = 12) out vec4 var_ViewDir;
 #endif
 
 #ifdef USE_VBO_GHOUL2
@@ -62,15 +66,10 @@ const ivec3 rgbaGen = ivec3(rgbaGen0, rgbaGen1, rgbaGen2);
 
 
 layout(set = 1, binding = 3) uniform UBOG3 {
-	mat4 boneMatrices[72];
+	mat3x4 u_BoneMatrices[72];
 };
 #endif
 
-#if defined(USE_VK_PBR) || defined(USE_VBO_GHOUL2)
-layout(location = 10) out vec3 N;
-layout(location = 11) out vec3 L;
-layout(location = 12) out vec3 V;
-#endif
 
 layout(location = 0) in vec3 in_position;
 
@@ -139,7 +138,6 @@ struct NTB {
 
 layout(location = 8) in vec4 in_qtangent;
 layout(location = 9) in vec4 in_lightdir;
-layout(location = 9) out vec3 out_position;
 layout(location = 13) out NTB out_ntb;
 
 vec3 QuatTransVec( in vec4 quat, in vec3 vec ) {
@@ -201,8 +199,8 @@ vec4 CalcColor( int index, in vec3 position, in vec3 normal )
 	switch ( int( alphaGen[index] ) ) {
 		case 6: // AGEN_LIGHTING_SPECULAR
 		{
-			vec3 viewer = normalize( localViewOrigin.xyz - position );
-			vec3 lightDirection = normalize( lightDir.xyz );
+			vec3 viewer = normalize( u_localViewOrigin.xyz - position );
+			vec3 lightDirection = ( transpose(u_ModelMatrix) * vec4( lightDir.xyz, 0.0 ) ).xyz;
 			vec3 reflected = -reflect( lightDirection, normal );
 			color.a = clamp( dot( reflected, normalize( viewer ) ), 0.0, 1.0 );
 			color.a *= color.a;
@@ -211,7 +209,7 @@ vec4 CalcColor( int index, in vec3 position, in vec3 normal )
 		}
 		case 8: // AGEN_PORTAL
 		{
-			vec3 viewer = normalize( localViewOrigin.xyz - position );
+			vec3 viewer = normalize( u_localViewOrigin.xyz - position );
 			color.a = clamp( length( viewer ) / alphaGen[3], 0.0, 1.0 );
 			break;
 		}
@@ -387,99 +385,84 @@ vec3 DeformNormal( const in vec3 position, const in vec3 normal )
 }
 #endif
 
+#ifdef USE_VBO_GHOUL2
+mat4x3 GetBoneMatrix(uint index)
+{
+	mat3x4 bone = u_BoneMatrices[index];
+	return mat4x3(
+		bone[0].x, bone[1].x, bone[2].x,
+		bone[0].y, bone[1].y, bone[2].y,
+		bone[0].z, bone[1].z, bone[2].z,
+		bone[0].w, bone[1].w, bone[2].w);
+}
+#endif
+
 void main() {
 #ifdef USE_VK_PBR
 	QTangentToNTB( in_qtangent, out_ntb );
-	out_position = in_position;
 #endif
 
 #ifdef USE_VBO_GHOUL2
-#ifndef USE_VK_PBR
-	vec3 out_position = in_position;
-#endif
-	mat4 skin_matrix = 
-		in_weights.x * boneMatrices[int(in_bones.x)] +
-		in_weights.y * boneMatrices[int(in_bones.y)] +
-		in_weights.z * boneMatrices[int(in_bones.z)] +
-		in_weights.w * boneMatrices[int(in_bones.w)];
+	mat4x3 skin_matrix =
+		GetBoneMatrix(uint(in_bones.x)) * in_weights.x +
+        GetBoneMatrix(uint(in_bones.y)) * in_weights.y +
+        GetBoneMatrix(uint(in_bones.z)) * in_weights.z +
+        GetBoneMatrix(uint(in_bones.w)) * in_weights.w;
+	
+	vec3 position = skin_matrix * vec4(in_position, 1.0);
+	vec3 normal = normalize(skin_matrix * vec4(in_normal, 0.0));
 
-#ifdef USE_VK_PBR
-	out_ntb.normal = normalize(transpose(inverse(mat3(modelMatrix * skin_matrix))) * out_ntb.normal);
-	out_ntb.tangent = normalize(transpose(inverse(mat3(modelMatrix * skin_matrix))) * out_ntb.tangent);
-	N = out_ntb.normal;
-#else
-	N = normalize(transpose(inverse(mat3(skin_matrix))) * in_normal);
-#endif
-	V = viewOrigin.xyz - in_position;
-	L = (modelMatrix  * vec4(lightDir.xyz, 0.0)).rgb;
-
-	#ifdef USE_ENV
-	vec3 viewer = normalize(eyePos.xyz - in_position);
-	float d = dot(N, viewer); 
-	vec2 reflected = N.yz * 2 * d - viewer.yz;
-
-	frag_tex_coord0.s = 0.5 + reflected.x * 0.5;
-	frag_tex_coord0.t = 0.5 - reflected.y * 0.5;
-	#else
-	frag_tex_coord0 = in_tex_coord0;
+	#ifdef USE_VK_PBR
+		out_ntb.tangent = normalize(skin_matrix * vec4(out_ntb.tangent, 0.0));	
+		out_ntb.tangent	= normalize(mat3(u_ModelMatrix) * out_ntb.tangent);
 	#endif
-
+	
 	if( int( deformInfo[2][0] ) != 0 ){ // !DEFORM_NONE
-		out_position	= DeformPosition( out_position, in_normal, frag_tex_coord0 );
-		N			= DeformNormal( out_position, N );
+		position	= DeformPosition( position, normal, frag_tex_coord0 );
+		normal		= DeformNormal( position, normal );
 	}
-
-	gl_Position = mvp * skin_matrix * vec4(out_position, 1.0);
-
-    #ifndef USE_CL0_IDENT
-        frag_color0 = CalcColor( 0, out_position, N );
-    #endif
-    #ifdef USE_CL1
-        frag_color1 = CalcColor( 1, out_position, N );
-    #endif
-    #ifdef USE_CL2
-        frag_color2 = CalcColor( 2, out_position, N );
-    #endif
-
-    N = normalize( mat3( modelMatrix ) * N );
 #else
-	gl_Position = mvp * vec4(in_position, 1.0);
-
-#ifdef USE_VK_PBR
-	//out_ntb.normal = out_ntb.normal  * 2.0 - vec3(1.0);
-	//out_ntb.tangent = out_ntb.tangent  * 2.0 - vec3(1.0);
-
-	L = in_lightdir.xyz * 2.0 - vec3(1.0);
-	L = ( modelMatrix * vec4( L, 0.0 ) ).xyz;
-
-	vec3 position  = ( modelMatrix * vec4( in_position, 1.0 ) ).xyz;
-	V = viewOrigin.xyz - position;
-	N = normalize( mat3( modelMatrix ) * out_ntb.normal );
+	vec3 position = in_position;
+	#if defined(USE_VK_PBR)
+		vec3 normal = out_ntb.normal;
+	#elif defined(USE_ENV)
+		vec3 normal = in_normal;
+	#endif
 #endif
 
-	#ifdef USE_CL0_IDENT
-		// use fixed color from frag.spec.constant.8
+#ifndef USE_CL0_IDENT
+	#ifdef USE_VBO_GHOUL2
+		frag_color0 = CalcColor( 0, position, normal );
 	#else
 		frag_color0 = in_color0;
 	#endif
-
-	#ifdef USE_CL1
+#endif
+#ifdef USE_CL1
+	#ifdef USE_VBO_GHOUL2
+		frag_color1 = CalcColor( 1, position, normal );
+	#else
 		frag_color1 = in_color1;
 	#endif
-	#ifdef USE_CL2
+#endif
+#ifdef USE_CL2
+	#ifdef USE_VBO_GHOUL2
+		frag_color2 = CalcColor( 2, position, normal );
+	#else
 		frag_color2 = in_color2;
 	#endif
+#endif
 
-	#ifdef USE_ENV
-		vec3 viewer = normalize(eyePos.xyz - in_position);
-		float d = dot(in_normal, viewer); 
-		vec2 reflected = in_normal.yz * 2 * d - viewer.yz;
+	gl_Position = mvp * vec4(position, 1.0);
 
-		frag_tex_coord0.s = 0.5 + reflected.x * 0.5;
-		frag_tex_coord0.t = 0.5 - reflected.y * 0.5;
-	#else
-		frag_tex_coord0 = in_tex_coord0;
-	#endif
+#ifdef USE_ENV
+	vec3 viewer = normalize(eyePos.xyz - position);
+	float d = dot(normal, viewer); 
+	vec2 reflected = normal.yz * 2 * d - viewer.yz;
+
+	frag_tex_coord0.s = 0.5 + reflected.x * 0.5;
+	frag_tex_coord0.t = 0.5 - reflected.y * 0.5;
+#else
+	frag_tex_coord0 = in_tex_coord0;
 #endif
 
 #ifdef USE_TX1
@@ -490,8 +473,8 @@ void main() {
 #endif
 
 #ifdef USE_FOG
-	float s = dot(in_position, fogDistanceVector.xyz) + fogDistanceVector.w;
-	float t = dot(in_position, fogDepthVector.xyz) + fogDepthVector.w;
+	float s = dot(position, fogDistanceVector.xyz) + fogDistanceVector.w;
+	float t = dot(position, fogDepthVector.xyz) + fogDepthVector.w;
 
 	if ( fogEyeT.y == 1.0 ) {
 		if ( t < 0.0 ) {
@@ -508,5 +491,24 @@ void main() {
 	}
 
 	fog_tex_coord = vec2(s, t);
+#endif
+
+#if defined(USE_VBO_GHOUL2) || defined(USE_VK_PBR)
+	position		= (u_ModelMatrix * vec4(position, 1.0)).xyz;
+	normal			= normalize(mat3(u_ModelMatrix) * normal);
+
+	vec3 viewDir = u_ViewOrigin.xyz - position;
+
+#ifdef USE_VBO_GHOUL2 
+	vec3 L	= lightDir.xyz - (position * lightDir.w);
+#else
+	vec3 L	= in_lightdir.xyz * 2.0 - vec3(1.0);
+	L		= ( u_ModelMatrix * vec4( L, 0.0 ) ).xyz;
+	L		= normalize( ( L * 0.5 ) + vec3( 0.5 ) );
+#endif
+
+	var_LightDir	= vec4(L, 0.0);	
+	var_Normal		= vec4(normal, 0.0);
+	var_ViewDir		= vec4(viewDir, 0.0);
 #endif
 }

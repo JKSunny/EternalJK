@@ -2594,7 +2594,7 @@ char *G2API_GetSurfaceName(CGhoul2Info_v& ghoul2, int modelIndex, int surfNumber
 		if (surf)
 		{
 #ifndef FINAL_BUILD
-			if (surf->thisSurfaceIndex < 0 || surf->thisSurfaceIndex >= mod->mdxm->numSurfaces)
+			if (surf->thisSurfaceIndex < 0 || surf->thisSurfaceIndex >= mdxm->numSurfaces)
 			{
 				Com_Error(ERR_DROP, "G2API_GetSurfaceName: Bad surf num (%i) on surf for instance %s.", surf->thisSurfaceIndex, ghlInfo->mFileName);
 			}
