@@ -3526,31 +3526,6 @@ static inline float G2_GetVertBoneWeightNotSlow( const mdxmVertex_t *pVert, cons
 	return fBoneWeight;
 }
 
-#ifdef USE_VBO_GHOUL2
-static void MDXABoneToMatrix ( const mdxaBone_t &bone, mat4_t &matrix )
-{
-	matrix[0] = bone.matrix[0][0];
-	matrix[1] = bone.matrix[1][0];
-	matrix[2] = bone.matrix[2][0];
-	matrix[3] = 0.0;
-
-	matrix[4] = bone.matrix[0][1];
-	matrix[5] = bone.matrix[1][1];
-	matrix[6] = bone.matrix[2][1];
-	matrix[7] = 0.0;
-
-	matrix[8] = bone.matrix[0][2];
-	matrix[9] = bone.matrix[1][2];
-	matrix[10] = bone.matrix[2][2];
-	matrix[11] = 0.0;
-
-	matrix[12] = bone.matrix[0][3];
-	matrix[13] = bone.matrix[1][3];
-	matrix[14] = bone.matrix[2][3];
-	matrix[15] = 1.0;
-}
-#endif
-
 //This is a slightly mangled version of the same function from the sof2sp base.
 //It provides a pretty significant performance increase over the existing one.
 void RB_SurfaceGhoul(CRenderableSurface* surf)
@@ -3580,12 +3555,16 @@ void RB_SurfaceGhoul(CRenderableSurface* surf)
 		vk_bind_vbo_index( (uint32_t)surf->vboMesh->vboMeshIndex );
 		VBO_QueueItem( surf->vboMesh->vboItemIndex );
 
-		mat4_t *boneMatrices = vk_get_uniform_ghoul_bones();
-		int *boneReferences = (int *)( (byte *)surface + surface->ofsBoneReferences );
+		mat3x4_t *boneMatrices = vk_get_uniform_ghoul_bones();
+		const int *boneReferences = (const int *)( (const byte *)surface + surface->ofsBoneReferences );
 		
 		for ( uint32_t i = 0; i < surface->numBoneReferences; i++ ) {
+			int boneIndex = boneReferences[i];
 			const mdxaBone_t& bone = surf->boneCache->EvalRender( boneReferences[i] );
-			MDXABoneToMatrix( bone, boneMatrices[i] );
+			Com_Memcpy(
+				boneMatrices[boneIndex],
+				&bone.matrix[0][0],
+				sizeof(mat3x4_t));
 		}
 
 		tess.shader->optimalStageIteratorFunc();

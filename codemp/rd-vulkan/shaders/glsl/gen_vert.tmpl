@@ -33,7 +33,7 @@ layout(set = 1, binding = 0) uniform UBO {
 
 #ifdef USE_VBO_GHOUL2
 layout(set = 1, binding = 1) uniform UBOG2 {
-	vec4 eyePos2;
+	vec4 u_localViewOrigin;
 	vec4 ambientLight;
 	vec4 directedLight;
 	vec4 lightDir;
@@ -43,7 +43,12 @@ layout(set = 1, binding = 1) uniform UBOG2 {
 	vec4 vertColor[3];
 	vec4 disintegrationInfo;
 	vec4 deformInfo[3];
+	mat4 u_ModelMatrix;
 };	
+
+layout(set = 1, binding = 2) uniform UBOG3 {
+	mat3x4 u_BoneMatrices[72];
+};
 
 #define M_PI 3.1415926535897932384626433832795
 #ifdef USE_VBO_GHOUL2_RGBAGEN_CONSTS				// manually uncomment
@@ -53,15 +58,9 @@ layout (constant_id = 2) const int rgbaGen2 = 0;
 const ivec3 rgbaGen = ivec3(rgbaGen0, rgbaGen1, rgbaGen2); 
 #endif
 
-layout(location = 7) out vec3 N;
-layout(location = 8) out vec3 L;
-#endif
-
-#ifdef USE_VBO_GHOUL2
-layout(set = 1, binding = 2) uniform UBOG3 {
-	mat4 modelMatrix;
-	mat4 boneMatrices[72];
-};
+layout(location = 7) out vec4 var_Normal;
+layout(location = 8) out vec4 var_LightDir;
+//layout(location = 9) out vec4 var_ViewDir;
 #endif
 
 layout(location = 0) in vec3 in_position;
@@ -95,7 +94,7 @@ layout(location = 7) in vec4 in_color2;
 #endif
 
 #ifdef USE_VBO_GHOUL2
-layout(location = 8) in vec4 in_bones;
+layout(location = 8) in uvec4 in_bones;
 layout(location = 9) in vec4 in_weights;
 #endif
 
@@ -169,8 +168,8 @@ vec4 CalcColor( int index, in vec3 position, in vec3 normal ) {
 	switch ( int( alphaGen[index] ) ) {
 		case 6: // AGEN_LIGHTING_SPECULAR
 		{
-			vec3 viewer = normalize( eyePos2.xyz - position );
-			vec3 lightDirection = normalize( lightDir.xyz );
+			vec3 viewer = normalize( u_localViewOrigin.xyz - position );
+			vec3 lightDirection = ( transpose(u_ModelMatrix) * vec4( lightDir.xyz, 0.0 ) ).xyz;
 			vec3 reflected = -reflect( lightDirection, normal );
 			color.a = clamp( dot( reflected, normalize( viewer ) ), 0.0, 1.0 );
 			color.a *= color.a;
@@ -179,7 +178,7 @@ vec4 CalcColor( int index, in vec3 position, in vec3 normal ) {
 		}
 		case 8: // AGEN_PORTAL
 		{
-			vec3 viewer = normalize( eyePos2.xyz - position );
+			vec3 viewer = normalize( u_localViewOrigin.xyz - position );
 			color.a = clamp( length( viewer ) / alphaGen[3], 0.0, 1.0 );
 			break;
 		}
@@ -353,76 +352,80 @@ vec3 DeformNormal( const in vec3 position, const in vec3 normal )
 
 	return outNormal;
 }
+
+mat4x3 GetBoneMatrix(uint index)
+{
+	mat3x4 bone = u_BoneMatrices[index];
+	return mat4x3(
+		bone[0].x, bone[1].x, bone[2].x,
+		bone[0].y, bone[1].y, bone[2].y,
+		bone[0].z, bone[1].z, bone[2].z,
+		bone[0].w, bone[1].w, bone[2].w);
+}
 #endif
+
+
 
 void main() {
 #ifdef USE_VBO_GHOUL2
+	mat4x3 skin_matrix =
+		GetBoneMatrix(in_bones.x) * in_weights.x +
+        GetBoneMatrix(in_bones.y) * in_weights.y +
+        GetBoneMatrix(in_bones.z) * in_weights.z +
+        GetBoneMatrix(in_bones.w) * in_weights.w;
+	
+	vec3 position = skin_matrix * vec4(in_position, 1.0);
+	vec3 normal = normalize(skin_matrix * vec4(in_normal, 0.0));
+
+	#ifdef USE_VK_PBR
+		out_ntb.tangent = normalize(skin_matrix * vec4(out_ntb.tangent, 0.0));	
+		out_ntb.tangent	= normalize(mat3(u_ModelMatrix) * out_ntb.tangent);
+	#endif
+	
+	if( int( deformInfo[2][0] ) != 0 ){ // !DEFORM_NONE
+		position	= DeformPosition( position, normal, frag_tex_coord0 );
+		normal		= DeformNormal( position, normal );
+	}
+#else
 	vec3 position = in_position;
+	#if defined(USE_ENV)
+		vec3 normal = in_normal;
+	#endif
+#endif
 
-	mat4 skin_matrix = 
-		in_weights.x * boneMatrices[int(in_bones.x)] +
-		in_weights.y * boneMatrices[int(in_bones.y)] +
-		in_weights.z * boneMatrices[int(in_bones.z)] +
-		in_weights.w * boneMatrices[int(in_bones.w)];
+#ifndef USE_CL0_IDENT
+	#ifdef USE_VBO_GHOUL2
+		frag_color0 = CalcColor( 0, position, normal );
+	#else
+		frag_color0 = in_color0;
+	#endif
+#endif
+#ifdef USE_CL1
+	#ifdef USE_VBO_GHOUL2
+		frag_color1 = CalcColor( 1, position, normal );
+	#else
+		frag_color1 = in_color1;
+	#endif
+#endif
+#ifdef USE_CL2
+	#ifdef USE_VBO_GHOUL2
+		frag_color2 = CalcColor( 2, position, normal );
+	#else
+		frag_color2 = in_color2;
+	#endif
+#endif
 
-	N = normalize(transpose(inverse(mat3(skin_matrix))) * in_normal);
-	L = (modelMatrix  * vec4(lightDir.xyz, 0.0)).rgb;
+	gl_Position = mvp * vec4(position, 1.0);
 
 #ifdef USE_ENV
-	vec3 viewer = normalize(eyePos.xyz - in_position);
-	float d = dot(N, viewer); 
-	vec2 reflected = N.yz * 2 * d - viewer.yz;
+	vec3 viewer = normalize(eyePos.xyz - position);
+	float d = dot(normal, viewer); 
+	vec2 reflected = normal.yz * 2 * d - viewer.yz;
 
 	frag_tex_coord0.s = 0.5 + reflected.x * 0.5;
 	frag_tex_coord0.t = 0.5 - reflected.y * 0.5;
 #else
 	frag_tex_coord0 = in_tex_coord0;
-#endif
-
-	if( int( deformInfo[2][0] ) != 0 ){ // !DEFORM_NONE
-		position	= DeformPosition( position, in_normal, frag_tex_coord0 );
-		N			= DeformNormal( position, N );
-	}
-
-	gl_Position = mvp * skin_matrix * vec4(position, 1.0);
-
-    #ifndef USE_CL0_IDENT
-        frag_color0 = CalcColor( 0, position, N );
-    #endif
-    #ifdef USE_CL1
-        frag_color1 = CalcColor( 1, position, N );
-    #endif
-    #ifdef USE_CL2
-        frag_color2 = CalcColor( 2, position, N );
-    #endif
-
-    N = normalize( mat3( modelMatrix ) * N );
-#else
-	gl_Position = mvp * vec4(in_position, 1.0);
-
-	#ifdef USE_CL0_IDENT
-	// use fixed color from frag.spec.constant.8
-	#else
-		frag_color0 = in_color0;
-	#endif
-
-	#ifdef USE_CL1
-		frag_color1 = in_color1;
-	#endif
-	#ifdef USE_CL2
-		frag_color2 = in_color2;
-	#endif
-
-	#ifdef USE_ENV
-		vec3 viewer = normalize(eyePos.xyz - in_position);
-		float d = dot(in_normal, viewer); 
-		vec2 reflected = in_normal.yz * 2 * d - viewer.yz;
-
-		frag_tex_coord0.s = 0.5 + reflected.x * 0.5;
-		frag_tex_coord0.t = 0.5 - reflected.y * 0.5;
-	#else
-		frag_tex_coord0 = in_tex_coord0;
-	#endif
 #endif
 
 #ifdef USE_TX1
@@ -433,8 +436,8 @@ void main() {
 #endif
 
 #ifdef USE_FOG
-	float s = dot(in_position, fogDistanceVector.xyz) + fogDistanceVector.w;
-	float t = dot(in_position, fogDepthVector.xyz) + fogDepthVector.w;
+	float s = dot(position, fogDistanceVector.xyz) + fogDistanceVector.w;
+	float t = dot(position, fogDepthVector.xyz) + fogDepthVector.w;
 
 	if ( fogEyeT.y == 1.0 ) {
 		if ( t < 0.0 ) {
@@ -451,5 +454,18 @@ void main() {
 	}
 
 	fog_tex_coord = vec2(s, t);
+#endif
+
+#if defined(USE_VBO_GHOUL2)
+	position		= (u_ModelMatrix * vec4(position, 1.0)).xyz;
+	normal			= normalize(mat3(u_ModelMatrix) * normal);
+
+	//vec3 viewDir = u_ViewOrigin.xyz - position;
+
+	vec3 L	= lightDir.xyz - (position * lightDir.w);
+
+	var_LightDir	= vec4(L, 0.0);	
+	var_Normal		= vec4(normal, 0.0);
+	//var_ViewDir		= vec4(viewDir, 0.0);
 #endif
 }

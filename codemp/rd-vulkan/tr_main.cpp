@@ -269,16 +269,16 @@ R_TransformModelToClip
 
 ==========================
 */
-void R_TransformModelToClip( const vec3_t src, const float *modelMatrix, const float *projectionMatrix,
+void R_TransformModelToClip( const vec3_t src, const float *modelViewMatrix, const float *projectionMatrix,
 	vec4_t eye, vec4_t dst ) {
 	int i;
 
 	for (i = 0; i < 4; i++) {
 		eye[i] =
-			src[0] * modelMatrix[i + 0 * 4] +
-			src[1] * modelMatrix[i + 1 * 4] +
-			src[2] * modelMatrix[i + 2 * 4] +
-			1 * modelMatrix[i + 3 * 4];
+			src[0] * modelViewMatrix[i + 0 * 4] +
+			src[1] * modelViewMatrix[i + 1 * 4] +
+			src[2] * modelViewMatrix[i + 2 * 4] +
+			1 * modelViewMatrix[i + 3 * 4];
 	}
 
 	for (i = 0; i < 4; i++) {
@@ -346,6 +346,22 @@ void myGlMultMatrix( const float *a, const float *b, float *out ) {
 	}
 }
 
+void Matrix16Identity( mat4_t out )
+{
+	out[ 0] = 1.0f; out[ 4] = 0.0f; out[ 8] = 0.0f; out[12] = 0.0f;
+	out[ 1] = 0.0f; out[ 5] = 1.0f; out[ 9] = 0.0f; out[13] = 0.0f;
+	out[ 2] = 0.0f; out[ 6] = 0.0f; out[10] = 1.0f; out[14] = 0.0f;
+	out[ 3] = 0.0f; out[ 7] = 0.0f; out[11] = 0.0f; out[15] = 1.0f;
+}
+
+void Matrix16Copy( const mat4_t in, mat4_t out )
+{
+	out[ 0] = in[ 0]; out[ 4] = in[ 4]; out[ 8] = in[ 8]; out[12] = in[12];
+	out[ 1] = in[ 1]; out[ 5] = in[ 5]; out[ 9] = in[ 9]; out[13] = in[13];
+	out[ 2] = in[ 2]; out[ 6] = in[ 6]; out[10] = in[10]; out[14] = in[14];
+	out[ 3] = in[ 3]; out[ 7] = in[ 7]; out[11] = in[11]; out[15] = in[15];
+}
+
 /*
 =================
 R_RotateForEntity
@@ -392,7 +408,8 @@ void R_RotateForEntity( const trRefEntity_t *ent, const viewParms_t *viewParms,
 	preTransEntMatrix[11] = 0;
 	preTransEntMatrix[15] = 1;
 
-	myGlMultMatrix(preTransEntMatrix, viewParms->world.modelMatrix, ori->modelMatrix);
+	Matrix16Copy( preTransEntMatrix, ori->modelMatrix );
+	myGlMultMatrix( preTransEntMatrix, viewParms->world.modelViewMatrix, ori->modelViewMatrix );
 
 	// calculate the viewer origin in the model's space
 	// needed for fog, specular, and environment mapping
@@ -424,33 +441,33 @@ R_RotateForViewer
 Sets up the modelview matrix for a given viewParm
 =================
 */
-static void R_RotateForViewer( void )
+static void R_RotateForViewer( orientationr_t *ori, viewParms_t *viewParms )
 {
 	float	viewerMatrix[16];
 	vec3_t	origin;
 
-	Com_Memset(&tr.ori , 0, sizeof(tr.ori ));
-	tr.ori.axis[0][0] = 1;
-	tr.ori.axis[1][1] = 1;
-	tr.ori.axis[2][2] = 1;
-	VectorCopy(tr.viewParms.ori.origin, tr.ori.viewOrigin);
+	*ori = {};
+	ori->axis[0][0] = 1.0f;
+	ori->axis[1][1] = 1.0f;
+	ori->axis[2][2] = 1.0f;
+	VectorCopy( viewParms->ori.origin, ori->viewOrigin );
 
 	// transform by the camera placement
-	VectorCopy(tr.viewParms.ori.origin, origin);
+	VectorCopy( viewParms->ori.origin, origin );
 
-	viewerMatrix[0] = tr.viewParms.ori.axis[0][0];
-	viewerMatrix[4] = tr.viewParms.ori.axis[0][1];
-	viewerMatrix[8] = tr.viewParms.ori.axis[0][2];
+	viewerMatrix[0] = viewParms->ori.axis[0][0];
+	viewerMatrix[4] = viewParms->ori.axis[0][1];
+	viewerMatrix[8] = viewParms->ori.axis[0][2];
 	viewerMatrix[12] = -origin[0] * viewerMatrix[0] + -origin[1] * viewerMatrix[4] + -origin[2] * viewerMatrix[8];
 
-	viewerMatrix[1] = tr.viewParms.ori.axis[1][0];
-	viewerMatrix[5] = tr.viewParms.ori.axis[1][1];
-	viewerMatrix[9] = tr.viewParms.ori.axis[1][2];
+	viewerMatrix[1] = viewParms->ori.axis[1][0];
+	viewerMatrix[5] = viewParms->ori.axis[1][1];
+	viewerMatrix[9] = viewParms->ori.axis[1][2];
 	viewerMatrix[13] = -origin[0] * viewerMatrix[1] + -origin[1] * viewerMatrix[5] + -origin[2] * viewerMatrix[9];
 
-	viewerMatrix[2] = tr.viewParms.ori.axis[2][0];
-	viewerMatrix[6] = tr.viewParms.ori.axis[2][1];
-	viewerMatrix[10] = tr.viewParms.ori.axis[2][2];
+	viewerMatrix[2] = viewParms->ori.axis[2][0];
+	viewerMatrix[6] = viewParms->ori.axis[2][1];
+	viewerMatrix[10] = viewParms->ori.axis[2][2];
 	viewerMatrix[14] = -origin[0] * viewerMatrix[2] + -origin[1] * viewerMatrix[6] + -origin[2] * viewerMatrix[10];
 
 	viewerMatrix[3] = 0;
@@ -460,9 +477,10 @@ static void R_RotateForViewer( void )
 
 	// convert from our coordinate system (looking down X)
 	// to OpenGL's coordinate system (looking down -Z)
-	myGlMultMatrix(viewerMatrix, s_flipMatrix, tr.ori.modelMatrix);
+	myGlMultMatrix( viewerMatrix, s_flipMatrix, ori->modelViewMatrix );
+	Matrix16Identity( ori->modelMatrix );
 
-	tr.viewParms.world = tr.ori ;
+	viewParms->world = *ori;
 }
 
 /*
@@ -943,7 +961,7 @@ static qboolean SurfIsOffscreen( const drawSurf_t *drawSurf, vec4_t clipDest[128
 
 	unsigned int pointAnd = (unsigned int)~0;
 
-	R_RotateForViewer();
+	R_RotateForViewer( &tr.ori, &tr.viewParms );
 
 	R_DecomposeSort(drawSurf->sort, &entityNum, &shader, &fogNum, &dlighted);
 	RB_BeginSurface(shader, fogNum);
@@ -961,7 +979,7 @@ static qboolean SurfIsOffscreen( const drawSurf_t *drawSurf, vec4_t clipDest[128
 		int j;
 		unsigned int pointFlags = 0;
 
-		R_TransformModelToClip(tess.xyz[i], tr.ori.modelMatrix, tr.viewParms.projectionMatrix, eye, clip);
+		R_TransformModelToClip(tess.xyz[i], tr.ori.modelViewMatrix, tr.viewParms.projectionMatrix, eye, clip);
 
 		for (j = 0; j < 3; j++)
 		{
@@ -1051,7 +1069,7 @@ static void R_GetModelViewBounds( int *mins, int *maxs )
 	maxn[0] = maxn[1] = -1.0;
 
 	// premultiply
-	myGlMultMatrix(tr.ori.modelMatrix, tr.viewParms.projectionMatrix, mvp);
+	myGlMultMatrix(tr.ori.modelViewMatrix, tr.viewParms.projectionMatrix, mvp);
 
 	for (i = 0; i < tess.numVertexes; i++) {
 		R_TransformModelToClipMVP(tess.xyz[i], mvp, clip);
@@ -1701,7 +1719,7 @@ void R_RenderView( const viewParms_t *parms ) {
 
 	firstDrawSurf = tr.refdef.numDrawSurfs;
 
-	R_RotateForViewer();
+	R_RotateForViewer( &tr.ori, &tr.viewParms );
 
 	R_SetupProjection(&tr.viewParms, r_zproj->value, qtrue);
 	

@@ -362,6 +362,12 @@ extern PFN_vkGetImageMemoryRequirements2KHR				qvkGetImageMemoryRequirements2KHR
 extern PFN_vkDebugMarkerSetObjectNameEXT				qvkDebugMarkerSetObjectNameEXT;
 
 typedef float mat4_t[16];
+typedef float mat3x4_t[12];
+typedef unsigned int uvec4_t[4];
+
+void Matrix16Identity( mat4_t out );
+void Matrix16Copy( const mat4_t in, mat4_t out );
+
 typedef union floatint_u
 {
 	int32_t		i;
@@ -443,11 +449,11 @@ typedef struct vkUniformData_s {
 	vec4_t vertColor[3];
 	vec4_t disintegrationInfo;
 	vec4_t deformInfo[3];
+	mat4_t modelMatrix;
 } vkUniformData_t;
 
 typedef struct vkUniformGhoul_s {
-	mat4_t modelMatrix;
-	mat4_t boneMatrices[72];
+	mat3x4_t boneMatrices[72];
 } vkUniformGhoul_t;
 #endif
 
@@ -962,7 +968,7 @@ void		vk_end_render_pass( void );
 void		vk_begin_main_render_pass( void );
 void		vk_get_pipeline_def( uint32_t pipeline, Vk_Pipeline_Def *def );
 #ifdef USE_VBO_GHOUL2
-mat4_t		*vk_get_uniform_ghoul_bones( void );
+mat3x4_t		*vk_get_uniform_ghoul_bones( void );
 #endif
 
 // image process

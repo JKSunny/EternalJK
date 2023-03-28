@@ -1118,9 +1118,9 @@ const fogProgramParms_t *RB_CalcFogProgramParms( void )
 
 	// all fogging distance is based on world Z units
 	VectorSubtract(backEnd.ori.origin, backEnd.viewParms.ori.origin, local);
-	parm.fogDistanceVector[0] = -backEnd.ori.modelMatrix[2];
-	parm.fogDistanceVector[1] = -backEnd.ori.modelMatrix[6];
-	parm.fogDistanceVector[2] = -backEnd.ori.modelMatrix[10];
+	parm.fogDistanceVector[0] = -backEnd.ori.modelViewMatrix[2];
+	parm.fogDistanceVector[1] = -backEnd.ori.modelViewMatrix[6];
+	parm.fogDistanceVector[2] = -backEnd.ori.modelViewMatrix[10];
 	parm.fogDistanceVector[3] = DotProduct(local, backEnd.viewParms.ori.axis[0]);
 
 	// scale the fog vectors based on the fog's thickness
@@ -1226,7 +1226,7 @@ static vkUniform_t		uniform;
 static vkUniformData_t	uniform_data;
 static vkUniformGhoul_t	uniform_ghoul;
 
-mat4_t *vk_get_uniform_ghoul_bones( void ) {
+mat3x4_t *vk_get_uniform_ghoul_bones( void ) {
 	return uniform_ghoul.boneMatrices;
 }
 #endif
@@ -1736,7 +1736,7 @@ static void vk_compute_deform( void ) {
 				info[3] = backEnd.ori.origin[2] - backEnd.currentEntity->e.shadowPlane;
 
 				vec3_t lightDir;
-				VectorCopy( backEnd.currentEntity->lightDir, lightDir );
+				VectorCopy( backEnd.currentEntity->modelLightDir, lightDir );
 				lightDir[2] = 0.0f;
 				VectorNormalize( lightDir );
 				VectorSet( lightDir, lightDir[0] * 0.3f, lightDir[1] * 0.3f, 1.0f );
@@ -1900,24 +1900,32 @@ void RB_StageIteratorGeneric( void )
 	is_ghoul2_vbo = (qboolean)( tess.vboIndex && tess.surfType == SF_MDX );
 	
 	if( is_ghoul2_vbo ) {
+		trRefEntity_t *refEntity = backEnd.currentEntity;
+		orientationr_t ori;
 		vec4_t tmp;	
+
 		Com_Memset( &uniform_data, 0, sizeof(uniform_data) );
 		
-		Com_Memcpy( &uniform_data.eyePos, backEnd.ori.viewOrigin, sizeof( vec3_t) );
-		uniform_data.eyePos[3] = 0.0;
-		
-		VectorScale( backEnd.currentEntity->ambientLight, 1.0f / 255.0, tmp );
+		VectorScale( refEntity->ambientLight, 1.0f / 255.0, tmp );
 		Com_Memcpy( &uniform_data.ambientLight, tmp, sizeof(vec4_t) );
 				
-		VectorScale( backEnd.currentEntity->directedLight, 1.0f / 255.0, tmp );
+		VectorScale( refEntity->directedLight, 1.0f / 255.0, tmp );
 		Com_Memcpy( &uniform_data.directedLight, tmp, sizeof(vec4_t) );
 				
-		VectorCopy( backEnd.currentEntity->lightDir, tmp ); tmp[3] = 0.0f;
+		VectorCopy( refEntity->lightDir, tmp ); tmp[3] = 0.0f;
 		Com_Memcpy( &uniform_data.lightDir, tmp, sizeof(vec4_t) );
 
-		Com_Memcpy( &uniform_ghoul.modelMatrix, backEnd.ori.modelMatrix, sizeof(float) * 16 );
-		//Com_Memcpy( &uniform_ghoul.modelMatrix,backEnd.viewParms.world.modelMatrix , sizeof(float) * 16 );
-		
+		if ( refEntity == &tr.worldEntity ) {
+			ori = backEnd.viewParms.world;
+			Matrix16Identity( uniform_data.modelMatrix );
+		}else{
+			R_RotateForEntity( refEntity, &backEnd.viewParms, &ori );
+			Matrix16Copy(ori.modelMatrix, uniform_data.modelMatrix );
+		}
+
+		Com_Memcpy( &uniform_data.eyePos, ori.viewOrigin, sizeof( vec3_t) );
+		uniform_data.eyePos[3] = 0.0;
+
 		vk_push_uniform_ghoul2( &uniform_ghoul );
 
 		vk_compute_deform();	

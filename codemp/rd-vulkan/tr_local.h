@@ -186,7 +186,8 @@ typedef struct trRefEntity_s {
 
 	float		axisLength;		// compensate for non-normalized axis
 	qboolean	lightingCalculated;
-	vec3_t		lightDir;		// normalized direction towards light
+	vec3_t		lightDir;			// normalized direction towards light, original
+	vec3_t		modelLightDir;  // normalized direction towards light, in model space
 	vec3_t		ambientLight;	// color normalized to 0-255
 	int			ambientLightInt;	// 32 bit rgba packed
 	vec3_t		directedLight;
@@ -202,6 +203,7 @@ typedef struct orientationr_s {
 	vec3_t		origin;			// in world coordinates
 	matrix3_t	axis;		// orientation in world
 	vec3_t		viewOrigin;		// viewParms->or.origin in local coordinates
+	float		modelViewMatrix[16];
 	float		modelMatrix[16];
 } orientationr_t;
 
@@ -2052,7 +2054,7 @@ Ghoul2 Insert End
 =============================================================
 =============================================================
 */
-void	R_TransformModelToClip( const vec3_t src, const float *modelMatrix, const float *projectionMatrix,
+void	R_TransformModelToClip( const vec3_t src, const float *modelViewMatrix, const float *projectionMatrix,
 							vec4_t eye, vec4_t dst );
 void	R_TransformClipToWindow( const vec4_t clip, const viewParms_t *view, vec4_t normalized, vec4_t window );
 #ifdef USE_VBO_GHOUL2

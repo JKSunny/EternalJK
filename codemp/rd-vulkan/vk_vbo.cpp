@@ -477,54 +477,60 @@ static inline float G2_GetVertBoneWeightNotSlow( const mdxmVertex_t *vert, const
 
 static void VBO_CalculateBonesMDXM( vbo_t *vbo, const mdxmSurface_t *surf, const mdxmVBOMesh_t *mesh )
 {
-	int		i, j, boneOffs, weightOffs;
-	vec4_t	indexes, weights;
+	int		i, j, w, boneOffs, weightOffs;
+	uvec4_t	indexes;
+	vec4_t	weights;
 
 	boneOffs = mesh->boneOffset;
 	weightOffs = mesh->weightOffset;
 
 	mdxmVertex_t *vert = (mdxmVertex_t *)( (byte *)surf + surf->ofsVerts );
-#if 0
+	int *boneRef = (int *)((byte *)surf + surf->ofsBoneReferences);
+
+#if 1
 	int numWeights, lastWeight, lastInfluence;
-	for ( int i = 0; i < surf->numVerts; i++ )
+	for ( i = 0; i < surf->numVerts; i++ )
 	{
 		int numWeights = G2_GetVertWeights( &vert[i] );
-		int lastWeight = 255;
+		float lastWeight = 1;
 		int lastInfluence = numWeights - 1;
-		for ( int j = 0; j < lastInfluence; j++ )
+		for ( j = 0; j < lastInfluence; j++ )
 		{
 			float weight = G2_GetVertBoneWeightNotSlow( &vert[i], j );
-			weights[j] = weight * 255.0f;
-			indexes[j] = G2_GetVertBoneIndex( &vert[i], j );
+			weights[j] = weight;
+			int packedIndex = G2_GetVertBoneIndex( &vert[i], j );
+			indexes[j] = (unsigned int)boneRef[packedIndex];
 
 			lastWeight -= weights[j];
 		}
 
-		assert(lastWeight > 0);
+		//assert(lastWeight > 0);
 
 		// Ensure that all the weights add up to 1.0
 		weights[lastInfluence] = lastWeight;
-		indexes[lastInfluence] = G2_GetVertBoneIndex( &vert[i], lastInfluence );
+		int packedIndex = G2_GetVertBoneIndex(&vert[i], lastInfluence);
+		indexes[lastInfluence] = (unsigned int)boneRef[packedIndex];
 
 		// Fill in the rest of the info with zeroes.
-		for ( int j = numWeights; j < 4; j++ )
+		for ( w = numWeights; w < 4; w++ )
 		{
-			weights[j] = 0;
-			indexes[j] = 0;
+			weights[w] = 0;
+			indexes[w] = 0;
 		}
 
 		Com_Memcpy( vbo->vbo_buffer + weightOffs, weights, sizeof(vec4_t) );
 		weightOffs += sizeof(vec4_t);
 
-		Com_Memcpy( vbo->vbo_buffer + boneOffs, indexes, sizeof(vec4_t) );
-		boneOffs += sizeof(vec4_t);
+		Com_Memcpy( vbo->vbo_buffer + boneOffs, indexes, sizeof(uvec4_t) );
+		boneOffs += sizeof(uvec4_t);
 	}
 #else
 	for ( i = 0; i < surf->numVerts; i++ ) {
 		for ( j = 0; j < 4; j++ ) {
 			if ( j < G2_GetVertWeights( &vert[i] ) ) {
 				weights[j] = G2_GetVertBoneWeightNotSlow( &vert[i], j );
-				indexes[j] = G2_GetVertBoneIndex( &vert[i], j );
+				int packedIndex = G2_GetVertBoneIndex(&vert[i], j);
+				indexes[j] = boneRef[packedIndex];
 			}
 			else {
 				weights[j] = indexes[j] = 0;
@@ -581,12 +587,12 @@ static void VBO_AddGeometryMDXM( vbo_t *vbo, vbo_item_t *vi, mdxmVBOMesh_t *mesh
 
 	// allocate xyz + normals + texCoords + bones + weights
 	mesh->vboOffset = vbo->vbo_offset;
-	vbo->vbo_offset += mesh->numVertexes * ( sizeof(tess.xyz[0]) + sizeof(tess.normal[0]) + sizeof(vec2_t) + sizeof(vec4_t) + sizeof(vec4_t) );
+	vbo->vbo_offset += mesh->numVertexes * ( sizeof(tess.xyz[0]) + sizeof(tess.normal[0]) + sizeof(vec2_t) + sizeof(uvec4_t) + sizeof(vec4_t) );
 
 	mesh->normalOffset = mesh->vboOffset + mesh->numVertexes * sizeof(tess.xyz[0]);
 	mesh->texOffset = mesh->normalOffset + mesh->numVertexes * sizeof(tess.normal[0]);
 	mesh->boneOffset = mesh->texOffset + mesh->numVertexes * sizeof(vec2_t);
-	mesh->weightOffset = mesh->boneOffset + mesh->numVertexes * sizeof(vec4_t);
+	mesh->weightOffset = mesh->boneOffset + mesh->numVertexes * sizeof(uvec4_t);
 
 	vi->index_offset = 0;
 	vi->soft_offset = vbo->ibo_offset;
