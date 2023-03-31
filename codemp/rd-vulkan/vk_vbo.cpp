@@ -488,7 +488,6 @@ static void VBO_CalculateBonesMDXM( vbo_t *vbo, const mdxmSurface_t *surf, const
 	int *boneRef = (int *)((byte *)surf + surf->ofsBoneReferences);
 
 #if 1
-	int numWeights, lastWeight, lastInfluence;
 	for ( i = 0; i < surf->numVerts; i++ )
 	{
 		int numWeights = G2_GetVertWeights( &vert[i] );

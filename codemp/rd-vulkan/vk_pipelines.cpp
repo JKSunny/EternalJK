@@ -32,7 +32,7 @@ static qboolean is_ghoul2_vbo;
 #endif
 
 static void vk_create_layout_binding( int binding, VkDescriptorType type, 
-    VkShaderStageFlags flags, VkDescriptorSetLayout *layout ) 
+    VkShaderStageFlags flags, VkDescriptorSetLayout *layout, qboolean is_uniform ) 
 {
     uint32_t count = 0;
     VkDescriptorSetLayoutBinding bind[3];
@@ -45,7 +45,7 @@ static void vk_create_layout_binding( int binding, VkDescriptorType type,
     bind[count].pImmutableSamplers = NULL;
     count++;
 #ifdef USE_VBO_GHOUL2
-    if ( *layout == vk.set_layout_uniform && vk.vboGhoul2Active ) {
+    if ( is_uniform ) {
         bind[count].binding = binding + 1; // binding 1 
         bind[count].descriptorType = type;
         bind[count].descriptorCount = 1;
@@ -110,9 +110,9 @@ void vk_create_descriptor_layout( void )
 
     // Descriptor set layout
     {
-        vk_create_layout_binding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, &vk.set_layout_sampler);
-        vk_create_layout_binding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT, &vk.set_layout_uniform);
-        vk_create_layout_binding(0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT, &vk.set_layout_storage);
+        vk_create_layout_binding( 0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, &vk.set_layout_sampler, qfalse );
+        vk_create_layout_binding( 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT, &vk.set_layout_uniform, qtrue );
+        vk_create_layout_binding( 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT, &vk.set_layout_storage, qfalse );
     }
 }
 
