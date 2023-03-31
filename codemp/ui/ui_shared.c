@@ -6896,6 +6896,9 @@ void Menu_Paint(menuDef_t *menu, qboolean forcePaint) {
 		menu->window.flags |= WINDOW_FORCED;
 	}
 
+	if( menu->igDraw != NULL )
+		menu->igDraw();
+
 	// draw the background if necessary
 	if (menu->fullScreen) {
 		// implies a background shader
@@ -9567,6 +9570,10 @@ qboolean Menu_Parse(int handle, menuDef_t *menu) {
 Menu_New
 ===============
 */
+#ifdef UI_BUILD
+extern void UI_ImGuiFindMenu( menuDef_t *menu );
+#endif
+
 void Menu_New(int handle) {
 	menuDef_t *menu = &Menus[menuCount];
 
@@ -9574,9 +9581,16 @@ void Menu_New(int handle) {
 		Menu_Init(menu);
 		if (Menu_Parse(handle, menu)) {
 			Menu_PostParse(menu);
+#ifdef UI_BUILD
+			UI_ImGuiFindMenu( menu );
+#endif
 			menuCount++;
 		}
 	}
+}
+
+menuDef_t *Menu_Pointer( void ) {
+	return Menus;
 }
 
 int Menu_Count() {

@@ -73,6 +73,7 @@ set(MPUIUIFiles
 	"${MPDir}/ui/ui_gameinfo.c"
 	"${MPDir}/ui/ui_main.c"
 	"${MPDir}/ui/ui_saber.c"
+	"${MPDir}/ui/ui_imgui.c"
 	"${MPDir}/ui/ui_shared.c"
 	"${MPDir}/ui/ui_syscalls.c"
 	"${MPDir}/ui/keycodes.h"
@@ -92,6 +93,10 @@ set(MPUIRendererFiles
 	)
 source_group("rd-common" FILES ${MPUIRendererFiles})
 set(MPUIFiles ${MPUIFiles} ${MPUIRendererFiles})
+
+# Transparently use our bundled imgui library.
+list(APPEND MPUIIncludeDirectories ${IMGUI_INCLUDE_DIRS})
+list(APPEND MPUILibraries          ${IMGUI_LIBRARIES})
 
 add_library(${MPUI} SHARED ${MPUIFiles})
 

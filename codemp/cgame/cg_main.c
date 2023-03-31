@@ -2795,6 +2795,7 @@ static void CG_LoadEmojis(void) {
 		//Add emoji name to the list
 		Com_sprintf(emojis[inserted].name, sizeof(emojis[inserted].name), "%s", emoji); //get rid of the the escape chars here and just have it set by the filename for more flexibility
 		emojis[inserted].emoji = trap->R_RegisterShaderNoMip(va("gfx/emoji/%s", holdChar));
+		emojis[inserted].emoji_ig = trap->R_GetImGuiTexture( emojis[inserted].emoji );
 
 		inserted++;
 	}
@@ -2808,6 +2809,7 @@ Called after every level change or subsystem restart
 Will perform callbacks to make the loading info screen update.
 =================
 */
+void CG_ImGuiInit( void );
 void CG_Init( int serverMessageNum, int serverCommandSequence, int clientNum )
 {
 	static gitem_t *item;
@@ -3087,6 +3089,8 @@ Ghoul2 Insert End
 	cg.distanceCull = trap->R_GetDistanceCull();
 
 	CG_ParseEntitiesFromString();
+
+	CG_ImGuiInit();
 }
 
 //makes sure returned string is in localized format

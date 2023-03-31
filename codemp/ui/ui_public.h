@@ -209,6 +209,9 @@ typedef enum uiImportLegacy_e {
 	UI_G2_GETSURFACENAME,
 	UI_G2_SETSKIN,
 	UI_G2_ATTACHG2MODEL,
+
+	UI_R_GETIMGUICONTEXT,
+	UI_R_GETIMGUITEXTURE,
 } uiImportLegacy_t;
 
 typedef enum uiExportLegacy_e {
@@ -338,6 +341,10 @@ typedef struct uiImport_s {
 	void			(*R_RenderScene)						( const refdef_t *fd );
 	void			(*R_SetColor)							( const float *rgba );
 	void			(*R_ShaderNameFromIndex)				( char *name, int index );
+
+	// ImGui
+	void *			(*R_GetImGuiContext)					( void );
+	uint64_t		(*R_GetImGuiTexture)					( qhandle_t hShader );
 
 	void			(*G2_ListModelSurfaces)					( void *ghlInfo );
 	void			(*G2_ListModelBones)					( void *ghlInfo, int frame );

@@ -92,6 +92,7 @@ layout (constant_id = 8) const float identity_color = 1.0;
 layout(location = 10) in vec4 var_Normal;
 layout(location = 11) in vec4 var_LightDir;
 layout(location = 12) in vec4 var_ViewDir;
+layout(location = 13) in flat int Var_RenderMode;
 #endif
 
 #ifdef USE_VK_PBR
@@ -101,7 +102,7 @@ struct NTB {
 	vec3 normal, tangent, binormal;
 };
 
-layout(location = 13) in NTB in_ntb;
+layout(location = 14) in NTB in_ntb;
 
 layout(set = 6, binding = 0) uniform sampler2D brdflut_texture;
 layout(set = 7, binding = 0) uniform sampler2D normal_texture;
@@ -578,6 +579,34 @@ void main() {
 			out_color.rgb += CalcIBLContribution( roughness, N, E, NE, specular.rgb * AO );
 	
 		out_color.a = diffuse.a;
+		
+		if(  Var_RenderMode > 0 ) {
+			switch( Var_RenderMode ) {
+				case 1 : out_color.rgb = diffuse.rgb; break;
+				case 2 : out_color.rgb = specular.rgb; break;		
+				case 3 : out_color.rgb = vec3(roughness); break;
+				case 4 : out_color.rgb = vec3(AO); break;			// Ambient Occlusion		
+				case 5 : out_color.rgb = var_Normal.rgb; break;		// Normals
+				case 6 : out_color.rgb = N; break;					// Normals + Normalmap
+				case 7 : out_color.rgb = L; break;					// Lightdir
+				case 8 : out_color.rgb = E; break;					// ViewDir
+				case 9 : out_color.rgb = in_ntb.tangent; break;		// Tagnent
+				case 10 : out_color.rgb = lightColor; break;
+				case 11 : out_color.rgb = ambientColor; break;
+				case 12 : out_color.rgb = reflectance; break;
+				case 13 : out_color.rgb = vec3(attenuation); break;
+				case 14 : out_color.rgb = H; break;
+				case 15 : out_color.rgb = Fd; break;
+				case 16 : out_color.rgb = Fs; break;				
+				case 17 : out_color.rgb = vec3(NE); break;
+				case 18 : out_color.rgb = vec3(NL); break;
+				case 19 : out_color.rgb = vec3(LH); break;
+				case 20 : out_color.rgb = vec3(NH); break;
+				case 21 : out_color.rgb = vec3(VH); break;
+				case 22 : out_color.rgb = CalcIBLContribution( roughness, N, E, NE, specular.rgb * AO ); break;
+			}
+		}	
+		
 	#else
 		out_color = base;
 	#endif

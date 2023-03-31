@@ -3,6 +3,7 @@
 // 64 bytes
 layout(push_constant) uniform Transform {
 	mat4 mvp;
+	float renderMode;
 };
 
 layout(set = 1, binding = 0) uniform UBO {

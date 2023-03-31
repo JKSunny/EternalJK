@@ -11,6 +11,7 @@
 // 64 bytes
 layout(push_constant) uniform Transform {
 	mat4 mvp;
+	float renderMode;
 };
 
 #if defined(USE_FOG) || defined(USE_ENV) || defined(USE_VK_PBR)
@@ -40,6 +41,7 @@ layout(set = 1, binding = 1) uniform UBO_Camera {
 layout(location = 10) out vec4 var_Normal;
 layout(location = 11) out vec4 var_LightDir;
 layout(location = 12) out vec4 var_ViewDir;
+layout(location = 13) out flat int Var_RenderMode;
 #endif
 
 #ifdef USE_VBO_GHOUL2
@@ -138,7 +140,7 @@ struct NTB {
 
 layout(location = 8) in vec4 in_qtangent;
 layout(location = 9) in vec4 in_lightdir;
-layout(location = 13) out NTB out_ntb;
+layout(location = 14) out NTB out_ntb;
 
 vec3 QuatTransVec( in vec4 quat, in vec3 vec ) {
 	vec3 tmp = 2.0 * cross( quat.xyz, vec );
@@ -510,5 +512,7 @@ void main() {
 	var_LightDir	= vec4(L, 0.0);	
 	var_Normal		= vec4(normal, 0.0);
 	var_ViewDir		= vec4(viewDir, 0.0);
+	
+	Var_RenderMode = int(renderMode);
 #endif
 }

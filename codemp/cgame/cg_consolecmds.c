@@ -155,6 +155,32 @@ static void CG_ScoresUp_f( void ) {
 	}
 }
 
+static void CG_igEmotesDown_f(void) {
+	//if ( cgs.serverMod == SVMOD_JAPLUS ) ..
+	if ( !cg.igShowEmotes ) {
+		trap->Cvar_Set("in_imgui", "2");
+		//trap->Cvar_Update(&in_imgui);
+
+		cg.igShowEmotes = qtrue;
+	}
+}
+
+static void CG_igEmotesUp_f(void) {	
+	if ( !cg.igHideEmotes )
+		cg.igHideEmotes = qtrue;
+}
+
+static void CG_igMessagemode_f(void) {
+	if ( !cg.igShowMessagemode ) {
+		trap->Key_ClearStates();
+		trap->Cvar_Set("in_imgui", "1");
+		//trap->Cvar_Update(&in_imgui);
+
+		cg.igShowMessagemode = qtrue;
+		cg.igFocusMessagemode = qtrue;
+	}
+}
+
 void CG_ClientList_f( void )
 {
 	clientInfo_t *ci;
@@ -2218,7 +2244,11 @@ static consoleCommand_t	commands[] = {
 	{ "listEmojis",					CG_ListEmojis_f },
 	{ "loadTrail",					CG_SpawnStrafeTrailFromCFG_f },
 	{ "weaplast",					CG_LastWeapon_f },
-	{ "do",							CG_Do_f }
+	{ "do",							CG_Do_f },
+
+	{ "+in_imgui_emotes",			CG_igEmotesDown_f },
+	{ "-in_imgui_emotes",			CG_igEmotesUp_f },
+	{ "in_imgui_messagemode",		CG_igMessagemode_f },
 };
 
 static const size_t numCommands = ARRAY_LEN( commands );

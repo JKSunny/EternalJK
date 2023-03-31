@@ -3,6 +3,7 @@
 // 128 bytes
 layout(push_constant) uniform Transform {
 	mat4 mvp;
+	float renderMode;
 };
 
 layout(location = 0) in vec3 in_position;

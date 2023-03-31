@@ -506,6 +506,8 @@ void SCR_Init( void ) {
 
 //=======================================================
 
+void CL_ImGuiFrame( void );
+
 /*
 ==================
 SCR_DrawScreenField
@@ -570,6 +572,8 @@ void SCR_DrawScreenField( stereoFrame_t stereoFrame ) {
 	if ( Key_GetCatcher( ) & KEYCATCH_UI && cls.uiStarted ) {
 		UIVM_Refresh( cls.realtime );
 	}
+
+	CL_ImGuiFrame();
 
 	// console draws next
 	Con_DrawConsole ();

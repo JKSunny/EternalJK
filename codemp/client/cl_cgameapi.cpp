@@ -983,6 +983,13 @@ intptr_t CL_CgameSystemCalls( intptr_t *args ) {
 		SCR_UpdateScreen();
 		return 0;
 
+	case CG_R_GETIMGUICONTEXT:
+		re->GetImGuiContext();
+		return 0;
+
+	case CG_R_GETIMGUITEXTURE:
+		return re->GetImGuiTexture( (qhandle_t)args[1] );
+
 	case CG_CM_LOADMAP:
 		CL_CM_LoadMap( (const char *)VMA(1), (qboolean)args[2] );
 		return 0;
@@ -1260,6 +1267,10 @@ intptr_t CL_CgameSystemCalls( intptr_t *args ) {
 
 	case CG_KEY_GETKEY:
 		return Key_GetKey( (const char *)VMA(1) );
+
+	case CG_KEY_CLEARSTATES:
+		Key_ClearStates();
+		return 0;
 
 	case CG_PC_ADD_GLOBAL_DEFINE:
 		return botlib_export->PC_AddGlobalDefine( (char *)VMA(1) );
@@ -1733,6 +1744,8 @@ void CL_BindCGame( void ) {
 		cgi.FS_Read								= FS_Read;
 		cgi.FS_Write							= FS_Write;
 		cgi.UpdateScreen						= SCR_UpdateScreen;
+		cgi.R_GetImGuiContext					= re->GetImGuiContext;
+		cgi.R_GetImGuiTexture					= re->GetImGuiTexture;
 		cgi.CM_InlineModel						= CM_InlineModel;
 		cgi.CM_LoadMap							= CL_CM_LoadMap;
 		cgi.CM_NumInlineModels					= CM_NumInlineModels;
@@ -1820,6 +1833,7 @@ void CL_BindCGame( void ) {
 		cgi.Key_GetKey							= Key_GetKey;
 		cgi.Key_IsDown							= Key_IsDown;
 		cgi.Key_SetCatcher						= CL_Key_SetCatcher;
+		cgi.Key_ClearStates						= Key_ClearStates;
 		cgi.PC_AddGlobalDefine					= botlib_export->PC_AddGlobalDefine;
 		cgi.PC_FreeSource						= botlib_export->PC_FreeSourceHandle;
 		cgi.PC_LoadGlobalDefines				= botlib_export->PC_LoadGlobalDefines;

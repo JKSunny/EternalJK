@@ -2696,6 +2696,7 @@ void CL_InitRef( void ) {
 	ri.Z_MemSize = Z_MemSize;
 	ri.Z_MorphMallocTag = Z_MorphMallocTag;
 	ri.Cmd_ExecuteString = Cmd_ExecuteString;
+	ri.Cbuf_ExecuteText = Cbuf_ExecuteText;
 	ri.Cmd_Argc = Cmd_Argc;
 	ri.Cmd_Argv = Cmd_Argv;
 	ri.Cmd_ArgsBuffer = Cmd_ArgsBuffer;

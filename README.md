@@ -40,6 +40,14 @@ Therefore the vulkan renderer is now based on Quake3e. <br />A list of the addit
 
 Many thanks to all the contributors that worked & are still working hard on improving the Q3 engine!
 
+### ImGui support 
+Press F1 to toggle input
+
+Dear ImGui: Bloat-free Graphical User interface for C++ with minimal dependencies
+[Dear ImGui GitHub](https://github.com/ocornut/imgui)
+[Dear ImGui License](https://github.com/ocornut/imgui/blob/master/LICENSE.txt)
+[Dear ImGui Creator](https://github.com/ocornut)
+
 ## Maintainers
 
 * [eternal](https://github.com/eternalcodes)

@@ -2722,6 +2722,8 @@ static int cg_siegeClassIndex = -2;
 void	CG_AddAllStrafeTrails( void );
 #endif
 
+void CG_ImGuiFrame( void );
+
 void CG_DrawActiveFrame( int serverTime, stereoFrame_t stereoView, qboolean demoPlayback ) {
 	int		inwater;
 	const char *cstr;
@@ -3083,6 +3085,8 @@ void CG_DrawActiveFrame( int serverTime, stereoFrame_t stereoView, qboolean demo
 
 	CG_DrawAutoMap();
 
+	CG_ImGuiFrame();
+
 	CG_DoAsync();
 
 	if (cgs.serverMod == SVMOD_JAPRO)
@@ -3092,4 +3096,3 @@ void CG_DrawActiveFrame( int serverTime, stereoFrame_t stereoView, qboolean demo
 		trap->Print( "cg.clientFrame:%i\n", cg.clientFrame );
 	}
 }
-

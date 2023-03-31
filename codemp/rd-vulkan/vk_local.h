@@ -418,6 +418,11 @@ typedef float mat3x4_t[12];
 void Matrix16Identity( mat4_t out );
 void Matrix16Copy( const mat4_t in, mat4_t out );
 
+#ifdef USE_VK_IMGUI
+extern PFN_vkFlushMappedMemoryRanges					qvkFlushMappedMemoryRanges;
+extern PFN_vkResetCommandPool							qvkResetCommandPool;
+#endif
+
 typedef union floatint_u
 {
 	int32_t		i;
@@ -474,7 +479,13 @@ typedef struct VK_Pipeline {
 	VkPipeline		handle[RENDER_PASS_COUNT];
 } VK_Pipeline_t;
 
+
 // this structure must be in sync with shader uniforms!
+typedef struct {
+	float	mvp[16];
+	float	renderMode;
+} pushConst;
+
 typedef struct vkUniform_s {
 	// vertex shader reference
 	vec4_t eyePos;
@@ -1152,3 +1163,21 @@ void		vk_set_object_name( uint64_t obj, const char *objName, VkDebugReportObject
 void		vk_debug( const char *msg, ... );
 void		vk_create_debug_callback( void );
 void		R_DebugGraphics( void );
+
+#ifdef USE_VK_IMGUI
+struct ImGuiGlobal {
+	qboolean		skip; // skip rendering on map loading
+	qboolean		input_state;
+};
+
+extern ImGuiGlobal	imguiGlobal;
+
+void		vk_imgui_initialize( void );
+void		vk_imgui_shutdown( void );
+void		vk_imgui_begin_frame( void );
+void		vk_imgui_draw( void );
+int			vk_imgui_get_render_mode( void );
+
+void		*R_GetImGuiContext( void );
+uint64_t	R_GetImGuiTexture( qhandle_t hShader );
+#endif

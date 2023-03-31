@@ -828,6 +828,8 @@ window_t WIN_Init( const windowDesc_t *windowDesc, glconfig_t *glConfig )
 		switch(info.subsystem) {
 			case SDL_SYSWM_WINDOWS:
 				window.handle = info.info.win.window;
+				window.sdl_handle = screen;
+				//window.id = SDL_GetWindowID( screen );
 
 				fi.cbSize = sizeof(FLASHWINFO);
 				fi.hwnd = info.info.win.window;

@@ -111,6 +111,12 @@ void trap_SendClientCommand( const char *s ) {
 void trap_UpdateScreen( void ) {
 	Q_syscall( CG_UPDATESCREEN );
 }
+void trap_R_GetImGuiContext( void ) {
+	return Q_syscall( CG_R_GETIMGUICONTEXT );
+}
+uint64_t trap_R_GetImGuiTexture( qhandle_t hShader ) {
+	return Q_syscall( CG_R_GETIMGUITEXTURE );
+}
 void trap_CM_LoadMap( const char *mapname, qboolean SubBSP ) {
 	Q_syscall( CG_CM_LOADMAP, mapname, SubBSP );
 }
@@ -385,6 +391,9 @@ void trap_Key_SetCatcher( int catcher ) {
 }
 int trap_Key_GetKey( const char *binding ) {
 	return Q_syscall( CG_KEY_GETKEY, binding );
+}
+void trap_Key_ClearStates( void ) {
+	Q_syscall( CG_KEY_CLEARSTATES );
 }
 int trap_PC_AddGlobalDefine( char *define ) {
 	return Q_syscall( CG_PC_ADD_GLOBAL_DEFINE, define );
@@ -769,6 +778,8 @@ static void TranslateSyscalls( void ) {
 	trap->FS_Read							= CGSyscall_FS_Read;
 	trap->FS_Write							= CGSyscall_FS_Write;
 	trap->UpdateScreen						= trap_UpdateScreen;
+	trap->R_GetImGuiContext					= trap_R_GetImGuiContext;
+	trap->R_GetImGuiTexture					= trap_R_GetImGuiTexture;
 	trap->CM_InlineModel					= trap_CM_InlineModel;
 	trap->CM_LoadMap						= trap_CM_LoadMap;
 	trap->CM_NumInlineModels				= trap_CM_NumInlineModels;
@@ -853,6 +864,7 @@ static void TranslateSyscalls( void ) {
 	trap->Key_GetKey						= trap_Key_GetKey;
 	trap->Key_IsDown						= trap_Key_IsDown;
 	trap->Key_SetCatcher					= trap_Key_SetCatcher;
+	trap->Key_ClearStates					= trap_Key_ClearStates;
 	trap->PC_AddGlobalDefine				= trap_PC_AddGlobalDefine;
 	trap->PC_FreeSource						= trap_PC_FreeSource;
 	trap->PC_LoadGlobalDefines				= trap_PC_LoadGlobalDefines;

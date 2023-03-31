@@ -78,19 +78,21 @@ static void get_mvp_transform( float *mvp )
 }
 
 void vk_update_mvp( const float *m ) {
-	float push_constants[16]; // mvp transform
+	pushConst push_constants;
 
 	// Specify push constants.
 	if (m)
-		Com_Memcpy(push_constants, m, sizeof(push_constants));
+		Com_Memcpy(push_constants.mvp, m, sizeof(push_constants.mvp));
 	else
-		get_mvp_transform(push_constants);
+		get_mvp_transform(push_constants.mvp);
+
+	push_constants.renderMode = (float)vk_imgui_get_render_mode();
 
 	qvkCmdPushConstants(vk.cmd->command_buffer, vk.pipeline_layout, 
-		VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(push_constants), push_constants);
+		VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(pushConst), &push_constants);
 
 #ifdef USE_VK_STATS
-	vk.stats.push_size += sizeof(push_constants);
+	vk.stats.push_size += sizeof(pushConst);
 #endif
 }
 

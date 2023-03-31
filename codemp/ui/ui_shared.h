@@ -355,6 +355,7 @@ typedef struct menuDef_s {
 	float		appearanceTime;				//	when next item should appear
 	int			appearanceCnt;				//	current item displayed
 	float		appearanceIncrement;		//
+	void		(*igDraw)(void);			// ImGui reference
 } menuDef_t;
 
 typedef struct cachedAssets_s {
@@ -530,6 +531,7 @@ qboolean PC_Int_Parse(int handle, int *i);
 qboolean PC_Rect_Parse(int handle, rectDef_t *r);
 qboolean PC_String_Parse(int handle, const char **out);
 qboolean PC_Script_Parse(int handle, const char **out);
+menuDef_t *Menu_Pointer( void );
 int Menu_Count();
 void Menu_New(int handle);
 void Menu_PaintAll();

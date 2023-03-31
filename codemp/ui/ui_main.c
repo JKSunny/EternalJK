@@ -1499,6 +1499,9 @@ void UI_LoadMenus(const char *menuFile, qboolean reset) {
 		}
 	}
 
+
+	UI_ImGuiInitMenus( reset );
+
 	if (reset) {
 		Menu_Reset();
 	}
@@ -11712,6 +11715,8 @@ void UI_Init( qboolean inGameLoad ) {
 	uiInfo.uiDC.cursory = (SCREEN_HEIGHT / 2);
 
 	UI_GetCharacterCvars();
+
+	UI_ImGuiInit( inGameLoad );
 }
 
 #define	UI_FPS_FRAMES	4
@@ -11747,6 +11752,8 @@ void UI_Refresh( int realtime )
 	}
 
 	UI_UpdateCvars();
+
+	UI_ImGuiFrame();
 
 	if (Menu_Count() > 0) {
 		// paint all the menus

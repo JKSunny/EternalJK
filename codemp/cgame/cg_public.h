@@ -224,6 +224,8 @@ typedef enum cgameImportLegacy_e {
 	CG_REMOVECOMMAND,
 	CG_SENDCLIENTCOMMAND,
 	CG_UPDATESCREEN,
+	CG_R_GETIMGUICONTEXT,
+	CG_R_GETIMGUITEXTURE,
 	CG_CM_LOADMAP,
 	CG_CM_NUMINLINEMODELS,
 	CG_CM_INLINEMODEL,
@@ -331,6 +333,7 @@ typedef enum cgameImportLegacy_e {
 	CG_KEY_GETCATCHER,
 	CG_KEY_SETCATCHER,
 	CG_KEY_GETKEY,
+	CG_KEY_CLEARSTATES,
  	CG_PC_ADD_GLOBAL_DEFINE,
 	CG_PC_LOAD_SOURCE,
 	CG_PC_FREE_SOURCE,
@@ -575,6 +578,8 @@ typedef struct cgameImport_s {
 	qboolean		(*R_Language_IsAsian)					( void );
 	qboolean		(*R_Language_UsesSpaces)				( void );
 	int				(*R_LerpTag)							( orientation_t *tag,  qhandle_t model, int startFrame, int endFrame, float frac, const char *tagName );
+	void *			(*R_GetImGuiContext)					( void );	
+	uint64_t		(*R_GetImGuiTexture)					( qhandle_t hShader );	
 	int				(*R_LightForPoint)						( vec3_t point, vec3_t ambientLight, vec3_t directedLight, vec3_t lightDir );
 	void			(*R_LoadWorld)							( const char *name );
 	int				(*R_MarkFragments)						( int numPoints, const vec3_t *points, const vec3_t projection, int maxPoints, vec3_t pointBuffer, int maxFragments, markFragment_t *fragmentBuffer );
@@ -612,6 +617,7 @@ typedef struct cgameImport_s {
 	int				(*Key_GetKey)							( const char *binding );
 	qboolean		(*Key_IsDown)							( int keynum );
 	void			(*Key_SetCatcher)						( int catcher );
+	void			(*Key_ClearStates)						( void );
 
 	// preprocessor (botlib_export->PC_***)
 	int				(*PC_AddGlobalDefine)					( char *string );

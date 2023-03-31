@@ -1572,6 +1572,13 @@ Called by the system for both key up and key down events
 ===================
 */
 void CL_KeyEvent (int key, qboolean down, unsigned time) {
+	// imgui
+	if ( down && key == A_F1 ) {
+		Cvar_Set( "in_imgui", "1" );
+		return;
+	}
+	// imgui end	
+	
 	if( down )
 		CL_KeyDownEvent( key, time );
 	else

@@ -36,6 +36,9 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #endif
 #endif
 
+// ImGui
+#define USE_VK_IMGUI
+
 #define USE_VBO					// store static world geometry in VBO
 #ifdef USE_VBO
 	#define MAX_VBOS      4096
@@ -1751,6 +1754,10 @@ extern cvar_t	*r_baseSpecular;
 #ifdef VK_CUBEMAP
 extern cvar_t	*r_cubeMapping;
 #endif
+#endif
+
+#ifdef USE_VK_IMGUI
+extern cvar_t	*in_imgui;
 #endif
 
 /*

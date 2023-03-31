@@ -148,6 +148,11 @@ PFN_vkDebugMarkerSetObjectNameEXT				qvkDebugMarkerSetObjectNameEXT;
 
 PFN_vkCmdClearColorImage						qvkCmdClearColorImage;
 
+#ifdef USE_VK_IMGUI
+PFN_vkFlushMappedMemoryRanges					qvkFlushMappedMemoryRanges;
+PFN_vkResetCommandPool							qvkResetCommandPool;
+#endif
+
 static char *Q_stradd( char *dst, const char *src )
 {
     char c;
@@ -938,6 +943,11 @@ __initStart:
 	}
 
 	INIT_DEVICE_FUNCTION_EXT(vkCmdClearColorImage)
+
+#ifdef USE_VK_IMGUI
+	INIT_DEVICE_FUNCTION(vkFlushMappedMemoryRanges)
+	INIT_DEVICE_FUNCTION(vkResetCommandPool)
+#endif
 }
 
 #undef INIT_INSTANCE_FUNCTION
@@ -1057,6 +1067,11 @@ void vk_deinit_library( void )
 	qvkDebugMarkerSetObjectNameEXT = NULL;
 
 	qvkCmdClearColorImage = NULL;
+
+#ifdef USE_VK_IMGUI
+	qvkFlushMappedMemoryRanges = NULL;
+	qvkResetCommandPool = NULL;
+#endif
 }
 
 #define FORMAT_DEPTH(format, r_bits, g_bits, b_bits) case(VK_FORMAT_##format): *r = r_bits; *b = b_bits; *g = g_bits; return qtrue;

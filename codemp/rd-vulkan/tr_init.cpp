@@ -220,6 +220,10 @@ cvar_t	*r_cubeMapping;
 #endif
 
 
+#ifdef USE_VK_IMGUI
+cvar_t	*in_imgui;
+#endif
+
 // the limits apply to the sum of all scenes in a frame --
 // the main view, all the 3D icons, etc
 #define	DEFAULT_MAX_POLYS		600
@@ -978,6 +982,9 @@ void R_Register( void )
 	r_ignorehwgamma						= ri.Cvar_Get("r_ignorehwgamma",					"0",						CVAR_ARCHIVE_ND | CVAR_LATCH, "Overrides hardware gamma capabilities");
 	ri.Cvar_CheckRange(r_ignorehwgamma, 0, 1, qtrue);
 
+#ifdef USE_VK_IMGUI
+	in_imgui							= ri.Cvar_Get("in_imgui",							"0",						CVAR_ARCHIVE_ND , "");
+#endif
 
 /*
 Ghoul2 Insert Start
@@ -1281,6 +1288,8 @@ Q_EXPORT refexport_t* QDECL GetRefAPI( int apiVersion, refimport_t *rimp ) {
 	re.EndFrame								= RE_EndFrame;
 	re.MarkFragments						= R_MarkFragments;
 	re.LerpTag								= R_LerpTag;
+	re.GetImGuiContext						= R_GetImGuiContext;
+	re.GetImGuiTexture						= R_GetImGuiTexture;
 	re.ModelBounds							= R_ModelBounds;
 	re.DrawRotatePic						= RE_RotatePic;
 	re.DrawRotatePic2						= RE_RotatePic2;

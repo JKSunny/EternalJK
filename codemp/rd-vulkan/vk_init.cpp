@@ -527,6 +527,9 @@ void vk_initialize( void )
 	vk_create_attachments();
 	vk_create_render_passes();
 	vk_create_framebuffers();
+#ifdef USE_VK_IMGUI
+	vk_imgui_initialize();
+#endif
 
 #ifdef VK_CUBEMAP
 	vk_create_cubemap_prefilter();
@@ -544,6 +547,9 @@ void vk_shutdown( void )
 		goto __cleanup;
 	}
 
+#ifdef USE_VK_IMGUI
+	vk_imgui_shutdown();
+#endif
 	vk_destroy_framebuffers();
 	vk_destroy_pipelines( qtrue ); // reset counter
 	vk_destroy_render_passes();

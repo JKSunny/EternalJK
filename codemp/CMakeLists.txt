@@ -442,6 +442,10 @@ if(BuildMPEngine)
 		set(MPEngineFiles ${MPEngineFiles} ${MPEngineEAXFiles})
 	endif(MSVC)
 
+	# Transparently use our bundled imgui library.
+	list(APPEND MPEngineIncludeDirectories ${IMGUI_INCLUDE_DIRS})
+	list(APPEND MPEngineLibraries          ${IMGUI_LIBRARIES})	
+	
 	#    Source Files
 
 	set(MPEngineClientFiles
@@ -452,6 +456,7 @@ if(BuildMPEngine)
 		"${MPDir}/client/cl_cin.cpp"
 		"${MPDir}/client/cl_console.cpp"
 		"${MPDir}/client/cl_discordrpc.cpp"
+		"${MPDir}/client/cl_imgui.cpp"
 		"${MPDir}/client/cl_input.cpp"
 		"${MPDir}/client/cl_keys.cpp"
 		"${MPDir}/client/cl_lan.cpp"
