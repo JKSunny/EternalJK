@@ -1173,9 +1173,13 @@ void vk_begin_frame( void )
         vk.cmd = &vk.tess[vk.cmd_index++];
         vk.cmd_index %= NUM_COMMAND_BUFFERS;
 
+        vk_imgui_profiler_begin_frame();
+        
         if ( !ri.VK_IsMinimized() ) {
+            size_t acquire_task = vk_imgui_profiler_start_task( "ImageAcquire",	RGBA_LE(0xd35400ffu) );
             //result = qvkAcquireNextImageKHR( vk.device, vk.swapchain, UINT64_MAX, vk.image_acquired, VK_NULL_HANDLE, &vk.swapchain_image_index );
             result = qvkAcquireNextImageKHR( vk.device, vk.swapchain, 5 * 1000000000LLU, vk.cmd->image_acquired, VK_NULL_HANDLE, &vk.swapchain_image_index );
+            vk_imgui_profiler_end_task( acquire_task );
             if ( result < 0 ) {
                 switch ( result ) {
                 case VK_ERROR_OUT_OF_DATE_KHR: vk_restart_swapchain(__func__); break;
@@ -1191,9 +1195,11 @@ void vk_begin_frame( void )
         //vk.cmd_index %= NUM_COMMAND_BUFFERS;
 
         vk.cmd->waitForFence = qfalse;
+        size_t wait_for_fence_task = vk_imgui_profiler_start_task( "WaitForFence", RGBA_LE(0x2980b9ffu) );
         VK_CHECK( qvkWaitForFences( vk.device, 1, &vk.cmd->rendering_finished_fence, VK_FALSE, 1e10 ) );
+        vk_imgui_profiler_end_task( wait_for_fence_task );
     }
-
+    
     VK_CHECK( qvkResetFences( vk.device, 1, &vk.cmd->rendering_finished_fence ) );
 
     begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -1432,11 +1438,13 @@ void vk_end_frame( void )
         submit_info.pSignalSemaphores = NULL;
     }
 
+    size_t submit_task = vk_imgui_profiler_start_task( "Submit", RGBA_LE(0x9b59b6ffu) );
     VK_CHECK( qvkQueueSubmit( vk.queue, 1, &submit_info, vk.cmd->rendering_finished_fence ) );
+    vk_imgui_profiler_end_task( submit_task );
     vk.cmd->waitForFence = qtrue;
 
     // presentation may take undefined time to complete, we can't measure it in a reliable way
-    backEnd.pc.msec = ri.Milliseconds() - backEnd.pc.msec;
+    backEnd.pc.msec = ri.Milliseconds() - backEnd.pc.msec; 
 
     if (ri.VK_IsMinimized())
         return;
@@ -1451,7 +1459,10 @@ void vk_end_frame( void )
     present_info.pImageIndices = &vk.swapchain_image_index;
     present_info.pResults = NULL;
 
+    size_t present_task = vk_imgui_profiler_start_task( "Present", RGBA_LE(0xc0392bffu) );
     VkResult result = qvkQueuePresentKHR( vk.queue, &present_info );
+    vk_imgui_profiler_end_task( present_task );
+
     if ( result < 0 ) {
         switch ( result ) {
         case VK_ERROR_DEVICE_LOST: ri.Printf( PRINT_DEVELOPER, "vkQueuePresentKHR: device lost\n" ); break;
@@ -1459,6 +1470,8 @@ void vk_end_frame( void )
         default: ri.Error( ERR_FATAL, "vkQueuePresentKHR returned %s", vk_result_string( result ) ); break;
         }
     }
+    
+    vk_imgui_profiler_end_frame();
 }
 
 static qboolean is_bgr( VkFormat format ) {

@@ -43,10 +43,17 @@ Many thanks to all the contributors that worked & are still working hard on impr
 ### ImGui support 
 Press F1 to toggle input
 
-Dear ImGui: Bloat-free Graphical User interface for C++ with minimal dependencies
-[Dear ImGui GitHub](https://github.com/ocornut/imgui)
-[Dear ImGui License](https://github.com/ocornut/imgui/blob/master/LICENSE.txt)
-[Dear ImGui Creator](https://github.com/ocornut)
+Dear ImGui: Bloat-free Graphical User interface for C++ with minimal dependencies<br />
+[Repository](https://github.com/ocornut/imgui) - 
+[License](https://github.com/ocornut/imgui/blob/master/LICENSE.txt)
+
+cimgui: Thin c-api wrapper for c++ Dear ImGui<br />
+[Repository](https://github.com/cimgui/cimgui) - 
+[License](https://github.com/cimgui/cimgui/blob/docking_inter/LICENSE)
+
+Legit profiler: ImGui helper class for simple profiler histogram<br />
+[Repository](https://github.com/Raikiri/LegitProfiler) - 
+[License](https://github.com/Raikiri/LegitProfiler/blob/master/LICENSE.txt)
 
 ## Maintainers
 

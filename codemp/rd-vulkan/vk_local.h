@@ -1166,8 +1166,9 @@ void		R_DebugGraphics( void );
 
 #ifdef USE_VK_IMGUI
 struct ImGuiGlobal {
-	qboolean		skip; // skip rendering on map loading
-	qboolean		input_state;
+	qboolean	skip; // skip rendering on map loading
+	qboolean	input_state;
+	int			profiler_index;
 };
 
 extern ImGuiGlobal	imguiGlobal;
@@ -1180,4 +1181,22 @@ int			vk_imgui_get_render_mode( void );
 
 void		*R_GetImGuiContext( void );
 uint64_t	R_GetImGuiTexture( qhandle_t hShader );
+
+// profiler
+#define		RGBA_LE(col) (((col & 0xff000000) >> (3 * 8)) + ((col & 0x00ff0000) >> (1 * 8)) + ((col & 0x0000ff00) << (1 * 8)) + ((col & 0x000000ff) << (3 * 8)))
+
+struct profilerTask_s
+{
+	double		startTime;
+	double		endTime;
+	char		name[MAX_QPATH];
+	uint32_t	color;
+};
+
+double	vk_imgui_profiler_get_time_secconds();
+void	vk_imgui_profiler_begin_frame( void );
+void	vk_imgui_profiler_end_frame( void );
+size_t	vk_imgui_profiler_start_task( const char *name, uint32_t color );
+void	vk_imgui_profiler_end_task( uint32_t task_id );
+size_t	vk_imgui_profiler_insert_task( const char *name, uint32_t color, double startTime, double endTime );
 #endif

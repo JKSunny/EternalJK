@@ -124,7 +124,8 @@ source_group("renderer\\vulkan" FILES ${MPVulkanRendererVulkanAssets})
 set(MPVulkanRendererFiles ${MPVulkanRendererFiles} ${MPVulkanRendererVulkanAssets})
 
 set(MPVulkanRendererUtils
-	"${MPDir}/rd-vulkan/utils/stb_dxt.h")
+	"${MPDir}/rd-vulkan/utils/stb_dxt.h"
+	"${MPDir}/rd-vulkan/utils/legit-profiler/imgui_legit_profiler.h")
 source_group("renderer\\utils" FILES ${MPVulkanRendererUtils})
 set(MPVulkanRendererFiles ${MPVulkanRendererFiles} ${MPVulkanRendererUtils})
 

@@ -146,7 +146,7 @@ void vk_create_pipeline_layout( void )
     
     push_range.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
     push_range.offset = 0;
-    push_range.size = 64; // 16 mvp floats + 16
+    push_range.size = sizeof(pushConst); // 16 mvp floats + 16
 
     // Main pipeline layout
     set_layouts[0] = vk.set_layout_storage; // storage for testing flare visibility
