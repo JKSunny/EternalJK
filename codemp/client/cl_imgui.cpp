@@ -37,7 +37,7 @@ static ImGuiContext *igContext;
 void CL_ImGuiFrame( void ) {
 	igContext = (ImGuiContext*)re->GetImGuiContext();
 
-	if ( !igContext || !igContext->Initialized )
+	if ( !igContext || !igContext->Initialized || !igContext->WithinFrameScope )
 		return;
 
 	igSetCurrentContext( igContext );

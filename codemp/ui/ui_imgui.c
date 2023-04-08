@@ -137,6 +137,8 @@ static void igTestImages( void ) {
 }
 
 void layer_main( void ) {
+	if ( !igContext || !igContext->WithinFrameScope )
+		return;
 
 	const ImVec2 size = { 200.0f, 30.0f };
 	
@@ -153,6 +155,9 @@ void layer_main( void ) {
 }
 
 void layer_joinserver( void ) {
+	if ( !igContext || !igContext->WithinFrameScope )
+		return;
+
 	igBegin("join", NULL, 0);
 	igText("Join server");
 
@@ -164,6 +169,9 @@ void layer_joinserver( void ) {
 }
 
 void layer_quitMenu( void ) {
+	if ( !igContext || !igContext->WithinFrameScope )
+		return;
+
 	igBegin("quit", NULL, 0);
 	igText("Quit game");
 
@@ -260,7 +268,7 @@ void UI_ImGuiInit( qboolean inGameLoad ) {
 }
 
 void UI_ImGuiFrame( void ) {
-	if ( !igContext || !igContext->Initialized )
+	if ( !igContext || !igContext->Initialized || !igContext->WithinFrameScope )
 		return;
 
 	ImGuiIO *io = igGetIO();

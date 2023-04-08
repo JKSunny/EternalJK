@@ -438,7 +438,7 @@ void CG_ImGuiInit( void ) {
 }
 
 void CG_ImGuiFrame( void ) {
-	if ( !igContext || !igContext->Initialized )
+	if ( !igContext || !igContext->Initialized || !igContext->WithinFrameScope )
 		return;
 
 	ImGuiIO *io = igGetIO();

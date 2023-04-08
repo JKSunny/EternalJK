@@ -288,6 +288,9 @@ static void vk_imgui_end_frame( void ) {
 
 void vk_imgui_draw( void ) 
 {
+	if ( !ImContext->WithinFrameScope )
+		return;
+
 	vk_imgui_create_gui();
 
 	vk_imgui_end_frame();
