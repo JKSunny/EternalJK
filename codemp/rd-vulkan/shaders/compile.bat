@@ -64,7 +64,7 @@ for %%f in (%glsl%*.geom) do (
 "%cl%" -S frag -V -o "%tmpf%" %glsl%light_frag.tmpl
 "%bh%" "%tmpf%" %outf% frag_light
 
-"%cl%" -S frag -V -o "%tmpf%" %glsl%light_frag.tmpl -DUSE_FOG 
+"%cl%" -S frag -V -o "%tmpf%" %glsl%light_frag.tmpl -DUSE_FOG
 "%bh%" "%tmpf%" %outf% frag_light_fog
 
 "%cl%" -S frag -V -o "%tmpf%" %glsl%light_frag.tmpl -DUSE_LINE
@@ -74,14 +74,15 @@ for %%f in (%glsl%*.geom) do (
 "%bh%" "%tmpf%" %outf% frag_light_line_fog
 
 @rem template shader identifiers and flags
-set "sh[0]="
-set "sh[1]=-DUSE_VBO_GHOUL2"
-set "sh[2]=-DUSE_VK_PBR"
-set "sh[3]=-DUSE_VK_PBR -DUSE_VBO_GHOUL2"
-set "sh_id[0]=cpu_"
-set "sh_id[1]=gpu_ghoul2_"
-set "sh_id[2]=cpu_pbr_"
-set "sh_id[3]=gpu_pbr_ghoul2_"
+set "vbo[0]="
+set "vbo[1]=-DUSE_VBO_GHOUL2"
+set "vbo_id[0]=cpu_"
+set "vbo_id[1]=gpu_ghoul2_"
+
+set "pbr[0]="
+set "pbr[1]=-DUSE_VK_PBR"
+set "pbr_id[0]="
+set "pbr_id[1]=pbr_"
 
 set "tx[0]="
 set "tx[1]=-DUSE_TX1"
@@ -109,23 +110,27 @@ SETLOCAL EnableDelayedExpansion
 
 @rem compile generic shader variations from templates
 @rem vertex shader
-for /L %%i in ( 0,1,3 ) do (                @rem shading mode 
-    for /L %%j in ( 0,1,2 ) do (            @rem tx   
-        for /L %%k in ( 0,1,1 ) do (        @rem +env
-            for /L %%m in ( 0,1,1 ) do (    @rem +fog
-                call :compile_vertex_shader %%i, %%j, %%k, %%m
-            )
-        )
-    )
+for /L %%i in ( 0,1,1 ) do (                	@rem vbo
+	for /L %%j in ( 0,1,1 ) do (                @rem pbr
+		for /L %%k in ( 0,1,2 ) do (            @rem tx
+			for /L %%l in ( 0,1,1 ) do (        @rem +env
+				for /L %%m in ( 0,1,1 ) do (    @rem +fog
+					call :compile_vertex_shader %%i, %%j, %%k, %%l, %%m
+				)
+			)
+		)
+	)
 )
 
 @rem fragment shader
-for /L %%i in ( 0,1,3 ) do (                @rem shading mode
-    for /L %%j in ( 0,1,2 ) do (            @rem tx 
-        for /L %%k in ( 0,1,1 ) do (        @rem +fog
-            call :compile_fragment_shader %%i, %%j, %%k
-        )
-    )
+for /L %%i in ( 0,1,1 ) do (                	@rem vbo
+	for /L %%j in ( 0,1,1 ) do (                @rem pbr
+		for /L %%k in ( 0,1,2 ) do (            @rem tx
+			for /L %%l in ( 0,1,1 ) do (        @rem +fog
+				call :compile_fragment_shader %%i, %%j, %%k, %%l
+			)
+		)
+	)
 )
 
 del /Q "%tmpf%"
@@ -133,27 +138,27 @@ del /Q "%tmpf%"
 pause
 
 :compile_fragment_shader
-    set "flags=!sh[%1]! !tx[%2]! !fog[%3]!"
-    set "name=!sh_id[%1]!!tx_id[%2]!!fog_id[%3]!"
-    if %2 equ 0 ( set "flags=%flags% -DUSE_ATEST" )
+    set "flags=!vbo[%1]! !pbr[%2]! !tx[%3]! !fog[%4]!"
+    set "name=!vbo_id[%1]!!pbr_id[%2]!!tx_id[%3]!!fog_id[%4]!"
+    if %3 equ 0 ( set "flags=%flags% -DUSE_ATEST" )
 
     "%cl%" -S frag -V -o "%tmpf%" %glsl%gen_frag.tmpl %flags%
     "%bh%" "%tmpf%" %outf% frag_%name%
 
     @rem +cl
-    if %2 equ 0 goto continue
-        "%cl%" -S frag -V -o "%tmpf%" %glsl%gen_frag.tmpl !sh[%1]! !tx[%2]! !cl[%2]! !fog[%3]!
-        "%bh%" "%tmpf%" %outf% frag_!sh_id[%1]!!tx_id[%2]!_!cl_id[%2]!!fog_id[%3]!
+    if %3 equ 0 goto continue
+        "%cl%" -S frag -V -o "%tmpf%" %glsl%gen_frag.tmpl !vbo[%1]! !pbr[%2]! !tx[%3]! !cl[%3]! !fog[%4]!
+        "%bh%" "%tmpf%" %outf% frag_!vbo_id[%1]!!pbr_id[%2]!!tx_id[%3]!_!cl_id[%3]!!fog_id[%4]!
     :continue
 exit /B
 
 :compile_vertex_shader
-    "%cl%" -S vert -V -o "%tmpf%" %glsl%gen_vert.tmpl !sh[%1]! !tx[%2]! !env[%3]! !fog[%4]!
-    "%bh%" "%tmpf%" %outf% vert_!sh_id[%1]!!tx_id[%2]!!env_id[%3]!!fog_id[%4]!
+    "%cl%" -S vert -V -o "%tmpf%" %glsl%gen_vert.tmpl !vbo[%1]! !pbr[%2]! !tx[%3]! !env[%4]! !fog[%5]!
+    "%bh%" "%tmpf%" %outf% vert_!vbo_id[%1]!!pbr_id[%2]!!tx_id[%3]!!env_id[%4]!!fog_id[%5]!
 
     @rem +cl
-    if %2 equ 0 goto continue
-        "%cl%" -S vert -V -o "%tmpf%" %glsl%gen_vert.tmpl !sh[%1]! !tx[%2]! !cl[%2]! !env[%3]! !fog[%4]!
-        "%bh%" "%tmpf%" %outf% vert_!sh_id[%1]!!tx_id[%2]!_!cl_id[%2]!!env_id[%3]!!fog_id[%4]!
+    if %3 equ 0 goto continue
+        "%cl%" -S vert -V -o "%tmpf%" %glsl%gen_vert.tmpl !vbo[%1]! !pbr[%2]! !tx[%3]! !cl[%3]! !env[%4]! !fog[%5]!
+        "%bh%" "%tmpf%" %outf% vert_!vbo_id[%1]!!pbr_id[%2]!!tx_id[%3]!_!cl_id[%3]!!env_id[%4]!!fog_id[%5]!
     :continue
 exit /B

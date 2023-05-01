@@ -191,25 +191,6 @@ void vk_bind_index_ext( const int numIndexes, const uint32_t *indexes )
 }
 
 #ifdef USE_VBO_GHOUL2
-#if 0
-static void vk_bind_attr_ghoul2_vbo( int index, unsigned int item_size, const void *src ) {
-	const uint32_t offset = PAD(vk.cmd->vertex_buffer_offset, 32);
-	const uint32_t size = tess.mesh_ptr->numVertexes * item_size;
-
-	if (offset + size > vk.geometry_buffer_size) {
-		// schedule geometry buffer resize
-		vk.geometry_buffer_size_new = log2pad(offset + size, 1);
-	}
-	else {
-		vk.cmd->buf_offset[index] = offset;
-		Com_Memcpy(vk.cmd->vertex_buffer_ptr + offset, src, size);
-		vk.cmd->vertex_buffer_offset = (VkDeviceSize)offset + size;
-	}
-
-	vk_bind_index_attr(index);
-}
-#endif
-
 static void vk_vbo_bind_geometry_ghoul2( uint32_t flags )
 {
 	shade_bufs[8] = shade_bufs[9] = shade_bufs[10] = shade_bufs[11] = vk.vbo[vk.vbo_index].vertex_buffer;
@@ -269,7 +250,7 @@ void vk_bind_geometry( uint32_t flags )
 
 		shade_bufs[0] = shade_bufs[1] = shade_bufs[2] = shade_bufs[3] = shade_bufs[4] = shade_bufs[5] = shade_bufs[6] = shade_bufs[7] = vk.vbo[vk.vbo_index].vertex_buffer;
 
-#ifdef USE_VBO_GHOUL2
+#if defined(USE_VBO_GHOUL2)
 		// clear, because vbo buffers don't share sizes
 		// previously set offsets might be out of scope
 		if ( vk.vboGhoul2Active )
@@ -2025,10 +2006,12 @@ void RB_StageIteratorGeneric( void )
 	}
 #endif
 
-#ifdef USE_VBO_GHOUL2
-	is_ghoul2_vbo = (qboolean)( tess.vboIndex && tess.surfType == SF_MDX );
+#if defined(USE_VBO_GHOUL2)
+	if ( tess.vboIndex ) {
+		is_ghoul2_vbo = (qboolean)( tess.surfType == SF_MDX );
+	}
 
-	if( is_ghoul2_vbo ) {
+	if ( is_ghoul2_vbo ) {
 		trRefEntity_t *refEntity = backEnd.currentEntity;
 		orientationr_t ori;
 		vec4_t tmp;
@@ -2055,7 +2038,9 @@ void RB_StageIteratorGeneric( void )
 		Com_Memcpy( &uniform_camera.localViewOrigin, ori.viewOrigin, sizeof( vec3_t) );
 		uniform_camera.localViewOrigin[3] = 0.0;
 
-		vk_push_uniform_ghoul2( &uniform_ghoul ); // bone matrices
+		if ( is_ghoul2_vbo )
+			vk_push_uniform_ghoul2( &uniform_ghoul ); // bone matrices
+
 		vk_compute_deform();	
 	}
 #endif
@@ -2110,7 +2095,7 @@ void RB_StageIteratorGeneric( void )
 
 		if ( backEnd.currentEntity ) {
 			assert( backEnd.currentEntity->e.renderfx >= 0 );
-#ifdef USE_VBO_GHOUL2
+#if defined(USE_VBO_GHOUL2)
 			if ( is_ghoul2_vbo && backEnd.currentEntity->e.renderfx & ( RF_DISINTEGRATE1 | RF_DISINTEGRATE2 ) )
 				vk_compute_disintegration( &forceRGBGen );
 
@@ -2129,7 +2114,7 @@ void RB_StageIteratorGeneric( void )
 			if (pStage->bundle[i].image[0] != NULL) {
 				vk_select_texture(i);
 				R_BindAnimatedImage(&pStage->bundle[i]);
-#ifdef USE_VBO_GHOUL2
+#if defined(USE_VBO_GHOUL2)
 				if ( tess_flags & (TESS_RGBA0 << i) && is_ghoul2_vbo ) {
 					vk_compute_colors( i, pStage, forceRGBGen );
 					continue;
@@ -2165,7 +2150,7 @@ void RB_StageIteratorGeneric( void )
 			if ( backEnd.viewParms.portalView == PV_MIRROR )
 				vk_get_pipeline_def(pStage->vk_mirror_pipeline[fog_stage], &def);
 			else{
-#ifdef USE_VBO_GHOUL2
+#if defined(USE_VBO_GHOUL2) 
 				if( tess_flags & TESS_PBR && is_ghoul2_vbo )
 					vk_get_pipeline_def(pStage->vk_pbr_pipeline[fog_stage], &def);
 				else
@@ -2186,9 +2171,9 @@ void RB_StageIteratorGeneric( void )
 				if ( backEnd.currentEntity->e.renderfx & RF_ALPHA_DEPTH ) 
 					def.state_bits |= GLS_DEPTHMASK_TRUE;	
 			}
-#ifdef USE_VBO_GHOUL2
+#if defined(USE_VBO_GHOUL2)
 			if ( is_ghoul2_vbo ){
-				def.ghoul2 = qtrue;
+				def.vbo_ghoul2 = qtrue;
 
 #ifdef USE_VBO_GHOUL2_RGBAGEN_CONSTS
 				for ( i = 0; i < pStage->numTexBundles; i++ ) {
@@ -2201,7 +2186,7 @@ void RB_StageIteratorGeneric( void )
 					}
 				}
 #endif
-			}
+			} 
 #endif			
 			pipeline = vk_find_pipeline_ext( 0, &def, qfalse );
 		}
@@ -2221,9 +2206,9 @@ void RB_StageIteratorGeneric( void )
 		// does not work with multitextured dglow yet.
 		if ( backEnd.isGlowPass && pStage->glow ){
 			vk_get_pipeline_def( pStage->vk_pipeline[fog_stage], &def );
-#ifdef USE_VBO_GHOUL2			
+#if defined(USE_VBO_GHOUL2)
 			if ( is_ghoul2_vbo )
-				def.ghoul2 = qtrue;		
+				def.vbo_ghoul2 = qtrue;		
 #endif	
 			def.shader_type = TYPE_SINGLE_TEXTURE;
 			pipeline = vk_find_pipeline_ext( 0, &def, qfalse );
@@ -2265,7 +2250,7 @@ void RB_StageIteratorGeneric( void )
 		}
 #endif
 
-#ifdef USE_VBO_GHOUL2
+#if defined(USE_VBO_GHOUL2)
 		if ( is_ghoul2_vbo )
 			vk_push_uniform_data( &uniform_data );
 #endif
