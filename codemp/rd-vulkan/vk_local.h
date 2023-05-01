@@ -454,7 +454,7 @@ typedef struct {
 
 	qboolean				polygon_offset;
 	qboolean				mirror;
-	qboolean				ghoul2;
+	qboolean				vbo_ghoul2;
 
 	Vk_Shader_Type			shader_type;	
 	Vk_Shadow_Phase			shadow_phase;
@@ -873,10 +873,10 @@ typedef struct {
 
 	// shader modules.
 	struct {
-		// sh 0: generic cpu, 1: gpu vbo ghoul2, 2: generic cpu pbr, 3: gpu vbo ghoul2 pbr
+		// vbo 0: cpu or vbo world, 1: vbo ghoul2
 
-		struct {
-			VkShaderModule gen[4][3][2][2][2]; // sh[0,1,2,3], tx[0,1,2], cl[0,1] env0[0,1] fog[0,1]
+		struct {	
+			VkShaderModule gen[2][2][3][2][2][2]; // vbo[0,1], pbr[0,1], tx[0,1,2], cl[0,1] env0[0,1] fog[0,1]
 			VkShaderModule light[2]; // fog[0,1]
 			VkShaderModule gen0_ident;
 		}	vert;
@@ -884,7 +884,7 @@ typedef struct {
 		struct {
 			VkShaderModule gen0_ident;
 			VkShaderModule gen0_df;
-			VkShaderModule gen[4][3][2][2]; // sh[0,1,2,3], tx[0,1,2] cl[0,1] fog[0,1]
+			VkShaderModule gen[2][2][3][2][2]; // vbo[0,1], pbr[0,1], tx[0,1,2] cl[0,1] fog[0,1]
 			VkShaderModule light[2][2]; // linear[0,1] fog[0,1]
 		}	frag;
 

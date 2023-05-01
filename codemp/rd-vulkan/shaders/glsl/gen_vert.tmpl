@@ -31,7 +31,7 @@ layout(set = 1, binding = 0) uniform UBO {
 };
 #endif
 
-#if defined(USE_VBO_GHOUL2) || defined(USE_VK_PBR)
+#if defined(USE_VK_PBR) || defined(USE_VBO_GHOUL2)
 layout(set = 1, binding = 1) uniform UBO_Camera {
 	vec4 u_ViewOrigin;
 	vec4 u_localViewOrigin;
@@ -44,7 +44,7 @@ layout(location = 12) out vec4 var_ViewDir;
 layout(location = 13) out flat int Var_RenderMode;
 #endif
 
-#ifdef USE_VBO_GHOUL2
+#if defined(USE_VBO_GHOUL2)
 layout(set = 1, binding = 2) uniform UBOG2 {
 	vec4 ambientLight;
 	vec4 directedLight;
@@ -139,7 +139,9 @@ struct NTB {
 };
 
 layout(location = 8) in vec4 in_qtangent;
+#if !defined(USE_VBO_GHOUL2)
 layout(location = 9) in vec4 in_lightdir;
+#endif
 layout(location = 14) out NTB out_ntb;
 
 vec3 QuatTransVec( in vec4 quat, in vec3 vec ) {
@@ -159,7 +161,7 @@ out gl_PerVertex {
 	vec4 gl_Position;
 };
 
-#ifdef USE_VBO_GHOUL2
+#if defined(USE_VBO_GHOUL2)
 vec4 CalcColor( int index, in vec3 position, in vec3 normal ) 
 {
 	vec4 color = ( vertColor[index] * vec4( 0.0 ) ) + baseColor[index];		// skip vertColor?
@@ -404,7 +406,7 @@ void main() {
 	QTangentToNTB( in_qtangent, out_ntb );
 #endif
 
-#ifdef USE_VBO_GHOUL2
+#if defined(USE_VBO_GHOUL2)
 	mat4x3 skin_matrix =
 		GetBoneMatrix(uint(in_bones.x)) * in_weights.x +
         GetBoneMatrix(uint(in_bones.y)) * in_weights.y +
@@ -433,21 +435,21 @@ void main() {
 #endif
 
 #ifndef USE_CL0_IDENT
-	#ifdef USE_VBO_GHOUL2
+	#if defined(USE_VBO_GHOUL2)
 		frag_color0 = CalcColor( 0, position, normal );
 	#else
 		frag_color0 = in_color0;
 	#endif
 #endif
 #ifdef USE_CL1
-	#ifdef USE_VBO_GHOUL2
+	#if defined(USE_VBO_GHOUL2)
 		frag_color1 = CalcColor( 1, position, normal );
 	#else
 		frag_color1 = in_color1;
 	#endif
 #endif
 #ifdef USE_CL2
-	#ifdef USE_VBO_GHOUL2
+	#if defined(USE_VBO_GHOUL2)
 		frag_color2 = CalcColor( 2, position, normal );
 	#else
 		frag_color2 = in_color2;
@@ -495,13 +497,13 @@ void main() {
 	fog_tex_coord = vec2(s, t);
 #endif
 
-#if defined(USE_VBO_GHOUL2) || defined(USE_VK_PBR)
+#if defined(USE_VK_PBR) || defined(USE_VBO_GHOUL2)
 	position		= (u_ModelMatrix * vec4(position, 1.0)).xyz;
 	normal			= normalize(mat3(u_ModelMatrix) * normal);
 
 	vec3 viewDir = u_ViewOrigin.xyz - position;
 
-#ifdef USE_VBO_GHOUL2 
+#if defined(USE_VBO_GHOUL2)
 	vec3 L	= lightDir.xyz - (position * lightDir.w);
 #else
 	vec3 L	= in_lightdir.xyz * 2.0 - vec3(1.0);

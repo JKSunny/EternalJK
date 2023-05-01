@@ -150,7 +150,7 @@ float CorrectAlpha(float threshold, float alpha, vec2 tc)
 }
 #endif
 
-#ifdef USE_VBO_GHOUL2
+#if defined(USE_VBO_GHOUL2)
 layout(set = 1, binding = 2) uniform UBOG2 {
 	vec4 ambientLight;
 	vec4 directedLight;
@@ -482,7 +482,7 @@ void main() {
 		L /= sqrt(sqrLightDist);
 	#endif
 
-	#ifdef USE_VBO_GHOUL2
+	#if defined(USE_VBO_GHOUL2)
 		if ( needsShading( int( rgbGen[0] ) ) ) {
 			#if !defined( USE_VK_PBR )
 				lightColor = ( directedLight.xyz * 1.2 ) * base.rgb;

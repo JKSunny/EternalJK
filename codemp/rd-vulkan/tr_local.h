@@ -43,10 +43,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #ifdef USE_VBO
 	#define MAX_VBOS      4096
 	#define USE_VBO_GHOUL2
-#ifdef USE_VBO_GHOUL2
-	//#define USE_VBO_GHOUL2_RGBAGEN_CONSTS	// provides a check for vertex shader, need to calculate color. 
-#endif										// if commented, vertex shader decides using a using the switch.
-#endif										// glsl tweaks required when enabled
+#endif
 
 
 #define USE_FOG_ONLY
@@ -831,27 +828,21 @@ SURFACES
 ==============================================================================
 */
 // any changes in surfaceType must be mirrored in rb_surfaceTable[]
-typedef enum {
+typedef enum surfaceType_e {
 	SF_BAD,
 	SF_SKIP,				// ignore
 	SF_FACE,
 	SF_GRID,
 	SF_TRIANGLES,
 	SF_POLY,
-	SF_MD3,
-/*
-Ghoul2 Insert Start
-*/
+	SF_MDV,
 	SF_MDX,
-/*
-Ghoul2 Insert End
-*/
 	SF_FLARE,
 	SF_ENTITY,				// beams, rails, lightning, etc that can be determined by entity
 	SF_DISPLAY_LIST,
 
 	SF_NUM_SURFACE_TYPES,
-	SF_MAX = 0xffffffff			// ensures that sizeof( surfaceType_t ) == sizeof( int )
+	SF_MAX = 0x7fffffff			// ensures that sizeof( surfaceType_t ) == sizeof( int )
 } surfaceType_t;
 
 typedef struct drawSurf_s {
@@ -1108,6 +1099,79 @@ typedef struct world_s {
 
 //======================================================================
 
+/*
+==============================================================================
+MDV MODELS - meta format for vertex animation models like .md2, .md3, .mdc
+==============================================================================
+*/
+typedef struct
+{
+	float           bounds[2][3];
+	float           localOrigin[3];
+	float           radius;
+} mdvFrame_t;
+
+typedef struct
+{
+	float           origin[3];
+	float           axis[3][3];
+} mdvTag_t;
+
+typedef struct
+{
+	char            name[MAX_QPATH];	// tag name
+} mdvTagName_t; //not found
+
+typedef struct
+{
+	vec3_t          xyz;
+	vec3_t          normal;
+	vec3_t          tangent;
+	vec3_t          bitangent;
+#ifdef USE_VK_PBR
+	vec4_t			qtangent;
+#endif
+} mdvVertex_t; //
+
+typedef struct
+{
+	float           st[2];
+} mdvSt_t;
+
+typedef struct mdvSurface_s
+{
+	surfaceType_t   surfaceType;
+
+	char            name[MAX_QPATH];	// polyset name
+
+	int             numShaderIndexes;
+	int				*shaderIndexes;
+
+	int             numVerts;
+	mdvVertex_t    *verts;
+	mdvSt_t        *st;
+
+	int             numIndexes;
+	glIndex_t      *indexes;
+
+	struct mdvModel_s *model;
+} mdvSurface_t;
+
+typedef struct mdvModel_s
+{
+	int             numFrames;
+	mdvFrame_t     *frames;
+
+	int             numTags;
+	mdvTag_t       *tags;
+	mdvTagName_t   *tagNames;
+
+	int             numSurfaces;
+	mdvSurface_t   *surfaces;
+
+	int             numSkins;
+} mdvModel_t;
+
 #ifdef USE_VBO_GHOUL2
 typedef struct mdxmVBOMesh_s
 {
@@ -1167,7 +1231,7 @@ typedef struct model_s {
 	struct // union presents issues with glm world models like weapons ..
 	{
 		bmodel_t		*bmodel;			// type == MOD_BRUSH
-		md3Header_t		*md3[MD3_MAX_LODS];	// type == MOD_MESH
+		mdvModel_t		*mdv[MD3_MAX_LODS];	// type == MOD_MESH
 		mdxmData_t		*glm;				// type == MOD_MDXM which is a GHOUL II Mesh file NOT a GHOUL II animation file
 		mdxaHeader_t	*gla;				// type == MOD_MDXA which is a GHOUL II Animation file
 	} data;
