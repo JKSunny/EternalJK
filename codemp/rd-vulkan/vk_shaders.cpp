@@ -56,7 +56,13 @@ void vk_create_shader_modules( void )
 
     sh_count = 1;
 #ifdef USE_VBO_GHOUL2
-    sh_count++;
+    sh_count++; // hmmm
+
+    const char *vbo[] = { "cpu", "gpu ghoul2" };
+    const char *tx[] = { "single", "double", "triple" };
+    const char *cl[] = { "", "+cl" };
+    const char *env[] = { "", "+env" };
+    const char *fog[] = { "", "+fog" };
 #endif
 
     vk.shaders.vert.gen[0][0][0][0][0] = SHADER_MODULE(vert_cpu_tx0);
@@ -113,16 +119,11 @@ void vk_create_shader_modules( void )
 #endif
 
     for (i = 0; i < sh_count; i++) {
-        const char *sh[] = { "cpu", "gpu ghoul2" };
-        const char *tx[] = { "single", "double", "triple" };
-        const char *cl[] = { "", "+cl" };
-        const char *env[] = { "", "+env" };
-        const char *fog[] = { "", "+fog" };
         for (j = 0; j < 3; j++) {
             for (k = 0; k < 2; k++) {
                 for (l = 0; l < 2; l++) {
                     for (m = 0; m < 2; m++) {
-                        const char *s = va("%s-texture%s%s%s%s vertex module", sh[i], tx[j], cl[k], env[l], fog[m]);
+                        const char *s = va("%s-texture%s%s%s%s vertex module", vbo[i], tx[j], cl[k], env[l], fog[m]);
                         VK_SET_OBJECT_NAME(vk.shaders.vert.gen[i][j][k][l][m], s, VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
                     }
                 }
@@ -179,7 +180,7 @@ void vk_create_shader_modules( void )
         for (j = 0; j < 3; j++) {
             for (k = 0; k < 2; k++) {
                 for (l = 0; l < 2; l++) {
-                    const char *s = va("%s-texture%s%s%s fragment module", sh[i], tx[j], cl[k], fog[l]);
+                    const char *s = va("%s-texture%s%s%s fragment module", vbo[i], tx[j], cl[k], fog[l]);
                     VK_SET_OBJECT_NAME(vk.shaders.frag.gen[i][j][k][l], s, VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
                 }
             }

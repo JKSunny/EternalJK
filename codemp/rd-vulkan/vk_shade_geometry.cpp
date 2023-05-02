@@ -262,7 +262,7 @@ void vk_bind_geometry( uint32_t flags )
 
 		shade_bufs[0] = shade_bufs[1] = shade_bufs[2] = shade_bufs[3] = shade_bufs[4] = shade_bufs[5] = shade_bufs[6] = shade_bufs[7] = vk.vbo[vk.vbo_index].vertex_buffer;
 
-#ifdef USE_VBO_GHOUL2
+#if defined(USE_VBO_GHOUL2)
 		// clear, because vbo buffers don't share sizes
 		// previously set offsets might be out of scope
 		if ( vk.vboGhoul2Active )
@@ -1896,10 +1896,12 @@ void RB_StageIteratorGeneric( void )
 	}
 #endif
 
-#ifdef USE_VBO_GHOUL2
-	is_ghoul2_vbo = (qboolean)( tess.vboIndex && tess.surfType == SF_MDX );
-	
-	if( is_ghoul2_vbo ) {
+#if defined(USE_VBO_GHOUL2)
+	if ( tess.vboIndex ) {
+		is_ghoul2_vbo = (qboolean)( tess.surfType == SF_MDX );
+	}
+
+	if ( is_ghoul2_vbo ) {
 		trRefEntity_t *refEntity = backEnd.currentEntity;
 		orientationr_t ori;
 		vec4_t tmp;	
@@ -1970,7 +1972,7 @@ void RB_StageIteratorGeneric( void )
 
 		if ( backEnd.currentEntity ) {
 			assert( backEnd.currentEntity->e.renderfx >= 0 );
-#ifdef USE_VBO_GHOUL2
+#if defined(USE_VBO_GHOUL2)
 			if ( is_ghoul2_vbo && backEnd.currentEntity->e.renderfx & ( RF_DISINTEGRATE1 | RF_DISINTEGRATE2 ) )
 				vk_compute_disintegration( &forceRGBGen );
 
@@ -1989,7 +1991,7 @@ void RB_StageIteratorGeneric( void )
 			if (pStage->bundle[i].image[0] != NULL) {
 				vk_select_texture(i);
 				R_BindAnimatedImage(&pStage->bundle[i]);
-#ifdef USE_VBO_GHOUL2
+#if defined(USE_VBO_GHOUL2)
 				if ( tess_flags & (TESS_RGBA0 << i) && is_ghoul2_vbo ) {
 					vk_compute_colors( i, pStage, forceRGBGen );
 					continue;
@@ -2043,9 +2045,9 @@ void RB_StageIteratorGeneric( void )
 					def.state_bits |= GLS_DEPTHMASK_TRUE;
 
 			}
-#ifdef USE_VBO_GHOUL2
+#if defined(USE_VBO_GHOUL2)
 			if ( is_ghoul2_vbo ){
-				def.ghoul2 = qtrue;
+				def.vbo_ghoul2 = qtrue;
 
 #ifdef USE_VBO_GHOUL2_RGBAGEN_CONSTS
 				for ( i = 0; i < pStage->numTexBundles; i++ ) {
@@ -2078,9 +2080,9 @@ void RB_StageIteratorGeneric( void )
 		// does not work with multitextured dglow yet.
 		if ( backEnd.isGlowPass && pStage->glow ){
 			vk_get_pipeline_def( pStage->vk_pipeline[fog_stage], &def );
-#ifdef USE_VBO_GHOUL2			
+#if defined(USE_VBO_GHOUL2)		
 			if ( is_ghoul2_vbo )
-				def.ghoul2 = qtrue;		
+				def.vbo_ghoul2 = qtrue;		
 #endif			
 			def.shader_type = TYPE_SINGLE_TEXTURE;
 			pipeline = vk_find_pipeline_ext( 0, &def, qfalse );
@@ -2089,7 +2091,7 @@ void RB_StageIteratorGeneric( void )
 			vk_bind( pStage->bundle[ ( pStage->numTexBundles - 1 ) ].image[0] );
 			Com_Memcpy( tess.svars.colors[0], tess.svars.colors[( pStage->numTexBundles - 1 )], sizeof(tess.svars.colors[0]) );
 		}
-#ifdef USE_VBO_GHOUL2
+#if defined(USE_VBO_GHOUL2)
 		if ( is_ghoul2_vbo )
 			vk_push_uniform_data( &uniform_data );
 #endif

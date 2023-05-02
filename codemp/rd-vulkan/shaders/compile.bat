@@ -68,10 +68,10 @@ for %%f in (%glsl%*.frag) do (
 "%bh%" "%tmpf%" %outf% frag_light_line_fog
 
 @rem template shader identifiers and flags
-set "sh[0]="
-set "sh[1]=-DUSE_VBO_GHOUL2"
-set "sh_id[0]=cpu_"
-set "sh_id[1]=gpu_ghoul2_"
+set "vbo[0]="
+set "vbo[1]=-DUSE_VBO_GHOUL2"
+set "vbo_id[0]=cpu_"
+set "vbo_id[1]=gpu_ghoul2_"
 
 set "tx[0]="
 set "tx[1]=-DUSE_TX1"
@@ -123,8 +123,8 @@ del /Q "%tmpf%"
 pause
 
 :compile_fragment_shader
-    set "flags=!sh[%1]! !tx[%2]! !fog[%3]!"
-    set "name=!sh_id[%1]!!tx_id[%2]!!fog_id[%3]!"
+    set "flags=!vbo[%1]! !tx[%2]! !fog[%3]!"
+    set "name=!vbo_id[%1]!!tx_id[%2]!!fog_id[%3]!"
     if %2 equ 0 ( set "flags=%flags% -DUSE_ATEST" )
 
     "%cl%" -S frag -V -o "%tmpf%" %glsl%gen_frag.tmpl %flags%
@@ -132,18 +132,18 @@ pause
 
     @rem +cl
     if %2 equ 0 goto continue
-        "%cl%" -S frag -V -o "%tmpf%" %glsl%gen_frag.tmpl !sh[%1]! !tx[%2]! !cl[%2]! !fog[%3]!
-        "%bh%" "%tmpf%" %outf% frag_!sh_id[%1]!!tx_id[%2]!_!cl_id[%2]!!fog_id[%3]!
+        "%cl%" -S frag -V -o "%tmpf%" %glsl%gen_frag.tmpl !vbo[%1]! !tx[%2]! !cl[%2]! !fog[%3]!
+        "%bh%" "%tmpf%" %outf% frag_!vbo_id[%1]!!tx_id[%2]!_!cl_id[%2]!!fog_id[%3]!
     :continue
 exit /B
 
 :compile_vertex_shader
-    "%cl%" -S vert -V -o "%tmpf%" %glsl%gen_vert.tmpl !sh[%1]! !tx[%2]! !env[%3]! !fog[%4]!
-    "%bh%" "%tmpf%" %outf% vert_!sh_id[%1]!!tx_id[%2]!!env_id[%3]!!fog_id[%4]!
+    "%cl%" -S vert -V -o "%tmpf%" %glsl%gen_vert.tmpl !vbo[%1]! !tx[%2]! !env[%3]! !fog[%4]!
+    "%bh%" "%tmpf%" %outf% vert_!vbo_id[%1]!!tx_id[%2]!!env_id[%3]!!fog_id[%4]!
 
     @rem +cl
     if %2 equ 0 goto continue
-        "%cl%" -S vert -V -o "%tmpf%" %glsl%gen_vert.tmpl !sh[%1]! !tx[%2]! !cl[%2]! !env[%3]! !fog[%4]!
-        "%bh%" "%tmpf%" %outf% vert_!sh_id[%1]!!tx_id[%2]!_!cl_id[%2]!!env_id[%3]!!fog_id[%4]!
+        "%cl%" -S vert -V -o "%tmpf%" %glsl%gen_vert.tmpl !vbo[%1]! !tx[%2]! !cl[%2]! !env[%3]! !fog[%4]!
+        "%bh%" "%tmpf%" %outf% vert_!vbo_id[%1]!!tx_id[%2]!_!cl_id[%2]!!env_id[%3]!!fog_id[%4]!
     :continue
 exit /B

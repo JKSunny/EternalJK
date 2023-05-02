@@ -31,7 +31,7 @@ layout(set = 1, binding = 0) uniform UBO {
 };
 #endif
 
-#ifdef USE_VBO_GHOUL2
+#if defined(USE_VBO_GHOUL2)
 layout(set = 1, binding = 1) uniform UBOG2 {
 	vec4 u_localViewOrigin;
 	vec4 ambientLight;
@@ -93,7 +93,7 @@ layout(location = 6) in vec4 in_color1;
 layout(location = 7) in vec4 in_color2;
 #endif
 
-#ifdef USE_VBO_GHOUL2
+#if defined(USE_VBO_GHOUL2)
 layout(location = 8) in uvec4 in_bones;
 layout(location = 9) in vec4 in_weights;
 #endif
@@ -127,7 +127,7 @@ out gl_PerVertex {
 	vec4 gl_Position;
 };
 
-#ifdef USE_VBO_GHOUL2
+#if defined(USE_VBO_GHOUL2)
 vec4 CalcColor( int index, in vec3 position, in vec3 normal ) {
 	vec4 color = ( vertColor[index] * vec4( 0.0 ) ) + baseColor[index];		// skip vertColor?
 
@@ -367,7 +367,7 @@ mat4x3 GetBoneMatrix(uint index)
 
 
 void main() {
-#ifdef USE_VBO_GHOUL2
+#if defined(USE_VBO_GHOUL2)
 	mat4x3 skin_matrix =
 		GetBoneMatrix(in_bones.x) * in_weights.x +
         GetBoneMatrix(in_bones.y) * in_weights.y +

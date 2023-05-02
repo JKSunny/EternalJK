@@ -398,7 +398,7 @@ typedef struct {
 
 	qboolean				polygon_offset;
 	qboolean				mirror;
-	qboolean				ghoul2;
+	qboolean				vbo_ghoul2;
 
 	Vk_Shader_Type			shader_type;	
 	Vk_Shadow_Phase			shadow_phase;

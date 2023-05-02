@@ -27,7 +27,7 @@ static VkVertexInputBindingDescription bindings[10];
 static VkVertexInputAttributeDescription attribs[8];
 static uint32_t num_binds;
 static uint32_t num_attrs;
-#ifdef USE_VBO_GHOUL2
+#ifdef USE_VBO
 static qboolean is_ghoul2_vbo;
 #endif
 
@@ -44,7 +44,7 @@ static void vk_create_layout_binding( int binding, VkDescriptorType type,
     bind[count].stageFlags = flags;
     bind[count].pImmutableSamplers = NULL;
     count++;
-#ifdef USE_VBO_GHOUL2
+#if defined(USE_VBO_GHOUL2)
     if ( is_uniform ) {
         bind[count].binding = binding + 1; // binding 1 
         bind[count].descriptorType = type;
@@ -86,7 +86,7 @@ void vk_create_descriptor_layout( void )
         pool_size[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         pool_size[1].descriptorCount = NUM_COMMAND_BUFFERS;
 
-#ifdef USE_VBO_GHOUL2
+#if defined(USE_VBO_GHOUL2)
         if ( vk.vboGhoul2Active )
             pool_size[1].descriptorCount += NUM_COMMAND_BUFFERS * 2;
 #endif
@@ -182,7 +182,7 @@ void vk_create_pipeline_layout( void )
 
 static void vk_push_bind( uint32_t binding, uint32_t stride )
 {
-#ifdef USE_VBO_GHOUL2
+#if defined(USE_VBO_GHOUL2)
     if( is_ghoul2_vbo && ( binding == 1 || binding == 6 || binding == 7 ) )
         return; // skip in_color bindings
 #endif
@@ -194,7 +194,7 @@ static void vk_push_bind( uint32_t binding, uint32_t stride )
 
 static void vk_push_attr( uint32_t location, uint32_t binding, VkFormat format )
 {
-#ifdef USE_VBO_GHOUL2
+#if defined(USE_VBO_GHOUL2)
     if( is_ghoul2_vbo && ( binding == 1 || binding == 6 || binding == 7 ) )
         return; // skip in_color bindings
 #endif
@@ -211,8 +211,8 @@ static void vk_push_attr( uint32_t location, uint32_t binding, VkFormat format )
 // from memory throughout the vertices
 static void vk_push_vertex_input_binding_attribute( const Vk_Pipeline_Def *def ) {
     num_binds = num_attrs = 0; // reset
-#ifdef USE_VBO_GHOUL2
-    is_ghoul2_vbo = vk.vboGhoul2Active ? def->ghoul2 : qfalse;
+#if defined(USE_VBO_GHOUL2)
+    is_ghoul2_vbo = def->vbo_ghoul2;
 #endif
     switch ( def->shader_type ) {
         case TYPE_FOG_ONLY:
@@ -419,7 +419,7 @@ static void vk_push_vertex_input_binding_attribute( const Vk_Pipeline_Def *def )
             break;
     }
 
-#ifdef USE_VBO_GHOUL2
+#if defined(USE_VBO_GHOUL2)
     if( is_ghoul2_vbo ) {
         if ( def->shader_type == TYPE_FOG_ONLY || 
              def->shader_type >= TYPE_GENERIC_BEGIN && def->shader_type <= TYPE_GENERIC_END )
@@ -587,7 +587,7 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
     unsigned int atest_bits;
     unsigned int state_bits = def->state_bits;
 
-    const int sh = def->ghoul2 ? 1 : 0; // 0: generic, 1: ghoul2-vbo
+    const int vbo = def->vbo_ghoul2 ? 1 : 0; // 0: generic, 1: ghoul2-vbo
 
     switch ( def->shader_type ) {
         case TYPE_SINGLE_TEXTURE_LIGHTING:
@@ -612,41 +612,41 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
             break;
 
         case TYPE_SINGLE_TEXTURE:
-            vs_module = &vk.shaders.vert.gen[sh][0][0][0][0];
-            fs_module = &vk.shaders.frag.gen[sh][0][0][0];
+            vs_module = &vk.shaders.vert.gen[vbo][0][0][0][0];
+            fs_module = &vk.shaders.frag.gen[vbo][0][0][0];
             break;
 
         case TYPE_SINGLE_TEXTURE_ENV:
-            vs_module = &vk.shaders.vert.gen[sh][0][0][1][0];
-            fs_module = &vk.shaders.frag.gen[sh][0][0][0];
+            vs_module = &vk.shaders.vert.gen[vbo][0][0][1][0];
+            fs_module = &vk.shaders.frag.gen[vbo][0][0][0];
             break;
 
         case TYPE_MULTI_TEXTURE_MUL2:
         case TYPE_MULTI_TEXTURE_ADD2_IDENTITY:
         case TYPE_MULTI_TEXTURE_ADD2:
-            vs_module = &vk.shaders.vert.gen[sh][1][0][0][0];
-            fs_module = &vk.shaders.frag.gen[sh][1][0][0];
+            vs_module = &vk.shaders.vert.gen[vbo][1][0][0][0];
+            fs_module = &vk.shaders.frag.gen[vbo][1][0][0];
             break;
 
         case TYPE_MULTI_TEXTURE_MUL2_ENV:
         case TYPE_MULTI_TEXTURE_ADD2_IDENTITY_ENV:
         case TYPE_MULTI_TEXTURE_ADD2_ENV:
-            vs_module = &vk.shaders.vert.gen[sh][1][0][1][0];
-            fs_module = &vk.shaders.frag.gen[sh][1][0][0];
+            vs_module = &vk.shaders.vert.gen[vbo][1][0][1][0];
+            fs_module = &vk.shaders.frag.gen[vbo][1][0][0];
             break;
 
         case TYPE_MULTI_TEXTURE_MUL3:
         case TYPE_MULTI_TEXTURE_ADD3_IDENTITY:
         case TYPE_MULTI_TEXTURE_ADD3:
-            vs_module = &vk.shaders.vert.gen[sh][2][0][0][0];
-            fs_module = &vk.shaders.frag.gen[sh][2][0][0];
+            vs_module = &vk.shaders.vert.gen[vbo][2][0][0][0];
+            fs_module = &vk.shaders.frag.gen[vbo][2][0][0];
             break;
 
         case TYPE_MULTI_TEXTURE_MUL3_ENV:
         case TYPE_MULTI_TEXTURE_ADD3_IDENTITY_ENV:
         case TYPE_MULTI_TEXTURE_ADD3_ENV:
-            vs_module = &vk.shaders.vert.gen[sh][2][0][1][0];
-            fs_module = &vk.shaders.frag.gen[sh][2][0][0];
+            vs_module = &vk.shaders.vert.gen[vbo][2][0][1][0];
+            fs_module = &vk.shaders.frag.gen[vbo][2][0][0];
             break;
 
         case TYPE_BLEND2_ADD:
@@ -656,8 +656,8 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
         case TYPE_BLEND2_MIX_ALPHA:
         case TYPE_BLEND2_MIX_ONE_MINUS_ALPHA:
         case TYPE_BLEND2_DST_COLOR_SRC_ALPHA:
-            vs_module = &vk.shaders.vert.gen[sh][1][1][0][0];
-            fs_module = &vk.shaders.frag.gen[sh][1][1][0];
+            vs_module = &vk.shaders.vert.gen[vbo][1][1][0][0];
+            fs_module = &vk.shaders.frag.gen[vbo][1][1][0];
             break;
 
         case TYPE_BLEND2_ADD_ENV:
@@ -667,8 +667,8 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
         case TYPE_BLEND2_MIX_ALPHA_ENV:
         case TYPE_BLEND2_MIX_ONE_MINUS_ALPHA_ENV:
         case TYPE_BLEND2_DST_COLOR_SRC_ALPHA_ENV:
-            vs_module = &vk.shaders.vert.gen[sh][1][1][1][0];
-            fs_module = &vk.shaders.frag.gen[sh][1][1][0];
+            vs_module = &vk.shaders.vert.gen[vbo][1][1][1][0];
+            fs_module = &vk.shaders.frag.gen[vbo][1][1][0];
             break;
 
         case TYPE_BLEND3_ADD:
@@ -678,8 +678,8 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
         case TYPE_BLEND3_MIX_ALPHA:
         case TYPE_BLEND3_MIX_ONE_MINUS_ALPHA:
         case TYPE_BLEND3_DST_COLOR_SRC_ALPHA:
-            vs_module = &vk.shaders.vert.gen[sh][2][1][0][0];
-            fs_module = &vk.shaders.frag.gen[sh][2][1][0];
+            vs_module = &vk.shaders.vert.gen[vbo][2][1][0][0];
+            fs_module = &vk.shaders.frag.gen[vbo][2][1][0];
             break;
 
         case TYPE_BLEND3_ADD_ENV:
@@ -689,8 +689,8 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
         case TYPE_BLEND3_MIX_ALPHA_ENV:
         case TYPE_BLEND3_MIX_ONE_MINUS_ALPHA_ENV:
         case TYPE_BLEND3_DST_COLOR_SRC_ALPHA_ENV:
-            vs_module = &vk.shaders.vert.gen[sh][2][1][1][0];
-            fs_module = &vk.shaders.frag.gen[sh][2][1][0];
+            vs_module = &vk.shaders.vert.gen[vbo][2][1][1][0];
+            fs_module = &vk.shaders.frag.gen[vbo][2][1][0];
             break;
 
         case TYPE_COLOR_WHITE:
@@ -701,7 +701,7 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
             break;
 
         case TYPE_FOG_ONLY:
-            vs_module = &vk.shaders.fog_vs[sh];
+            vs_module = &vk.shaders.fog_vs[vbo];
             fs_module = &vk.shaders.fog_fs;
             break;
 
@@ -1813,11 +1813,11 @@ void vk_alloc_persistent_pipelines( void )
                     def.shader_type = TYPE_SINGLE_TEXTURE;
 #endif
                     def.state_bits = fog_state;
-                    def.ghoul2 = qfalse;
+                    def.vbo_ghoul2 = qfalse;
                     vk.std_pipeline.fog_pipelines[0][i][j][k] = vk_find_pipeline_ext(0, &def, qtrue);
-#ifdef USE_VBO_GHOUL2                    
+#if defined(USE_VBO_GHOUL2)                    
                     if( vk.vboGhoul2Active ) {
-                        def.ghoul2 = qtrue;
+                        def.vbo_ghoul2 = qtrue;
                         vk.std_pipeline.fog_pipelines[1][i][j][k] = vk_find_pipeline_ext(0, &def, qtrue);
                     }
 #endif
@@ -1829,7 +1829,7 @@ void vk_alloc_persistent_pipelines( void )
 
 #ifdef USE_PMLIGHT
         def.state_bits = GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE | GLS_DEPTHFUNC_EQUAL;
-        def.ghoul2 = qfalse;
+        def.vbo_ghoul2 = qfalse;
         //def.shader_type = TYPE_SIGNLE_TEXTURE_LIGHTING;
         for (i = 0; i < 3; i++) { // cullType
             def.face_culling = (cullType_t)i;

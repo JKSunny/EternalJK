@@ -25,7 +25,7 @@ layout(set = 1, binding = 0) uniform UBO {
 };
 #endif
 
-#ifdef USE_VBO_GHOUL2
+#if defined(USE_VBO_GHOUL2)
 layout(set = 1, binding = 1) uniform UBOG2 {
 	vec4 eyePos2;
 	vec4 ambientLight;
@@ -356,7 +356,7 @@ void main() {
 	gl_FragDepth = gl_FragCoord.z;
 #else
 
-#ifdef USE_VBO_GHOUL2
+#if defined(USE_VBO_GHOUL2)
 	L = var_LightDir.xyz;
 	float sqrLightDist = dot(L, L);
 	L /= sqrt(sqrLightDist);
