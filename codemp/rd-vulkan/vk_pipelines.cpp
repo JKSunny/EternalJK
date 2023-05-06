@@ -34,6 +34,7 @@ static uint32_t num_binds;
 static uint32_t num_attrs;
 #ifdef USE_VBO
 static qboolean is_ghoul2_vbo;
+static qboolean is_mdv_vbo;
 #endif
 
 static void vk_create_layout_binding( int binding, VkDescriptorType type, 
@@ -218,8 +219,8 @@ void vk_create_pipeline_layout( void )
 
 static void vk_push_bind( uint32_t binding, uint32_t stride )
 {
-#if defined(USE_VBO_GHOUL2)
-    if( is_ghoul2_vbo && ( binding == 1 || binding == 6 || binding == 7 ) )
+#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
+    if( ( is_ghoul2_vbo || is_mdv_vbo ) && ( binding == 1 || binding == 6 || binding == 7 ) )
         return; // skip in_color bindings
 #endif
     bindings[num_binds].binding = binding;
@@ -230,8 +231,8 @@ static void vk_push_bind( uint32_t binding, uint32_t stride )
 
 static void vk_push_attr( uint32_t location, uint32_t binding, VkFormat format )
 {
-#if defined(USE_VBO_GHOUL2)
-    if( is_ghoul2_vbo && ( binding == 1 || binding == 6 || binding == 7 ) )
+#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
+    if( ( is_ghoul2_vbo || is_mdv_vbo ) && ( binding == 1 || binding == 6 || binding == 7 ) )
         return; // skip in_color bindings
 #endif
     attribs[num_attrs].location = location;
@@ -247,8 +248,9 @@ static void vk_push_attr( uint32_t location, uint32_t binding, VkFormat format )
 // from memory throughout the vertices
 static void vk_push_vertex_input_binding_attribute( const Vk_Pipeline_Def *def ) {
     num_binds = num_attrs = 0; // reset
-#if defined(USE_VBO_GHOUL2)
+#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
     is_ghoul2_vbo = def->vbo_ghoul2;
+    is_mdv_vbo = def->vbo_mdv;
 #endif
 
     switch ( def->shader_type ) {
@@ -466,8 +468,8 @@ static void vk_push_vertex_input_binding_attribute( const Vk_Pipeline_Def *def )
     }
 #endif
 
-#if defined(USE_VBO_GHOUL2)
-    if ( is_ghoul2_vbo ) {
+#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
+    if ( ( is_ghoul2_vbo || is_mdv_vbo ) ) {
         if ( def->shader_type == TYPE_FOG_ONLY || 
              def->shader_type >= TYPE_GENERIC_BEGIN && def->shader_type <= TYPE_GENERIC_END )
         {
@@ -502,11 +504,13 @@ static void vk_push_vertex_input_binding_attribute( const Vk_Pipeline_Def *def )
                     break;
             }
 
-            vk_push_bind( 10, sizeof( vec4_t ) );		// bone indexes
-            vk_push_attr( 10, 10, VK_FORMAT_R32G32B32A32_SFLOAT );
+            if ( is_ghoul2_vbo ) {
+                vk_push_bind( 10, sizeof( vec4_t ) );		// bone indexes
+                vk_push_attr( 10, 10, VK_FORMAT_R32G32B32A32_SFLOAT );
 
-            vk_push_bind( 11, sizeof( vec4_t ) );		// bone weights
-            vk_push_attr( 11, 11, VK_FORMAT_R32G32B32A32_SFLOAT );
+                vk_push_bind( 11, sizeof( vec4_t ) );		// bone weights
+                vk_push_attr( 11, 11, VK_FORMAT_R32G32B32A32_SFLOAT );
+            }
         }
     }
 #endif
@@ -649,7 +653,11 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
     unsigned int state_bits = def->state_bits;
 
     const int pbr = def->vk_pbr_flags ? 1 : 0;      // 0: off, 1: on
-    const int vbo = def->vbo_ghoul2 ? 1 : 0; // 0: fog, 1: fog ghoul2-vbo
+    const int vbo_g2_fog = def->vbo_ghoul2 ? 1 : 0; // 0: fog, 1: fog ghoul2-vbo
+
+    int vbo = 0;
+    if ( def->vbo_ghoul2 )  vbo = 1;
+    if ( def->vbo_mdv )     vbo = 2;
 
     switch ( def->shader_type ) {
         case TYPE_SINGLE_TEXTURE_LIGHTING:
@@ -764,7 +772,7 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
 
         case TYPE_FOG_ONLY:
            // vs_module = &vk.shaders.fog_vs[sh_fog];
-            vs_module = &vk.shaders.fog_vs[vbo];
+            vs_module = &vk.shaders.fog_vs[vbo_g2_fog];
             fs_module = &vk.shaders.fog_fs;
             break;
 
@@ -1946,11 +1954,18 @@ void vk_alloc_persistent_pipelines( void )
 #endif
                     def.state_bits = fog_state;
                     def.vbo_ghoul2 = qfalse;
+                    def.vbo_mdv = qfalse;
                     vk.std_pipeline.fog_pipelines[0][i][j][k] = vk_find_pipeline_ext(0, &def, qtrue);
-#if defined(USE_VBO_GHOUL2)                
+#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)                 
                     if ( vk.vboGhoul2Active ) {
                         def.vbo_ghoul2 = qtrue;
                         vk.std_pipeline.fog_pipelines[1][i][j][k] = vk_find_pipeline_ext(0, &def, qtrue);
+                    }
+
+                    if ( vk.vboMdvActive ) {
+                        def.vbo_ghoul2 = qfalse;
+                        def.vbo_mdv = qtrue;
+                        vk.std_pipeline.fog_pipelines[2][i][j][k] = vk_find_pipeline_ext(0, &def, qtrue);
                     }
 #endif
                    // def.shader_type = TYPE_SINGLE_TEXTURE;
@@ -1962,6 +1977,7 @@ void vk_alloc_persistent_pipelines( void )
 #ifdef USE_PMLIGHT
         def.state_bits = GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE | GLS_DEPTHFUNC_EQUAL;
         def.vbo_ghoul2 = qfalse;
+        def.vbo_mdv = qfalse;
         //def.shader_type = TYPE_SIGNLE_TEXTURE_LIGHTING;
         for (i = 0; i < 3; i++) { // cullType
             def.face_culling = (cullType_t)i;

@@ -425,7 +425,7 @@ void vk_info_f( void ) {
 
 #ifdef USE_VBO
     const int vbo_mode = MIN( r_vbo->integer, 3 );
-    const char *vbo_mode_string[4] = { "off", "world", "world + models", "models" };
+    const char *vbo_mode_string[4] = { "off", "world", "world + ghoul2", "world + ghoul2 + md3" };
 
     ri.Printf( PRINT_ALL, "VBO mode: %s\n", vbo_mode_string[vbo_mode] );
 

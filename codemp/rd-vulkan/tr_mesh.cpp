@@ -406,8 +406,14 @@ void R_AddMD3Surfaces( trRefEntity_t *ent ) {
 
 		// don't add third_person objects if not viewing through a portal
 		if ( !personalModel ) {
-			R_AddDrawSurf( (surfaceType_t *)surface, shader, fogNum, qfalse );
+#ifdef USE_VBO_MDV
+			if ( vk.vboMdvActive )
+				R_AddDrawSurf( (surfaceType_t *)&model->vboMeshes[i], shader, fogNum, qfalse );
+			else
+#endif
+				R_AddDrawSurf( (surfaceType_t *)surface, shader, fogNum, qfalse );
 
+			
 			tr.needScreenMap |= shader->hasScreenMap;
 		}
 

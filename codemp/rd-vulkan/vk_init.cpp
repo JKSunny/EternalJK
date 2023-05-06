@@ -438,12 +438,15 @@ void vk_initialize( void )
 		vk.fboActive = qtrue;		
 
 #ifdef USE_VBO
-	if ( r_vbo->integer && r_vbo->integer <= 2 )
+	if ( r_vbo->integer )
 		vk.vboWorldActive = qtrue;
-
 #ifdef USE_VBO_GHOUL2
 	if ( r_vbo->integer >= 2 )
 		vk.vboGhoul2Active = qtrue;
+#endif
+#ifdef USE_VBO_MDV
+	if ( r_vbo->integer >= 3 )
+		vk.vboMdvActive = qtrue; 
 #endif
 #endif
 

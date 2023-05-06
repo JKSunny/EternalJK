@@ -42,7 +42,9 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define USE_VBO					// store static world geometry in VBO
 #ifdef USE_VBO
 	#define MAX_VBOS      4096
+
 	#define USE_VBO_GHOUL2
+	#define USE_VBO_MDV
 #endif
 
 
@@ -839,8 +841,9 @@ typedef enum surfaceType_e {
 	SF_MDX,
 	SF_FLARE,
 	SF_ENTITY,				// beams, rails, lightning, etc that can be determined by entity
-	SF_DISPLAY_LIST,
-
+#ifdef USE_VBO_MDV
+	SF_VBO_MDVMESH,
+#endif
 	SF_NUM_SURFACE_TYPES,
 	SF_MAX = 0x7fffffff			// ensures that sizeof( surfaceType_t ) == sizeof( int )
 } surfaceType_t;
@@ -1157,6 +1160,27 @@ typedef struct mdvSurface_s
 	struct mdvModel_s *model;
 } mdvSurface_t;
 
+typedef struct mdvVBOMesh_s
+{
+	surfaceType_t   surfaceType;
+
+	int			numIndexes;
+	int			numVertexes;
+
+	int			iboOffset;
+	int			vboOffset;
+	int			texOffset;
+	int			normalOffset;
+	int			boneOffset;
+	int			weightOffset;
+#ifdef USE_VK_PBR
+	int			qtangentOffset;
+#endif
+
+	int			vboMeshIndex;	// vbo model (LOD) index
+	int			vboItemIndex;	// vbo surface index
+} mdvVBOMesh_t;
+
 typedef struct mdvModel_s
 {
 	int             numFrames;
@@ -1168,6 +1192,8 @@ typedef struct mdvModel_s
 
 	int             numSurfaces;
 	mdvSurface_t   *surfaces;
+
+	mdvVBOMesh_t	*vboMeshes;
 
 	int             numSkins;
 } mdvModel_t;
@@ -1986,7 +2012,7 @@ struct shaderCommands_s
 	int					vboIndex;
 	int					vboStage;
 	qboolean			allowVBO;
-	const mdxmVBOMesh_t *mesh_ptr;
+	const void			*vboMeshPtr;
 #endif
 
 	shader_t		*shader;
@@ -2506,6 +2532,7 @@ void		ComputeTexCoords( const int b, const textureBundle_t *bundle );
 // VBO functions
 extern void R_BuildWorldVBO( msurface_t *surf, int surfCount );
 extern void R_BuildMDXM( model_t *mod, mdxmHeader_t *mdxm );
+extern void R_BuildMD3( model_t *mod, mdvModel_t *mdvModel );
 
 extern void VBO_PushData( uint32_t vbo_index, int itemIndex, shaderCommands_t *input );
 extern void VBO_UnBind( void );

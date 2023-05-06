@@ -455,6 +455,7 @@ typedef struct {
 	qboolean				polygon_offset;
 	qboolean				mirror;
 	qboolean				vbo_ghoul2;
+	qboolean				vbo_mdv;
 
 	Vk_Shader_Type			shader_type;	
 	Vk_Shadow_Phase			shadow_phase;
@@ -823,7 +824,7 @@ typedef struct {
 		// dim 0 is based on fogPass_t: 0 - corresponds to FP_EQUAL, 1 - corresponds to FP_LE.
 		// dim 1 is directly a cullType_t enum value.
 		// dim 2 is a polygon offset value (0 - off, 1 - on).
-		uint32_t fog_pipelines[2][2][3][2];
+		uint32_t fog_pipelines[3][2][3][2];
 
 #ifdef USE_PMLIGHT
 		// cullType[3], polygonOffset[2], fogStage[2], absLight[2]
@@ -873,10 +874,10 @@ typedef struct {
 
 	// shader modules.
 	struct {
-		// vbo 0: cpu or vbo world, 1: vbo ghoul2
+		// vbo 0: cpu or vbo world, 1: vbo ghoul2, 2: vbo mdv
 
 		struct {	
-			VkShaderModule gen[2][2][3][2][2][2]; // vbo[0,1], pbr[0,1], tx[0,1,2], cl[0,1] env0[0,1] fog[0,1]
+			VkShaderModule gen[3][2][3][2][2][2]; // vbo[0,1], pbr[0,1], tx[0,1,2], cl[0,1] env0[0,1] fog[0,1]
 			VkShaderModule light[2]; // fog[0,1]
 			VkShaderModule gen0_ident;
 		}	vert;
@@ -884,7 +885,7 @@ typedef struct {
 		struct {
 			VkShaderModule gen0_ident;
 			VkShaderModule gen0_df;
-			VkShaderModule gen[2][2][3][2][2]; // vbo[0,1], pbr[0,1], tx[0,1,2] cl[0,1] fog[0,1]
+			VkShaderModule gen[3][2][3][2][2]; // vbo[0,1], pbr[0,1], tx[0,1,2] cl[0,1] fog[0,1]
 			VkShaderModule light[2][2]; // linear[0,1] fog[0,1]
 		}	frag;
 
@@ -927,6 +928,7 @@ typedef struct {
 
 	qboolean vboWorldActive;
 	qboolean vboGhoul2Active;
+	qboolean vboMdvActive;
 #ifdef USE_VK_PBR
 	qboolean pbrActive;
 #endif

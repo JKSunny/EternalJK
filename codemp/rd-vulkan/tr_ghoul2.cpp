@@ -3553,7 +3553,7 @@ void RB_SurfaceGhoul(CRenderableSurface* surf)
 		tess.surfType = SF_MDX;
 		tess.shader->iboOffset = surf->vboMesh->iboOffset;
 		tess.vboIndex = surf->vboMesh->vboItemIndex;
-		tess.mesh_ptr = surf->vboMesh;
+		tess.vboMeshPtr = surf->vboMesh;
 
 		vk_bind_vbo_index( (uint32_t)surf->vboMesh->vboMeshIndex );
 		VBO_QueueItem( surf->vboMesh->vboItemIndex );

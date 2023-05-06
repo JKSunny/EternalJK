@@ -64,7 +64,7 @@ for %%f in (%glsl%*.geom) do (
 "%cl%" -S frag -V -o "%tmpf%" %glsl%light_frag.tmpl
 "%bh%" "%tmpf%" %outf% frag_light
 
-"%cl%" -S frag -V -o "%tmpf%" %glsl%light_frag.tmpl -DUSE_FOG
+"%cl%" -S frag -V -o "%tmpf%" %glsl%light_frag.tmpl -DUSE_FOG 
 "%bh%" "%tmpf%" %outf% frag_light_fog
 
 "%cl%" -S frag -V -o "%tmpf%" %glsl%light_frag.tmpl -DUSE_LINE
@@ -76,8 +76,10 @@ for %%f in (%glsl%*.geom) do (
 @rem template shader identifiers and flags
 set "vbo[0]="
 set "vbo[1]=-DUSE_VBO_GHOUL2"
+set "vbo[2]=-DUSE_VBO_MDV"
 set "vbo_id[0]=cpu_"
 set "vbo_id[1]=gpu_ghoul2_"
+set "vbo_id[2]=gpu_mdv_"
 
 set "pbr[0]="
 set "pbr[1]=-DUSE_VK_PBR"
@@ -110,9 +112,9 @@ SETLOCAL EnableDelayedExpansion
 
 @rem compile generic shader variations from templates
 @rem vertex shader
-for /L %%i in ( 0,1,1 ) do (                	@rem vbo
-	for /L %%j in ( 0,1,1 ) do (                @rem pbr
-		for /L %%k in ( 0,1,2 ) do (            @rem tx
+for /L %%i in ( 0,1,2 ) do (                	@rem vbo 
+	for /L %%j in ( 0,1,1 ) do (                @rem pbr 
+		for /L %%k in ( 0,1,2 ) do (            @rem tx   
 			for /L %%l in ( 0,1,1 ) do (        @rem +env
 				for /L %%m in ( 0,1,1 ) do (    @rem +fog
 					call :compile_vertex_shader %%i, %%j, %%k, %%l, %%m
@@ -123,9 +125,9 @@ for /L %%i in ( 0,1,1 ) do (                	@rem vbo
 )
 
 @rem fragment shader
-for /L %%i in ( 0,1,1 ) do (                	@rem vbo
+for /L %%i in ( 0,1,2 ) do (                	@rem vbo
 	for /L %%j in ( 0,1,1 ) do (                @rem pbr
-		for /L %%k in ( 0,1,2 ) do (            @rem tx
+		for /L %%k in ( 0,1,2 ) do (            @rem tx 
 			for /L %%l in ( 0,1,1 ) do (        @rem +fog
 				call :compile_fragment_shader %%i, %%j, %%k, %%l
 			)

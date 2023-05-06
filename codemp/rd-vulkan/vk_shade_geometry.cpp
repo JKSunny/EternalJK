@@ -192,26 +192,55 @@ void vk_bind_index_ext( const int numIndexes, const uint32_t *indexes )
 	}
 }
 
+#ifdef USE_VBO_MDV
+static void vk_vbo_bind_geometry_mdv( int32_t flags )
+{
+	shade_bufs[8] = shade_bufs[9] = shade_bufs[10] = shade_bufs[11] = vk.vbo[vk.vbo_index].vertex_buffer;
+
+	mdvVBOMesh_t *mesh_ptr = (mdvVBOMesh_t*)tess.vboMeshPtr;
+
+	vk.cmd->vbo_offset[0] = mesh_ptr->vboOffset + 0; // possibly add framenum here
+	vk.cmd->vbo_offset[2] = mesh_ptr->texOffset;
+	vk.cmd->vbo_offset[5] = mesh_ptr->normalOffset; // possibly add framenum here
+
+	if (flags & TESS_ST1)
+		vk.cmd->vbo_offset[3] = mesh_ptr->texOffset;
+
+	if (flags & TESS_ST2)
+		vk.cmd->vbo_offset[4] = mesh_ptr->texOffset;
+
+#ifdef USE_VK_PBR
+	if (flags & TESS_PBR) {
+		vk.cmd->vbo_offset[8] = mesh_ptr->qtangentOffset;
+	}
+#endif
+
+	qvkCmdBindVertexBuffers( vk.cmd->command_buffer, 0, 12, shade_bufs, vk.cmd->vbo_offset + 0 );
+}
+#endif
+
 #ifdef USE_VBO_GHOUL2
 static void vk_vbo_bind_geometry_ghoul2( uint32_t flags )
 {
 	shade_bufs[8] = shade_bufs[9] = shade_bufs[10] = shade_bufs[11] = vk.vbo[vk.vbo_index].vertex_buffer;
 
-	vk.cmd->vbo_offset[0] = tess.mesh_ptr->vboOffset + 0;
-	vk.cmd->vbo_offset[2] = tess.mesh_ptr->texOffset;
-	vk.cmd->vbo_offset[5] = tess.mesh_ptr->normalOffset;
-	vk.cmd->vbo_offset[10] = tess.mesh_ptr->boneOffset;
-	vk.cmd->vbo_offset[11] = tess.mesh_ptr->weightOffset;
+	mdxmVBOMesh_t *mesh_ptr = (mdxmVBOMesh_t*)tess.vboMeshPtr;
+
+	vk.cmd->vbo_offset[0] = mesh_ptr->vboOffset + 0;
+	vk.cmd->vbo_offset[2] = mesh_ptr->texOffset;
+	vk.cmd->vbo_offset[5] = mesh_ptr->normalOffset;
+	vk.cmd->vbo_offset[10] = mesh_ptr->boneOffset;
+	vk.cmd->vbo_offset[11] = mesh_ptr->weightOffset;
 
 	if (flags & TESS_ST1)
-		vk.cmd->vbo_offset[3] = tess.mesh_ptr->texOffset;
+		vk.cmd->vbo_offset[3] = mesh_ptr->texOffset;
 
 	if (flags & TESS_ST2)
-		vk.cmd->vbo_offset[4] = tess.mesh_ptr->texOffset;
+		vk.cmd->vbo_offset[4] = mesh_ptr->texOffset;
 
 #ifdef USE_VK_PBR
 	if (flags & TESS_PBR) {
-		vk.cmd->vbo_offset[8] = tess.mesh_ptr->qtangentOffset;
+		vk.cmd->vbo_offset[8] = mesh_ptr->qtangentOffset;
 	}
 #endif
 
@@ -252,14 +281,18 @@ void vk_bind_geometry( uint32_t flags )
 
 		shade_bufs[0] = shade_bufs[1] = shade_bufs[2] = shade_bufs[3] = shade_bufs[4] = shade_bufs[5] = shade_bufs[6] = shade_bufs[7] = vk.vbo[vk.vbo_index].vertex_buffer;
 
-#if defined(USE_VBO_GHOUL2)
+#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)  
 		// clear, because vbo buffers don't share sizes
 		// previously set offsets might be out of scope
-		if ( vk.vboGhoul2Active )
+		if ( vk.vboGhoul2Active || vk.vboMdvActive ) {
 			Com_Memset( vk.cmd->vbo_offset, 0, sizeof(vk.cmd->vbo_offset) );
 
-		if ( tess.surfType == SF_MDX )
-			return vk_vbo_bind_geometry_ghoul2( flags );
+			if ( tess.surfType == SF_MDX )
+				return vk_vbo_bind_geometry_ghoul2( flags );
+
+			if ( tess.surfType == SF_VBO_MDVMESH )
+				return vk_vbo_bind_geometry_mdv( flags );
+		}
 #endif
 
 #ifdef USE_VK_PBR
@@ -1942,7 +1975,7 @@ void ForceAlpha(unsigned char *dstColors, int TR_ForceEntAlpha)
 	}
 }
 
-static qboolean vk_is_valid_pbr_surface( const qboolean hasPBR, const qboolean is_ghoul2_vbo ) {
+static qboolean vk_is_valid_pbr_surface( const qboolean hasPBR, const qboolean is_ghoul2_vbo, const qboolean is_mdv_vbo ) {
 	if ( !vk.pbrActive || !hasPBR )
 		return qfalse;
 	
@@ -1956,7 +1989,7 @@ static qboolean vk_is_valid_pbr_surface( const qboolean hasPBR, const qboolean i
 		return qfalse;
 
 	if ( backEnd.currentEntity ){
-		if ( backEnd.currentEntity != &tr.worldEntity && !is_ghoul2_vbo )
+		if ( backEnd.currentEntity != &tr.worldEntity && !is_ghoul2_vbo && !is_mdv_vbo )
 			return qfalse;
 	}
 	
@@ -1974,6 +2007,7 @@ void RB_StageIteratorGeneric( void )
 	int						fog_stage = 0;
 	qboolean				fogCollapse;
 	qboolean				is_ghoul2_vbo;
+	qboolean				is_mdv_vbo;
 	qboolean				is_pbr_surface;
 
 #ifdef USE_VBO
@@ -2000,6 +2034,7 @@ void RB_StageIteratorGeneric( void )
 
 	fogCollapse = qfalse;
 	is_ghoul2_vbo = qfalse;
+	is_mdv_vbo = qfalse;
 	is_pbr_surface = qfalse;
 
 #ifdef USE_FOG_COLLAPSE
@@ -2008,12 +2043,13 @@ void RB_StageIteratorGeneric( void )
 	}
 #endif
 
-#if defined(USE_VBO_GHOUL2)
+#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV) 
 	if ( tess.vboIndex ) {
 		is_ghoul2_vbo = (qboolean)( tess.surfType == SF_MDX );
+		is_mdv_vbo = (qboolean)( tess.surfType == SF_VBO_MDVMESH );
 	}
 
-	if ( is_ghoul2_vbo ) {
+	if ( is_ghoul2_vbo || is_mdv_vbo ) {
 		trRefEntity_t *refEntity = backEnd.currentEntity;
 		orientationr_t ori;
 		vec4_t tmp;
@@ -2048,15 +2084,15 @@ void RB_StageIteratorGeneric( void )
 #endif
 
 #ifdef USE_VK_PBR
-	is_pbr_surface = vk_is_valid_pbr_surface( tess.shader->hasPBR, is_ghoul2_vbo );
+	is_pbr_surface = vk_is_valid_pbr_surface( tess.shader->hasPBR, is_ghoul2_vbo, is_mdv_vbo );
 
-	if ( is_pbr_surface && !is_ghoul2_vbo ) {
+	if ( is_pbr_surface && !is_ghoul2_vbo && !is_mdv_vbo ) {
 		Com_Memcpy( &uniform_camera.modelMatrix, backEnd.ori.modelMatrix, sizeof(float) * 16 );
 		Com_Memcpy( &uniform_camera.viewOrigin, backEnd.refdef.vieworg, sizeof( vec3_t) );
 		uniform_camera.viewOrigin[3] = 0.0;
 	}
 #endif
-	if ( is_pbr_surface || is_ghoul2_vbo )
+	if ( is_pbr_surface || is_ghoul2_vbo || is_mdv_vbo )
 		vk_push_uniform_camera( &uniform_camera );
 
 	if ( fogCollapse ) {
@@ -2097,7 +2133,7 @@ void RB_StageIteratorGeneric( void )
 
 		if ( backEnd.currentEntity ) {
 			assert( backEnd.currentEntity->e.renderfx >= 0 );
-#if defined(USE_VBO_GHOUL2)
+#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV) 
 			if ( is_ghoul2_vbo && backEnd.currentEntity->e.renderfx & ( RF_DISINTEGRATE1 | RF_DISINTEGRATE2 ) )
 				vk_compute_disintegration( &forceRGBGen );
 
@@ -2116,8 +2152,8 @@ void RB_StageIteratorGeneric( void )
 			if (pStage->bundle[i].image[0] != NULL) {
 				vk_select_texture(i);
 				R_BindAnimatedImage(&pStage->bundle[i]);
-#if defined(USE_VBO_GHOUL2)
-				if ( tess_flags & (TESS_RGBA0 << i) && is_ghoul2_vbo ) {
+#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV) 
+				if ( tess_flags & (TESS_RGBA0 << i) && ( is_ghoul2_vbo || is_mdv_vbo ) ) {
 					vk_compute_colors( i, pStage, forceRGBGen );
 					continue;
 				}
@@ -2152,8 +2188,8 @@ void RB_StageIteratorGeneric( void )
 			if ( backEnd.viewParms.portalView == PV_MIRROR )
 				vk_get_pipeline_def(pStage->vk_mirror_pipeline[fog_stage], &def);
 			else{
-#if defined(USE_VBO_GHOUL2) 
-				if( tess_flags & TESS_PBR && is_ghoul2_vbo )
+#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV) 
+				if( tess_flags & TESS_PBR && ( is_ghoul2_vbo || is_mdv_vbo ) )
 					vk_get_pipeline_def(pStage->vk_pbr_pipeline[fog_stage], &def);
 				else
 #endif
@@ -2173,7 +2209,7 @@ void RB_StageIteratorGeneric( void )
 				if ( backEnd.currentEntity->e.renderfx & RF_ALPHA_DEPTH ) 
 					def.state_bits |= GLS_DEPTHMASK_TRUE;	
 			}
-#if defined(USE_VBO_GHOUL2)
+#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV) 
 			if ( is_ghoul2_vbo ){
 				def.vbo_ghoul2 = qtrue;
 
@@ -2189,6 +2225,9 @@ void RB_StageIteratorGeneric( void )
 				}
 #endif
 			} 
+			else if ( is_mdv_vbo ) {
+				def.vbo_mdv = qtrue;
+			}
 #endif			
 			pipeline = vk_find_pipeline_ext( 0, &def, qfalse );
 		}
@@ -2208,9 +2247,12 @@ void RB_StageIteratorGeneric( void )
 		// does not work with multitextured dglow yet.
 		if ( backEnd.isGlowPass && pStage->glow ){
 			vk_get_pipeline_def( pStage->vk_pipeline[fog_stage], &def );
-#if defined(USE_VBO_GHOUL2)
+#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV) 		
 			if ( is_ghoul2_vbo )
-				def.vbo_ghoul2 = qtrue;		
+				def.vbo_ghoul2 = qtrue;
+			else if ( is_mdv_vbo )
+				def.vbo_mdv = qtrue;		
+
 #endif	
 			def.shader_type = TYPE_SINGLE_TEXTURE;
 			pipeline = vk_find_pipeline_ext( 0, &def, qfalse );
@@ -2247,13 +2289,13 @@ void RB_StageIteratorGeneric( void )
 				//vk_update_pbr_descriptor(10, tr.cubemaps[0].irradiance_image->descriptor_set);
 			}
 
-			if ( !is_ghoul2_vbo )
+			if ( !is_ghoul2_vbo && !is_mdv_vbo )
 				pipeline = pStage->vk_pbr_pipeline[fog_stage];
 		}
 #endif
 
-#if defined(USE_VBO_GHOUL2)
-		if ( is_ghoul2_vbo )
+#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV) 
+		if ( is_ghoul2_vbo || is_mdv_vbo )
 			vk_push_uniform_data( &uniform_data );
 #endif
 		vk_bind_pipeline( pipeline );
