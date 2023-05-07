@@ -88,7 +88,7 @@ layout (constant_id = 8) const float identity_color = 1.0;
 #endif
 
 
-#if defined(USE_VK_PBR) || defined(USE_VBO_GHOUL2)
+#if defined(USE_VK_PBR) || defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
 layout(location = 10) in vec4 var_Normal;
 layout(location = 11) in vec4 var_LightDir;
 layout(location = 12) in vec4 var_ViewDir;
@@ -149,7 +149,7 @@ float CorrectAlpha(float threshold, float alpha, vec2 tc)
 }
 #endif
 
-#if defined(USE_VBO_GHOUL2)
+#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
 layout(set = 1, binding = 2) uniform UBOG2 {
 	vec4 ambientLight;
 	vec4 directedLight;
@@ -472,7 +472,7 @@ void main() {
 
 	gl_FragDepth = gl_FragCoord.z;
 #else
-	#if defined(USE_VK_PBR) || defined(USE_VBO_GHOUL2)
+	#if defined(USE_VK_PBR) || defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
 		viewDir = var_ViewDir.xyz;
 		E = normalize(viewDir);
 
@@ -481,7 +481,7 @@ void main() {
 		L /= sqrt(sqrLightDist);
 	#endif
 
-	#if defined(USE_VBO_GHOUL2)
+	#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
 		if ( needsShading( int( rgbGen[0] ) ) ) {
 			#if !defined( USE_VK_PBR )
 				lightColor = ( directedLight.xyz * 1.2 ) * base.rgb;
@@ -498,15 +498,15 @@ void main() {
 				color += ambientColor * diffuse;
 				base.rgb = color;
 			#else
-				lightColor = ( directedLight.xyz * 1.2 ) * color0.rgb;
-				ambientColor = ( ambientLight.rgb ) * color0.rgb;
+				lightColor = ( directedLight.xyz * 1.2 ) * frag_color0.rgb;
+				ambientColor = ( ambientLight.rgb ) * frag_color0.rgb;
 				attenuation = 1.0;
 			#endif
 		}
 	#endif
 
 	#ifdef USE_VK_PBR
-		#if defined( USE_VBO_GHOUL2 )
+		#if defined( USE_VBO_GHOUL2 ) || defined(USE_VBO_MDV)
 			diffuse = base;
 		#else
 			#if ( defined(USE_TX1) || defined(USE_TX2) )
@@ -533,10 +533,12 @@ void main() {
 		N = CalcNormal( var_Normal.xyz, frag_tex_coord0 );	
 
 		#if defined(USE_TX1) || defined(USE_TX2)
-			ambientColor = lightColor;
-			float surfNL = clamp(dot(var_Normal.xyz, L), 0.0, 1.0);
-			lightColor /= max( surfNL, 0.25 );
-			ambientColor = max( ambientColor - lightColor * surfNL, 0.0 );
+			if ( lightmap_texture_set > -1 ) {
+				ambientColor = lightColor;
+				float surfNL = clamp(dot(var_Normal.xyz, L), 0.0, 1.0);
+				lightColor /= max( surfNL, 0.25 );
+				ambientColor = max( ambientColor - lightColor * surfNL, 0.0 );
+			}
 		#endif
 
 		lightColor *= PI;

@@ -817,7 +817,7 @@ void R_BuildMDXM( model_t *mod, mdxmHeader_t *mdxm )
 		}
 
 		if ( numStaticSurfaces == 0 ) {
-			ri.Printf(PRINT_ALL, "...no static surfaces for VBO\n");
+			ri.Printf( PRINT_ALL, "... no VBO surfaces for [%s]\n", mod->name );
 			return;
 		}
 
@@ -887,6 +887,257 @@ void R_BuildMDXM( model_t *mod, mdxmHeader_t *mdxm )
 		// find the next LOD
 		lod = (mdxmLOD_t *)( (byte *)lod + lod->ofsEnd );
 	}
+
+	return;
+}
+#endif
+
+#ifdef USE_VBO_MDV
+static void VBO_AddGeometryMD3( vbo_t *vbo, vbo_item_t *vi, mdvSurface_t *surf, mdvVBOMesh_t *mesh, const int numFrames )
+{
+	mdvVertex_t *v;
+	uint32_t	size, offs;
+	uint32_t	j;
+
+	// allocate indexes
+	mesh->iboOffset = vbo->vbo_offset;
+	vbo->vbo_offset += mesh->numIndexes * sizeof(surf->indexes[0]);
+
+
+	// allocate xyz + normals + texCoords + bones + weights
+	mesh->vboOffset = vbo->vbo_offset;
+	
+	vbo->vbo_offset += mesh->numVertexes * numFrames * ( sizeof(tess.xyz[0]) + sizeof(tess.normal[0]) );
+	vbo->vbo_offset += mesh->numVertexes * sizeof( vec2_t );
+#ifdef USE_VK_PBR
+	if ( vk.pbrActive )
+		vbo->vbo_offset += mesh->numVertexes * numFrames * sizeof(vec4_t);
+#endif
+
+	mesh->normalOffset = mesh->vboOffset + ( mesh->numVertexes * numFrames * sizeof(tess.xyz[0]) );
+#ifdef USE_VK_PBR	
+	if ( vk.pbrActive )
+		mesh->qtangentOffset = mesh->normalOffset + (mesh->numVertexes * numFrames * sizeof(vec4_t));
+#endif
+	mesh->texOffset = mesh->qtangentOffset + (mesh->numVertexes * numFrames * sizeof(vec4_t));
+
+	vi->index_offset = 0;
+	vi->soft_offset = vbo->ibo_offset;
+
+	offs = mesh->iboOffset;
+	size = surf->numIndexes * sizeof(tess.indexes[0]);
+	if ( offs + size > vbo->vbo_size ) {
+		ri.Error( ERR_DROP, "Index0 overflow" );
+	}
+	memcpy( vbo->vbo_buffer + offs, surf->indexes, size );
+
+
+	// fill soft buffer too
+	if ( vbo->ibo_offset + size > vbo->ibo_size ) {
+		ri.Error( ERR_DROP, "Index1 overflow" );
+	}
+	memcpy( vbo->ibo_buffer + vbo->ibo_offset, surf->indexes, size );
+	vbo->ibo_offset += size;
+
+	// xyz
+	offs = mesh->vboOffset;
+	size = surf->numVerts * numFrames * sizeof(tess.xyz[0]);
+	if ( offs + size > vbo->vbo_size ) {
+		ri.Error( ERR_DROP, "Vertex overflow" );
+	}
+	
+	// normals
+	offs = mesh->normalOffset;
+	size = surf->numVerts * numFrames * sizeof(tess.normal[0]);
+	if ( offs + size > vbo->vbo_size ) {
+		ri.Error( ERR_DROP, "Normals overflow" );
+	}
+
+	// tangents
+	offs = mesh->qtangentOffset;
+	size = surf->numVerts * sizeof( vec4_t );
+	if ( offs + size > vbo->vbo_size ) {
+		ri.Error( ERR_DROP, "tangents overflow" );
+	}
+
+	v = surf->verts;
+	offs = 0;
+	for ( j = 0; j < mesh->numVertexes * numFrames ; j++, v++, offs += sizeof(vec4_t) ){
+		memcpy( vbo->vbo_buffer + mesh->vboOffset + offs, v->xyz, sizeof(vec3_t) );
+		memcpy( vbo->vbo_buffer + mesh->normalOffset + offs, v->normal, sizeof(vec3_t) );
+
+		if ( j < mesh->numVertexes )	
+			memcpy( vbo->vbo_buffer + mesh->qtangentOffset + offs, v->qtangent, sizeof(vec4_t) );
+		else
+			memset( vbo->vbo_buffer + mesh->qtangentOffset + offs, 0, sizeof(vec4_t) );
+	}
+
+	// texCoords
+	offs = mesh->texOffset;
+	size = surf->numVerts * sizeof( vec2_t );
+	if ( offs + size > vbo->vbo_size ) {
+		ri.Error( ERR_DROP, "texCoords overflow" );
+	}
+	memcpy( vbo->vbo_buffer + offs, surf->st, size );
+
+	vi->num_indexes = mesh->numIndexes;
+	vi->num_vertexes = mesh->numVertexes;
+}
+
+#ifdef USE_VK_PBR
+static void VBO_CalculateTangentsMD3( vbo_t *vbo, const mdvSurface_t *surf, const mdvVBOMesh_t *mesh )
+{
+	if ( !vk.pbrActive )
+		return;
+
+	mdvVertex_t	*dv0, *dv1, *dv2;
+	float		*st0, *st1, *st2;
+	int			i, i0, i1, i2;
+	vec3_t		tangent, binormal;
+
+	for ( i = 0; i < surf->numIndexes; i += 3 ) {
+		i0 = surf->indexes[ i + 0 ];
+		i1 = surf->indexes[ i + 1 ];
+		i2 = surf->indexes[ i + 2 ];
+
+		if ( i0 >= surf->numVerts || i1 >= surf->numVerts || i2 >= surf->numVerts )
+			continue;
+
+		dv0 = &surf->verts[i0];
+		dv1 = &surf->verts[i1];
+		dv2 = &surf->verts[i2];
+
+		st0 = surf->st[i0].st;
+		st1 = surf->st[i1].st;
+		st2 = surf->st[i2].st;
+
+		R_CalcTangents( tangent, binormal,
+			dv0->xyz, dv1->xyz, dv2->xyz, 
+			st0, st1, st2 );
+
+		R_TBNtoQtangents( tangent, binormal, dv0->normal, dv0->qtangent );
+		R_TBNtoQtangents( tangent, binormal, dv1->normal, dv1->qtangent );
+		R_TBNtoQtangents( tangent, binormal, dv2->normal, dv2->qtangent );
+	}
+}
+#endif
+
+static void VBO_PushDataMD3( mdvSurface_t *surf, mdvVBOMesh_t *mesh, const int numFrames  )
+{
+	vbo_t		*vbo = vbos[mesh->vboMeshIndex];
+	vbo_item_t	*vi = vbo->items + mesh->vboItemIndex;
+
+#ifdef USE_VK_PBR
+	VBO_CalculateTangentsMD3( vbo, surf, mesh );
+#endif
+	VBO_AddGeometryMD3( vbo, vi, surf, mesh, numFrames );
+}
+
+void R_BuildMD3( model_t *mod, mdvModel_t *mdvModel ) {
+	if ( !vk.vboMdvActive )
+		return;
+
+	mdvVBOMesh_t	*mesh;
+	mdvSurface_t	*surf;
+	uint32_t		i;
+	int				ibo_size, vbo_size;
+	int				numStaticSurfaces, numStaticIndexes, numStaticVertexes;
+
+	//mdvModel->numVBOSurfaces = mdvModel->numSurfaces;
+	mdvModel->vboMeshes = (mdvVBOMesh_t *)ri.Hunk_Alloc(sizeof(*mdvModel->vboMeshes) * mdvModel->numSurfaces, h_low);
+
+	numStaticSurfaces = 0;
+	numStaticIndexes = 0;
+	numStaticVertexes = 0;
+
+	vbo_t *vbo = vbos[vk.vbo_count] = (vbo_t *)ri.Hunk_Alloc( sizeof(*vbo), h_low );
+	Com_Memset( vbo, 0, sizeof( *vbo ) );
+
+	vbo_size = 0;
+
+	surf = mdvModel->surfaces;
+	for ( i = 0; i < mdvModel->numSurfaces; i++ ) {
+		mesh = &mdvModel->vboMeshes[i];
+
+		numStaticSurfaces++;
+		numStaticVertexes += surf->numVerts;
+		numStaticIndexes += surf->numIndexes;
+
+		vbo_size += surf->numVerts * mdvModel->numFrames * ( sizeof(tess.xyz[0]) + sizeof( tess.normal[0] ) );
+		vbo_size += surf->numVerts * sizeof( vec2_t );
+
+#ifdef USE_VK_PBR
+		if( vk.pbrActive )
+			vbo_size += surf->numVerts * mdvModel->numFrames * sizeof(vec4_t);
+#endif
+
+		mesh->numVertexes = surf->numVerts;
+		mesh->numIndexes = surf->numIndexes;
+
+		surf++;
+	}
+
+	if ( numStaticSurfaces == 0 ) {
+		ri.Printf( PRINT_ALL, "... no VBO surfaces for [%s]\n", mod->name );
+		return;
+	}
+
+	vbo_size = PAD(vbo_size, 32);
+
+	ibo_size = numStaticIndexes * sizeof(tess.indexes[0]);
+	ibo_size = PAD(ibo_size, 32);
+
+	// 0 item is unused
+	vbo->items = (vbo_item_t*)ri.Hunk_Alloc( ( numStaticSurfaces + 1 ) * sizeof(vbo_item_t), h_low );
+	vbo->items_count = numStaticSurfaces;
+
+	// last item will be used for run length termination
+	vbo->items_queue = (int*)ri.Hunk_Alloc( ( numStaticSurfaces + 1 ) * sizeof(int), h_low );
+	vbo->items_queue_count = 0;
+
+	//Com_Printf( va("md3 [%s] :", mod->name ) );
+	//ri.Printf( PRINT_ALL, " found %i VBO surfaces (%i vertexes, %i indexes)\n",
+	//	numStaticSurfaces, numStaticVertexes, numStaticIndexes );
+
+	//Com_Printf( S_COLOR_CYAN "VBO size: %i\n", vbo_size );
+	//Com_Printf( S_COLOR_CYAN "IBO size: %i\n", ibo_size );
+
+	// vertex buffer
+	vbo_size += ibo_size;
+	vbo->vbo_buffer = (byte*)ri.Hunk_AllocateTempMemory( vbo_size );
+	vbo->vbo_offset = 0;
+	vbo->vbo_size = vbo_size;
+
+	// index buffer
+	vbo->ibo_buffer = (byte*)ri.Hunk_Alloc( ibo_size, h_low );
+	vbo->ibo_offset = 0;
+	vbo->ibo_size = ibo_size;
+
+	// ibo runs buffer
+	vbo->ibo_items = (ibo_item_t*)ri.Hunk_Alloc( ( ( numStaticIndexes / MIN_IBO_RUN ) + 1) * sizeof(ibo_item_t), h_low );
+	vbo->ibo_items_count = 0;
+
+	tess.numIndexes = 0;
+	tess.numVertexes = 0;
+
+	surf = mdvModel->surfaces;
+	for ( i = 0; i < mdvModel->numSurfaces; i++, surf++ )
+	{
+		mesh = &mdvModel->vboMeshes[i];
+		mesh->surfaceType = SF_VBO_MDVMESH;
+		mesh->vboMeshIndex = vk.vbo_count;
+		mesh->vboItemIndex = i + 1;
+
+		initItem( vbo->items + mesh->vboItemIndex );
+
+		VBO_PushDataMD3( surf, mesh, mdvModel->numFrames );
+	}
+
+	vk_alloc_vbo( mod->name, vbo->vbo_buffer, vbo->vbo_size );
+
+	// release host memory
+	ri.Hunk_FreeTempMemory( vbo->vbo_buffer );
+	vbo->vbo_buffer = NULL;
 
 	return;
 }

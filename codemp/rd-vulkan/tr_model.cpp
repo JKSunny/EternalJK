@@ -1661,7 +1661,9 @@ static qboolean R_LoadMD3 ( model_t *mod, int lod, void *buffer, const char *mod
 		md3Surf = (md3Surface_t *) ((byte *) md3Surf + md3Surf->ofsEnd);
 		surf++;
 	}
-
+#ifdef USE_VBO_MDV
+	R_BuildMD3( mod, mdvModel );
+#endif
 	return qtrue;
 }
 

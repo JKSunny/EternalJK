@@ -1573,7 +1573,6 @@ void RB_SurfaceMesh( mdvSurface_t *surface ) {
 
 #ifdef USE_VBO
 	VBO_Flush();
-	tess.surfType = SF_MDV;
 #endif
 
 	RB_CHECKOVERFLOW( surface->numVerts, surface->numIndexes );
@@ -2301,6 +2300,36 @@ void RB_SurfaceDisplayList( srfDisplayList_t *surf ) {
 void RB_SurfaceSkip( void *surf ) {
 }
 
+#ifdef USE_VBO_MDV
+void RB_SurfaceVBOMDVMesh( mdvVBOMesh_t *surf )
+{
+	if ( !vk.vboMdvActive || !surf->vboItemIndex )
+		return;
+
+	if ( tess.vboIndex == 0 ) {
+		RB_EndSurface();
+		RB_BeginSurface( tess.shader, tess.fogNum );
+		// set some dummy parameters for RB_EndSurface
+		tess.numIndexes = 1;
+		tess.numVertexes = 0;
+		VBO_ClearQueue();
+	}
+
+	tess.surfType = surf->surfaceType;
+	tess.shader->iboOffset = surf->iboOffset;
+	tess.vboIndex = surf->vboItemIndex;
+	tess.vboMeshPtr = surf;
+
+	vk_bind_vbo_index( (uint32_t)surf->vboMeshIndex );
+	VBO_QueueItem( surf->vboItemIndex );
+
+	tess.shader->optimalStageIteratorFunc();
+	tess.numIndexes = 0;
+	tess.numVertexes = 0;
+	tess.vboIndex = 0;	
+}
+#endif
+
 void (*rb_surfaceTable[SF_NUM_SURFACE_TYPES])( void *) = {
 	(void(*)(void*))RB_SurfaceBad,			// SF_BAD,
 	(void(*)(void*))RB_SurfaceSkip,			// SF_SKIP,
@@ -2312,4 +2341,7 @@ void (*rb_surfaceTable[SF_NUM_SURFACE_TYPES])( void *) = {
 	(void(*)(void*))RB_SurfaceGhoul,		// SF_MDX,
 	(void(*)(void*))RB_SurfaceFlare,		// SF_FLARE,
 	(void(*)(void*))RB_SurfaceEntity,		// SF_ENTITY
+#ifdef USE_VBO_MDV
+	(void(*)(void*))RB_SurfaceVBOMDVMesh	// SF_VBO_MDVMESH
+#endif
 };

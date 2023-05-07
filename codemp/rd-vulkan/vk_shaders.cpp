@@ -54,7 +54,7 @@ void vk_create_shader_modules( void )
 {
     int i, j, k, l, m, n;
 
-    const char *vbo[] = { "cpu ", "gpu ghoul2" };
+    const char *vbo[] = { "cpu ", "gpu ghoul2", "gpu mdv" };
     const char *pbr[] = { "", "pbr " };
     const char *tx[]  = { "single", "double", "triple" };
     const char *cl[]  = { "", "+cl" };
@@ -112,6 +112,33 @@ void vk_create_shader_modules( void )
         vk.shaders.vert.gen[1][0][2][1][1][0] = SHADER_MODULE(vert_gpu_ghoul2_tx2_cl_env);
         vk.shaders.vert.gen[1][0][2][1][1][1] = SHADER_MODULE(vert_gpu_ghoul2_tx2_cl_env_fog);
     }
+
+    if ( vk.vboMdvActive ) {
+        vk.shaders.vert.gen[2][0][0][0][0][0] = SHADER_MODULE(vert_gpu_mdv_tx0);
+        vk.shaders.vert.gen[2][0][0][0][0][1] = SHADER_MODULE(vert_gpu_mdv_tx0_fog);
+        vk.shaders.vert.gen[2][0][0][0][1][0] = SHADER_MODULE(vert_gpu_mdv_tx0_env);
+        vk.shaders.vert.gen[2][0][0][0][1][1] = SHADER_MODULE(vert_gpu_mdv_tx0_env_fog);
+
+        vk.shaders.vert.gen[2][0][1][0][0][0] = SHADER_MODULE(vert_gpu_mdv_tx1);
+        vk.shaders.vert.gen[2][0][1][0][0][1] = SHADER_MODULE(vert_gpu_mdv_tx1_fog);
+        vk.shaders.vert.gen[2][0][1][0][1][0] = SHADER_MODULE(vert_gpu_mdv_tx1_env);
+        vk.shaders.vert.gen[2][0][1][0][1][1] = SHADER_MODULE(vert_gpu_mdv_tx1_env_fog);
+
+        vk.shaders.vert.gen[2][0][1][1][0][0] = SHADER_MODULE(vert_gpu_mdv_tx1_cl);
+        vk.shaders.vert.gen[2][0][1][1][0][1] = SHADER_MODULE(vert_gpu_mdv_tx1_cl_fog);
+        vk.shaders.vert.gen[2][0][1][1][1][0] = SHADER_MODULE(vert_gpu_mdv_tx1_cl_env);
+        vk.shaders.vert.gen[2][0][1][1][1][1] = SHADER_MODULE(vert_gpu_mdv_tx1_cl_env_fog);
+
+        vk.shaders.vert.gen[2][0][2][0][0][0] = SHADER_MODULE(vert_gpu_mdv_tx2);
+        vk.shaders.vert.gen[2][0][2][0][0][1] = SHADER_MODULE(vert_gpu_mdv_tx2_fog);
+        vk.shaders.vert.gen[2][0][2][0][1][0] = SHADER_MODULE(vert_gpu_mdv_tx2_env);
+        vk.shaders.vert.gen[2][0][2][0][1][1] = SHADER_MODULE(vert_gpu_mdv_tx2_env_fog);
+
+        vk.shaders.vert.gen[2][0][2][1][0][0] = SHADER_MODULE(vert_gpu_mdv_tx2_cl);
+        vk.shaders.vert.gen[2][0][2][1][0][1] = SHADER_MODULE(vert_gpu_mdv_tx2_cl_fog);
+        vk.shaders.vert.gen[2][0][2][1][1][0] = SHADER_MODULE(vert_gpu_mdv_tx2_cl_env);
+        vk.shaders.vert.gen[2][0][2][1][1][1] = SHADER_MODULE(vert_gpu_mdv_tx2_cl_env_fog);    
+    }
     
     // PBR
     if ( vk.pbrActive ) {
@@ -166,9 +193,36 @@ void vk_create_shader_modules( void )
             vk.shaders.vert.gen[1][1][2][1][1][0] = SHADER_MODULE(vert_gpu_ghoul2_pbr_tx2_cl_env);
             vk.shaders.vert.gen[1][1][2][1][1][1] = SHADER_MODULE(vert_gpu_ghoul2_pbr_tx2_cl_env_fog);
         }   
+
+        if ( vk.vboMdvActive ) {
+            vk.shaders.vert.gen[2][1][0][0][0][0] = SHADER_MODULE(vert_gpu_mdv_pbr_tx0);
+            vk.shaders.vert.gen[2][1][0][0][0][1] = SHADER_MODULE(vert_gpu_mdv_pbr_tx0_fog);
+            vk.shaders.vert.gen[2][1][0][0][1][0] = SHADER_MODULE(vert_gpu_mdv_pbr_tx0_env);
+            vk.shaders.vert.gen[2][1][0][0][1][1] = SHADER_MODULE(vert_gpu_mdv_pbr_tx0_env_fog);
+
+            vk.shaders.vert.gen[2][1][1][0][0][0] = SHADER_MODULE(vert_gpu_mdv_pbr_tx1);
+            vk.shaders.vert.gen[2][1][1][0][0][1] = SHADER_MODULE(vert_gpu_mdv_pbr_tx1_fog);
+            vk.shaders.vert.gen[2][1][1][0][1][0] = SHADER_MODULE(vert_gpu_mdv_pbr_tx1_env);
+            vk.shaders.vert.gen[2][1][1][0][1][1] = SHADER_MODULE(vert_gpu_mdv_pbr_tx1_env_fog);
+
+            vk.shaders.vert.gen[2][1][1][1][0][0] = SHADER_MODULE(vert_gpu_mdv_pbr_tx1_cl);
+            vk.shaders.vert.gen[2][1][1][1][0][1] = SHADER_MODULE(vert_gpu_mdv_pbr_tx1_cl_fog);
+            vk.shaders.vert.gen[2][1][1][1][1][0] = SHADER_MODULE(vert_gpu_mdv_pbr_tx1_cl_env);
+            vk.shaders.vert.gen[2][1][1][1][1][1] = SHADER_MODULE(vert_gpu_mdv_pbr_tx1_cl_env_fog);
+
+            vk.shaders.vert.gen[2][1][2][0][0][0] = SHADER_MODULE(vert_gpu_mdv_pbr_tx2);
+            vk.shaders.vert.gen[2][1][2][0][0][1] = SHADER_MODULE(vert_gpu_mdv_pbr_tx2_fog);
+            vk.shaders.vert.gen[2][1][2][0][1][0] = SHADER_MODULE(vert_gpu_mdv_pbr_tx2_env);
+            vk.shaders.vert.gen[2][1][2][0][1][1] = SHADER_MODULE(vert_gpu_mdv_pbr_tx2_env_fog);
+
+            vk.shaders.vert.gen[2][1][2][1][0][0] = SHADER_MODULE(vert_gpu_mdv_pbr_tx2_cl);
+            vk.shaders.vert.gen[2][1][2][1][0][1] = SHADER_MODULE(vert_gpu_mdv_pbr_tx2_cl_fog);
+            vk.shaders.vert.gen[2][1][2][1][1][0] = SHADER_MODULE(vert_gpu_mdv_pbr_tx2_cl_env);
+            vk.shaders.vert.gen[2][1][2][1][1][1] = SHADER_MODULE(vert_gpu_mdv_pbr_tx2_cl_env_fog);    
+        }
     }
 
-    for ( i = 0; i < 2; i++ ) {
+    for ( i = 0; i < 3; i++ ) {
         for ( j = 0; j < 2; j++ ) {
             for ( k = 0; k < 3; k++ ) {
                 for ( l = 0; l < 2; l++ ) {
@@ -225,6 +279,23 @@ void vk_create_shader_modules( void )
         vk.shaders.frag.gen[1][0][2][1][1] = SHADER_MODULE(frag_gpu_ghoul2_tx2_cl_fog);
    }
 
+   if ( vk.vboMdvActive ) {
+        vk.shaders.frag.gen[2][0][0][0][0] = SHADER_MODULE(frag_gpu_mdv_tx0);
+        vk.shaders.frag.gen[2][0][0][0][1] = SHADER_MODULE(frag_gpu_mdv_tx0_fog);
+
+        vk.shaders.frag.gen[2][0][1][0][0] = SHADER_MODULE(frag_gpu_mdv_tx1);
+        vk.shaders.frag.gen[2][0][1][0][1] = SHADER_MODULE(frag_gpu_mdv_tx1_fog);
+
+        vk.shaders.frag.gen[2][0][1][1][0] = SHADER_MODULE(frag_gpu_mdv_tx1_cl);
+        vk.shaders.frag.gen[2][0][1][1][1] = SHADER_MODULE(frag_gpu_mdv_tx1_cl_fog);
+
+        vk.shaders.frag.gen[2][0][2][0][0] = SHADER_MODULE(frag_gpu_mdv_tx2);
+        vk.shaders.frag.gen[2][0][2][0][1] = SHADER_MODULE(frag_gpu_mdv_tx2_fog);
+
+        vk.shaders.frag.gen[2][0][2][1][0] = SHADER_MODULE(frag_gpu_mdv_tx2_cl);
+        vk.shaders.frag.gen[2][0][2][1][1] = SHADER_MODULE(frag_gpu_mdv_tx2_cl_fog);
+   }
+
     // PBR
     if ( vk.pbrActive ) {
         vk.shaders.frag.gen[0][1][0][0][0] = SHADER_MODULE(frag_cpu_pbr_tx0);
@@ -258,9 +329,26 @@ void vk_create_shader_modules( void )
             vk.shaders.frag.gen[1][1][2][1][0] = SHADER_MODULE(frag_gpu_ghoul2_pbr_tx2_cl);
             vk.shaders.frag.gen[1][1][2][1][1] = SHADER_MODULE(frag_gpu_ghoul2_pbr_tx2_cl_fog);
        }
+
+       if ( vk.vboMdvActive ) {
+            vk.shaders.frag.gen[2][1][0][0][0] = SHADER_MODULE(frag_gpu_mdv_pbr_tx0);
+            vk.shaders.frag.gen[2][1][0][0][1] = SHADER_MODULE(frag_gpu_mdv_pbr_tx0_fog);
+
+            vk.shaders.frag.gen[2][1][1][0][0] = SHADER_MODULE(frag_gpu_mdv_pbr_tx1);
+            vk.shaders.frag.gen[2][1][1][0][1] = SHADER_MODULE(frag_gpu_mdv_pbr_tx1_fog);
+
+            vk.shaders.frag.gen[2][1][1][1][0] = SHADER_MODULE(frag_gpu_mdv_pbr_tx1_cl);
+            vk.shaders.frag.gen[2][1][1][1][1] = SHADER_MODULE(frag_gpu_mdv_pbr_tx1_cl_fog);
+
+            vk.shaders.frag.gen[2][1][2][0][0] = SHADER_MODULE(frag_gpu_mdv_pbr_tx2);
+            vk.shaders.frag.gen[2][1][2][0][1] = SHADER_MODULE(frag_gpu_mdv_pbr_tx2_fog);
+
+            vk.shaders.frag.gen[2][1][2][1][0] = SHADER_MODULE(frag_gpu_mdv_pbr_tx2_cl);
+            vk.shaders.frag.gen[2][1][2][1][1] = SHADER_MODULE(frag_gpu_mdv_pbr_tx2_cl_fog);
+       }
     }
 
-    for ( i = 0; i < 2; i++ ) {
+    for ( i = 0; i < 3; i++ ) {
         for ( j = 0; j < 2; j++ ) {
             for ( k = 0; k < 3; k++ ) {
                 for ( l = 0; l < 2; l++ ) {

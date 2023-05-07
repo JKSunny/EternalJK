@@ -30,7 +30,7 @@ layout(set = 1, binding = 0) uniform UBO {
 };
 #endif
 
-#if defined(USE_VK_PBR) || defined(USE_VBO_GHOUL2)
+#if defined(USE_VK_PBR) || defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
 layout(set = 1, binding = 1) uniform UBO_Camera {
 	vec4 u_ViewOrigin;
 	vec4 u_localViewOrigin;
@@ -42,7 +42,7 @@ layout(location = 11) out vec4 var_LightDir;
 layout(location = 12) out vec4 var_ViewDir;
 #endif
 
-#if defined(USE_VBO_GHOUL2)
+#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
 layout(set = 1, binding = 2) uniform UBOG2 {
 	vec4 ambientLight;
 	vec4 directedLight;
@@ -73,7 +73,7 @@ layout(set = 1, binding = 3) uniform UBOG3 {
 
 layout(location = 0) in vec3 in_position;
 
-#if defined(USE_CL0_IDENT) || defined(USE_VBO_GHOUL2)
+#if defined(USE_CL0_IDENT) || defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
 // use fixed color from frag.spec.constant.8
 #else
 layout(location = 1) in vec4 in_color0;
@@ -90,14 +90,14 @@ layout(location = 3) in vec2 in_tex_coord1;
 layout(location = 4) in vec2 in_tex_coord2;
 #endif
 
-#if defined(USE_ENV) || defined(USE_VBO_GHOUL2)
+#if defined(USE_ENV) || defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
 layout(location = 5) in vec3 in_normal;
 #endif
 
-#if defined(USE_CL1) && !defined(USE_VBO_GHOUL2)
+#if defined(USE_CL1) && !defined(USE_VBO_GHOUL2) && !defined(USE_VBO_MDV)
 layout(location = 6) in vec4 in_color1;
 #endif
-#if defined(USE_CL2) && !defined(USE_VBO_GHOUL2)
+#if defined(USE_CL2) && !defined(USE_VBO_GHOUL2) && !defined(USE_VBO_MDV)
 layout(location = 7) in vec4 in_color2;
 #endif
 
@@ -137,7 +137,7 @@ struct NTB {
 };
 
 layout(location = 8) in vec4 in_qtangent;
-#if !defined(USE_VBO_GHOUL2)
+#if !defined(USE_VBO_GHOUL2) && !defined(USE_VBO_MDV)
 layout(location = 9) in vec4 in_lightdir;
 #endif
 layout(location = 13) out NTB out_ntb;
@@ -159,7 +159,7 @@ out gl_PerVertex {
 	vec4 gl_Position;
 };
 
-#if defined(USE_VBO_GHOUL2)
+#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
 vec4 CalcColor( int index, in vec3 position, in vec3 normal )
 {
 	vec4 color = ( vertColor[index] * vec4( 0.0 ) ) + baseColor[index];		// skip vertColor?
@@ -404,7 +404,15 @@ void main() {
 	QTangentToNTB( in_qtangent, out_ntb );
 #endif
 
-#if defined(USE_VBO_GHOUL2)
+#if defined(USE_VBO_MDV)
+	vec3 position = in_position;
+	vec3 normal = normalize(in_normal);
+
+	if( int( deformInfo[2][0] ) != 0 ){ // !DEFORM_NONE
+		position	= DeformPosition( position, normal, frag_tex_coord0 );
+		normal		= DeformNormal( position, normal );
+	}
+#elif defined(USE_VBO_GHOUL2)
 	mat4x3 skin_matrix =
 		GetBoneMatrix(uint(in_bones.x)) * in_weights.x +
         GetBoneMatrix(uint(in_bones.y)) * in_weights.y +
@@ -416,7 +424,6 @@ void main() {
 
 	#ifdef USE_VK_PBR
 		out_ntb.tangent = normalize(skin_matrix * vec4(out_ntb.tangent, 0.0));
-		out_ntb.tangent	= normalize(mat3(u_ModelMatrix) * out_ntb.tangent);
 	#endif
 
 	if( int( deformInfo[2][0] ) != 0 ){ // !DEFORM_NONE
@@ -433,21 +440,21 @@ void main() {
 #endif
 
 #ifndef USE_CL0_IDENT
-	#if defined(USE_VBO_GHOUL2)
+	#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
 		frag_color0 = CalcColor( 0, position, normal );
 	#else
 		frag_color0 = in_color0;
 	#endif
 #endif
 #ifdef USE_CL1
-	#if defined(USE_VBO_GHOUL2)
+	#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
 		frag_color1 = CalcColor( 1, position, normal );
 	#else
 		frag_color1 = in_color1;
 	#endif
 #endif
 #ifdef USE_CL2
-	#if defined(USE_VBO_GHOUL2)
+	#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
 		frag_color2 = CalcColor( 2, position, normal );
 	#else
 		frag_color2 = in_color2;
@@ -495,14 +502,19 @@ void main() {
 	fog_tex_coord = vec2(s, t);
 #endif
 
-#if defined(USE_VK_PBR) || defined(USE_VBO_GHOUL2)
+#if defined(USE_VK_PBR) || defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
 	position		= (u_ModelMatrix * vec4(position, 1.0)).xyz;
 	normal			= normalize(mat3(u_ModelMatrix) * normal);
 
 	vec3 viewDir = u_ViewOrigin.xyz - position;
 
-#if defined(USE_VBO_GHOUL2)
+#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
 	vec3 L	= lightDir.xyz - (position * lightDir.w);
+
+	#ifdef USE_VK_PBR
+		out_ntb.tangent	 = normalize(mat3(u_ModelMatrix) * out_ntb.tangent);
+		out_ntb.binormal = normalize(mat3(u_ModelMatrix) * out_ntb.binormal);
+	#endif
 #else
 	vec3 L	= in_lightdir.xyz * 2.0 - vec3(1.0);
 	L		= ( u_ModelMatrix * vec4( L, 0.0 ) ).xyz;

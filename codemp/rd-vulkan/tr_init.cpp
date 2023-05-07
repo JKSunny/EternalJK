@@ -955,10 +955,10 @@ void R_Register( void )
 	r_nomip								= ri.Cvar_Get("r_nomip",							"0",						CVAR_ARCHIVE | CVAR_LATCH, "Apply picmip only on worldspawn textures");
 	ri.Cvar_CheckRange(r_nomip, 0, 1, qtrue);
 #ifdef USE_VBO
-	r_vbo = ri.Cvar_Get("r_vbo",															"0",						CVAR_ARCHIVE | CVAR_LATCH, "Cache static surfaces:\n 0 - off\n 1 - world\n 2 - world + models\n 3 - models");
+	r_vbo = ri.Cvar_Get("r_vbo",															"0",						CVAR_ARCHIVE | CVAR_LATCH, "Cache static surfaces:\n 0 - off\n 1 - world\n 2 - world + ghoul2\n 3 - world + ghoul2 + md3");
 #endif
 #ifdef USE_VK_PBR
-	r_pbr								= ri.Cvar_Get("r_pbr",								"0",						CVAR_ARCHIVE_ND | CVAR_LATCH, "Enables Physically Based Rendering. \nRequires " S_COLOR_CYAN "\\r_fbo 1 \n" S_COLOR_GREEN "Optional " S_COLOR_CYAN "\\r_vbo 1 " S_COLOR_GREEN "for static world geometry " S_COLOR_WHITE "*adviced\n" S_COLOR_GREEN "Optional " S_COLOR_CYAN "\\r_vbo 2 or 3 " S_COLOR_GREEN "enabled pbr for ghoul2 player models" );
+	r_pbr								= ri.Cvar_Get("r_pbr",								"0",						CVAR_ARCHIVE_ND | CVAR_LATCH, "Enables Physically Based Rendering. \nRequires " S_COLOR_CYAN "\\r_fbo 1 \n" S_COLOR_GREEN "Optional " S_COLOR_CYAN "\\r_vbo 1 " S_COLOR_GREEN "for static world geometry " S_COLOR_WHITE "*adviced\n" S_COLOR_GREEN "Optional " S_COLOR_CYAN "\\r_vbo 2 or 3 " S_COLOR_GREEN "for additional ghoul2 and md3 models" );
 	r_baseSpecular						= ri.Cvar_Get("r_baseSpecular",						"0.04",						CVAR_ARCHIVE | CVAR_LATCH, "" );
 #ifdef VK_CUBEMAP
 	r_cubeMapping						= ri.Cvar_Get("r_cubeMapping",						"0",						CVAR_ARCHIVE | CVAR_LATCH, "" );
