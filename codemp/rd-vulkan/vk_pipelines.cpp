@@ -463,8 +463,11 @@ static void vk_push_vertex_input_binding_attribute( const Vk_Pipeline_Def *def )
         vk_push_bind( 8, sizeof(vec4_t) );                // qtangent
         vk_push_attr( 8, 8, VK_FORMAT_R32G32B32A32_SFLOAT );
 
-        vk_push_bind( 9, sizeof(vec4_t) );                // lightdir
-        vk_push_attr( 9, 9, VK_FORMAT_R32G32B32A32_SFLOAT );
+        if ( !def->vbo_ghoul2 && !def->vbo_mdv ) 
+        {
+            vk_push_bind( 9, sizeof(vec4_t) );                // lightdir
+            vk_push_attr( 9, 9, VK_FORMAT_R32G32B32A32_SFLOAT );
+        }
     }
 #endif
 
