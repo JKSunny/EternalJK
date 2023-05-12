@@ -482,15 +482,41 @@ void vk_create_render_passes()
 #ifdef VK_PBR_BRDFLUT
     if( vk.pbrActive )
     {
-
     #ifdef VK_CUBEMAP 
         if ( vk.cubemapActive ) 
         {   
-            attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-            attachments[2].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+            desc.attachmentCount = 2;
+			attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+			attachments[1].samples = (VkSampleCountFlagBits)vkSamples;
 
-            VK_CHECK(qvkCreateRenderPass(device, &desc, NULL, &vk.render_pass.cubemap));
-            VK_SET_OBJECT_NAME(vk.render_pass.cubemap, "render pass - cubemap", VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT);
+			color_attachment_ref.attachment = 0;
+			color_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+			depth_attachment_ref.attachment = 1;
+			depth_attachment_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+			Com_Memset( &subpass, 0, sizeof( subpass ) );
+			subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+			subpass.colorAttachmentCount = 1;
+			subpass.pColorAttachments = &color_attachment_ref;
+			subpass.pDepthStencilAttachment = &depth_attachment_ref;
+
+			if ( vk.msaaActive ) {
+				desc.attachmentCount = 3;
+				attachments[2].samples = (VkSampleCountFlagBits)vkSamples;
+				attachments[2].storeOp = VK_ATTACHMENT_STORE_OP_STORE; 
+
+				color_attachment_ref.attachment = 2; // msaa image attachment
+				color_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+				color_resolve_ref.attachment = 0; // resolve image attachment
+				color_resolve_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+				subpass.pResolveAttachments = &color_resolve_ref;
+			}
+
+            VK_CHECK( qvkCreateRenderPass( device, &desc, NULL, &vk.render_pass.cubemap ) );
+            VK_SET_OBJECT_NAME( vk.render_pass.cubemap, "render pass - cubemap", VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT );
         }  
     #endif
 
