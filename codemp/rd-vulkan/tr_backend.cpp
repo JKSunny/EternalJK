@@ -1056,8 +1056,6 @@ static const void *RB_PrefilterEnvMap( const void *data )
 
 	vk_set_2d();
 
-	Com_Printf("prefilter cubemaps\n");
-
 	if ( !cmd->cubemap->prefiltered_image )
 		cmd->cubemap->prefiltered_image = R_CreateImage( 
 			va("cubemap prefitlered - %s", cmd->cubemap->name ), 

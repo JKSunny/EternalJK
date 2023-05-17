@@ -1056,8 +1056,6 @@ void vk_begin_cubemap_render_pass( void )
     vk.renderScaleX = vk.renderScaleY = 1.0f;
 
     vk_begin_render_pass(vk.render_pass.cubemap, frameBuffer, qtrue, vk.renderWidth, vk.renderHeight);
-
-    Com_Printf("render cube face %d\n", backEnd.viewParms.targetCubeLayer );
 }
 #endif
 
