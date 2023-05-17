@@ -224,7 +224,30 @@ static void vk_imgui_draw_render_mode( void ){
 
 static void vk_imgui_create_gui( void ) 
 {
+	static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_None | ImGuiDockNodeFlags_PassthruCentralNode;
+
+	ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDocking;
+
+	const ImGuiViewport* viewport = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos(viewport->WorkPos);
+    ImGui::SetNextWindowSize(viewport->WorkSize);
+    ImGui::SetNextWindowViewport(viewport->ID);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+    window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
+    window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoBackground;
+
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+	ImGui::Begin("Inspector", (bool*)true, window_flags);
+	ImGui::PopStyleVar();
+	ImGui::PopStyleVar(2);
+
 	ImGuiIO& io = ImGui::GetIO();
+    if ( io.ConfigFlags & ImGuiConfigFlags_DockingEnable )
+    {
+        ImGuiID dockspace_id = ImGui::GetID( "dockingNode" );
+        ImGui::DockSpace( dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags );
+    }
 
 	ImGui::Begin("renderer_module");
 
@@ -232,28 +255,11 @@ static void vk_imgui_create_gui( void )
 	ImGui::Text(va("Input state: %s", ( imguiGlobal.input_state ? "enabled" : "disabled" ) ) );
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
 	ImGui::Text("Mouse x:%d y:%d", (int)io.MousePos.x, (int)io.MousePos.y);
-   
-	/*
-	ImGui::PushStyleVar( ImGuiStyleVar_FramePadding, ImVec2( 15, 8.5 ) );
-	
-	static char str0[128] = "";
-    ImGui::InputText("##console-text", str0, IM_ARRAYSIZE(str0));
-	ImGui::PopStyleVar();
-
-	ImGui::SameLine();
-
-	if ( ImGui::Button( ICON_FA_PAPER_PLANE, ImVec2{ 30, 30 } ) )
-		vk_imgui_execute_cmd( va("say %s", str0) );
-	
-	ImGui::SameLine();
-
-	if ( ImGui::Button( ICON_FA_JEDI, ImVec2{ 30, 30 } ) )
-		vk_imgui_execute_cmd( "connect 135.125.145.49" );	
-	*/
-	
-	ImGui::Separator();
 
 	vk_imgui_draw_render_mode();
+
+	ImGui::End();
+	
 	vk_imgui_draw_profiler();
 
 	ImGui::End();
