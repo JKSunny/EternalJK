@@ -271,7 +271,7 @@ void UI_ImGuiFrame( void ) {
 	if ( !igContext || !igContext->Initialized || !igContext->WithinFrameScope )
 		return;
 
-	ImGuiIO *io = igGetIO();
+	/*ImGuiIO *io = igGetIO();
 
 	igBegin( "ui_module",NULL,ImGuiWindowFlags_NoTitleBar );
     igText( "Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io->Framerate, io->Framerate );
@@ -279,5 +279,5 @@ void UI_ImGuiFrame( void ) {
 	igEnd();
 
 	// Show loaded .menu files
-	UI_igDebugMenus();
+	UI_igDebugMenus();*/
 }
