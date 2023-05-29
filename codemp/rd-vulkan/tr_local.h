@@ -527,6 +527,10 @@ typedef struct textureBundle_s {
 	qboolean		isScreenMap;
 
 	int				videoMapHandle;
+
+	// pbr inspector
+	int				blendSrcBits;
+	int				blendDstBits;
 } textureBundle_t;
 
 
@@ -606,7 +610,7 @@ typedef struct fogParms_s {
 } fogParms_t;
 
 typedef struct shader_s {
-	char		name[MAX_QPATH];					// game path, including extension
+	char		name[ MAX_QPATH * 2 ];					// game path, including extension
 	int			lightmapSearchIndex[MAXLIGHTMAPS];	// for a shader to match, both name and lightmapIndex must match
 	int			lightmapIndex[MAXLIGHTMAPS];		// for a shader to match, both name and lightmapIndex must match
 	byte		styles[MAXLIGHTMAPS];
@@ -618,6 +622,9 @@ typedef struct shader_s {
 
 	int			surfaceFlags;						// if explicitlyDefined, this will have SURF_* flags
 	int			contentFlags;
+
+	char		*surfaceParams[31];
+	int			numSurfaceParams;
 
 	qboolean	defaultShader;						// we want to return index 0 if the shader failed to
 													// load for some reason, but R_FindShader should
@@ -693,6 +700,13 @@ typedef struct shader_s {
 
 	struct shader_s		*remappedShader;			// current shader this one is remapped too
 	struct	shader_s	*next;
+
+	struct shader_s		*updatedShader;
+	qboolean			isUpdatedShader;
+
+	char		*shaderText;
+	qboolean	sun;
+	vec3_t		sunColor;
 } shader_t;
 
 /*
@@ -889,6 +903,33 @@ typedef struct srfFlare_s {
 	shader_t		*shader;
 } srfFlare_t;
 
+// flare states maintain visibility over multiple frames for fading
+// layers: view, mirror, menu
+typedef struct flare_s {
+	struct		flare_s *next;		// for active chain
+
+	int			addedFrame;
+	uint32_t	testCount;
+
+	int			frameSceneNum;
+	void		*surface;
+	int			fogNum;
+
+	int			fadeTime;
+
+	qboolean	visible;			// state of last test
+	float		drawIntensity;		// may be non 0 even if !visible due to fading
+
+	int			windowX, windowY;
+	float		eyeZ;
+	float		drawZ;
+
+	vec3_t		origin;
+	vec3_t		color;
+	vec3_t		normal;
+} flare_t;
+
+extern flare_t *r_activeFlares;
 
 #ifdef USE_VK_PBR			// sqeeuzed in a vec3 for normals
 #define VERTEX_LM			8
@@ -1963,6 +2004,8 @@ shader_t	*R_FindShader( const char *name, const int *lightmapIndex, const byte *
 shader_t	*R_GetShaderByHandle( qhandle_t hShader );
 shader_t	*R_FindShaderByName( const char *name );
 shader_t	*FinishShader( void );
+void		R_RemoveRemap( int index, qboolean bulk );
+void		R_UpdateShader( int index, const char *shaderText, qboolean bulk );
 
 void		R_InitShaders( qboolean server );
 void		R_ShaderList_f( void );

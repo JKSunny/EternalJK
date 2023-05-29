@@ -21,7 +21,7 @@ I'd also appreciate if you let me know that you found it useful.
 #include <map>
 #include <vector>
 #include <algorithm>
-#include <__msvc_chrono.hpp>
+#include <chrono>
 
 namespace ImGuiUtils
 {
@@ -333,7 +333,7 @@ namespace ImGuiUtils
 	        ImGui::PopID();
         }
 
-        void Render()
+        void Render( bool *p_open )
         {
             fpsFramesCount++;
             auto currFrameTime = std::chrono::system_clock::now();
@@ -347,7 +347,7 @@ namespace ImGuiUtils
                 }
             }
 
-            ImGui::Begin( "Legit profiler", 0, ImGuiWindowFlags_NoScrollbar );
+            ImGui::Begin( "Legit profiler", p_open, ImGuiWindowFlags_NoScrollbar );
             ImVec2 canvasSize = ImGui::GetContentRegionAvail();
 
             int sizeMargin = int( ImGui::GetStyle().ItemSpacing[1] );
@@ -388,6 +388,7 @@ namespace ImGuiUtils
                 TextColumn( "pipeline handles", va( "%i", vk.pipeline_create_count ), columnWidth);
                 TextColumn( "pipeline descriptors", va( "%i, base: %i", vk.pipelines_count, vk.pipelines_world_base ), columnWidth);
                 TextColumn( "image chunks", va( "%i", vk_world.num_image_chunks, vk.pipelines_world_base ), columnWidth);
+                TextColumn( "ID3 shaders", va( "%i", tr.numShaders ), columnWidth);
 
                 #ifdef USE_VBO
                     const int vbo_mode = MIN( r_vbo->integer, 3 );

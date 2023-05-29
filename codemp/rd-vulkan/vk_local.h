@@ -1181,6 +1181,9 @@ void		vk_imgui_begin_frame( void );
 void		vk_imgui_draw( void );
 int			vk_imgui_get_render_mode( void );
 
+void		vk_imgui_reload_shader_editor( qboolean close );
+int			vk_imgui_get_shader_editor_index( void );
+
 void		*R_GetImGuiContext( void );
 uint64_t	R_GetImGuiTexture( qhandle_t hShader );
 

@@ -41,6 +41,9 @@ to overflow.
 void RB_BeginSurface( shader_t *shader, int fogNum ) {
 	shader_t *state = (shader->remappedShader) ? shader->remappedShader : shader;
 
+	if ( shader->updatedShader )
+		state = shader->updatedShader;
+
 #ifdef USE_VBO
 	if (shader->isStaticShader && !shader->remappedShader) {
 		tess.allowVBO = qtrue;

@@ -372,6 +372,12 @@ static void ParseSurfaceParm( const char **text ) {
 			shader.surfaceFlags |= infoParms[i].surfaceFlags;
 			shader.contentFlags |= infoParms[i].contents;
 			shader.contentFlags &= infoParms[i].clearSolid;
+
+			int length = sizeof(infoParms[i].name) * sizeof(char*);
+			shader.surfaceParams[shader.numSurfaceParams] = (char*)malloc(length);
+			Q_strncpyz( shader.surfaceParams[shader.numSurfaceParams], infoParms[i].name, length );
+			shader.numSurfaceParams++;
+
 			break;
 		}
 	}
@@ -1594,6 +1600,10 @@ static qboolean ParseStage(shaderStage_t *stage, const char **text)
 			{
 				depthMaskBits = 0;
 			}
+
+			// pbr inspector
+			stage->bundle[0].blendSrcBits = blendSrcBits;
+			stage->bundle[0].blendDstBits = blendDstBits;
 		}
 		else if ( !Q_stricmp( token, "gloss" ) )
 		{
@@ -2599,20 +2609,38 @@ void R_RemapShader( const char *shaderName, const char *newShaderName, const cha
 	hash = generateHashValue(strippedName, FILE_HASH_SIZE);
 	sh = hashTable[hash];
 
+	// in case edited shader is updating, reload editor
+	const int editor_index = vk_imgui_get_shader_editor_index();
+
 	// remap all the shaders with the given name
 	// even tho they might have different lightmaps
 	while (sh)
 	{
 		if (Q_stricmp(sh->name, strippedName) == 0)
 		{
+			char *shaderText = NULL;
+
 			if (sh != sh2)
 			{
 				sh->remappedShader = sh2;
+
+				if ( sh2->shaderText )
+					shaderText = sh2->shaderText;
 			}
 			else
 			{
 				sh->remappedShader = NULL;
+
+				if ( sh->shaderText )
+					shaderText = sh->shaderText;
 			}
+			
+			// transfer to updated shader(s). no bulk or unique here
+			if ( shaderText )
+				R_UpdateShader( sh->index, shaderText, qfalse );
+
+			if ( editor_index == sh->index )
+				vk_imgui_reload_shader_editor( qfalse );
 		}
 		sh = sh->next;
 	}
@@ -2763,6 +2791,10 @@ static qboolean ParseShader( const char **text )
 			token = COM_ParseExt(text, qfalse);
 			tr.sunLight[2] = atof(token);
 
+			// pbr inspector
+			VectorCopy( tr.sunLight, shader.sunColor );
+			shader.sun = qtrue; 
+
 			VectorNormalize(tr.sunLight);
 
 			token = COM_ParseExt(text, qfalse);
@@ -2780,6 +2812,8 @@ static qboolean ParseShader( const char **text )
 			tr.sunDirection[0] = cos(a) * cos(b);
 			tr.sunDirection[1] = sin(a) * cos(b);
 			tr.sunDirection[2] = sin(b);
+
+			
 
 			SkipRestOfLine(text);
 			continue;
@@ -2980,6 +3014,11 @@ static qboolean ParseShader( const char **text )
 		stages[0].bundle[0].rgbGen = CGEN_VERTEX;
 		stages[0].bundle[0].alphaGen = AGEN_VERTEX;
 	}
+
+	// store shader text
+	int length = (*text + 1) - begin;	// +1 for trailing '}'
+	shader.shaderText = (char*)malloc(length);
+	Q_strncpyz( shader.shaderText, begin, length );
 
 	return qtrue;
 }
@@ -3385,6 +3424,7 @@ static void InitShader( const char *name, const int *lightmapIndex, const byte *
 	}
 
 	shader.contentFlags = CONTENTS_SOLID | CONTENTS_OPAQUE;
+	shader.isUpdatedShader = qfalse;
 }
 
 /*
@@ -3440,6 +3480,136 @@ static inline const int *R_FindLightmap( const int *lightmapIndex )
 	return lightmapIndex;
 }
 
+#ifdef USE_VBO
+static void vk_inspector_transfer_world_vbo( const shader_t *in, shader_t *out ) 
+{
+	if ( !vk.vboWorldActive )
+		return;
+
+	uint32_t i;
+
+	out->isStaticShader = in->isStaticShader;
+	out->svarsSize = in->svarsSize;
+	out->iboOffset = in->iboOffset;
+	out->vboOffset = in->vboOffset;
+	out->normalOffset = in->normalOffset;
+	out->numIndexes = in->numIndexes;
+	out->numVertexes = in->numVertexes;
+	out->curVertexes = in->curVertexes;
+	out->curIndexes = in->curIndexes;
+
+	#ifdef USE_VK_PBR
+		out->qtangentOffset = in->qtangentOffset;
+		out->lightdirOffset = in->lightdirOffset;
+	#endif
+	
+	for ( i = 0; i < MAX_SHADER_STAGES; i++ )
+	{
+		shaderStage_t *in_stage = in->stages[i];
+		shaderStage_t *out_stage = out->stages[i];
+
+		if ( !in_stage || !out_stage )
+				break;
+
+		Com_Memcpy( out_stage->rgb_offset+0, in_stage->rgb_offset+0, 
+					( sizeof(uint32_t) * NUM_TEXTURE_BUNDLES ) );
+		
+		Com_Memcpy( out_stage->tex_offset+0, in_stage->tex_offset+0, 
+					( sizeof(uint32_t) * NUM_TEXTURE_BUNDLES ) );
+	}
+}
+#endif
+
+void R_RemoveRemap( int index, qboolean bulk ) {
+	shader_t	*sh;
+	int			hash;
+
+	if ( !tr.shaders[index] )
+		return;
+
+	hash = generateHashValue( tr.shaders[index]->name, FILE_HASH_SIZE );
+	sh = hashTable[hash];
+
+	while ( sh )
+	{
+		if ( Q_stricmp( sh->name, tr.shaders[index]->name ) == 0 )
+		{
+			if ( !bulk && index != sh->index ) {
+				sh = sh->next;
+				continue;
+			}
+			
+			sh->remappedShader = NULL;
+		}
+		sh = sh->next;
+	}
+
+	if ( vk_imgui_get_shader_editor_index() == index )
+		vk_imgui_reload_shader_editor( qfalse );
+}
+
+void R_UpdateShader( int index, const char *shaderText, qboolean bulk ) {
+	shader_t	*sh;
+	int			hash, shader_index = NULL;
+	char		name[ MAX_QPATH * 2 ];
+
+	const char *shaderTextPtr = shaderText;
+
+	if ( !tr.shaders[index] || !shaderText ) 
+		return;
+	
+	vk_wait_idle();
+
+	Q_strncpyz( name, tr.shaders[index]->name, sizeof(tr.shaders[index]->name) );
+	Q_strcat( name, ( MAX_QPATH * 2 ), "_updated" );
+
+	hash = generateHashValue( tr.shaders[index]->name, FILE_HASH_SIZE );
+	sh = hashTable[hash];
+
+	while ( sh )
+	{
+		if ( Q_stricmp( sh->name, tr.shaders[index]->name ) == 0 )
+		{
+			shader_index = NULL;
+
+			if ( !bulk && index != sh->index ) {
+				sh = sh->next;
+				continue;
+			}
+
+			// updated shader already excists, re-use it
+			if ( sh->updatedShader ) {
+				shader_index = sh->updatedShader->index;
+
+				Z_Free( tr.shaders[shader_index] );
+				Com_Memset( tr.shaders[shader_index], 0, sizeof(shader_t) );
+
+				sh->updatedShader = NULL;
+			}
+
+			// clear the global shader
+			InitShader( name, sh->lightmapIndex, sh->styles );
+
+			if ( !ParseShader( &shaderTextPtr ) )
+				setDefaultShader(); // had errors, so use default shader
+
+			shaderTextPtr = shaderText;
+
+			shader.isUpdatedShader = qtrue;
+			shader.index = shader_index;
+
+			sh->updatedShader = FinishShader();
+
+			#ifdef USE_VBO
+			vk_inspector_transfer_world_vbo( sh, sh->updatedShader );
+			#endif
+		}
+		sh = sh->next;
+	}
+
+	return;
+}
+
 shader_t *R_FindShader( const char *name, const int *lightmapIndex, const byte *styles, qboolean mipRawImage )
 {
 	char		strippedName[MAX_QPATH];
@@ -3490,8 +3660,7 @@ shader_t *R_FindShader( const char *name, const int *lightmapIndex, const byte *
 	
 	if (shaderText) {
 		//vk_debug("shader [%s] pre load\n", strippedName);
-
-		if (!ParseShader(&shaderText)) {
+		if ( !ParseShader( &shaderText ) ) {
 			// had errors, so use default shader
 			setDefaultShader();
 		}
@@ -4912,27 +5081,30 @@ static void SortNewShader( void )
 	tr.sortedShaders[i + 1] = newShader;
 }
 
-shader_t *GeneratePermanentShader( void )
+shader_t *GeneratePermanentShader( )
 {
 	shader_t	*newShader;
-	int			i, b, size;
+	int			i, b, size, index;
 
-	if ( tr.numShaders == MAX_SHADERS ) {
+	qboolean update = (qboolean)((int)shader.index > 0);
+	index = update ? shader.index : tr.numShaders;
+
+	if ( !update && tr.numShaders == MAX_SHADERS ) {
 		vk_debug("WARNING: GeneratePermanentShader - MAX_SHADERS hit\n");
 		return tr.defaultShader;
 	}
 
 	newShader = (shader_t*)ri.Hunk_Alloc( sizeof(shader_t), h_low );
-
 	*newShader = shader;
 
-	tr.shaders[tr.numShaders] = newShader;
-	newShader->index = tr.numShaders;
+	tr.shaders[index] = newShader;
+	newShader->index = index;
 
-	tr.sortedShaders[tr.numShaders] = newShader;
-	newShader->sortedIndex = tr.numShaders;
+	tr.sortedShaders[index] = newShader;
+	newShader->sortedIndex = index;
 
-	tr.numShaders++;
+	if ( !update )
+		tr.numShaders++;
 
 	for ( i = 0; i < newShader->numUnfoggedPasses; i++ )
 	{
@@ -4957,11 +5129,13 @@ shader_t *GeneratePermanentShader( void )
 		}
 	}
 
-	SortNewShader();
+	if ( !update ) {
+		SortNewShader();
 
-	const int hash = generateHashValue(newShader->name, FILE_HASH_SIZE);
-	newShader->next = hashTable[hash];
-	hashTable[hash] = newShader;
+		const int hash = generateHashValue(newShader->name, FILE_HASH_SIZE);
+		newShader->next = hashTable[hash];
+		hashTable[hash] = newShader;
+	}
 
 	return newShader;
 }

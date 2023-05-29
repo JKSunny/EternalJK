@@ -54,34 +54,9 @@ up to five or more times in a frame with 3D status bar icons).
 =============================================================================
 */
 
-// flare states maintain visibility over multiple frames for fading
-// layers: view, mirror, menu
-typedef struct flare_s {
-	struct		flare_s *next;		// for active chain
-
-	int			addedFrame;
-	uint32_t	testCount;
-
-	int			frameSceneNum;
-	void		*surface;
-	int			fogNum;
-
-	int			fadeTime;
-
-	qboolean	visible;			// state of last test
-	float		drawIntensity;		// may be non 0 even if !visible due to fading
-
-	int			windowX, windowY;
-	float		eyeZ;
-	float		drawZ;
-
-	vec3_t		origin;
-	vec3_t		color;
-	vec3_t		normal;
-} flare_t;
-
 static flare_t	r_flareStructs[MAX_FLARES];
-static flare_t *r_activeFlares, *r_inactiveFlares;
+flare_t *r_activeFlares;
+static flare_t *r_inactiveFlares;
 
 /*
 ==================

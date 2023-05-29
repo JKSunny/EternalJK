@@ -2149,7 +2149,9 @@ void RB_StageIteratorGeneric( void )
 		tess_flags |= pStage->tessFlags;
 
 		for (i = 0; i < pStage->numTexBundles; i++) {
+
 			if (pStage->bundle[i].image[0] != NULL) {
+
 				vk_select_texture(i);
 				R_BindAnimatedImage(&pStage->bundle[i]);
 #if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV) 
