@@ -243,6 +243,9 @@ static void vk_imgui_get_input_state( void )
 		imguiGlobal.input_state = qtrue;
 
 		SDL_SetRelativeMouseMode( SDL_FALSE );
+
+		if ( !vk.fboActive )
+			ri.Printf( PRINT_WARNING, "ImGui requires r_fbo 1.\n" );
 	} 
 
 	if ( !in_imgui->integer && imguiGlobal.input_state ){
