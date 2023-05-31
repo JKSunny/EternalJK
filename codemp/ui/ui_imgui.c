@@ -196,9 +196,9 @@ void UI_ImGuiInitMenus( qboolean reset ) {
 		menuRefCount = 0;
 	}
 
-	UI_igCreateMenu( "main", layer_main );
-	UI_igCreateMenu( "joinserver", layer_joinserver );
-	UI_igCreateMenu( "quitMenu", layer_quitMenu );
+	//UI_igCreateMenu( "main", layer_main );
+	//UI_igCreateMenu( "joinserver", layer_joinserver );
+	//UI_igCreateMenu( "quitMenu", layer_quitMenu );
 }
 
 void UI_ImGuiFindMenu( menuDef_t *menu ) {
