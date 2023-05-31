@@ -1519,8 +1519,8 @@ void vk_imgui_initialize( void )
 	init_info.Device = vk.device;
 	init_info.Queue = vk.queue;
 	init_info.DescriptorPool = imguiPool;
-	init_info.MinImageCount = 3;
-	init_info.ImageCount = 3;
+	init_info.MinImageCount = 2;
+	init_info.ImageCount = vk.swapchain_image_count;
 	init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
 
 	ImGui_ImplVulkan_Init( &init_info, vk.render_pass.gamma );
