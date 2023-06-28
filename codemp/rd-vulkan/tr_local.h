@@ -1582,6 +1582,8 @@ typedef struct trGlobals_s {
 	shader_t				*flareShader;
 	shader_t				*sunShader;
 
+	shader_t				*outlineShader;
+
 	int						numLightmaps;
 	image_t					*lightmaps[MAX_LIGHTMAPS];
 
@@ -1882,6 +1884,9 @@ extern cvar_t	*r_vbo;
 #endif
 #ifdef USE_VK_PBR
 extern cvar_t	*r_pbr;
+extern cvar_t	*r_baseNormalX;
+extern cvar_t	*r_baseNormalY;
+extern cvar_t	*r_baseParallax;
 extern cvar_t	*r_baseSpecular;
 #ifdef VK_CUBEMAP
 extern cvar_t	*r_cubeMapping;
