@@ -1215,6 +1215,52 @@ image_t *R_FindImageFile( const char *name, imgFlags_t flags, uint32_t type ){
         return image;
 }
 
+image_t *R_BuildSDRSpecGlossImage(shaderStage_t *stage, const char *specImageName, imgFlags_t flags)
+{
+	char	sdrName[MAX_QPATH];
+	int		specWidth, specHeight;
+	byte	*specPic;
+	image_t *image;
+
+	if ( !specImageName )
+		return NULL;
+
+	COM_StripExtension( specImageName, sdrName, sizeof(sdrName) );
+	Q_strcat( sdrName, sizeof(sdrName), "_SDR" );
+
+	//
+	// see if the image is already loaded
+	//
+	image = R_GetLoadedImage( sdrName, flags );
+	if ( image != NULL )
+		return image;
+
+	R_LoadImage( specImageName, &specPic, &specWidth, &specHeight );
+	if (specPic == NULL)
+		return NULL;
+
+	byte *sdrSpecPic = (byte *)ri.Hunk_AllocateTempMemory(sizeof(unsigned) * specWidth * specHeight);
+	vec3_t currentColor;
+	for ( int i = 0; i < specWidth * specHeight * 4; i += 4 )
+	{
+		currentColor[0] = ByteToFloat(specPic[i + 0]);
+		currentColor[1] = ByteToFloat(specPic[i + 1]);
+		currentColor[2] = ByteToFloat(specPic[i + 2]);
+
+		float ratio = 
+			(sRGBtoRGB(currentColor[0]) + sRGBtoRGB(currentColor[1]) + sRGBtoRGB(currentColor[1])) /
+			(currentColor[0] + currentColor[1] + currentColor[2]);
+
+		sdrSpecPic[i + 0] = FloatToByte(currentColor[0] * ratio);
+		sdrSpecPic[i + 1] = FloatToByte(currentColor[1] * ratio);
+		sdrSpecPic[i + 2] = FloatToByte(currentColor[2] * ratio);
+		sdrSpecPic[i + 3] = specPic[i + 3];
+	}
+	ri.Hunk_FreeTempMemory( specPic );
+
+	return R_CreateImage( sdrName, sdrSpecPic, specWidth, specHeight, flags, 0, stage->physicalMapType );
+}
+
 qboolean vk_create_normal_texture( shaderStage_t *stage, const char *name, imgFlags_t flags )
 {
 	switch ( stage->normalMapType ) {
@@ -1252,6 +1298,12 @@ qboolean vk_create_phyisical_texture( shaderStage_t *stage, const char *name, im
 		case PHYS_ORM:
 		case PHYS_ORMS:
 			break;
+		case PHYS_SPECGLOSS:
+		{
+			stage->physicalMap = R_BuildSDRSpecGlossImage( stage, name, flags );
+			stage->vk_pbr_flags |= PBR_HAS_SPECULARMAP;
+			return qtrue;
+		}
 		default:
 			return qfalse;
 	}

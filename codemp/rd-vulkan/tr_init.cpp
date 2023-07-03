@@ -213,6 +213,9 @@ cvar_t	*r_vbo;
 #endif
 #ifdef USE_VK_PBR
 cvar_t	*r_pbr;
+cvar_t  *r_baseNormalX;
+cvar_t  *r_baseNormalY;
+cvar_t  *r_baseParallax;
 cvar_t  *r_baseSpecular;
 #ifdef VK_CUBEMAP
 cvar_t	*r_cubeMapping;
@@ -959,6 +962,9 @@ void R_Register( void )
 #endif
 #ifdef USE_VK_PBR
 	r_pbr								= ri.Cvar_Get("r_pbr",								"0",						CVAR_ARCHIVE_ND | CVAR_LATCH, "Enables Physically Based Rendering. \nRequires " S_COLOR_CYAN "\\r_fbo 1 \n" S_COLOR_GREEN "Optional " S_COLOR_CYAN "\\r_vbo 1 " S_COLOR_GREEN "for static world geometry " S_COLOR_WHITE "*adviced\n" S_COLOR_GREEN "Optional " S_COLOR_CYAN "\\r_vbo 2 or 3 " S_COLOR_GREEN "for additional ghoul2 and md3 models" );
+	r_baseNormalX						= ri.Cvar_Get("r_baseNormalX",						"1.0",						CVAR_ARCHIVE | CVAR_LATCH, "" );
+	r_baseNormalY						= ri.Cvar_Get("r_baseNormalY",						"1.0",						CVAR_ARCHIVE | CVAR_LATCH, "" );
+	r_baseParallax						= ri.Cvar_Get("r_baseParallax",						"0.05",						CVAR_ARCHIVE | CVAR_LATCH, "" );	
 	r_baseSpecular						= ri.Cvar_Get("r_baseSpecular",						"0.04",						CVAR_ARCHIVE | CVAR_LATCH, "" );
 #ifdef VK_CUBEMAP
 	r_cubeMapping						= ri.Cvar_Get("r_cubeMapping",						"0",						CVAR_ARCHIVE | CVAR_LATCH, "" );

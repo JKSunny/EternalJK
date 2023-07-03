@@ -638,6 +638,10 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
         float   specularScale_y;
         float   specularScale_z;
         float   specularScale_w;
+        float   normalScale_x;
+        float   normalScale_y;
+        float   normalScale_z;
+        float   normalScale_w;
         int32_t normal_texture_set;
         int32_t physical_texture_set;
         int32_t env_texture_set;
@@ -646,7 +650,7 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
     } frag_spec_data; 
 
 #ifdef USE_VK_PBR
-    VkSpecializationMapEntry spec_entries[18];
+    VkSpecializationMapEntry spec_entries[22];
 #else
     VkSpecializationMapEntry spec_entries[10];
 #endif
@@ -999,7 +1003,7 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
     frag_spec_info.mapEntryCount = 9;
 #ifdef USE_VK_PBR
     {
-        frag_spec_info.mapEntryCount += 8;
+        frag_spec_info.mapEntryCount += 12;
 
         {
             spec_entries[10].constantID = 9;
@@ -1019,21 +1023,39 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
             spec_entries[13].size = sizeof(frag_spec_data.specularScale_w);
         }
 
-        spec_entries[14].constantID = 13;
-        spec_entries[14].offset = offsetof(struct FragSpecData, normal_texture_set);
-        spec_entries[14].size = sizeof(frag_spec_data.normal_texture_set);
+        {
+            spec_entries[14].constantID = 13;
+            spec_entries[14].offset = offsetof(struct FragSpecData, normalScale_x);
+            spec_entries[14].size = sizeof(frag_spec_data.normalScale_x);
+
+            spec_entries[15].constantID = 14;
+            spec_entries[15].offset = offsetof(struct FragSpecData, normalScale_y);
+            spec_entries[15].size = sizeof(frag_spec_data.normalScale_y);
+
+            spec_entries[16].constantID = 15;
+            spec_entries[16].offset = offsetof(struct FragSpecData, normalScale_z);
+            spec_entries[16].size = sizeof(frag_spec_data.normalScale_z);
+
+            spec_entries[17].constantID = 16;
+            spec_entries[17].offset = offsetof(struct FragSpecData, normalScale_w);
+            spec_entries[17].size = sizeof(frag_spec_data.normalScale_w);
+        }
+
+        spec_entries[18].constantID = 17;
+        spec_entries[18].offset = offsetof(struct FragSpecData, normal_texture_set);
+        spec_entries[18].size = sizeof(frag_spec_data.normal_texture_set);
     
-        spec_entries[15].constantID = 14;
-        spec_entries[15].offset = offsetof(struct FragSpecData, physical_texture_set);
-        spec_entries[15].size = sizeof(frag_spec_data.physical_texture_set);
+        spec_entries[19].constantID = 18;
+        spec_entries[19].offset = offsetof(struct FragSpecData, physical_texture_set);
+        spec_entries[19].size = sizeof(frag_spec_data.physical_texture_set);
 
-        spec_entries[16].constantID = 15;
-        spec_entries[16].offset = offsetof(struct FragSpecData, env_texture_set);
-        spec_entries[16].size = sizeof(frag_spec_data.env_texture_set);
+        spec_entries[20].constantID = 19;
+        spec_entries[20].offset = offsetof(struct FragSpecData, env_texture_set);
+        spec_entries[20].size = sizeof(frag_spec_data.env_texture_set);
 
-        spec_entries[17].constantID = 16;
-        spec_entries[17].offset = offsetof(struct FragSpecData, lightmap_texture_set);
-        spec_entries[17].size = sizeof(frag_spec_data.lightmap_texture_set);
+        spec_entries[21].constantID = 20;
+        spec_entries[21].offset = offsetof(struct FragSpecData, lightmap_texture_set);
+        spec_entries[21].size = sizeof(frag_spec_data.lightmap_texture_set);
         
         // only use w value, specgloss maps are not supported
         frag_spec_data.specularScale_x = def->specularScale[0];
@@ -1041,12 +1063,19 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
         frag_spec_data.specularScale_z = def->specularScale[2];
         frag_spec_data.specularScale_w = def->specularScale[3];
 
+        frag_spec_data.normalScale_x = def->normalScale[0];
+        frag_spec_data.normalScale_y = def->normalScale[1];
+        frag_spec_data.normalScale_z = def->normalScale[2];
+        frag_spec_data.normalScale_w = def->normalScale[3];
 
 	    if ( ( def->vk_pbr_flags & PBR_HAS_NORMALMAP ) == 0 )
             frag_spec_data.normal_texture_set = -1;
 
 	    if ( ( def->vk_pbr_flags & PBR_HAS_PHYSICALMAP ) == 0 )
             frag_spec_data.physical_texture_set = -1;
+
+        if ( def->vk_pbr_flags & PBR_HAS_SPECULARMAP )
+            frag_spec_data.physical_texture_set = 1;
 
         if ( !vk.cubemapActive )
             frag_spec_data.env_texture_set = -1;

@@ -109,23 +109,27 @@ layout(set = 8, binding = 0) uniform sampler2D physical_texture;
 layout(set = 9, binding = 0) uniform samplerCube env_texture;
 //layout(set = 10, binding = 0) uniform samplerCube irradiance_texture;
 
-
 layout (constant_id = 9) const float specularScale_x = 1.0;
 layout (constant_id = 10) const float specularScale_y = 1.0;
 layout (constant_id = 11) const float specularScale_z = 1.0;
 layout (constant_id = 12) const float specularScale_w = 1.0;
 
-layout (constant_id = 13) const int normal_texture_set = 0;
-layout (constant_id = 14) const int physical_texture_set = 0;
-layout (constant_id = 15) const int env_texture_set = 0;
-layout (constant_id = 16) const int lightmap_texture_set = 0;
+layout (constant_id = 13) const float normalScale_x = 0.0;
+layout (constant_id = 14) const float normalScale_y = 0.0;
+layout (constant_id = 15) const float normalScale_z = 0.0;
+layout (constant_id = 16) const float normalScale_w = 0.0;
+
+layout (constant_id = 17) const int normal_texture_set = 0;
+layout (constant_id = 18) const int physical_texture_set = 0;
+layout (constant_id = 19) const int env_texture_set = 0;
+layout (constant_id = 20) const int lightmap_texture_set = 0;
 
 vec3 CalcNormal( in vec3 vertexNormal, in vec2 frag_tex_coord )
 {
 	if ( normal_texture_set > -1 ) {
 		vec3 n = texture(normal_texture, frag_tex_coord).agb - vec3(0.5);
 
-		n.xy *= vec2(1.0);
+		n.xy *= vec2( normalScale_x, normalScale_y );
 		n.z = sqrt(clamp((0.25 - n.x * n.x) - n.y * n.y, 0.0, 1.0));
 		n = n.x * in_ntb.tangent + n.y * in_ntb.binormal + n.z * vertexNormal;
 
@@ -547,8 +551,9 @@ void main() {
 		float roughness = 0.99;
 		float AO = 1.0;
 
-		if ( physical_texture_set > -1 ) {
-			vec4 ORMS = mix( vec4(1.0), texture( physical_texture, frag_tex_coord0 ), 1.0 );
+		// metallic roughness workflow
+		if ( physical_texture_set == 0 ) {
+			vec4 ORMS = texture( physical_texture, frag_tex_coord0 );
 			ORMS.xyzw *= vec4( specularScale_z, specularScale_w, specularScale_x, specularScale_y );
 
 			specular.rgb = mix( vec3( 0.08 ) * ORMS.w, diffuse.rgb, ORMS.z );
@@ -556,7 +561,15 @@ void main() {
 
 			roughness = mix( 0.01, 1.0, ORMS.y );
 			AO = min( ORMS.x, AO );
+		} 
+		
+		// specular workflow
+		else if( physical_texture_set == 1 ){
+			specular = texture( physical_texture, frag_tex_coord0 );
+			specular.rgb *= vec3( specularScale_x, specularScale_y, specularScale_z );
+			roughness = mix( 1.0, 0.01, specular.a * ( 1.0 - specularScale_w ) );
 		}
+
 		ambientColor *= AO;
 
 		vec3  H  = normalize( L + E );

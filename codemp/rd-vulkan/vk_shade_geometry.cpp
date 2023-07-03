@@ -2273,7 +2273,7 @@ void RB_StageIteratorGeneric( void )
 			if ( pStage->vk_pbr_flags & PBR_HAS_NORMALMAP )
 				vk_update_pbr_descriptor(7, pStage->normalMap->descriptor_set);
 
-			if ( pStage->vk_pbr_flags & PBR_HAS_PHYSICALMAP )
+			if ( pStage->vk_pbr_flags & PBR_HAS_PHYSICALMAP || pStage->vk_pbr_flags & PBR_HAS_SPECULARMAP )
 				vk_update_pbr_descriptor(8, pStage->physicalMap->descriptor_set);
 
 			if ( !tr.numCubemaps || backEnd.viewParms.targetCube != nullptr ) {
@@ -2332,7 +2332,7 @@ void RB_StageIteratorGeneric( void )
 
 		for (stage = 1; stage < tess.shader->numUnfoggedPasses; stage++)
 		{
-			if (tess.xstages[stage]->ss && tess.xstages[stage]->ss->surfaceSpriteType)
+			if (tess.xstages[stage] && tess.xstages[stage]->ss && tess.xstages[stage]->ss->surfaceSpriteType)
 			{
 				if (!ssFound) {
 					// don't cringe, this is a temporary solution. but slow..

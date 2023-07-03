@@ -124,7 +124,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #define PBR_HAS_NORMALMAP				( 1 )
 #define PBR_HAS_PHYSICALMAP				( 2 )
-#define PBR_HAS_LIGHTMAP				( 4 )
+#define PBR_HAS_SPECULARMAP				( 4 )
+#define PBR_HAS_LIGHTMAP				( 8 )
 
 #define PHYS_NONE						( 1 )
 #define PHYS_RMO						( 2 )
@@ -135,10 +136,14 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define PHYS_ORMS   					( 64 )	
 #define PHYS_NORMAL   					( 128 )	
 #define PHYS_NORMALHEIGHT				( 256 )	
+#define PHYS_SPECGLOSS					( 512 )	
 
 
 #define ByteToFloat(a)					((float)(a) * 1.0f/255.0f)
 #define FloatToByte(a)					(byte)((a) * 255.0f)
+
+#define RGBtosRGB(a)					(((a) < 0.0031308f) ? (12.92f * (a)) : (1.055f * pow((a), 0.41666f) - 0.055f))
+#define sRGBtoRGB(a)					(((a) <= 0.04045f)  ? ((a) / 12.92f) : (pow((((a) + 0.055f) / 1.055f), 2.4)) )
 #endif
 
 typedef struct textureMapType_s {
@@ -467,6 +472,7 @@ typedef struct {
 #ifdef USE_VK_PBR
 	uint32_t				vk_pbr_flags;
 	vec4_t					specularScale;	
+	vec4_t					normalScale;	
 #endif
 } Vk_Pipeline_Def;
 
