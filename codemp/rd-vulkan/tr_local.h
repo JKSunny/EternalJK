@@ -1895,6 +1895,10 @@ extern cvar_t	*r_cubeMapping;
 
 #ifdef USE_VK_IMGUI
 extern cvar_t	*in_imgui;
+extern cvar_t	*cl_paused;
+extern cvar_t	*sv_paused;
+extern cvar_t	*com_sv_running;
+extern cvar_t	*com_cl_running;
 #endif
 
 /*
@@ -2590,5 +2594,12 @@ extern void VBO_Cleanup( void );
 extern void VBO_QueueItem( int itemIndex );
 extern void VBO_ClearQueue( void );
 extern void VBO_Flush( void );
+#endif
+
+#ifdef USE_VK_IMGUI
+void		*vk_imgui_get_selected_surface( void );
+shader_t	*vk_imgui_get_selected_shader( void );
+qboolean	vk_imgui_merge_shaders( void );
+qboolean	vk_imgui_outline_selected( void );
 #endif
 #endif

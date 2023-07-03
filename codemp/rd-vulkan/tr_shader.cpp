@@ -5286,6 +5286,15 @@ static void CreateInternalShaders( void )
 	stages[0].bundle[0].rgbGen = CGEN_IDENTITY_LIGHTING;
 	stages[0].stateBits = GLS_DEPTHTEST_DISABLE;
 	tr.cinematicShader = FinishShader();
+
+#ifdef USE_VK_IMGUI
+	InitShader("<outline>", lightmapsNone, stylesDefault);
+	stages[0].bundle[0].image[0] = tr.defaultImage;
+	stages[0].bundle[0].rgbGen = CGEN_EXACT_VERTEX;
+	stages[0].active = qtrue;
+	stages[0].stateBits = GLS_DEFAULT;
+	tr.outlineShader = FinishShader();
+#endif
 }
 
 static void CreateExternalShaders( void )

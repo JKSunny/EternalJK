@@ -86,8 +86,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define MAX_VK_SAMPLERS					32
 #define MAX_VK_PIPELINES				( 1024 + 128 )
 #define USE_DEDICATED_ALLOCATION
-// depth + msaa + msaa-resolve + screenmap.msaa + screenmap.resolve + screenmap.depth + (bloom_extract + blur pairs + dglow_extract + blur pairs) + dglow-msaa
-#define MAX_ATTACHMENTS_IN_POOL			( 9 + ( ( 1 + VK_NUM_BLUR_PASSES * 2 ) * 2 ) + 1 ) // (6+3=9: cubemap.msaa + cubemap.resolve + cubemap.depth)
+// depth + msaa + msaa-resolve + screenmap.msaa + screenmap.resolve + screenmap.depth + (bloom_extract + blur pairs + dglow_extract + blur pairs) + dglow-msaa + gamma
+#define MAX_ATTACHMENTS_IN_POOL			( 9 + ( ( 1 + VK_NUM_BLUR_PASSES * 2 ) * 2 ) + 1 + 1 ) // (6+3=9: cubemap.msaa + cubemap.resolve + cubemap.depth) + gamma
 
 #define VK_SAMPLER_LAYOUT_BEGIN			2
 //#define MIN_IMAGE_ALIGN				( 128 * 1024 )
@@ -450,6 +450,7 @@ typedef enum {
 	RENDER_PASS_POST_BLEND,
 	RENDER_PASS_DGLOW,
 	RENDER_PASS_CUBEMAP,
+	RENDER_PASS_INSPECTOR,
 	RENDER_PASS_COUNT
 } renderPass_t;
 
@@ -623,6 +624,7 @@ typedef struct vk_tess_s {
 	VkPipeline			last_pipeline;
 	Vk_Depth_Range		depth_range;
 	VkRect2D			scissor_rect;
+
 } vk_tess_t;
 
 // Vk_Instance contains engine-specific vulkan resources that persist entire renderer lifetime.
@@ -683,6 +685,10 @@ typedef struct {
 	VkImage			dglow_msaa_image;
 	VkImageView		dglow_msaa_image_view;
 
+	VkImage			gamma_image;
+	VkImageView		gamma_image_view;
+
+
 #ifdef VK_PBR_BRDFLUT
 	VkImage			brdflut_image;
 	VkImageView		brdflut_image_view;
@@ -722,6 +728,7 @@ typedef struct {
 	struct {
 		VkRenderPass main;
 		VkRenderPass gamma;
+		VkRenderPass inspector;
 		VkRenderPass screenmap;
 		VkRenderPass capture;
 #ifdef VK_PBR_BRDFLUT
@@ -751,7 +758,8 @@ typedef struct {
 	// framebuffers
 	struct {
 		VkFramebuffer main[MAX_SWAPCHAIN_IMAGES];
-		VkFramebuffer gamma[MAX_SWAPCHAIN_IMAGES];
+		VkFramebuffer inspector[MAX_SWAPCHAIN_IMAGES];
+		VkFramebuffer gamma;
 		VkFramebuffer screenmap;
 		VkFramebuffer capture;
 #ifdef VK_PBR_BRDFLUT
@@ -853,6 +861,10 @@ typedef struct {
 		uint32_t surface_beam_pipeline;
 		uint32_t surface_axis_pipeline;
 		uint32_t dot_pipeline;
+
+#ifdef USE_VK_IMGUI
+		uint32_t inspector_object_debug_pipeline;
+#endif
 	} std_pipeline;
 
 	VK_Pipeline_t	pipelines[MAX_VK_PIPELINES];
@@ -1186,6 +1198,9 @@ void		vk_imgui_shutdown( void );
 void		vk_imgui_begin_frame( void );
 void		vk_imgui_draw( void );
 int			vk_imgui_get_render_mode( void );
+
+void		vk_imgui_clear_inspector( qboolean reset );
+void		vk_imgui_swapchain_restarted();
 
 void		vk_imgui_reload_shader_editor( qboolean close );
 int			vk_imgui_get_shader_editor_index( void );

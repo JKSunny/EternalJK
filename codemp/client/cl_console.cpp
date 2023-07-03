@@ -423,7 +423,17 @@ void Con_ClearNotify( void ) {
 	}
 }
 
+static qboolean resChanged;
 
+void CL_ResChanged( void )
+{
+	re->GetRealRes( &cls.glconfig.vidWidth, &cls.glconfig.vidHeight );
+
+	if ( cls.cgameStarted )
+		CGVM_ResChanged();
+
+	resChanged = qtrue;
+}
 
 /*
 ================
@@ -456,9 +466,12 @@ void Con_CheckResize (void)
 		
 		width = (cls.glconfig.vidWidth / (scale * SMALLCHAR_WIDTH)) - 2;
 		
-		if (width == con.linewidth)
+		if ( width == con.linewidth && !resChanged )
 			return;
-		
+
+		if ( resChanged )
+			resChanged = qfalse;
+
 		con.charWidth = scale * SMALLCHAR_WIDTH;
 		con.charHeight = scale * SMALLCHAR_HEIGHT;
 		

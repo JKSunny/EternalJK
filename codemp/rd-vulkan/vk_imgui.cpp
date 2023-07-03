@@ -23,6 +23,11 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "tr_local.h"
 #include <vk_imgui.h>
 
+#include "ghoul2/g2_local.h"
+qboolean	G2_SetupModelPointers( CGhoul2Info_v &ghoul2 );
+void		G2_Sort_Models( CGhoul2Info_v &ghoul2, int * const modelList, int * const modelCount );
+int			G2_ComputeLOD( trRefEntity_t *ent, const model_t *currentModel, int lodBias );
+
 //
 // profiler
 //
@@ -199,6 +204,8 @@ static qboolean imgui_draw_vec3_control( const char *label, vec3_t &values, floa
 	ImGui::Columns(1);
 	ImGui::PopID();
 
+	ImGui::Dummy(ImVec2(0.0f, 3.0f));
+
 	return modified;
 }
 
@@ -292,18 +299,263 @@ static qboolean imgui_draw_text_with_button( const char *label, const char *valu
 // drawing method end
 //
 
-static qboolean create_unique_shader_list( void ) {
+static inline void vk_imgui_draw_objects_node_surface( msurface_t *surf )
+{
+	const char *type;
+	bool opened, selected;
+	ImGuiTreeNodeFlags flags;
+
+	if ( surf->viewCount != tr.viewCount ) {
+		return;
+	}
+
+	selected = false;
+	flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanAvailWidth;
+	
+	type = vk_surfacetype_string[*surf->data];
+
+	if ( inspector.selected.ptr == surf )
+		selected = true;
+
+	if ( selected ) {
+		flags |= ImGuiTreeNodeFlags_Selected ;
+		ImGui::PushStyleColor( ImGuiCol_Text, ImVec4(1.0f, 0.4f, 0.4f, 1.0f) );
+	}
+
+	opened = ImGui::TreeNodeEx( (void*)surf, flags, type );
+
+	// focus on object
+	if ( ImGui::IsItemClicked() ) {
+		inspector.selected.type = OT_SURFACE;
+		inspector.selected.ptr = (void*)surf;
+	}
+
+	if ( selected )
+		ImGui::PopStyleColor();
+
+	if ( opened )
+		ImGui::TreePop();
+}
+
+//recursively called for each node to go through the surfaces on that
+//node and generate the wireframe map. -rww
+static inline void vk_imgui_draw_objects_nodes_recursive( mnode_t *node )
+{
+	int c;
+	msurface_t *surf, **mark;
+	ImGuiTreeNodeFlags flags;
+
+	if ( !node )
+		return;
+
+	while (1)
+	{
+		bool opened, selected;
+
+		selected = false;
+
+		//if ( inspector.search_keyword != NULL && !strstr( va("node%d", i), inspector.search_keyword ) )
+		//	continue;
+
+		flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanAvailWidth;
+
+		if ( inspector.selected.ptr == node )
+			selected = true;
+
+		if ( selected ) {
+			flags |= ImGuiTreeNodeFlags_Selected ;
+			ImGui::PushStyleColor( ImGuiCol_Text, ImVec4(1.0f, 0.4f, 0.4f, 1.0f) );
+		}
+
+		opened = ImGui::TreeNodeEx( (void*)node, flags, va("node") );
+
+		// focus on object
+		if ( ImGui::IsItemClicked() ) {
+			inspector.selected.type = OT_NODE;
+			inspector.selected.ptr = node;
+		}
+
+		if ( selected )
+			ImGui::PopStyleColor();
+
+		if ( !node || node->visframe != tr.visCount ) {
+			if ( opened )
+				ImGui::TreePop();
+
+			return;
+		}
+
+		if ( node->contents != -1 ) {
+			if ( opened )
+				ImGui::TreePop();
+
+			break;
+		}
+
+		if ( opened ) {
+			vk_imgui_draw_objects_nodes_recursive( node->children[0] );
+
+			ImGui::TreePop();
+		}
+		
+		node = node->children[1];
+	}
+
+	// add the individual surfaces
+	mark = node->firstmarksurface;
+	c = node->nummarksurfaces;
+	while ( c-- ) {
+		// the surface may have already been added if it
+		// spans multiple leafs
+		surf = *mark;
+
+		vk_imgui_draw_objects_node_surface( surf );
+
+		mark++;
+	}
+}
+
+static void vk_imgui_draw_objects_nodes( void ) {
+	ImGuiTreeNodeFlags flags;
+
+	flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
+
+	bool parentNode = ImGui::TreeNodeEx( "Nodes", flags );
+
+	if ( parentNode ) 
+	{
+		vk_imgui_draw_objects_nodes_recursive( tr.world->nodes );
+
+		ImGui::TreePop();
+	}
+}
+
+static const char *vk_imgui_get_entity_name( trRefEntity_t *ent, model_t *model ) {
+	qboolean valid_mdxm = qfalse;
+	
+	static char *bad = "bad";
+
+	switch ( model->type ) {
+		case MOD_MESH:
+			return model->index != 0 ? model->name : vk_entitytype_string[ent->e.reType];
+			break;
+		case MOD_BRUSH:
+			return va("brush %s", model->name);
+			break;
+		case MOD_MDXM:
+			if ( ent->e.ghoul2 )
+				valid_mdxm = qtrue;
+			break;
+		case MOD_BAD:		// null model axis
+			if ( ( ent->e.renderfx & RF_THIRD_PERSON ) && ( tr.viewParms.portalView == PV_NONE ) ) {
+				if ( !( ent->e.renderfx & RF_SHADOW_ONLY ) )
+					break;
+			}
+
+			if ( G2API_HaveWeGhoul2Models(*((CGhoul2Info_v*)ent->e.ghoul2)) )
+				valid_mdxm = qtrue;
+			break;
+	}
+
+	if ( valid_mdxm ) {
+		CGhoul2Info_v	&ghoul2 = *((CGhoul2Info_v *)ent->e.ghoul2);
+
+		if ( !ghoul2.IsValid() || !G2_SetupModelPointers( ghoul2 ) )
+			return bad;
+
+		if ( !ghoul2[0].currentModel || !ghoul2[0].animModel )
+			return bad;
+		
+		return ghoul2[0].currentModel->name;
+	}
+
+	return bad;
+}
+
+static void vk_imgui_draw_objects_entities( void ) {
+	uint32_t			i;
+	trRefEntity_t		*ent;
+	ImGuiTreeNodeFlags	flags;
+
+	if ( !cl_paused->integer || !tr.world )
+		return;
+
+	flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
+
+	bool parentNode = ImGui::TreeNodeEx( "Entities", flags );
+
+	if ( parentNode ) 
+	{
+		bool opened, selected;
+
+		flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanAvailWidth;
+
+		for ( i = 0; i < tr.refdef.num_entities; i++ ) 
+		{
+			ent = &tr.refdef.entities[i];
+			//ent = &backEndData->entities[i];
+
+			if ( !ent )
+				continue;
+
+			// skip line, sprite, cylinder etc.
+			if ( ent->e.reType != RT_MODEL )
+				continue;
+
+			model_t *model = R_GetModelByHandle( ent->e.hModel );
+
+			// skip brushes
+			if ( model->type == MOD_BRUSH )
+				continue;
+
+			const char *name = vk_imgui_get_entity_name( ent, model );
+
+			if ( inspector.search_keyword != NULL ) {
+				if ( !strstr( name, inspector.search_keyword ) )
+					continue;
+			}
+
+			selected = false;
+
+			if ( inspector.selected.ptr == ent )
+				selected = true;
+
+			if ( selected ) {
+				flags |= ImGuiTreeNodeFlags_Selected ;
+				ImGui::PushStyleColor( ImGuiCol_Text, ImVec4(1.0f, 0.4f, 0.4f, 1.0f) );
+			}
+
+			opened = ImGui::TreeNodeEx( (void*)ent, flags, name );
+
+			// focus on object
+			if ( ImGui::IsItemClicked() ) {
+				inspector.selected.type = OT_ENTITY;
+				inspector.selected.ptr = ent;
+			}
+
+			if ( selected )
+				ImGui::PopStyleColor();
+
+			if ( opened )
+				ImGui::TreePop();
+		}
+
+		ImGui::TreePop();
+	}
+}
+
+static qboolean create_merge_shader_list( void ) {
 	int i, j, hash;
 	shader_t *sh;
 	qboolean skip;
 
-	if ( !inspector.unique_shaders )
+	if ( !inspector.merge_shaders )
 		return qfalse;
 
 	if ( inspector.num_shaders == tr.numShaders )
 		return qtrue;
 
-	Com_Memset( unique_shader_list, 0, sizeof(unique_shader_list) );
+	Com_Memset( merge_shader_list, 0, sizeof(merge_shader_list) );
 	Com_Memset( hashTable, 0, sizeof(hashTable) );
 
 	for ( i = 0, j = 0; i < tr.numShaders; i++ ) 
@@ -324,7 +576,7 @@ static qboolean create_unique_shader_list( void ) {
 			continue;
 
 		hashTable[hash] = tr.shaders[i];
-		unique_shader_list[j] = tr.shaders[i];
+		merge_shader_list[j] = tr.shaders[i];
 		j++;
 	}
 
@@ -339,8 +591,8 @@ static void vk_imgui_draw_objects_shaders( void ) {
 	shader_t *sh;
 	shader_t **shaders = tr.shaders;
 
-	if ( create_unique_shader_list() )
-		shaders = unique_shader_list;
+	if ( create_merge_shader_list() )
+		shaders = merge_shader_list;
 
 	flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap;
 
@@ -348,10 +600,10 @@ static void vk_imgui_draw_objects_shaders( void ) {
 
 	ImGui::SameLine(ImGui::GetContentRegionAvail().x - 100.0f);	
 	ImGui::PushStyleVar( ImGuiStyleVar_FramePadding, ImVec2( 1.0f, 1.0f ) );
-	if ( ImGui::Checkbox("unique", &inspector.unique_shaders ) )
+	if ( ImGui::Checkbox("merge", &inspector.merge_shaders ) )
 		inspector.num_shaders = 0;	// re-populate on toggle
 	ImGui::PopStyleVar();
-	ImGui::SameLine(); HelpMarker("Identical shader (names) contain distinct surface information, like lightmap index. Use unique shaders to update all in bulk.");
+	ImGui::SameLine(); HelpMarker("Identical shader (names) contain distinct surface information, like lightmap index. Enable merge shaders to update all in bulk.");
 
 	if ( !parentNode ) 
 		return;
@@ -474,7 +726,7 @@ static void vk_imgui_draw_objects_flares( void ) {
 
 	flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
 
-	bool parentNode = ImGui::TreeNodeEx( "Flares in view", flags );
+	bool parentNode = ImGui::TreeNodeEx( "Flares", flags );
 
 	if ( parentNode ) 
 	{
@@ -519,41 +771,85 @@ static void vk_imgui_draw_objects_flares( void ) {
 	}
 }
 
+void vk_imgui_clear_inspector( qboolean reset ) 
+{
+	if ( reset ) {
+		Com_Memset( &inspector, 0, sizeof(inspector) );
+		return;
+	}
+
+	Com_Memset( &inspector.transform, 0, sizeof(inspector.transform) );
+	Com_Memset( &inspector.shader, 0, sizeof(inspector.shader) );
+	Com_Memset( &inspector.entity, 0, sizeof(inspector.entity) );
+	Com_Memset( &inspector.node, 0, sizeof(inspector.node) );
+	Com_Memset( &inspector.surface, 0, sizeof(inspector.surface) );
+}
+
 // handler to set/update ptrs and info for the current object selected
 static void vk_imgui_selected_object_handler( void ) 
 {
 	if ( inspector.selected.ptr != nullptr ) 
 	{
-		if ( inspector.selected.prev != inspector.selected.ptr ) {
-			Com_Memset( &inspector.transform, 0, sizeof(inspector.transform) );
-			Com_Memset( &inspector.shader, 0, sizeof(inspector.shader) );
+		if ( inspector.selected.prev == inspector.selected.ptr )
+			return;
 
-			switch ( inspector.selected.type ) {
-				case OT_CUBEMAP:
-					break;
-				case OT_FLARE:
-				{
-					srfFlare_t *flare = (srfFlare_t*)inspector.selected.ptr;
+		// switch to a newly selected object
+		vk_imgui_clear_inspector( qfalse );
 
-					inspector.transform.origin = &flare->origin;
-					inspector.transform.active = qtrue;
+		switch ( inspector.selected.type ) {
+			case OT_CUBEMAP:
+				break;
+			case OT_FLARE:
+			{
+				srfFlare_t *flare = (srfFlare_t*)inspector.selected.ptr;
 
-					inspector.shader.index = flare->shader->index;
-					inspector.shader.active = qtrue;
+				inspector.transform.origin = &flare->origin;
+				inspector.transform.active = qtrue;
+
+				inspector.shader.index = flare->shader->index;
+				inspector.shader.active = qtrue;
 					
-					break;
-				}
-				case OT_SHADER:
-				{
-					inspector.shader.index = (int)((shader_t*)inspector.selected.ptr)->index;
-					inspector.shader.active = qtrue;
-					
-					break;
-				}
+				break;
 			}
+			case OT_SHADER:
+			{
+				inspector.shader.index = (int)((shader_t*)inspector.selected.ptr)->index;
+				inspector.shader.active = qtrue;
+					
+				break;
+			}
+			case OT_ENTITY:
+			{
+				trRefEntity_t *ent = (trRefEntity_t*)inspector.selected.ptr;
 
-			inspector.selected.prev = inspector.selected.ptr;
+				inspector.transform.origin = &ent->e.origin;
+				inspector.transform.radius = &ent->e.radius;
+				inspector.transform.rotation = &ent->e.rotation;
+				inspector.transform.active = qtrue;
+
+				inspector.entity.active = qtrue;
+				inspector.entity.ptr = ent;
+				
+				break;
+			}
+			case OT_NODE:
+			{
+				inspector.node.active = qtrue;
+				inspector.node.node = (mnode_t*)inspector.selected.ptr;
+				
+				break;
+			}
+			case OT_SURFACE:
+			{
+				inspector.surface.active = qtrue;
+				inspector.surface.surf = inspector.selected.ptr;
+				
+				break;
+			}
 		}
+
+		inspector.selected.prev = inspector.selected.ptr;
+		return;
 	}
 }
 
@@ -572,12 +868,17 @@ static void vk_imgui_draw_objects( void )
 	ImGui::Dummy( ImVec2( 0.0f, 15.0f ) );
 
 	ImGui::PushStyleColor( ImGuiCol_FrameBg , ImVec4(0.10f, 0.10f, 0.10f, 1.00f) );
-	if( ImGui::ListBoxHeader( "##Hierarchy", ImGui::GetContentRegionAvail() ) )
-	{		
-		//vk_imgui_draw_objects_cubemaps();
-		vk_imgui_draw_objects_flares();
-		vk_imgui_draw_objects_shaders();
+	if( ImGui::ListBoxHeader( "##Objects", ImGui::GetContentRegionAvail() ) )
+	{	
+		if ( tr.registered && tr.world ) {
+			//vk_imgui_draw_objects_cubemaps();
+			//vk_imgui_draw_objects_nodes();
+			vk_imgui_draw_objects_entities();
+			vk_imgui_draw_objects_flares();
+		}
 
+		vk_imgui_draw_objects_shaders();
+		
 		ImGui::ListBoxFooter();
 	}
 	ImGui::PopStyleColor();
@@ -596,23 +897,32 @@ static void vk_imgui_draw_shader_editor( void ) {
 	
 	static char shaderText[4069];
 	shader_t *sh = tr.shaders[ windows.shader.index ];
-	shader_t *sh_remap = sh->remappedShader;
-	shader_t *sh_updated = sh->updatedShader;
 
 	if ( !sh )
 		return;
+
+	shader_t *sh_remap = sh->remappedShader;
+	shader_t *sh_updated = sh->updatedShader;
 
 	if ( windows.shader.index != windows.shader.prev ) 
 	{	
 		Com_Memset( &shaderText, 0, sizeof(shaderText));
 		
 		// decide which shader text to display
-		if ( sh_updated )
+		if ( sh_updated && sh_updated->shaderText )
 			Q_strncpyz( shaderText, sh_updated->shaderText, strlen(sh_updated->shaderText) * sizeof(char*) );
+		
 		else if ( sh_remap && sh_remap->shaderText )
 			Q_strncpyz( shaderText, sh_remap->shaderText, strlen(sh_remap->shaderText) * sizeof(char*) );
-		else	
+		
+		else if ( sh->shaderText != NULL )
 			Q_strncpyz( shaderText, sh->shaderText, strlen(sh->shaderText) * sizeof(char*) );
+
+		else {
+			windows.shader.p_open = false;
+			windows.shader.index = 0;
+			return;
+		}
 
 		windows.shader.prev = windows.shader.index;
 	}
@@ -625,7 +935,7 @@ static void vk_imgui_draw_shader_editor( void ) {
 	ImGui::PushStyleColor( ImGuiCol_Text, RGBA_LE(0x25c076ffu) );
 
 	if ( ImGui::Button( ICON_FA_SYNC_ALT " Update", ImVec2{ 80, 30 } ) )
-		R_UpdateShader( sh->index, shaderText, (qboolean)inspector.unique_shaders );
+		R_UpdateShader( sh->index, shaderText, (qboolean)inspector.merge_shaders );
 
 	ImGui::SameLine();
 
@@ -648,6 +958,7 @@ static void vk_imgui_draw_shader_editor( void ) {
 	}
 
 	if( sh_updated ) {
+		const ImVec2 pos = ImGui::GetCursorScreenPos(); 
 		ImGui::SetCursorScreenPos( ImVec2( (pos.x + region.x) - 70.0f, pos.y ) );
 
 		if ( ImGui::Button( ICON_FA_UNDO " Reset", ImVec2{ 70, 30 } ) ) {
@@ -665,7 +976,7 @@ static void vk_imgui_draw_shader_editor( void ) {
 			if( !revert ) // use original shader
 				revert = sh->shaderText;
 
-			R_UpdateShader( sh->index, revert, (qboolean)inspector.unique_shaders );
+			R_UpdateShader( sh->index, revert, (qboolean)inspector.merge_shaders );
 			windows.shader.prev = NULL;
 		}
 	} 
@@ -689,7 +1000,7 @@ static void vk_imgui_draw_shader_editor( void ) {
 	ImGui::End();
 }
 
-static void vk_imgui_draw_inspector_shader_visualize_texture( const image_t *image ) 
+static void vk_imgui_draw_inspector_shader_visualize_texture( const image_t *image, const char *type ) 
 {
 	if ( image->descriptor_set != VK_NULL_HANDLE ) 
 	{		
@@ -711,6 +1022,7 @@ static void vk_imgui_draw_inspector_shader_visualize_texture( const image_t *ima
 
 			ImGui::SameLine(110.0f, 0.0f);
 			ImGui::BeginGroup();
+			imgui_draw_text_column( "Type", type, 100.0f );
 			imgui_draw_text_column( "Name", va("%s", image->imgName), 100.0f );
 			imgui_draw_text_column( "Dimensions", va("%dx%d", image->uploadWidth,image->uploadHeight), 100.0f );
 			imgui_draw_text_column( "Layers", va("%d", image->layers), 100.0f );
@@ -748,7 +1060,7 @@ static void vk_imgui_draw_inspector_shader_visualize_sky( const shader_t *sh ) {
 		ImGui::Text( "Outerbox" );
 
 		for ( i = 0; i < 6; i++ ) {
-			vk_imgui_draw_inspector_shader_visualize_texture( sh->sky->outerbox[i] );
+			vk_imgui_draw_inspector_shader_visualize_texture( sh->sky->outerbox[i], va( "Outerbox: %d", i ) );
 			ImGui::SameLine();
 		}
 	}
@@ -760,7 +1072,7 @@ static void vk_imgui_draw_inspector_shader_visualize_sky( const shader_t *sh ) {
 		ImGui::Text( "Innerbox" );
 
 		for ( i = 0; i < 6; i++ ) {
-			vk_imgui_draw_inspector_shader_visualize_texture( sh->sky->innerbox[i] );
+			vk_imgui_draw_inspector_shader_visualize_texture( sh->sky->innerbox[i], va( "Innerbox: %d", i ) );
 			ImGui::SameLine();
 		}
 	}
@@ -1019,18 +1331,25 @@ static void vk_imgui_draw_inspector_shader_visualize( int index ) {
 
 				if ( bundle->numImageAnimations ) {
 					for ( k = 0; k < bundle->numImageAnimations; k++ )
-						vk_imgui_draw_inspector_shader_visualize_texture( bundle->image[k] );
+						vk_imgui_draw_inspector_shader_visualize_texture( bundle->image[k], va( "Animation: %d", k ) );
 				} 
 				else
-					vk_imgui_draw_inspector_shader_visualize_texture( bundle->image[0] );
+					vk_imgui_draw_inspector_shader_visualize_texture( bundle->image[0], "Texture map" );
 
 				// pbr currently restricted to bundle 0
 				if ( j == 0 ) {	
 					if ( pStage->vk_pbr_flags & PBR_HAS_NORMALMAP )
-						 vk_imgui_draw_inspector_shader_visualize_texture( pStage->normalMap );
+						 vk_imgui_draw_inspector_shader_visualize_texture( pStage->normalMap, "Normal map" );
 
 					if ( pStage->vk_pbr_flags & PBR_HAS_PHYSICALMAP )
-						 vk_imgui_draw_inspector_shader_visualize_texture( pStage->physicalMap );
+					{
+						
+						const char *type = va("Physical map: [%s]", textureMapTypes[pStage->physicalMap->type].suffix + 1);
+
+						 vk_imgui_draw_inspector_shader_visualize_texture( pStage->physicalMap, type );
+					}
+					else if ( pStage->vk_pbr_flags & PBR_HAS_SPECULARMAP )
+						vk_imgui_draw_inspector_shader_visualize_texture( pStage->physicalMap, "Specular map" );
 				}
 				ImGui::EndGroup();
 
@@ -1136,6 +1455,10 @@ static void vk_imgui_draw_inspector_shader( void ) {
 		return;
 
 	shader_t *sh = tr.shaders[inspector.shader.index];
+
+	if ( !sh )
+		return;
+
 	shader_t *sh_remap = sh->remappedShader;
 	shader_t *sh_updated = sh->updatedShader;
 
@@ -1145,7 +1468,7 @@ static void vk_imgui_draw_inspector_shader( void ) {
 	qboolean updated = sh->updatedShader ? qtrue : qfalse;
 
 	ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
-	bool opened = ImGui::TreeNodeEx((void*)typeid(shader_t).hash_code(), flags, ICON_FA_FILL_DRIP " Shader");
+	bool opened = ImGui::TreeNodeEx((void*)typeid(inspector.shader).hash_code(), flags, ICON_FA_FILL_DRIP " Shader");
 
 	if ( !opened )
 		return;
@@ -1159,7 +1482,7 @@ static void vk_imgui_draw_inspector_shader( void ) {
 
 	if ( sh->remappedShader ) {
 		if ( imgui_draw_text_with_button( "Remap", sh_remap->name, ICON_FA_TIMES, 50.0f ) )
-			R_RemoveRemap( sh->index, (qboolean)inspector.unique_shaders );
+			R_RemoveRemap( sh->index, (qboolean)inspector.merge_shaders );
 	}
 
 	ImGui::Dummy( ImVec2( 0.0f, 6.0f ) );
@@ -1206,8 +1529,418 @@ static void vk_imgui_draw_inspector_transform( void ) {
 	if ( !opened )
 		return;
 
-	if ( inspector.transform.origin != NULL )
+	if ( inspector.transform.origin )
 		imgui_draw_vec3_control( "Origin", *inspector.transform.origin, 0.0f, 100.0f );
+	
+	if ( inspector.transform.radius )
+		imgui_draw_text_column( "Radius",  va("%d", *inspector.transform.radius), 100.0f );
+
+	if ( inspector.transform.rotation )
+		imgui_draw_text_column( "Rotation",  va("%d", *inspector.transform.rotation), 100.0f );
+
+	ImGui::TreePop();
+}
+
+static void vk_imgui_draw_inspector_entity_mesh( trRefEntity_t *ent, model_t *model ){
+	uint32_t	i, j;
+	shader_t	*surface_sh;
+	ImVec2		pos, region;
+
+	imgui_draw_text_column( "Name",			model->name, 100.0f );
+	imgui_draw_text_column( "Type",			vk_modeltype_string[model->type], 100.0f );
+	imgui_draw_text_column( "numLods",		va( "%d", model->numLods), 100.0f );
+	imgui_draw_text_column( "numSurfaces",	va( "%d", model->data.mdv[0]->numSurfaces), 100.0f );
+	
+	ImGui::Dummy(ImVec2(0.0f, 15.0f));
+
+	// TODO: add tab for every LOD
+	// surfaces
+	inspector.surface.surf = NULL;
+
+	for ( i = 0; i < model->data.mdv[0]->numSurfaces; i++ ) 
+	{
+		mdvSurface_t *surf = &model->data.mdv[0]->surfaces[i];
+
+		if ( !surf )
+			continue;
+
+		region = ImGui::GetContentRegionAvail();
+		pos = ImGui::GetCursorScreenPos(); 
+		ImGuiBeginGroupPanel( va(ICON_FA_VECTOR_SQUARE " %s", surf->name), ImVec2( -1.0f, 0.0f ) );
+
+		// shaders
+		for ( j = 0; j < surf->numShaderIndexes; j++ ) 
+		{		
+			surface_sh = tr.shaders[ surf->shaderIndexes[j] ];
+
+			if ( !surface_sh )
+				continue;
+
+			if ( imgui_draw_text_with_button( va( "Shader##surf_%d%d", i,j ), surface_sh->name, ICON_FA_DOT_CIRCLE, 50.0f ) ) {
+				// open in inspector
+				inspector.selected.type = OT_SHADER;
+				inspector.selected.ptr = surface_sh;
+			}
+		}
+
+		ImGuiEndGroupPanel( color_palette[ i % 8 ] );
+
+		ImGui::SetCursorScreenPos( ImVec2( pos.x, pos.y) );
+		ImGui::Dummy( ImVec2(region.x, 45.0f));
+		if ( ImGui::IsItemHovered() )
+			inspector.surface.surf = (void*)surf;
+
+		ImGui::Dummy(ImVec2(0.0f, 15.0f));
+	}
+}
+
+static void vk_imgui_draw_inspector_entity_mdxm_surface( int surfaceNum, surfaceInfo_v rootSList, model_t *currentModel, shader_t *cust_shader, skin_t *skin, int lod ) 
+{
+	uint32_t	i;
+	shader_t	*sh = NULL;
+	int			offFlags;
+	ImVec2		pos, region;
+
+	mdxmHeader_t			*mdxm			= currentModel->data.glm->header;
+	mdxmSurface_t			*surface		= (mdxmSurface_t *)G2_FindSurface( currentModel, surfaceNum, lod );
+	mdxmHierarchyOffsets_t	*surfIndexes	= (mdxmHierarchyOffsets_t *)((byte *)mdxm + sizeof(mdxmHeader_t));
+	mdxmSurfHierarchy_t		*surfInfo		= (mdxmSurfHierarchy_t *)((byte *)surfIndexes + surfIndexes->offsets[surface->thisSurfaceIndex]);
+
+	// see if we have an override surface in the surface list
+	const surfaceInfo_t	*surfOverride = G2_FindOverrideSurface( surfaceNum, rootSList );
+
+	// really, we should use the default flags for this surface unless it's been overriden
+	offFlags = surfInfo->flags;
+
+	// set the off flags if we have some
+	if ( surfOverride )
+		offFlags = surfOverride->offFlags;
+
+	// if this surface is not off, add it to the shader render list
+	if ( !offFlags ) 
+	{
+		if ( cust_shader )
+			sh = cust_shader;
+
+		else if ( skin ) 
+		{
+			for ( i = 0 ; i < skin->numSurfaces; i++ )
+			{
+				// the names have both been lowercased
+				if ( !strcmp( skin->surfaces[i]->name, surfInfo->name ) )
+				{
+					sh = (shader_t*)skin->surfaces[i]->shader;
+					break;
+				}
+			}
+		}
+
+		else
+			sh = R_GetShaderByHandle( surfInfo->shaderIndex );
+
+		if ( sh ) 
+		{
+			region = ImGui::GetContentRegionAvail();
+			pos = ImGui::GetCursorScreenPos(); 
+			ImGuiBeginGroupPanel( va(ICON_FA_VECTOR_SQUARE " %s - %d", surfInfo->name, surfaceNum), ImVec2( -1.0f, 0.0f ) );
+
+			if ( imgui_draw_text_with_button( va( "Shader##surf_%d", surfaceNum ), sh->name, ICON_FA_DOT_CIRCLE, 50.0f ) ) {
+				// open in inspector
+				inspector.selected.type = OT_SHADER;
+				inspector.selected.ptr = sh;
+			}
+
+			ImGuiEndGroupPanel( color_palette[ surfaceNum % 8 ] );
+
+			ImGui::SetCursorScreenPos( ImVec2( pos.x, pos.y) );
+			ImGui::Dummy( ImVec2(region.x, 45.0f));
+			if ( ImGui::IsItemHovered() )
+				inspector.surface.surf = (void*)surfInfo;
+
+			ImGui::Dummy( ImVec2( 0.0f, 15.0f ) );
+		}
+	}
+
+	// now recursively call for the children
+	for ( i = 0; i < surfInfo->numChildren; i++ ) 
+	{
+		vk_imgui_draw_inspector_entity_mdxm_surface( 
+			surfInfo->childIndexes[i], rootSList, currentModel, 
+			cust_shader, skin,lod
+		);
+	}
+}
+
+static void vk_imgui_draw_inspector_entity_mdxm( trRefEntity_t *ent ) 
+{
+	int				i, j, lod;
+	ImVec2			pos, region;
+	CGhoul2Info_v	&ghoul2 = *((CGhoul2Info_v *)ent->e.ghoul2);
+	shader_t		*cust_shader;
+	skin_t			*skin;
+
+	if ( !ent->e.ghoul2 || !ghoul2.IsValid() || !G2_SetupModelPointers( ghoul2 ) )
+		return;
+
+	int	modelCount;
+	int modelList[256];
+	modelList[255]=548;
+	G2_Sort_Models( ghoul2, modelList, &modelCount );
+
+	inspector.surface.surf = NULL;
+
+	// walk each possible model for this entity and try rendering it out
+	for ( i = 0; i < modelCount; i++ )
+	{
+		j = modelList[i];
+
+		if ( ghoul2[j].mValid && !(ghoul2[j].mFlags & GHOUL2_NOMODEL) && !(ghoul2[j].mFlags & GHOUL2_NORENDER) )
+		{
+			cust_shader = NULL;
+			skin = NULL;
+
+			if ( ent->e.customShader )
+				cust_shader = R_GetShaderByHandle( ent->e.customShader );
+
+			else
+			{
+				if ( ghoul2[j].mCustomSkin )	// figure out the custom skin thing
+					skin = R_GetSkinByHandle( ghoul2[j].mCustomSkin );
+
+				else if ( ent->e.customSkin )
+					skin = R_GetSkinByHandle( ent->e.customSkin );
+
+				else if ( ghoul2[j].mSkin > 0 && ghoul2[j].mSkin < tr.numSkins )
+					skin = R_GetSkinByHandle( ghoul2[j].mSkin );
+			}
+
+			lod = G2_ComputeLOD( ent, ghoul2[j].currentModel, ghoul2[j].mLodBias );
+			
+			G2_FindOverrideSurface( -1, ghoul2[j].mSlist ); //reset the quick surface override lookup;
+
+			model_t				*mod_m = (model_t *)ghoul2[j].currentModel;
+			model_t				*mod_a = (model_t *)ghoul2[j].animModel;
+			mdxmHeader_t *mdxm = mod_m->data.glm->header;
+			mdxaHeader_t *mdxa = mod_a->data.gla;
+
+			imgui_draw_text_column( "Name",			mdxm->name, 100.0f );
+
+			if ( skin )
+				imgui_draw_text_column( "Skin",		skin->name, 100.0f );
+
+			imgui_draw_text_column( "Type",			vk_modeltype_string[mod_m->type], 100.0f );
+			imgui_draw_text_column( "numLods",		va("%d", mdxm->numLODs), 100.0f );
+			imgui_draw_text_column( "numSurfaces",	va("%d", mdxm->numSurfaces), 100.0f );
+			imgui_draw_text_column( "numBones",		va("%d", mdxm->numBones), 100.0f );
+			imgui_draw_text_column( "Anim",		mdxa->name, 100.0f );
+
+
+			// recursivly walk model surface and children
+			vk_imgui_draw_inspector_entity_mdxm_surface( 
+				ghoul2[j].mSurfaceRoot, ghoul2[j].mSlist, (model_t *)ghoul2[j].currentModel, 
+				cust_shader, skin, lod
+			);
+		}
+	}
+}
+
+static void vk_imgui_draw_inspector_entity_brush( trRefEntity_t *ent ) {
+	bmodel_t		*bmodel;
+	const model_t	*model;
+	int				i;
+	ImVec2			pos, region;
+
+	model = R_GetModelByHandle( ent->e.hModel );
+
+	bmodel = model->data.bmodel;
+
+	imgui_draw_text_column( "Name",			model->name, 100.0f );
+	imgui_draw_text_column( "Type",			vk_modeltype_string[model->type], 100.0f );
+	imgui_draw_text_column( "numLods",		va( "%d", model->numLods), 100.0f );
+	imgui_draw_text_column( "numSurfaces",	va( "%d",bmodel->numSurfaces), 100.0f );
+
+	ImGui::Dummy( ImVec2( 0.0f, 15.0f ) );
+
+	inspector.surface.surf = NULL;
+
+	for ( i = 0; i < bmodel->numSurfaces; i++ ) 
+	{
+		msurface_t *surf = bmodel->firstSurface + i;
+
+		region = ImGui::GetContentRegionAvail();
+		pos = ImGui::GetCursorScreenPos(); 
+		ImGuiBeginGroupPanel( va(ICON_FA_VECTOR_SQUARE " %s#%d", vk_surfacetype_string[*surf->data], i ), ImVec2( -1.0f, 0.0f ) );
+		
+		if ( imgui_draw_text_with_button( va( "Shader##surf_%d", i ), surf->shader->name, ICON_FA_DOT_CIRCLE, 50.0f ) ) {
+			inspector.selected.type = OT_SHADER;
+			inspector.selected.ptr = surf->shader;
+		}
+
+		ImGuiEndGroupPanel( color_palette[ i % 8 ] );
+
+		ImGui::SetCursorScreenPos( ImVec2( pos.x, pos.y) );
+		ImGui::Dummy( ImVec2( region.x, 45.0f ) );
+		if ( ImGui::IsItemHovered() )
+			inspector.surface.surf = (void*)surf;
+
+		ImGui::Dummy( ImVec2( 0.0f, 15.0f ) );
+	}
+}
+
+static void vk_imgui_draw_inspector_entity_model( trRefEntity_t *ent )
+{
+	model_t *model = R_GetModelByHandle( ent->e.hModel );
+
+	switch ( model->type ) {
+		case MOD_MESH:
+			vk_imgui_draw_inspector_entity_mesh( ent, model );
+			break;
+		case MOD_BRUSH:
+			vk_imgui_draw_inspector_entity_brush( ent ); //R_AddBrushModelSurfaces(ent);
+			break;
+		case MOD_MDXM:
+			vk_imgui_draw_inspector_entity_mdxm( ent );
+			break;
+		case MOD_BAD:		// null model axis
+			if ( ( ent->e.renderfx & RF_THIRD_PERSON ) && ( tr.viewParms.portalView == PV_NONE ) ) {
+				if ( !( ent->e.renderfx & RF_SHADOW_ONLY ) )
+					break;
+			}
+
+			if ( G2API_HaveWeGhoul2Models(*((CGhoul2Info_v*)ent->e.ghoul2)) )
+				vk_imgui_draw_inspector_entity_mdxm( ent );
+			break;
+		}
+}
+
+static void vk_imgui_draw_inspector_entity( void ) {
+	if ( !inspector.entity.active )
+		return;
+
+	trRefEntity_t *ent = (trRefEntity_t*)inspector.selected.ptr;
+
+	if( !ent )
+		return;
+
+	ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
+	bool opened = ImGui::TreeNodeEx((void*)typeid(inspector.entity).hash_code(), flags, ICON_FA_FILL_DRIP " Entity");
+
+	if ( !opened )
+		return;
+
+	shader_t *sh = tr.shaders[ent->e.customShader];
+	if ( sh && sh->index > 0 ) {
+		if ( imgui_draw_text_with_button( "Shader", sh->name, ICON_FA_DOT_CIRCLE, 50.0f ) ) {
+			if ( !windows.shader.p_open )
+				windows.shader.p_open = true;
+
+			windows.shader.index = sh->index;
+		}
+	}
+
+	ImGui::PushStyleColor( ImGuiCol_TabActive, ImVec4(0.99f, 0.42f, 0.01f, 0.60f) );
+	ImGui::PushStyleColor( ImGuiCol_TabUnfocusedActive, ImVec4(0.99f, 0.42f, 0.01f, 0.40f) );
+		
+	// draw tabbed shaders ( original, remapped, updated )
+	if ( ImGui::BeginTabBar( "##EntityVisualizer", ImGuiTabBarFlags_AutoSelectNewTabs ) ) {
+
+		// lighting
+		if ( ImGui::BeginTabItem( "Lighting" ) ) 
+		{
+			imgui_draw_vec3_control( "lightDir", ent->lightDir, 0.0f, 100.0f );
+			imgui_draw_vec3_control( "modelLightDir", ent->modelLightDir, 0.0f, 100.0f );
+			imgui_draw_vec3_control( "directedLight", ent->directedLight, 0.0f, 100.0f );
+			imgui_draw_vec3_control( "shadowLightDir", ent->shadowLightDir, 0.0f, 100.0f );
+			
+			imgui_draw_colorpicker3( "ambientLight", ent->ambientLight );
+
+			ImGui::EndTabItem();
+		}
+
+		// model
+		if ( ent->e.reType == RT_MODEL && ImGui::BeginTabItem( "Model" ) ) 
+		{
+			vk_imgui_draw_inspector_entity_model( ent );
+
+			ImGui::EndTabItem();
+		}
+
+		ImGui::EndTabBar();			
+	}
+	ImGui::PopStyleColor(2);
+
+	ImGui::TreePop();
+}
+
+static void vk_imgui_draw_inspector_node_surface( void ) {
+	if ( !inspector.surface.active )
+		return;
+
+	msurface_t *surf = (msurface_t*)inspector.surface.surf;
+
+	if( !surf )
+		return;
+
+	ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
+	bool opened = ImGui::TreeNodeEx((void*)typeid(inspector.surface).hash_code(), flags, ICON_FA_MOUNTAIN " Surface");
+
+	if ( !opened )
+		return;
+
+	ImGui::Text( vk_surfacetype_string[*surf->data] );
+
+	shader_t *sh = surf->shader;
+
+	if ( imgui_draw_text_with_button( "Shader", sh->name, ICON_FA_EDIT, 50.0f ) ) {
+		if ( !windows.shader.p_open )
+			windows.shader.p_open = true;
+
+		windows.shader.index = sh->index;
+	}
+
+	if ( *surf->data == SF_GRID ) {
+		srfGridMesh_t *cv = (srfGridMesh_t*)surf->data;
+
+		imgui_draw_text_column( "Size", va("%d - %d ", cv->width,cv->height ), 100.0f );
+	}
+
+	if ( *surf->data == SF_TRIANGLES ) {
+		srfTriangles_t *cv = (srfTriangles_t*)surf->data;
+
+		imgui_draw_text_column( "Verts", va("%d", cv->numVerts ), 100.0f );
+	}
+
+	if ( *surf->data == SF_FACE ) {
+		srfSurfaceFace_t *cv = (srfSurfaceFace_t*)surf->data;
+
+		imgui_draw_text_column( "Points", va("%d", cv->numPoints ), 100.0f );
+	}
+
+	ImGui::TreePop();
+}
+
+static void vk_imgui_draw_inspector_node( void ) {
+	if ( !inspector.node.active )
+		return;
+
+	mnode_t *node = inspector.node.node;
+
+	if( !node )
+		return;
+
+	ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
+	bool opened = ImGui::TreeNodeEx((void*)typeid(inspector.node).hash_code(), flags, ICON_FA_FILL_DRIP " Node");
+
+	if ( !opened )
+		return;
+
+	imgui_draw_text_column( "Contents", va("%d", node->contents), 100.0f );
+	imgui_draw_text_column( "Vis frame", va("%d", node->contents), 100.0f );
+	
+	imgui_draw_vec3_control( "Mins", node->mins, 0.0f, 100.0f );
+	imgui_draw_vec3_control( "Maxs", node->maxs, 0.0f, 100.0f );
+
+	imgui_draw_text_column( "nummarksurfaces", va("%d", node->nummarksurfaces), 100.0f );
 
 	ImGui::TreePop();
 }
@@ -1216,10 +1949,14 @@ static void vk_imgui_draw_inspector( void ) {
 	ImGui::PushStyleVar( ImGuiStyleVar_WindowPadding, ImVec2{ 4.0f, 10.0f } );
 	ImGui::Begin( "Inspector##Object" );
 
-	if ( inspector.selected.ptr != nullptr ) {
+	if ( tr.registered && tr.world && inspector.selected.ptr != nullptr ) {
 		vk_imgui_draw_inspector_transform();
-		vk_imgui_draw_inspector_shader();
+		vk_imgui_draw_inspector_entity();
+		vk_imgui_draw_inspector_node();
+		vk_imgui_draw_inspector_node_surface();
 	}
+
+	vk_imgui_draw_inspector_shader();
 
 	ImGui::End();
 	ImGui::PopStyleVar();
@@ -1254,10 +1991,42 @@ static void vk_imgui_draw_render_mode( void ){
 
 }
 
-static void vk_imgui_draw_menubar( void ) {
-	ImGuiIO& io = ImGui::GetIO();
+static void vk_imgui_draw_play_button( float height ) 
+{
+	if ( !com_sv_running->integer || !tr.world )
+		return;
 
-	ImGuiViewportP* viewport = (ImGuiViewportP*)(void*)ImGui::GetMainViewport();
+	qboolean modified = qfalse;
+	const ImVec2 region = ImGui::GetContentRegionAvail();
+	const ImVec2 pos = ImGui::GetCursorScreenPos(); 
+	ImGui::SetCursorScreenPos( ImVec2( ( gls.windowWidth / 2 ) - height, pos.y ) );
+
+	if ( !cl_paused->integer ) ImGui::BeginDisabled();
+	if ( ImGui::Button( ICON_FA_PLAY, ImVec2{ height, height } ) )
+		modified = qtrue;
+
+	if ( !cl_paused->integer ) ImGui::EndDisabled();
+	else ImGui::BeginDisabled();
+			
+	if ( ImGui::Button( ICON_FA_PAUSE, ImVec2{ height, height } ) )
+		modified = qtrue;
+
+	if ( cl_paused->integer ) ImGui::EndDisabled();
+
+	if ( modified ) {
+		ri.Cvar_Set( "cl_paused", cl_paused->integer ? "0" : "1" );
+	
+		// clear entity selection
+		if ( !cl_paused->integer ) {
+			inspector.selected.ptr = NULL;
+			inspector.entity.ptr = NULL;
+			inspector.entity.active = qfalse;
+		}
+	}
+}
+
+static void vk_imgui_draw_bar_filemenu( ImGuiIO &io, ImGuiViewportP *viewport )
+{
 	ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_MenuBar;
 	float height = ImGui::GetFrameHeight();
     
@@ -1277,19 +2046,41 @@ static void vk_imgui_draw_menubar( void ) {
 				if ( ImGui::MenuItem( " Profiler" ) ) 
 					windows.profiler.p_open = true;
 
+				if ( ImGui::MenuItem( " Viewport" ) ) 
+					windows.viewport.p_open = true;
+
 				ImGui::EndMenu();
 			}
 
-			ImGui::SameLine( glConfig.vidWidth - 420.0f );
-			vk_imgui_draw_render_mode();
+			vk_imgui_draw_play_button( height );
 
-			ImGui::SameLine( glConfig.vidWidth - 200.0f );
+			ImGui::SameLine( gls.windowWidth - 200.0f );
 			ImGui::Text( "%.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate );
 
 			ImGui::EndMenuBar();
 		}
 		ImGui::End();
 	}
+}
+
+static void vk_imgui_draw_bar_tools( ImGuiIO &io, ImGuiViewportP *viewport )
+{
+	ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_MenuBar;
+	float height = ImGui::GetFrameHeight();
+
+	if ( ImGui::BeginViewportSideBar( "##ToolBar", viewport, ImGuiDir_Up, height, window_flags ) ) {
+		if ( ImGui::BeginMenuBar() ) 
+		{	
+			ImGui::EndMenuBar();
+		}
+		ImGui::End();
+	}
+}
+
+static void vk_imgui_draw_bar_status( ImGuiIO &io, ImGuiViewportP *viewport )
+{
+	ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_MenuBar;
+	float height = ImGui::GetFrameHeight();
 
 	if ( ImGui::BeginViewportSideBar( "##StatusBar", viewport, ImGuiDir_Down, height, window_flags ) ) {
 		if (ImGui::BeginMenuBar()) {
@@ -1300,6 +2091,62 @@ static void vk_imgui_draw_menubar( void ) {
 		}
 		ImGui::End();
 	}
+}
+
+static inline void vk_imgui_draw_bars( void ) 
+{
+	ImGuiIO& io = ImGui::GetIO();
+	ImGuiViewportP *viewport = (ImGuiViewportP*)(void*)ImGui::GetMainViewport();
+
+	vk_imgui_draw_bar_filemenu( io, viewport );
+	//vk_imgui_draw_bar_tools( io, viewport );
+	vk_imgui_draw_bar_status( io, viewport );
+}
+
+static void vk_imgui_draw_viewport( void ) {
+	if ( !windows.viewport.p_open )
+		return;
+
+	ImGui::SetNextWindowSizeConstraints( { (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT }, { (float)gls.windowWidth, (float)gls.windowHeight } );
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+	ImGui::Begin( "Viewport", &windows.viewport.p_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse );
+	ImGui::PopStyleVar();
+
+	const ImVec2& size = ImGui::GetCurrentWindow()->Size;
+	const ImVec2 region = ImGui::GetContentRegionAvail();
+	const ImVec2 pos = ImGui::GetCursorScreenPos(); 
+
+	// resize handler
+	if ( windows.viewport.size.x != size.x || windows.viewport.size.y != size.y )
+	{
+		// minimize
+		if ( size.x < 100.0f || size.y < 100.0f ) {
+			ImGui::End();
+			return;
+		}
+
+		glConfig.vidWidth = (int)size.x;
+		glConfig.vidHeight = (int)size.y - 46.0f;
+
+		windows.viewport.size = size;
+
+		//gls.captureWidth = glConfig.vidWidth;
+		//gls.captureHeight = glConfig.vidHeight;
+
+		ri.CL_ResChanged();
+	}
+
+	ImGui::SetCursorScreenPos( ImVec2( pos.x + 5.0f, pos.y + 6.0f ) );
+	
+	ImGui::PushStyleVar( ImGuiStyleVar_FramePadding, ImVec2( 1.0f, 1.0f ) );
+	ImGui::Checkbox("selection outline", &inspector.outline_selected );
+	ImGui::PopStyleVar();
+
+	ImGui::SetCursorScreenPos( ImVec2( pos.x + region.x - 205.0f, pos.y + 4.0f ) );
+	vk_imgui_draw_render_mode();
+
+	ImGui::Image( gameTexture, { (float)gls.windowWidth, (float)gls.windowHeight } );
+	ImGui::End();
 }
 
 static void vk_imgui_create_gui( void ) 
@@ -1330,22 +2177,53 @@ static void vk_imgui_create_gui( void )
     }
 
 	if ( !inspector.init ) {
-		Com_Memset( &inspector, 0, sizeof( inspector ) );
+		vk_imgui_clear_inspector( qtrue );
 	
 		inspector.init = qtrue;
-		inspector.unique_shaders = true;
+		inspector.merge_shaders = true;
+		inspector.outline_selected = true;
+
+		// windows
+		Com_Memset( &windows, 0, sizeof(windows) );
+		windows.viewport.p_open = true;
 	}
 
-	vk_imgui_draw_menubar();
-
+	vk_imgui_draw_bars();
 	vk_imgui_draw_objects();
+
 	vk_imgui_selected_object_handler();
 
 	vk_imgui_draw_inspector();
 	vk_imgui_draw_shader_editor();
 	vk_imgui_draw_profiler();
+	vk_imgui_draw_viewport();
 
 	ImGui::End();
+}
+
+//
+// bind image descriptors
+//
+static void vk_imgui_bind_game_color_image( void ) {
+	Vk_Sampler_Def sd;
+	VkSampler	sampler;
+
+	Com_Memset(&sd, 0, sizeof(sd));
+	sd.gl_mag_filter = sd.gl_min_filter = vk.blitFilter;
+	sd.address_mode = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	sd.max_lod_1_0 = qtrue;
+	sd.noAnisotropy = qtrue;
+
+	sampler = vk_find_sampler(&sd);
+
+	gameTexture = ImGui_ImplVulkan_AddTexture( sampler, vk.gamma_image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL );
+}
+
+void vk_imgui_swapchain_restarted( void ) {
+	vk_imgui_bind_game_color_image();
+
+	glConfig.vidWidth = (int)windows.viewport.size.x;
+    glConfig.vidHeight = (int)windows.viewport.size.y - 46.0f;
 }
 
 //
@@ -1523,7 +2401,7 @@ void vk_imgui_initialize( void )
 	init_info.ImageCount = vk.swapchain_image_count;
 	init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
 
-	ImGui_ImplVulkan_Init( &init_info, vk.render_pass.gamma );
+	ImGui_ImplVulkan_Init( &init_info, vk.render_pass.inspector );
 
 	{
 		command_buffer = vk.cmd->command_buffer;
@@ -1549,6 +2427,8 @@ void vk_imgui_initialize( void )
 
 		ImGui_ImplVulkan_DestroyFontUploadObjects();
 	}
+
+	vk_imgui_bind_game_color_image();
 }
 
 void vk_imgui_shutdown( void )

@@ -373,6 +373,21 @@ static void R_AddWorldSurface( msurface_t *surf, int dlightBits, qboolean noView
 	{
 		surf->vcVisible = tr.viewCount;
 		R_AddDrawSurf( surf->data, surf->shader, surf->fogIndex, 0 );
+
+#ifdef USE_VK_IMGUI
+		if ( vk_imgui_outline_selected() ) {
+			msurface_t *debug_surf = (msurface_t*)vk_imgui_get_selected_surface();
+			shader_t *debug_shader = vk_imgui_get_selected_shader();
+			qboolean merge_shaders = vk_imgui_merge_shaders();
+
+			if ( ( debug_surf && debug_surf == surf ) ||
+				 ( !merge_shaders && debug_shader && debug_shader == surf->shader ) ||
+				 ( merge_shaders && debug_shader && !strcmp( debug_shader->name, surf->shader->name ) ) )
+			{
+				R_AddDrawSurf( surf->data, tr.outlineShader, surf->fogIndex, dlightBits );
+			}
+		}
+#endif
 		return;
 	}
 #endif // USE_PMLIGHT

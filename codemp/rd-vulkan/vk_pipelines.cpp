@@ -2155,6 +2155,17 @@ void vk_alloc_persistent_pipelines( void )
         def.primitives = TRIANGLE_STRIP;
         vk.std_pipeline.images_debug_pipeline = vk_find_pipeline_ext(0, &def, qfalse);
     }
+
+#ifdef USE_VK_IMGUI
+    vk_debug("Create inspector object debug pipeline \n");
+    {
+        Com_Memset(&def, 0, sizeof(def));
+        def.state_bits = state_bits;
+        def.shader_type = TYPE_COLOR_RED;
+        def.face_culling = CT_TWO_SIDED;
+        vk.std_pipeline.inspector_object_debug_pipeline = vk_find_pipeline_ext(0, &def, qfalse);
+    }
+#endif
 }
 
 void vk_create_pipelines( void )
@@ -2200,7 +2211,7 @@ void vk_create_bloom_pipelines( void )
         vk_create_blur_pipeline( "bloom", 1, i + 1, width, height, qfalse); // vertical
     } 
 
-    vk_create_post_process_pipeline( 2, glConfig.vidWidth, glConfig.vidHeight ); // post process blending
+    vk_create_post_process_pipeline( 2, gls.windowWidth, gls.windowHeight ); // post process blending
 }
 
 void vk_create_dglow_pipelines( void )
@@ -2219,7 +2230,7 @@ void vk_create_dglow_pipelines( void )
         vk_create_blur_pipeline( "dglow", 2, i + 1, width, height, qfalse); // vertical
     }
 
-    vk_create_post_process_pipeline( 4, glConfig.vidWidth, glConfig.vidHeight ); // post process blending
+    vk_create_post_process_pipeline( 4, gls.windowWidth, gls.windowHeight ); // post process blending
 }
 
 void vk_update_post_process_pipelines( void )

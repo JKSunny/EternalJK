@@ -412,8 +412,22 @@ void R_AddMD3Surfaces( trRefEntity_t *ent ) {
 			else
 #endif
 				R_AddDrawSurf( (surfaceType_t *)surface, shader, fogNum, qfalse );
-
 			
+#ifdef USE_VK_IMGUI
+			if ( vk_imgui_outline_selected() ) {
+				mdvSurface_t *debug_surf = (mdvSurface_t*)vk_imgui_get_selected_surface();
+				shader_t *debug_shader = vk_imgui_get_selected_shader();
+				qboolean merge_shaders = vk_imgui_merge_shaders();
+
+				if ( ( debug_surf && debug_surf == surface ) ||
+					 ( !merge_shaders && debug_shader && debug_shader == shader ) ||
+					 ( merge_shaders && debug_shader && !strcmp( debug_shader->name, shader->name ) ) )
+				{
+					R_AddDrawSurf( (surfaceType_t *)surface, tr.outlineShader, fogNum, qfalse );
+				}
+			}
+#endif
+
 			tr.needScreenMap |= shader->hasScreenMap;
 		}
 

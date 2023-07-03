@@ -318,6 +318,7 @@ typedef struct refimport_s {
 	int				(*CIN_PlayCinematic)				( const char *arg0, int xpos, int ypos, int width, int height, int bits );
 	void			(*CIN_UploadCinematic)				( int handle );
 	void			(*CL_WriteAVIVideoFrame)			( const byte *imageBuffer, int size );
+	void			(*CL_ResChanged)					( void );
 
 	// g2 data access
 	char *			(*GetSharedMemory)					( void ); // cl.mSharedMemory

@@ -3405,6 +3405,15 @@ static void CG_FX_CameraShake( void ) {
 		CG_DoCameraShake( data->mOrigin, data->mIntensity, data->mRadius, data->mTime );
 }
 
+static void CG_ResChanged( void ) {
+	// get the rendering configuration from the client system
+	trap->GetGlconfig( &cgs.glconfig );
+
+	cgs.screenXScale = cgs.glconfig.vidWidth / SCREEN_WIDTH;
+	cgs.screenYScale = cgs.glconfig.vidHeight / SCREEN_HEIGHT;
+
+	UI_Set2DRatio();
+}
 /*
 ============
 GetModuleAPI
@@ -3456,6 +3465,7 @@ Q_EXPORT cgameExport_t* QDECL GetModuleAPI( int apiVersion, cgameImport_t *impor
 	cge.AutomapInput			= CG_AutomapInput;
 	cge.MiscEnt					= CG_MiscEnt;
 	cge.CameraShake				= CG_FX_CameraShake;
+	cge.ResChanged				= CG_ResChanged;
 
 	return &cge;
 }
@@ -3588,6 +3598,10 @@ Q_EXPORT intptr_t vmMain( int command, intptr_t arg0, intptr_t arg1, intptr_t ar
 
 	case CG_FX_CAMERASHAKE:
 		CG_FX_CameraShake();
+		return 0;
+
+	case CG_RES_CHANGED:
+		CG_ResChanged();
 		return 0;
 
 	default:

@@ -384,17 +384,31 @@ void vk_create_render_passes()
 
     // gamma post-processing
     attachments[0].flags = 0;
-    attachments[0].format = vk.present_format.format;
+    attachments[0].format = vk.color_format;
     attachments[0].samples = VK_SAMPLE_COUNT_1_BIT;
     attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE; // needed for presentation
     attachments[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     attachments[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    attachments[0].initialLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-    attachments[0].finalLayout = vk.initSwapchainLayout;
+    attachments[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    attachments[0].finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     VK_CHECK(qvkCreateRenderPass(device, &desc, NULL, &vk.render_pass.gamma));
     VK_SET_OBJECT_NAME(vk.render_pass.gamma, "render pass - gamma", VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT);
     
+#ifdef USE_VK_IMGUI
+    // inspector / present
+    attachments[0].flags = 0;
+    attachments[0].format = vk.present_format.format;
+    attachments[0].samples = VK_SAMPLE_COUNT_1_BIT;
+    attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE; // needed for presentation
+    attachments[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    attachments[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    attachments[0].initialLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    attachments[0].finalLayout = vk.initSwapchainLayout;
+    VK_CHECK(qvkCreateRenderPass(device, &desc, NULL, &vk.render_pass.inspector));
+    VK_SET_OBJECT_NAME(vk.render_pass.inspector, "render pass - inspector", VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT);
+#endif
 
     // screenmap
     // resolve/color buffer
@@ -624,16 +638,27 @@ void vk_create_framebuffers()
                 vk.framebuffers.main[i] = vk.framebuffers.main[0];
             }
 
-            // gamma correction
-            desc.renderPass = vk.render_pass.gamma;
+            // inspector / present
+            desc.renderPass = vk.render_pass.inspector;
             desc.attachmentCount = 1;
             desc.width = gls.windowWidth;
             desc.height = gls.windowHeight;
             attachments[0] = vk.swapchain_image_views[i];
-            VK_CHECK(qvkCreateFramebuffer(vk.device, &desc, NULL, &vk.framebuffers.gamma[i]));
-            VK_SET_OBJECT_NAME(vk.framebuffers.gamma[i], "framebuffer - gamma-correction", VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT);
+  
+            VK_CHECK(qvkCreateFramebuffer(vk.device, &desc, NULL, &vk.framebuffers.inspector[i]));
+            VK_SET_OBJECT_NAME(vk.framebuffers.inspector[i], "framebuffer - inspector", VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT);
+
         }
     }
+
+    // gamma correction
+    desc.renderPass = vk.render_pass.gamma;
+    desc.attachmentCount = 1;
+    desc.width = glConfig.vidWidth;
+    desc.height = glConfig.vidHeight;
+    attachments[0] = vk.gamma_image_view;
+    VK_CHECK(qvkCreateFramebuffer(vk.device, &desc, NULL, &vk.framebuffers.gamma));
+    VK_SET_OBJECT_NAME(vk.framebuffers.gamma, "framebuffer - gamma-correction", VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT);
 
     vk_debug("Created vk.framebuffers with fbo off\n");
 
@@ -839,6 +864,13 @@ void vk_destroy_render_passes( void )
         vk.render_pass.gamma = VK_NULL_HANDLE;
     }
 
+#ifdef USE_VK_IMGUI
+    if ( vk.render_pass.inspector != VK_NULL_HANDLE ) {
+        qvkDestroyRenderPass( vk.device, vk.render_pass.inspector, NULL );
+        vk.render_pass.inspector = VK_NULL_HANDLE;
+    }
+#endif
+
     if ( vk.render_pass.capture != VK_NULL_HANDLE ) {
         qvkDestroyRenderPass( vk.device, vk.render_pass.capture, NULL );
         vk.render_pass.capture = VK_NULL_HANDLE;
@@ -890,10 +922,16 @@ void vk_destroy_framebuffers( void )
             }
             vk.framebuffers.main[i] = VK_NULL_HANDLE;
         }
-        if ( vk.framebuffers.gamma[i] != VK_NULL_HANDLE ) {
-            qvkDestroyFramebuffer( vk.device, vk.framebuffers.gamma[i], NULL );
-            vk.framebuffers.gamma[i] = VK_NULL_HANDLE;
+
+        if ( vk.framebuffers.inspector[i] != VK_NULL_HANDLE ) {
+            qvkDestroyFramebuffer( vk.device, vk.framebuffers.inspector[i], NULL );
+            vk.framebuffers.inspector[i] = VK_NULL_HANDLE;
         }
+    }
+
+    if ( vk.framebuffers.gamma != VK_NULL_HANDLE ) {
+        qvkDestroyFramebuffer( vk.device, vk.framebuffers.gamma, NULL );
+        vk.framebuffers.gamma = VK_NULL_HANDLE;
     }
 
     if ( vk.framebuffers.bloom.extract != VK_NULL_HANDLE ) {
@@ -1003,6 +1041,8 @@ static void vk_begin_render_pass( VkRenderPass renderPass, VkFramebuffer frameBu
                 break;
             case RENDER_PASS_CUBEMAP:
                     clear_values[ (int)( vk.msaaActive ? 2 : 0 )  ].color = { { 1.0f, 0.0f, 0.0f, 1.0f } };
+            case RENDER_PASS_INSPECTOR:
+                     clear_values[0].color = { { 0.0f, 0.0f, 0.0f, 1.0f } };
                 break;
         }
 #endif
@@ -1013,6 +1053,9 @@ static void vk_begin_render_pass( VkRenderPass renderPass, VkFramebuffer frameBu
         //render_pass_begin_info.clearValueCount = ARRAY_LEN(clear_values);
         render_pass_begin_info.clearValueCount = vk.msaaActive ? 3 : 2;
         render_pass_begin_info.pClearValues = clear_values;
+
+        if ( vk.renderPassIndex == RENDER_PASS_INSPECTOR )
+            render_pass_begin_info.clearValueCount = 1;
 
         vk_world.dirty_depth_attachment = 0;  
     }
@@ -1414,11 +1457,11 @@ void vk_end_frame( void )
             if ( !ri.VK_IsMinimized() ) {
                 vk_end_render_pass();
 
-                vk.renderWidth = gls.windowWidth;
-                vk.renderHeight = gls.windowHeight;
+                vk.renderWidth = glConfig.vidWidth;
+                vk.renderHeight = glConfig.vidHeight;
                 vk.renderScaleX = vk.renderScaleY = 1.0;
 
-                vk_begin_render_pass( vk.render_pass.gamma, vk.framebuffers.gamma[vk.swapchain_image_index],
+                vk_begin_render_pass( vk.render_pass.gamma, vk.framebuffers.gamma,
                     qfalse, vk.renderWidth, vk.renderHeight );
 
                 qvkCmdBindPipeline( vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.gamma_pipeline );
@@ -1428,6 +1471,14 @@ void vk_end_frame( void )
 
                 qvkCmdDraw( vk.cmd->command_buffer, 4, 1, 0, 0 );
 
+                vk_end_render_pass();
+
+                vk.renderPassIndex = RENDER_PASS_INSPECTOR;
+                vk.renderWidth = gls.windowWidth;
+                vk.renderHeight = gls.windowHeight;
+                vk.renderScaleX = vk.renderScaleY = 1.0;
+                vk_begin_render_pass( vk.render_pass.inspector, vk.framebuffers.inspector[vk.swapchain_image_index],
+                    qtrue, vk.renderWidth, vk.renderHeight );
 #ifdef USE_VK_IMGUI
                 vk_imgui_draw();
 #endif

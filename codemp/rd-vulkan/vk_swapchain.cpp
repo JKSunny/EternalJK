@@ -49,6 +49,12 @@ void vk_restart_swapchain( const char *funcname )
     vk_setup_surface_formats( vk.physical_device );
 
     vk_create_sync_primitives();
+
+#ifdef USE_VK_IMGUI
+    glConfig.vidWidth = gls.windowWidth;
+    glConfig.vidHeight = gls.windowHeight;
+#endif
+
     vk_create_swapchain( vk.physical_device, vk.device, vk.surface, vk.present_format, &vk.swapchain );
     vk_create_attachments();
     vk_create_render_passes();
@@ -66,6 +72,10 @@ void vk_restart_swapchain( const char *funcname )
 
 #ifdef VK_PBR_BRDFLUT
 	vk_create_brfdlut();
+#endif
+
+#ifdef USE_VK_IMGUI
+    vk_imgui_swapchain_restarted();
 #endif
 }
 

@@ -225,6 +225,10 @@ cvar_t	*r_cubeMapping;
 
 #ifdef USE_VK_IMGUI
 cvar_t	*in_imgui;
+cvar_t	*cl_paused;
+cvar_t	*sv_paused;
+cvar_t	*com_sv_running;
+cvar_t	*com_cl_running;
 #endif
 
 // the limits apply to the sum of all scenes in a frame --
@@ -989,7 +993,11 @@ void R_Register( void )
 	ri.Cvar_CheckRange(r_ignorehwgamma, 0, 1, qtrue);
 
 #ifdef USE_VK_IMGUI
-	in_imgui							= ri.Cvar_Get("in_imgui",							"0",						CVAR_ARCHIVE_ND , "");
+	in_imgui							= ri.Cvar_Get("in_imgui",							"0",						CVAR_ARCHIVE_ND, "");
+	cl_paused							= ri.Cvar_Get("cl_paused",							"0",						CVAR_ROM, "");
+	sv_paused							= ri.Cvar_Get("sv_paused",							"0",						CVAR_ROM, "");
+	com_sv_running						= ri.Cvar_Get("sv_running",							"0",						CVAR_ROM, "Is a server running?" );
+	com_cl_running						= ri.Cvar_Get("cl_running",							"0",						CVAR_ROM, "Is the client running?" );
 #endif
 
 /*
@@ -1181,6 +1189,10 @@ void RE_Shutdown( qboolean destroyWindow, qboolean restarting ) {
 
 	tr.registered = qfalse;
 	tr.inited = qfalse;
+
+#ifdef USE_VK_IMGUI
+	vk_imgui_clear_inspector( qtrue );
+#endif
 }
 
 /*

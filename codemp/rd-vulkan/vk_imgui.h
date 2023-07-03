@@ -42,6 +42,9 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define OT_CUBEMAP			( 1 )
 #define OT_FLARE			( 2 )
 #define OT_SHADER			( 4 )
+#define OT_NODE				( 8 )
+#define OT_SURFACE			( 16 )
+#define OT_ENTITY			( 32 )
 
 #define FILE_HASH_SIZE		1024
 
@@ -51,9 +54,10 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 typedef struct {
 	qboolean	init;
 	char		search_keyword[MAX_QPATH];
-	bool		unique_shaders;
+	bool		merge_shaders;	// merge shaders with same name and update in bulk
 	int			num_shaders;
 	int			render_mode;
+	bool		outline_selected;
 
 	struct {
 		uint32_t	type;
@@ -64,6 +68,8 @@ typedef struct {
 	struct {
 		qboolean	active;
 		vec3_t		*origin;
+		float		*radius;
+		float		*rotation;
 	} transform;
 
 	struct {
@@ -72,9 +78,29 @@ typedef struct {
 
 	} shader;
 
+	struct {
+		qboolean		active;
+		trRefEntity_t	*ptr;
+	} entity;
+
+	struct {
+		qboolean	active;
+		mnode_t		*node;
+	} node;
+
+	struct {
+		qboolean	active;
+		void		*surf;
+	} surface;
+
 } vk_imgui_inspector_t;
 
 typedef struct {
+	struct {
+		bool	p_open;
+		ImVec2	size;
+	} viewport;
+
 	struct {
 		bool	p_open;
 		int		index;
@@ -102,6 +128,7 @@ typedef struct {
 } imgui_profiler_t;
 
 SDL_Window			*screen;
+
 VkDescriptorPool	imguiPool;
 ImGuiGlobal			imguiGlobal;
 ImGuiContext		*ImContext;
@@ -111,7 +138,9 @@ static vk_imgui_window_t	windows;
 static imgui_profiler_t		profiler;
 
 static shader_t *hashTable[FILE_HASH_SIZE];
-static shader_t *unique_shader_list[MAX_SHADERS];
+static shader_t *merge_shader_list[MAX_SHADERS];
+
+static VkDescriptorSet gameTexture;	// image the game is buffered on
 
 static ImVector<ImRect> s_GroupPanelLabelStack;
 ImGuiUtils::ProfilersWindow profilersWindow;
@@ -127,6 +156,43 @@ static const ImU32 color_palette[MAX_SHADER_STAGES] = {
 	RGBA_LE(0x824670ffu),
 	RGBA_LE(0xa2708affu),
 	RGBA_LE(0xc1F7dCffu),
+};
+
+const char *vk_entitytype_string[12] = { 
+	"model",
+	"poly",
+	"sprite",
+	"orientated quad",
+	"beam",
+	"saber glow",
+	"electricity",
+	"portal surface",
+	"line",
+	"orientated line",
+	"cylinder",
+	"ent chain",
+};
+
+const char *vk_modeltype_string[5] = { 
+	"bad",
+	"brush",	// ignore
+	"mesh",
+	"mdxm / glm",
+	"mdxa / gla",
+};
+
+const char *vk_surfacetype_string[11] = { 
+	"bad",
+	"skip",	// ignore
+	"face",
+	"grid",
+	"triangles",
+	"poly",
+	"mdv",
+	"mdx",
+	"flare",
+	"entity",
+	"vbo-mdv"
 };
 
 const char *render_modes[23] = { 
@@ -341,9 +407,26 @@ int vk_imgui_get_shader_editor_index ( void ) {
 	return inspector.shader.index;
 }
 
+shader_t *vk_imgui_get_selected_shader( void ) {
+	return tr.shaders[inspector.shader.index];
+}
+
 void vk_imgui_reload_shader_editor( qboolean close ) {
 	windows.shader.prev = NULL;
 	windows.shader.p_open = (bool)close;
+}
+
+void *vk_imgui_get_selected_surface( void ) {
+	return inspector.surface.surf;
+}
+
+// if enabled, merge shaders with same name and update in bulk
+qboolean vk_imgui_merge_shaders( void ) {
+	return (qboolean)inspector.merge_shaders;
+}
+
+qboolean vk_imgui_outline_selected( void ) {
+	return (qboolean)inspector.outline_selected;
 }
 
 static int generateHashValue( const char *fname )

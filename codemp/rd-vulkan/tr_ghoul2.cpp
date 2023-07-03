@@ -897,7 +897,7 @@ static int R_GComputeFogNum( trRefEntity_t *ent ) {
 }
 
 // work out lod for this entity.
-static int G2_ComputeLOD( trRefEntity_t *ent, const model_t *currentModel, int lodBias )
+int G2_ComputeLOD( trRefEntity_t *ent, const model_t *currentModel, int lodBias )
 {
 	float flod = 0, lodscale;
 	float projectedRadius;
@@ -2517,6 +2517,21 @@ void RenderSurfaces(CRenderSurface &RS) //also ended up just ripping right from 
 			R_AddDrawSurf( (surfaceType_t *)newSurf, (shader_t *)shader, RS.fogNum, qfalse );
 			tr.needScreenMap |= shader->hasScreenMap;
 
+#ifdef USE_VK_IMGUI
+			if ( vk_imgui_outline_selected() ) {
+				mdxmSurfHierarchy_t *debug_surf = (mdxmSurfHierarchy_t*)vk_imgui_get_selected_surface();
+				shader_t *debug_shader = vk_imgui_get_selected_shader();
+				qboolean merge_shaders = vk_imgui_merge_shaders();
+
+				if ( ( debug_surf && debug_surf == surfInfo ) || 
+					 ( !merge_shaders && debug_shader && debug_shader == shader ) ||
+					 ( merge_shaders && debug_shader && !strcmp( debug_shader->name, shader->name ) ) )
+				{
+					R_AddDrawSurf( (surfaceType_t *)newSurf, tr.outlineShader, RS.fogNum, qfalse );
+				}
+			}
+#endif
+
 #ifdef _G2_GORE
 			if (RS.gore_set && drawGore)
 			{
@@ -2815,7 +2830,7 @@ void G2_ConstructUsedBoneList(CConstructBoneList &CBL)
 // on the previous model, since it ensures the model being attached to is built and rendered first.
 
 // NOTE!! This assumes at least one model will NOT have a parent. If it does - we are screwed
-static void G2_Sort_Models(CGhoul2Info_v &ghoul2, int * const modelList, int * const modelCount)
+void G2_Sort_Models(CGhoul2Info_v &ghoul2, int * const modelList, int * const modelCount)
 {
 	int		startPoint, endPoint;
 	int		i, boltTo, j;

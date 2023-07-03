@@ -474,6 +474,7 @@ typedef enum cgameExportLegacy_e {
 	CG_MISC_ENT,
 	CG_GET_SORTED_FORCE_POWER,
 	CG_FX_CAMERASHAKE,
+	CG_RES_CHANGED,
 } cgameExportLegacy_t;
 
 typedef struct cgameImport_s {
@@ -753,6 +754,7 @@ typedef struct cgameExport_s {
 	void			(*AutomapInput)				( void );
 	void			(*MiscEnt)					( void );
 	void			(*CameraShake)				( void );
+	void			(*ResChanged)				( void );
 } cgameExport_t;
 
 //linking of cgame library

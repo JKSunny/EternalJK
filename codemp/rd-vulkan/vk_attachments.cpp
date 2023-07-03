@@ -386,6 +386,10 @@ void vk_create_attachments( void )
         create_color_attachment( glConfig.vidWidth, glConfig.vidHeight, VK_SAMPLE_COUNT_1_BIT, vk.color_format,
            usage, &vk.color_image, &vk.color_image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, qfalse, 0 );
 
+        // gamma image
+        create_color_attachment( glConfig.vidWidth, glConfig.vidHeight, VK_SAMPLE_COUNT_1_BIT, vk.color_format,
+           usage, &vk.gamma_image, &vk.gamma_image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, qfalse, 0 );
+
         // screenmap  usage 20
         usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 
@@ -450,6 +454,9 @@ void vk_create_attachments( void )
 
     VK_SET_OBJECT_NAME( vk.color_image, "color image", VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT );
     VK_SET_OBJECT_NAME( vk.color_image_view, "color image view", VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT );
+    
+    VK_SET_OBJECT_NAME( vk.gamma_image, "gamma image", VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT );
+    VK_SET_OBJECT_NAME( vk.gamma_image_view, "gamma image view", VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT );
 
     VK_SET_OBJECT_NAME( vk.msaa_image, "color msaa image view", VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT );
     VK_SET_OBJECT_NAME( vk.msaa_image_view, "color msaa view", VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT );
@@ -571,6 +578,14 @@ void vk_destroy_attachments( void )
         qvkDestroyImageView(vk.device, vk.color_image_view, NULL);
         vk.color_image = VK_NULL_HANDLE;
         vk.color_image_view = VK_NULL_HANDLE;
+    }
+
+    // gamma
+    if (vk.gamma_image) {
+        qvkDestroyImage(vk.device, vk.gamma_image, NULL);
+        qvkDestroyImageView(vk.device, vk.gamma_image_view, NULL);
+        vk.gamma_image = VK_NULL_HANDLE;
+        vk.gamma_image_view = VK_NULL_HANDLE;
     }
 
     // bloom

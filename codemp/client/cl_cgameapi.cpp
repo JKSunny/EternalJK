@@ -301,7 +301,15 @@ void CGVM_CameraShake( void ) {
 	cge->CameraShake();
 }
 
+void CGVM_ResChanged( void ) {
+	if ( cgvm->isLegacy ) {
+		VM_Call( cgvm, CG_RES_CHANGED );
+		return;
+	}
+	VMSwap v( cgvm );
 
+	cge->ResChanged();
+}
 //
 // cgame syscalls
 //	only used by legacy mods!

@@ -2300,9 +2300,20 @@ void RB_StageIteratorGeneric( void )
 		if ( is_ghoul2_vbo || is_mdv_vbo )
 			vk_push_uniform_data( &uniform_data );
 #endif
+
+		Vk_Depth_Range depthRange = tess.depthRange;
+
+#ifdef USE_VK_IMGUI
+		// ImGui outline surface/shader 
+		if ( tess.shader == tr.outlineShader ) {
+			pipeline = vk.std_pipeline.inspector_object_debug_pipeline;
+			depthRange = DEPTH_RANGE_ZERO;
+		}
+#endif
+
 		vk_bind_pipeline( pipeline );
 		vk_bind_geometry( tess_flags );
-		vk_draw_geometry( tess.depthRange, qtrue );
+		vk_draw_geometry( depthRange, qtrue );
 
 		if ( pStage->depthFragment ) {
 			if ( backEnd.viewParms.portalView == PV_MIRROR )

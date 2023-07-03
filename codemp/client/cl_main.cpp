@@ -2740,6 +2740,7 @@ void CL_InitRef( void ) {
 	ri.CIN_PlayCinematic = CIN_PlayCinematic;
 	ri.CIN_UploadCinematic = CIN_UploadCinematic;
 	ri.CL_WriteAVIVideoFrame = CL_WriteAVIVideoFrame;
+	ri.CL_ResChanged = CL_ResChanged;
 
 	// g2 data access
 	ri.GetSharedMemory = GetSharedMemory;
