@@ -393,7 +393,7 @@ void R_AddMD3Surfaces( trRefEntity_t *ent, int entityNum ) {
 			&& fogNum == 0
 			&& !(ent->e.renderfx & ( RF_NOSHADOW | RF_DEPTHHACK ) )
 			&& shader->sort == SS_OPAQUE ) {
-			R_AddDrawSurf( (surfaceType_t *)surface, entityNum, tr.shadowShader, 0, qfalse, 0 );
+			R_AddDrawSurf( (surfaceType_t *)surface, entityNum, tr.shadowShader, 0, 0 );
 		}
 
 		// projection shadows work fine with personal models
@@ -401,17 +401,17 @@ void R_AddMD3Surfaces( trRefEntity_t *ent, int entityNum ) {
 			&& fogNum == 0
 			&& (ent->e.renderfx & RF_SHADOW_PLANE )
 			&& shader->sort == SS_OPAQUE ) {
-			R_AddDrawSurf( (surfaceType_t *)surface, entityNum, tr.projectionShadowShader, 0, qfalse, 0 );
+			R_AddDrawSurf( (surfaceType_t *)surface, entityNum, tr.projectionShadowShader, 0, 0 );
 		}
 
 		// don't add third_person objects if not viewing through a portal
 		if ( !personalModel ) {
 #ifdef USE_VBO_MDV
 			if ( vk.vboMdvActive )
-				R_AddDrawSurf( (surfaceType_t *)&model->vboMeshes[i], entityNum, shader, fogNum, qfalse, 0 );
+				R_AddDrawSurf( (surfaceType_t *)&model->vboMeshes[i], entityNum, shader, fogNum, 0 );
 			else
 #endif
-				R_AddDrawSurf( (surfaceType_t *)surface, entityNum, shader, fogNum, qfalse, 0 );
+				R_AddDrawSurf( (surfaceType_t *)surface, entityNum, shader, fogNum, 0 );
 			
 #ifdef USE_VK_IMGUI
 			if ( vk_imgui_outline_selected() ) {
@@ -423,7 +423,7 @@ void R_AddMD3Surfaces( trRefEntity_t *ent, int entityNum ) {
 					 ( !merge_shaders && debug_shader && debug_shader == shader ) ||
 					 ( merge_shaders && debug_shader && !strcmp( debug_shader->name, shader->name ) ) )
 				{
-					R_AddDrawSurf( (surfaceType_t *)surface, entityNum, tr.outlineShader, fogNum, qfalse, 0 );
+					R_AddDrawSurf( (surfaceType_t *)surface, entityNum, tr.outlineShader, fogNum, 0 );
 				}
 			}
 #endif

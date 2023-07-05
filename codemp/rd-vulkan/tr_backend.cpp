@@ -219,7 +219,6 @@ static void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs )
 	int oldShaderSort = -1;
 	int oldFogNum = -1;
 	int oldDepthRange = 0;
-	int oldDlighted = 0;
 	int oldPostRender = 0;
 	int oldCubemapIndex = -1;
 
@@ -237,11 +236,9 @@ static void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs )
 		int postRender;
 		int entityNum;
 		int fogNum;
-		int dlighted;
 
 		R_DecomposeSort( drawSurf->sort, &entityNum, &shader, &cubemapIndex );
 		fogNum = drawSurf->fogIndex;
-		dlighted = drawSurf->dlightBits;
 
 		if (vk.renderPassIndex == RENDER_PASS_SCREENMAP && entityNum != REFENTITYNUM_WORLD && backEnd.refdef.entities[entityNum].e.renderfx & RF_DEPTHHACK) {
 			continue;
@@ -262,8 +259,7 @@ static void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs )
 		if (	shader == oldShader &&
 				fogNum == oldFogNum &&
 				cubemapIndex == oldCubemapIndex &&
-				entityNum == oldEntityNum &&
-				dlighted == oldDlighted )
+				entityNum == oldEntityNum )
 		{
 			// fast path, same as previous sort
 			rb_surfaceTable[*drawSurf->surface](drawSurf->surface);
@@ -279,7 +275,6 @@ static void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs )
 		//if (((oldSort ^ drawSurfs->sort) & ~QSORT_REFENTITYNUM_MASK) || !shader->entityMergable) {
 		if ( (shader != oldShader ||
 				fogNum != oldFogNum ||
-				dlighted != oldDlighted ||
 				cubemapIndex != oldCubemapIndex ||
 				(entityNum != oldEntityNum && !shader->entityMergable)) )
 		{		
@@ -306,7 +301,6 @@ static void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs )
 			RB_BeginSurface( shader, fogNum, cubemapIndex );
 			oldShader = shader;
 			oldFogNum = fogNum;
-			oldDlighted = dlighted;
 			oldCubemapIndex = cubemapIndex;
 		}
 
