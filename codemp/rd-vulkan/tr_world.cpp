@@ -338,7 +338,7 @@ R_AddWorldSurface
 ======================
 */
 static void R_AddWorldSurface( msurface_t *surf, const trRefEntity_t *entity,
-	int entityNum, int dlightBits, qboolean noViewCount = qfalse )
+	int entityNum, qboolean noViewCount = qfalse )
 {
 	if ( !noViewCount ) 
 	{
@@ -349,16 +349,6 @@ static void R_AddWorldSurface( msurface_t *surf, const trRefEntity_t *entity,
 		surf->viewCount = tr.viewCount;
 		// FIXME: bmodel fog?
 	}
-
-	/*
-	if (r_shadows->integer == 2)
-	{
-		dlightBits = R_DlightSurface( surf, dlightBits );
-		//dlightBits = ( dlightBits != 0 );
-		R_AddDrawSurf( surf->data, tr.shadowShader, surf->fogIndex, dlightBits );
-	}
-	*/
-	//world shadows?
 
 	// try to cull before dlighting or adding
 #ifdef _ALT_AUTOMAP_METHOD
@@ -373,7 +363,7 @@ static void R_AddWorldSurface( msurface_t *surf, const trRefEntity_t *entity,
 #ifdef USE_PMLIGHT
 	{
 		surf->vcVisible = tr.viewCount;
-		R_AddDrawSurf( surf->data, entityNum, surf->shader, surf->fogIndex, 0, surf->cubemapIndex );
+		R_AddDrawSurf( surf->data, entityNum, surf->shader, surf->fogIndex, surf->cubemapIndex );
 		return;
 	}
 #endif // USE_PMLIGHT
@@ -468,7 +458,7 @@ static void R_AddWorldSurface( msurface_t *surf, const trRefEntity_t *entity,
 	else
 #endif
 	{
-		R_AddDrawSurf( surf->data, entityNum, surf->shader, surf->fogIndex, dlightBits, 0 );
+		R_AddDrawSurf( surf->data, entityNum, surf->shader, surf->fogIndex, 0 );
 	}
 }
 
@@ -608,7 +598,7 @@ void R_AddBrushModelSurfaces ( trRefEntity_t *ent, int entityNum ) {
 
 #ifdef USE_PMLIGHT
 	for ( s = 0; s < bmodel->numSurfaces; s++ ) {
-		R_AddWorldSurface( bmodel->firstSurface + s, ent, entityNum, 0, qtrue );
+		R_AddWorldSurface( bmodel->firstSurface + s, ent, entityNum, qtrue );
 	}
 
 	R_SetupEntityLighting( &tr.refdef, ent );
@@ -1170,7 +1160,6 @@ qboolean R_InitializeWireframeAutomap(void)
 #define QUADINFINITY			16777216
 //static float g_lastHeight = 0.0f;
 //static bool g_lastHeightValid = false;
-static void R_RecursiveWorldNode( mnode_t *node, int planeBits, int dlightBits );
 
 const void *R_DrawWireframeAutomap( const void *data )
 {
@@ -1202,12 +1191,10 @@ const void *R_DrawWireframeAutomap( const void *data )
 R_RecursiveWorldNode
 ================
 */
-static void R_RecursiveWorldNode( mnode_t *node, int planeBits, int dlightBits ) {
+static void R_RecursiveWorldNode( mnode_t *node, int planeBits ) {
 
 	do
 	{
-		int			newDlights[2];
-
 #ifdef _ALT_AUTOMAP_METHOD
 		if (tr_drawingAutoMap)
 		{
@@ -1278,13 +1265,8 @@ static void R_RecursiveWorldNode( mnode_t *node, int planeBits, int dlightBits )
 			break;
 		}
 
-		// node is just a decision point, so go down both sides
-		// since we don't care about sort orders, just go positive to negative
-		newDlights[0] = 0;
-		newDlights[1] = 0;
-
 		// recurse down the children, front side first
-		R_RecursiveWorldNode (node->children[0], planeBits, newDlights[0] );
+		R_RecursiveWorldNode (node->children[0], planeBits );
 
 		// tail recurse
 		node = node->children[1];
@@ -1326,7 +1308,7 @@ static void R_RecursiveWorldNode( mnode_t *node, int planeBits, int dlightBits )
 			// the surface may have already been added if it
 			// spans multiple leafs
 			surf = *mark;
-			R_AddWorldSurface( surf, nullptr, REFENTITYNUM_WORLD, dlightBits );
+			R_AddWorldSurface( surf, nullptr, REFENTITYNUM_WORLD );
 			mark++;
 		}
 	}
@@ -1510,7 +1492,7 @@ void R_AddWorldSurfaces ( viewParms_t *viewParms, trRefdef_t *refdef ) {
 		tr.refdef.num_dlights = 32 ;
 	}
 
-	R_RecursiveWorldNode( tr.world->nodes, 15, ( 1 << tr.refdef.num_dlights ) - 1 );
+	R_RecursiveWorldNode( tr.world->nodes, 15 );
 
 #ifdef USE_PMLIGHT
 	// "transform" all the dlights so that dl->transformed is actually populated

@@ -1443,7 +1443,7 @@ R_AddDrawSurf
 =================
 */
 void R_AddDrawSurf( surfaceType_t *surface, int entityNum, shader_t *shader,
-	int fogIndex, int dlightMap, int cubemap )
+	int fogIndex, int cubemap )
 {
 	int			index;
 	drawSurf_t *surf;
@@ -1467,7 +1467,6 @@ void R_AddDrawSurf( surfaceType_t *surface, int entityNum, shader_t *shader,
 	// the sort data is packed into a single 32 bit value so it can be
 	// compared quickly during the qsorting process
 	surf->sort = R_CreateSortKey( entityNum, shader->sortedIndex, cubemap );
-	surf->dlightBits = dlightMap;
 	surf->fogIndex = fogIndex;
 
 	tr.refdef.numDrawSurfs++;
@@ -1596,7 +1595,7 @@ static void R_AddEntitySurface( const trRefdef_t *refdef, trRefEntity_t *ent, in
 			return;
 		}
 		shader = R_GetShaderByHandle(ent->e.customShader);
-		R_AddDrawSurf(&entitySurface, entityNum, shader, R_SpriteFogNum(ent), 0, 0);
+		R_AddDrawSurf(&entitySurface, entityNum, shader, R_SpriteFogNum(ent), 0);
 		break;
 
 	case RT_MODEL:
@@ -1605,7 +1604,7 @@ static void R_AddEntitySurface( const trRefdef_t *refdef, trRefEntity_t *ent, in
 
 		tr.currentModel = R_GetModelByHandle(ent->e.hModel);
 		if (!tr.currentModel) {
-			R_AddDrawSurf(&entitySurface, entityNum, tr.defaultShader, 0, 0, 0);
+			R_AddDrawSurf(&entitySurface, entityNum, tr.defaultShader, 0, 0);
 		}
 		else {
 			switch (tr.currentModel->type) {
@@ -1633,7 +1632,7 @@ static void R_AddEntitySurface( const trRefdef_t *refdef, trRefEntity_t *ent, in
 					break;
 				}
 
-				R_AddDrawSurf(&entitySurface, entityNum, tr.defaultShader, 0, false, 0);
+				R_AddDrawSurf(&entitySurface, entityNum, tr.defaultShader, 0, 0);
 				break;
 			default:
 				Com_Error(ERR_DROP, "R_AddEntitySurfaces: Bad modeltype");
@@ -1644,7 +1643,7 @@ static void R_AddEntitySurface( const trRefdef_t *refdef, trRefEntity_t *ent, in
 
 	case RT_ENT_CHAIN:
 		shader = R_GetShaderByHandle(ent->e.customShader);
-		R_AddDrawSurf(&entitySurface, entityNum, shader, R_SpriteFogNum(ent), false, 0);
+		R_AddDrawSurf(&entitySurface, entityNum, shader, R_SpriteFogNum(ent), 0);
 		break;
 
 	default:

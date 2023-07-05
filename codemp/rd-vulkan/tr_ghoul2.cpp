@@ -2516,7 +2516,7 @@ void RenderSurfaces( CRenderSurface &RS, const trRefEntity_t *ent, int entityNum
 			vk_set_ghoul2_vbo_mesh( RS, newSurf, RS.lod, surface->thisSurfaceIndex );
 #endif
 			newSurf->boneCache = RS.boneCache;
-			R_AddDrawSurf( (surfaceType_t *)newSurf, entityNum, (shader_t *)shader, RS.fogNum, qfalse, cubemapIndex );
+			R_AddDrawSurf( (surfaceType_t *)newSurf, entityNum, (shader_t *)shader, RS.fogNum, cubemapIndex );
 			tr.needScreenMap |= shader->hasScreenMap;
 
 #ifdef _G2_GORE
@@ -2597,7 +2597,7 @@ void RenderSurfaces( CRenderSurface &RS, const trRefEntity_t *ent, int entityNum
 
 						last->goreChain=newSurf2;
 						last=newSurf2;
-						R_AddDrawSurf( (surfaceType_t *)newSurf2, entityNum, gshader, RS.fogNum, qfalse, cubemapIndex );
+						R_AddDrawSurf( (surfaceType_t *)newSurf2, entityNum, gshader, RS.fogNum, cubemapIndex );
 					}
 				}
 			}
@@ -2634,7 +2634,7 @@ void RenderSurfaces( CRenderSurface &RS, const trRefEntity_t *ent, int entityNum
 				//vk_set_ghoul2_vbo_mesh( RS, newSurf, RS.lod, surface->thisSurfaceIndex );
 			}
 			newSurf->boneCache = RS.boneCache;
-			R_AddDrawSurf( (surfaceType_t *)newSurf, entityNum, tr.shadowShader, 0, qfalse, 0 );
+			R_AddDrawSurf( (surfaceType_t *)newSurf, entityNum, tr.shadowShader, 0, 0 );
 		}
 
 		// projection shadows work fine with personal models
@@ -2647,7 +2647,7 @@ void RenderSurfaces( CRenderSurface &RS, const trRefEntity_t *ent, int entityNum
 			newSurf->surfaceData = surface;
 			//vk_set_ghoul2_vbo_mesh( RS, newSurf, RS.lod, surface->thisSurfaceIndex );
 			newSurf->boneCache = RS.boneCache;
-			R_AddDrawSurf( (surfaceType_t *)newSurf, entityNum, tr.projectionShadowShader, 0, qfalse, 0 );
+			R_AddDrawSurf( (surfaceType_t *)newSurf, entityNum, tr.projectionShadowShader, 0, 0 );
 		}
 
 	}

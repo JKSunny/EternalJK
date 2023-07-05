@@ -119,7 +119,7 @@ void R_AddPolygonSurfaces( const trRefdef_t *refdef ) {
 
 	for ( i = 0, poly = tr.refdef.polys; i < tr.refdef.numPolys ; i++, poly++ ) {
 		sh = R_GetShaderByHandle( poly->hShader );
-		R_AddDrawSurf( (surfaceType_t *)poly, REFENTITYNUM_WORLD, sh, poly->fogIndex, qfalse, 0 );
+		R_AddDrawSurf( (surfaceType_t *)poly, REFENTITYNUM_WORLD, sh, poly->fogIndex, 0 );
 	}
 }
 

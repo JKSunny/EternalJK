@@ -847,7 +847,6 @@ typedef enum surfaceType_e {
 
 typedef struct drawSurf_s {
 	uint32_t			sort;			// bit combination for fast compares
-	uint32_t			dlightBits;
 	surfaceType_t		*surface;		// any of surface*_t
 	int					fogIndex;
 } drawSurf_t;
@@ -1883,7 +1882,7 @@ void		R_AddPolygonSurfaces( const trRefdef_t *refdef );
 void		R_DecomposeSort( uint32_t sort, int *entityNum, shader_t **shader, int *cubemap );
 uint32_t	R_CreateSortKey(int entityNum, int sortedShaderIndex, int cubemapIndex);
 
-void		R_AddDrawSurf( surfaceType_t *surface, int entityNum, shader_t *shader, int fogIndex, int dlightMap, int cubemap );
+void		R_AddDrawSurf( surfaceType_t *surface, int entityNum, shader_t *shader, int fogIndex, int cubemap );
 #ifdef USE_PMLIGHT
 void		R_DecomposeLitSort( unsigned sort, int* entityNum, shader_t** shader );
 void		R_AddLitSurf( surfaceType_t* surface, int entityNum, shader_t* shader, int fogIndex );
