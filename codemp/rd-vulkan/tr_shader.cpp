@@ -5025,18 +5025,17 @@ static void FixRenderCommandList( int newShader ) {
 				int i;
 				drawSurf_t	*drawSurf;
 				shader_t	*shader;
-				int			fogNum;
 				int			entityNum;
-				int			dlightMap;
 				int			sortedIndex;
+				int			cubemap;
 				const drawSurfsCommand_t* ds_cmd = (const drawSurfsCommand_t*)curCmd;
 
 				for ( i = 0, drawSurf = ds_cmd->drawSurfs; i < ds_cmd->numDrawSurfs; i++, drawSurf++ ) {
-					R_DecomposeSort( drawSurf->sort, &entityNum, &shader, &fogNum, &dlightMap );
+					R_DecomposeSort( drawSurf->sort, &entityNum, &shader, &cubemap );
 					sortedIndex = (( drawSurf->sort >> QSORT_SHADERNUM_SHIFT ) & SHADERNUM_MASK);
 					if ( sortedIndex >= newShader ) {
 						sortedIndex = shader->sortedIndex;
-						drawSurf->sort = (sortedIndex << QSORT_SHADERNUM_SHIFT) | (entityNum << QSORT_REFENTITYNUM_SHIFT) | ( fogNum << QSORT_FOGNUM_SHIFT ) | (int)dlightMap;
+						drawSurf->sort = R_CreateSortKey( entityNum, sortedIndex, cubemap );
 					}
 				}
 				curCmd = (const void *)(ds_cmd + 1);

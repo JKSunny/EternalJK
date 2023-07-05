@@ -373,7 +373,7 @@ void RB_RenderFlare( flare_t *f ) {
 	srfFlare_t *flare = (srfFlare_t *)f->surface;
 
 	backEnd.currentEntity = &tr.worldEntity;
-	RB_BeginSurface( flare->shader, f->fogNum );
+	RB_BeginSurface( flare->shader, f->fogNum, 0 );
 
 	vec3_t		dir;
 	vec3_t		left, up;

@@ -112,17 +112,14 @@ R_AddPolygonSurfaces
 Adds all the scene's polys into this view's drawsurf list
 =====================
 */
-void R_AddPolygonSurfaces( void ) {
-	int				i;
-	shader_t		*sh;
-	const srfPoly_t	*poly;
-
-	tr.currentEntityNum = REFENTITYNUM_WORLD;
-	tr.shiftedEntityNum = tr.currentEntityNum << QSORT_REFENTITYNUM_SHIFT;
+void R_AddPolygonSurfaces( const trRefdef_t *refdef ) {
+	uint32_t	i;
+	shader_t	*sh;
+	srfPoly_t	*poly;
 
 	for ( i = 0, poly = tr.refdef.polys; i < tr.refdef.numPolys ; i++, poly++ ) {
 		sh = R_GetShaderByHandle( poly->hShader );
-		R_AddDrawSurf( (surfaceType_t *)poly, sh, poly->fogIndex, qfalse );
+		R_AddDrawSurf( (surfaceType_t *)poly, REFENTITYNUM_WORLD, sh, poly->fogIndex, qfalse, 0 );
 	}
 }
 

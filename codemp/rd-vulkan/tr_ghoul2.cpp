@@ -2446,7 +2446,7 @@ static inline void vk_set_ghoul2_vbo_mesh( const CRenderSurface &RS, CRenderable
 }
 #endif
 
-void RenderSurfaces(CRenderSurface &RS) //also ended up just ripping right from SP.
+void RenderSurfaces( CRenderSurface &RS, const trRefEntity_t *ent, int entityNum ) //also ended up just ripping right from SP.
 {
 #ifdef G2_PERFORMANCE_ANALYSIS
 	G2PerformanceTimer_RenderSurfaces.Start();
@@ -2505,6 +2505,8 @@ void RenderSurfaces(CRenderSurface &RS) //also ended up just ripping right from 
 			shader = R_GetShaderByHandle( surfInfo->shaderIndex );
 		}
 
+		int cubemapIndex = R_CubemapForPoint( ent->e.origin );
+
 		// don't add third_person objects if not viewing through a portal
 		if ( !RS.personalModel )
 		{		// set the surface info to point at the where the transformed bone list is going to be for when the surface gets rendered out
@@ -2514,7 +2516,7 @@ void RenderSurfaces(CRenderSurface &RS) //also ended up just ripping right from 
 			vk_set_ghoul2_vbo_mesh( RS, newSurf, RS.lod, surface->thisSurfaceIndex );
 #endif
 			newSurf->boneCache = RS.boneCache;
-			R_AddDrawSurf( (surfaceType_t *)newSurf, (shader_t *)shader, RS.fogNum, qfalse );
+			R_AddDrawSurf( (surfaceType_t *)newSurf, entityNum, (shader_t *)shader, RS.fogNum, qfalse, cubemapIndex );
 			tr.needScreenMap |= shader->hasScreenMap;
 
 #ifdef USE_VK_IMGUI
@@ -2610,7 +2612,7 @@ void RenderSurfaces(CRenderSurface &RS) //also ended up just ripping right from 
 
 						last->goreChain=newSurf2;
 						last=newSurf2;
-						R_AddDrawSurf( (surfaceType_t *)newSurf2,gshader, RS.fogNum, qfalse );
+						R_AddDrawSurf( (surfaceType_t *)newSurf2, entityNum, gshader, RS.fogNum, qfalse, cubemapIndex );
 					}
 				}
 			}
@@ -2647,7 +2649,7 @@ void RenderSurfaces(CRenderSurface &RS) //also ended up just ripping right from 
 				//vk_set_ghoul2_vbo_mesh( RS, newSurf, RS.lod, surface->thisSurfaceIndex );
 			}
 			newSurf->boneCache = RS.boneCache;
-			R_AddDrawSurf( (surfaceType_t *)newSurf, tr.shadowShader, 0, qfalse );
+			R_AddDrawSurf( (surfaceType_t *)newSurf, entityNum, tr.shadowShader, 0, qfalse, 0 );
 		}
 
 		// projection shadows work fine with personal models
@@ -2660,7 +2662,7 @@ void RenderSurfaces(CRenderSurface &RS) //also ended up just ripping right from 
 			newSurf->surfaceData = surface;
 			//vk_set_ghoul2_vbo_mesh( RS, newSurf, RS.lod, surface->thisSurfaceIndex );
 			newSurf->boneCache = RS.boneCache;
-			R_AddDrawSurf( (surfaceType_t *)newSurf, tr.projectionShadowShader, 0, qfalse );
+			R_AddDrawSurf( (surfaceType_t *)newSurf, entityNum, tr.projectionShadowShader, 0, qfalse, 0 );
 		}
 
 	}
@@ -2677,7 +2679,7 @@ void RenderSurfaces(CRenderSurface &RS) //also ended up just ripping right from 
 	for (i=0; i< surfInfo->numChildren; i++)
 	{
 		RS.surfaceNum = surfInfo->childIndexes[i];
-		RenderSurfaces(RS);
+		RenderSurfaces( RS, ent, entityNum );
 	}
 
 #ifdef G2_PERFORMANCE_ANALYSIS
@@ -3295,7 +3297,7 @@ static inline bool bInShadowRange(vec3_t location)
 R_AddGHOULSurfaces
 ==============
 */
-void R_AddGhoulSurfaces( trRefEntity_t *ent ) {
+void R_AddGhoulSurfaces( trRefEntity_t *ent, int entityNum ) {
 #ifdef G2_PERFORMANCE_ANALYSIS
 	G2PerformanceTimer_R_AddGHOULSurfaces.Start();
 #endif
@@ -3435,7 +3437,8 @@ void R_AddGhoulSurfaces( trRefEntity_t *ent ) {
 			{
 				RS.renderfx |= RF_NOSHADOW;
 			}
-			RenderSurfaces(RS);
+
+			RenderSurfaces( RS, ent, entityNum );
 		}
 	}
 	HackadelicOnClient=false;
@@ -3558,7 +3561,7 @@ void RB_SurfaceGhoul(CRenderableSurface* surf)
 		// transition to vbo render list
 		if ( tess.vboIndex == 0 ) {
 			RB_EndSurface();
-			RB_BeginSurface( tess.shader, tess.fogNum );
+			RB_BeginSurface( tess.shader, tess.fogNum, tess.cubemapIndex );
 			// set some dummy parameters for RB_EndSurface
 			tess.numIndexes = 1;
 			tess.numVertexes = 0;

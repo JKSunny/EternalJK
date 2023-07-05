@@ -121,7 +121,7 @@ static void RB_Hyperspace(void) {
 
 	if ( tess.shader != tr.whiteShader ) {
 		RB_EndSurface();
-		RB_BeginSurface( tr.whiteShader, 0 );
+		RB_BeginSurface( tr.whiteShader, 0, 0 );
 	}
 
 #ifdef USE_VBO
@@ -191,13 +191,13 @@ static void RB_BeginDrawingView( void ) {
 RB_RenderDrawSurfList
 ==================
 */
-void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
-	shader_t		*shader, *oldShader;
-	int				i, fogNum, entityNum, oldEntityNum, dlighted;
+static void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) 
+{
+
+	uint32_t		i;
 	Vk_Depth_Range	depthRange; 
 	drawSurf_t		*drawSurf;
-	unsigned int	oldSort;
-	float			oldShaderSort, originalTime;
+	float			originalTime;
 
 #ifdef USE_VANILLA_SHADOWFINISH
 	qboolean		didShadowPass;
@@ -210,12 +210,19 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 
 	// save original time for entity shader offsets
 	originalTime = backEnd.refdef.floatTime;
-
-	oldEntityNum			= -1;
+	
 	backEnd.currentEntity	= &tr.worldEntity;
-	oldShader				= NULL;
-	oldSort					= MAX_UINT;
-	oldShaderSort			= -1;
+
+	shader_t *oldShader = nullptr;
+	int oldEntityNum = -1;
+	int oldSort = -1;
+	int oldShaderSort = -1;
+	int oldFogNum = -1;
+	int oldDepthRange = 0;
+	int oldDlighted = 0;
+	int oldPostRender = 0;
+	int oldCubemapIndex = -1;
+
 	depthRange				= DEPTH_RANGE_NORMAL;
 #ifdef USE_VANILLA_SHADOWFINISH
 	didShadowPass			= qfalse;
@@ -225,13 +232,16 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 	
 	for (i = 0, drawSurf = drawSurfs; i < numDrawSurfs; i++, drawSurf++)
 	{
-		if (drawSurf->sort == oldSort) {
-			// fast path, same as previous sort
-			rb_surfaceTable[*drawSurf->surface](drawSurf->surface);
-			continue;
-		}
-		
-		R_DecomposeSort(drawSurf->sort, &entityNum, &shader, &fogNum, &dlighted);
+		shader_t *shader;
+		int cubemapIndex;
+		int postRender;
+		int entityNum;
+		int fogNum;
+		int dlighted;
+
+		R_DecomposeSort( drawSurf->sort, &entityNum, &shader, &cubemapIndex );
+		fogNum = drawSurf->fogIndex;
+		dlighted = drawSurf->dlightBits;
 
 		if (vk.renderPassIndex == RENDER_PASS_SCREENMAP && entityNum != REFENTITYNUM_WORLD && backEnd.refdef.entities[entityNum].e.renderfx & RF_DEPTHHACK) {
 			continue;
@@ -249,13 +259,30 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 			continue;
 		}
 
-		//oldSort = drawSurf->sort;
+		if (	shader == oldShader &&
+				fogNum == oldFogNum &&
+				cubemapIndex == oldCubemapIndex &&
+				entityNum == oldEntityNum &&
+				dlighted == oldDlighted )
+		{
+			// fast path, same as previous sort
+			rb_surfaceTable[*drawSurf->surface](drawSurf->surface);
+			continue;
+		}
+
+		oldSort = drawSurf->sort;
 
 		//
 		// change the tess parameters if needed
 		// a "entityMergable" shader is a shader that can have surfaces from seperate
 		// entities merged into a single batch, like smoke and blood puff sprites
-		if (((oldSort ^ drawSurfs->sort) & ~QSORT_REFENTITYNUM_MASK) || !shader->entityMergable) {
+		//if (((oldSort ^ drawSurfs->sort) & ~QSORT_REFENTITYNUM_MASK) || !shader->entityMergable) {
+		if ( (shader != oldShader ||
+				fogNum != oldFogNum ||
+				dlighted != oldDlighted ||
+				cubemapIndex != oldCubemapIndex ||
+				(entityNum != oldEntityNum && !shader->entityMergable)) )
+		{		
 			if (oldShader != NULL) {
 				RB_EndSurface();
 			}
@@ -276,11 +303,14 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 				didShadowPass = qtrue;
 			}
 #endif
-			RB_BeginSurface(shader, fogNum);
+			RB_BeginSurface( shader, fogNum, cubemapIndex );
 			oldShader = shader;
+			oldFogNum = fogNum;
+			oldDlighted = dlighted;
+			oldCubemapIndex = cubemapIndex;
 		}
 
-		oldSort = drawSurf->sort;
+		//oldSort = drawSurf->sort;
 
 		//
 		// change the modelview matrix if needed
@@ -397,14 +427,15 @@ static void RB_RenderLitSurfList( dlight_t *dl ) {
 	tess.dlightUpdateParams = qtrue;
 
 	for (litSurf = dl->head; litSurf; litSurf = litSurf->next) {
-		//if ( litSurf->sort == sort ) {
+
 		if (litSurf->sort == oldSort) {
 			// fast path, same as previous sort
 			rb_surfaceTable[*litSurf->surface](litSurf->surface);
 			continue;
 		}
 
-		R_DecomposeLitSort(litSurf->sort, &entityNum, &shader, &fogNum);
+		R_DecomposeLitSort(litSurf->sort, &entityNum, &shader);
+		fogNum = litSurf->fogIndex;
 
 		if (vk.renderPassIndex == RENDER_PASS_SCREENMAP && entityNum != REFENTITYNUM_WORLD && backEnd.refdef.entities[entityNum].e.renderfx & RF_DEPTHHACK) {
 			continue;
@@ -420,11 +451,11 @@ static void RB_RenderLitSurfList( dlight_t *dl ) {
 		// change the tess parameters if needed
 		// a "entityMergable" shader is a shader that can have surfaces from seperate
 		// entities merged into a single batch, like smoke and blood puff sprites
-		if (((oldSort ^ litSurf->sort) & ~QSORT_REFENTITYNUM_MASK) || !shader->entityMergable) {
+		if (((oldSort ^ litSurf->sort) & ~QSORT_ENTITYNUM_MASK) || !shader->entityMergable) {
 			if (oldShader != NULL) {
 				RB_EndSurface();
 			}
-			RB_BeginSurface(shader, fogNum);
+			RB_BeginSurface( shader, fogNum, 0 );
 			oldShader = shader;
 		}
 
@@ -582,7 +613,7 @@ const void *RB_StretchPic ( const void *data ) {
 			RB_EndSurface();
 		}
 		backEnd.currentEntity = &backEnd.entity2D;
-		RB_BeginSurface( shader, 0 );
+		RB_BeginSurface( shader, 0, 0 );
 	}
 
 #ifdef USE_VBO
@@ -631,7 +662,7 @@ const void *RB_RotatePic ( const void *data )
 				RB_EndSurface();
 			}
 			backEnd.currentEntity = &backEnd.entity2D;
-			RB_BeginSurface( shader, 0 );
+			RB_BeginSurface( shader, 0, 0 );
 		}
 
 		RB_CHECKOVERFLOW( 4, 6 );
@@ -727,7 +758,7 @@ const void *RB_RotatePic2 ( const void *data )
 					RB_EndSurface();
 				}
 				backEnd.currentEntity = &backEnd.entity2D;
-				RB_BeginSurface( shader, 0 );
+				RB_BeginSurface( shader, 0, 0 );
 			}
 
 			RB_CHECKOVERFLOW( 4, 6 );
@@ -1014,7 +1045,7 @@ const void	*RB_WorldEffects( const void *data )
 	RB_RenderWorldEffects();
 
 	if ( tess.shader )
-		RB_BeginSurface( tess.shader, tess.fogNum );
+		RB_BeginSurface( tess.shader, tess.fogNum, 0 );
 
 	return (const void *)(cmd + 1);
 }

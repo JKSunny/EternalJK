@@ -772,7 +772,7 @@ void RB_DrawSun( float scale, shader_t *shader ) {
 	// farthest depth range
 	vk_set_depthrange( DEPTH_RANGE_ONE );
 
-	RB_BeginSurface( shader, 0 );
+	RB_BeginSurface( shader, 0, 0 );
 
 	RB_AddQuadStamp( origin, vec1, vec2, sunColor );
 

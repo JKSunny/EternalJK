@@ -443,3 +443,31 @@ int R_LightDirForPoint( vec3_t point, vec3_t lightDir, vec3_t normal, world_t &w
 
 	return qtrue;
 }
+
+int R_CubemapForPoint( const vec3_t point )
+{
+	int cubemapIndex = -1;
+
+	if ( r_cubeMapping->integer && tr.numCubemaps )
+	{
+		int i;
+		float shortest = (float)WORLD_SIZE * (float)WORLD_SIZE;
+
+		for ( i = 0; i < tr.numCubemaps; i++ )
+		{
+			vec3_t diff;
+			float length;
+
+			VectorSubtract( point, tr.cubemaps[i].origin, diff );
+			length = DotProduct( diff, diff );
+
+			if ( shortest > length )
+			{
+				shortest = length;
+				cubemapIndex = i;
+			}
+		}
+	}
+
+	return cubemapIndex + 1;
+}

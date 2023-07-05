@@ -863,13 +863,16 @@ typedef enum surfaceType_e {
 } surfaceType_t;
 
 typedef struct drawSurf_s {
-	unsigned			sort;			// bit combination for fast compares
+	uint32_t			sort;			// bit combination for fast compares
+	uint32_t			dlightBits;
 	surfaceType_t		*surface;		// any of surface*_t
+	int					fogIndex;
 } drawSurf_t;
 
 #ifdef USE_PMLIGHT
 typedef struct litSurf_s {
-	unsigned int		sort;			// bit combination for fast compares
+	uint32_t			sort;			// bit combination for fast compares
+	int					fogIndex;
 	surfaceType_t		*surface;		// any of surface*_t
 	struct litSurf_s	*next;
 } litSurf_t;
@@ -1042,10 +1045,25 @@ BRUSH MODELS
 #define	SIDE_BACK	1
 #define	SIDE_ON		2
 
+#define CULLINFO_NONE   0
+#define CULLINFO_BOX    1
+#define CULLINFO_SPHERE 2
+#define CULLINFO_PLANE  4
+
+typedef struct cullinfo_s {
+	int             type;
+	vec3_t          bounds[2];
+	vec3_t			localOrigin;
+	float			radius;
+	cplane_t        plane;
+} cullinfo_t;
+
 typedef struct msurface_s {
 	int					viewCount;		// if == tr.viewCount, already added
 	struct shader_s		*shader;
 	int					fogIndex;
+	int                 cubemapIndex;
+	cullinfo_t          cullinfo;
 #ifdef USE_PMLIGHT
 	int					vcVisible;		// if == tr.viewCount, is actually VISIBLE in this frame, i.e. passed facecull and has been added to the drawsurf list
 	int					lightCount;		// if == tr.lightCount, already added to the litsurf list for the current light
@@ -1329,30 +1347,30 @@ void		R_Modellist_f ( void );
 #define	DRAWSURF_MASK			( MAX_DRAWSURFS - 1 )
 
 /*
-
 the drawsurf sort data is packed into a single 32 bit value so it can be
 compared quickly during the qsorting process
-
-the bits are allocated as follows:
-
-18-31 : sorted shader index
-7-17  : entity index
-2-6   : fog index
-0-1   : dlightmap index
 */
 
-#define	DLIGHT_BITS 1 // qboolean in opengl1 renderer
-#define	DLIGHT_MASK ( ( 1 << DLIGHT_BITS) - 1 )
-#define	FOGNUM_BITS 5
-#define	FOGNUM_MASK ( (1 << FOGNUM_BITS ) - 1 )
+#define	QSORT_CUBEMAP_SHIFT		0
+#define QSORT_CUBEMAP_BITS		6
+#define QSORT_CUBEMAP_MASK		((1 << QSORT_CUBEMAP_BITS) - 1)
 
-#define	QSORT_FOGNUM_SHIFT	DLIGHT_BITS
-#define	QSORT_REFENTITYNUM_SHIFT ( QSORT_FOGNUM_SHIFT + FOGNUM_BITS )
-#define	QSORT_SHADERNUM_SHIFT	( QSORT_REFENTITYNUM_SHIFT + REFENTITYNUM_BITS )
-#if (QSORT_SHADERNUM_SHIFT+SHADERNUM_BITS) > 32
-	#error "Need to update sorting, too many bits."
+#define QSORT_ENTITYNUM_SHIFT	(QSORT_CUBEMAP_SHIFT + QSORT_CUBEMAP_BITS)
+#define QSORT_ENTITYNUM_BITS	REFENTITYNUM_BITS
+#define QSORT_ENTITYNUM_MASK	((1 << QSORT_ENTITYNUM_BITS) - 1)
+
+#define	QSORT_SHADERNUM_SHIFT	(QSORT_ENTITYNUM_SHIFT + QSORT_ENTITYNUM_BITS)
+#define QSORT_SHADERNUM_BITS	SHADERNUM_BITS
+#define QSORT_SHADERNUM_MASK	((1 << QSORT_SHADERNUM_BITS) - 1)
+
+//#define QSORT_POSTRENDER_SHIFT	(QSORT_SHADERNUM_SHIFT + QSORT_SHADERNUM_BITS)
+//#define QSORT_POSTRENDER_BITS	1
+//#define QSORT_POSTRENDER_MASK	((1 << QSORT_POSTRENDER_BITS) - 1)
+
+//#if QSORT_POSTRENDER_SHIFT >= 32
+#if QSORT_SHADERNUM_SHIFT >= 32
+	#error "Sort field needs to be expanded"
 #endif
-#define QSORT_REFENTITYNUM_MASK ( REFENTITYNUM_MASK << QSORT_REFENTITYNUM_SHIFT )
 
 extern	int	gl_filter_min, gl_filter_max;
 
@@ -1592,10 +1610,7 @@ typedef struct trGlobals_s {
 	cubemap_t               *cubemaps;
 #endif
 
-	trRefEntity_t			*currentEntity;
 	trRefEntity_t			worldEntity;		// point currentEntity at this when rendering world
-	int						currentEntityNum;
-	int						shiftedEntityNum;	// currentEntityNum << QSORT_REFENTITYNUM_SHIFT
 	model_t					*currentModel;
 
 	viewParms_t				viewParms;
@@ -1915,13 +1930,15 @@ Ghoul2 Insert End
 //====================================================================
 
 void		R_RenderView( const viewParms_t *parms );
-void		R_AddMD3Surfaces( trRefEntity_t *e );
-void		R_AddPolygonSurfaces( void );
-void		R_DecomposeSort( unsigned sort, int *entityNum, shader_t **shader, int *fogNum, int *dlightMap );
-void		R_AddDrawSurf( surfaceType_t *surface, shader_t *shader, int fogIndex, int dlightMap );
+void		R_AddMD3Surfaces( trRefEntity_t *ent, int entityNum );
+void		R_AddPolygonSurfaces( const trRefdef_t *refdef );
+void		R_DecomposeSort( uint32_t sort, int *entityNum, shader_t **shader, int *cubemap );
+uint32_t	R_CreateSortKey(int entityNum, int sortedShaderIndex, int cubemapIndex);
+
+void		R_AddDrawSurf( surfaceType_t *surface, int entityNum, shader_t *shader, int fogIndex, int dlightMap, int cubemap );
 #ifdef USE_PMLIGHT
-void		R_DecomposeLitSort( unsigned sort, int* entityNum, shader_t** shader, int* fogNum );
-void		R_AddLitSurf( surfaceType_t* surface, shader_t* shader, int fogIndex );
+void		R_DecomposeLitSort( unsigned sort, int* entityNum, shader_t** shader );
+void		R_AddLitSurf( surfaceType_t* surface, int entityNum, shader_t* shader, int fogIndex );
 #endif
 
 shader_t		*GeneratePermanentShader( void );
@@ -2071,6 +2088,7 @@ struct shaderCommands_s
 	shader_t		*shader;
 	float			shaderTime;
 	int				fogNum;
+	int				cubemapIndex;
 	int				numIndexes;
 	int				numVertexes;
 
@@ -2104,7 +2122,7 @@ struct shaderCommands_s
 extern	shaderCommands_t	tess;
 extern	color4ub_t			styleColors[MAX_LIGHT_STYLES];
 
-void RB_BeginSurface( shader_t *shader, int fogNum );
+void RB_BeginSurface( shader_t *shader, int fogNum, int cubemapIndex );
 void RB_EndSurface( void );
 void RB_CheckOverflow( int verts, int indexes );
 #define RB_CHECKOVERFLOW( v , i ) if ( tess.numVertexes + ( v ) >= SHADER_MAX_VERTEXES || tess.numIndexes + ( i ) >= SHADER_MAX_INDEXES ) {RB_CheckOverflow( v , i );}
@@ -2123,8 +2141,8 @@ WORLD MAP
 
 ============================================================
 */
-void R_AddBrushModelSurfaces( trRefEntity_t *e );
-void R_AddWorldSurfaces( void );
+void R_AddBrushModelSurfaces( trRefEntity_t *ent, int entityNum );
+void R_AddWorldSurfaces( viewParms_t *viewParms, trRefdef_t *refdef );
 qboolean R_inPVS( const vec3_t p1, const vec3_t p2, byte *mask );
 
 
@@ -2154,7 +2172,7 @@ void R_SetupEntityLighting( const trRefdef_t *refdef, trRefEntity_t *ent );
 void R_TransformDlights( int count, dlight_t *dl, orientationr_t *ori );
 int R_LightForPoint( vec3_t point, vec3_t ambientLight, vec3_t directedLight, vec3_t lightDir );
 int R_LightDirForPoint( vec3_t point, vec3_t lightDir, vec3_t normal, world_t &world );
-
+int R_CubemapForPoint( const vec3_t point );
 /*
 ============================================================
 
@@ -2303,7 +2321,7 @@ CRenderableSurface():
 #endif
 };
 
-void	R_AddGhoulSurfaces( trRefEntity_t *ent );
+void	R_AddGhoulSurfaces( trRefEntity_t *ent, int entityNum );
 void	RB_SurfaceGhoul( CRenderableSurface *surface );
 /*
 Ghoul2 Insert End

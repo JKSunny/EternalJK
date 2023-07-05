@@ -562,6 +562,9 @@ static void ParseFace( const dsurface_t *ds, const drawVert_t *verts, msurface_t
 	cv->ofsIndices = ofsIndexes;
 
 	
+	surf->cullinfo.type = CULLINFO_PLANE | CULLINFO_BOX;
+	ClearBounds( surf->cullinfo.bounds[0], surf->cullinfo.bounds[1] );
+
 	verts += LittleLong( ds->firstVert );
 
 	for ( i = 0 ; i < numPoints ; i++ ) {
@@ -571,6 +574,8 @@ static void ParseFace( const dsurface_t *ds, const drawVert_t *verts, msurface_t
 			cv->points[i][3+j] = LittleFloat( verts[i].normal[j] );
 #endif
 		}
+
+		AddPointToBounds( cv->points[i], surf->cullinfo.bounds[0], surf->cullinfo.bounds[1] );
 
 		for ( j = 0 ; j < 2 ; j++ ) {
 #ifdef USE_VK_PBR
@@ -620,6 +625,7 @@ static void ParseFace( const dsurface_t *ds, const drawVert_t *verts, msurface_t
 	cv->plane.dist = DotProduct( cv->points[0], cv->plane.normal );
 	SetPlaneSignbits( &cv->plane );
 	cv->plane.type = PlaneTypeForNormal( cv->plane.normal );
+	surf->cullinfo.plane = cv->plane;
 
 #ifdef USE_VK_PBR
 	GenerateFaceTangents( cv );
@@ -751,6 +757,9 @@ static void ParseTriSurf( const dsurface_t *ds, const drawVert_t *verts, msurfac
 	surf->data = (surfaceType_t *)tri;
 
 	// copy vertexes
+	surf->cullinfo.type = CULLINFO_BOX;
+	ClearBounds( surf->cullinfo.bounds[0], surf->cullinfo.bounds[1] );
+
 	ClearBounds( tri->bounds[0], tri->bounds[1] );
 	verts += LittleLong( ds->firstVert );
 	for ( i = 0 ; i < numVerts ; i++ ) {
@@ -759,6 +768,9 @@ static void ParseTriSurf( const dsurface_t *ds, const drawVert_t *verts, msurfac
 			tri->verts[i].normal[j] = LittleFloat( verts[i].normal[j] );
 		}
 		AddPointToBounds( tri->verts[i].xyz, tri->bounds[0], tri->bounds[1] );
+		
+		AddPointToBounds( tri->verts[i].xyz, surf->cullinfo.bounds[0], surf->cullinfo.bounds[1] );
+		
 		for ( j = 0 ; j < 2 ; j++ ) {
 			tri->verts[i].st[j] = LittleFloat( verts[i].st[j] );
 			for(k=0;k<MAXLIGHTMAPS;k++)
@@ -1578,6 +1590,15 @@ static	void R_LoadSurfaces( const lump_t *surfs, const lump_t *verts, const lump
 		switch ( LittleLong( in->surfaceType ) ) {
 		case MST_PATCH:
 			ParseMesh ( in, dv, out, worldData, index );
+			{
+				srfGridMesh_t *surface = (srfGridMesh_t *)out->data;
+
+				out->cullinfo.type = CULLINFO_BOX | CULLINFO_SPHERE;
+				VectorCopy(surface->meshBounds[0], out->cullinfo.bounds[0]);
+				VectorCopy(surface->meshBounds[1], out->cullinfo.bounds[1]);
+				VectorCopy(surface->localOrigin, out->cullinfo.localOrigin);
+				out->cullinfo.radius = surface->meshRadius;
+			}
 			numMeshes++;
 			break;
 		case MST_TRIANGLE_SOUP:
@@ -2425,6 +2446,40 @@ static void R_LoadCubemapEntities( const char *cubemapEntityName )
 	}
 }
 
+static void R_AssignCubemapsToWorldSurfaces( world_t &worldData )
+{
+	msurface_t *surf;
+	uint32_t i;
+
+	//for ( i = 0, sf = s_worldData.surfaces; i < s_worldData.numsurfaces; i++, sf++ ) {
+
+	for ( i = 0; i < worldData.numsurfaces; i++ )
+	{
+		msurface_t *surf = &worldData.surfaces[i];
+
+		vec3_t surfOrigin;
+
+		if ( surf->cullinfo.type & CULLINFO_SPHERE )
+		{
+			VectorCopy( surf->cullinfo.localOrigin, surfOrigin );
+		}
+		else if ( surf->cullinfo.type & CULLINFO_BOX )
+		{
+			surfOrigin[0] = ( surf->cullinfo.bounds[0][0] + surf->cullinfo.bounds[1][0] ) * 0.5f;
+			surfOrigin[1] = ( surf->cullinfo.bounds[0][1] + surf->cullinfo.bounds[1][1] ) * 0.5f;
+			surfOrigin[2] = ( surf->cullinfo.bounds[0][2] + surf->cullinfo.bounds[1][2] ) * 0.5f;
+		}
+		else
+		{
+			//ri.Printf(PRINT_ALL, "surface %d has no cubemap\n", i);
+			continue;
+		}
+
+		surf->cubemapIndex = R_CubemapForPoint( surfOrigin );
+		//ri.Printf(PRINT_ALL, "[2] surface %d has cubemap %d\n", i, surf->cubemapIndex);
+	}
+}
+
 static void R_IssuePendingRenderCommands( void ) {
 	if ( !tr.registered ) {
 		return;
@@ -2660,6 +2715,10 @@ void RE_LoadWorldMap_Actual( const char *name, world_t &worldData, int index )
 						break;
 				}
 			}
+
+		if ( tr.numCubemaps )
+			R_AssignCubemapsToWorldSurfaces( worldData );
+
 		}
 	#endif
 #endif	
