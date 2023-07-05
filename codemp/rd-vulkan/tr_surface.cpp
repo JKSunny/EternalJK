@@ -61,7 +61,7 @@ void RB_CheckOverflow( int verts, int indexes ) {
 		Com_Error(ERR_DROP, "RB_CheckOverflow: indices > MAX (%d > %d)", indexes, SHADER_MAX_INDEXES );
 	}
 
-	RB_BeginSurface(tess.shader, tess.fogNum );
+	RB_BeginSurface(tess.shader, tess.fogNum, tess.cubemapIndex );
 }
 
 /*
@@ -399,7 +399,7 @@ void RB_SurfaceTriangles( const srfTriangles_t *srf ) {
 		// transition to vbo render list
 		if (tess.vboIndex == 0) {
 			RB_EndSurface();
-			RB_BeginSurface(tess.shader, tess.fogNum);
+			RB_BeginSurface( tess.shader, tess.fogNum, tess.cubemapIndex );
 			// set some dummy parameters for RB_EndSurface
 			tess.numIndexes = 1;
 			tess.numVertexes = 0;
@@ -1619,7 +1619,7 @@ void RB_SurfaceFace( srfSurfaceFace_t *surf ) {
 		// transition to vbo render list
 		if (tess.vboIndex == 0) {
 			RB_EndSurface();
-			RB_BeginSurface(tess.shader, tess.fogNum);
+			RB_BeginSurface( tess.shader, tess.fogNum, tess.cubemapIndex );
 			// set some dummy parameters for RB_EndSurface
 			tess.numIndexes = 1;
 			tess.numVertexes = 0;
@@ -1836,7 +1836,7 @@ void RB_SurfaceGrid( srfGridMesh_t *cv ) {
 		// transition to vbo render list
 		if (tess.vboIndex == 0) {
 			RB_EndSurface();
-			RB_BeginSurface(tess.shader, tess.fogNum);
+			RB_BeginSurface( tess.shader, tess.fogNum, tess.cubemapIndex );
 			// set some dummy parameters for RB_EndSurface
 			tess.numIndexes = 1;
 			tess.numVertexes = 0;
@@ -1919,7 +1919,7 @@ void RB_SurfaceGrid( srfGridMesh_t *cv ) {
 				}
 				else {
 					RB_EndSurface();
-					RB_BeginSurface(tess.shader, tess.fogNum);
+					RB_BeginSurface(tess.shader, tess.fogNum, tess.cubemapIndex);
 				}
 			} else {
 				break;
@@ -2308,7 +2308,7 @@ void RB_SurfaceVBOMDVMesh( mdvVBOMesh_t *surf )
 
 	if ( tess.vboIndex == 0 ) {
 		RB_EndSurface();
-		RB_BeginSurface( tess.shader, tess.fogNum );
+		RB_BeginSurface( tess.shader, tess.fogNum, tess.cubemapIndex );
 		// set some dummy parameters for RB_EndSurface
 		tess.numIndexes = 1;
 		tess.numVertexes = 0;

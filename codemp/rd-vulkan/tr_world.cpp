@@ -55,7 +55,7 @@ Returns true if the grid is completely culled away.
 Also sets the clipped hint bit in tess
 =================
 */
-static qboolean	R_CullGrid( srfGridMesh_t *cv ) {
+static qboolean	R_CullGrid( srfGridMesh_t *cv, int entityNum ) {
 	int 	boxCull;
 	int 	sphereCull;
 
@@ -63,7 +63,7 @@ static qboolean	R_CullGrid( srfGridMesh_t *cv ) {
 		return qtrue;
 	}
 
-	if ( tr.currentEntityNum != REFENTITYNUM_WORLD ) {
+	if ( entityNum != REFENTITYNUM_WORLD ) {
 		sphereCull = R_CullLocalPointAndRadius( cv->localOrigin, cv->meshRadius );
 	} else {
 		sphereCull = R_CullPointAndRadius( cv->localOrigin, cv->meshRadius );
@@ -115,7 +115,7 @@ added to the sorting list.
 This will also allow mirrors on both sides of a model without recursion.
 ================
 */
-static qboolean	R_CullSurface( surfaceType_t *surface, shader_t *shader ) {
+static qboolean	R_CullSurface( surfaceType_t *surface, shader_t *shader, int entityNum ) {
 	srfSurfaceFace_t *sface;
 	float			d;
 
@@ -124,7 +124,7 @@ static qboolean	R_CullSurface( surfaceType_t *surface, shader_t *shader ) {
 	}
 
 	if ( *surface == SF_GRID ) {
-		return R_CullGrid( (srfGridMesh_t *)surface );
+		return R_CullGrid( (srfGridMesh_t *)surface, entityNum );
 	}
 
 	if ( *surface == SF_TRIANGLES ) {
@@ -337,7 +337,8 @@ static float g_playerHeight = 0.0f;
 R_AddWorldSurface
 ======================
 */
-static void R_AddWorldSurface( msurface_t *surf, int dlightBits, qboolean noViewCount = qfalse )
+static void R_AddWorldSurface( msurface_t *surf, const trRefEntity_t *entity,
+	int entityNum, int dlightBits, qboolean noViewCount = qfalse )
 {
 	if ( !noViewCount ) 
 	{
@@ -363,7 +364,7 @@ static void R_AddWorldSurface( msurface_t *surf, int dlightBits, qboolean noView
 #ifdef _ALT_AUTOMAP_METHOD
 	if (!tr_drawingAutoMap && R_CullSurface( surf->data, surf->shader ) )
 #else
-	if ( R_CullSurface( surf->data, surf->shader ) )
+	if ( R_CullSurface( surf->data, surf->shader, entityNum ) )
 #endif
 	{
 		return;
@@ -372,7 +373,7 @@ static void R_AddWorldSurface( msurface_t *surf, int dlightBits, qboolean noView
 #ifdef USE_PMLIGHT
 	{
 		surf->vcVisible = tr.viewCount;
-		R_AddDrawSurf( surf->data, surf->shader, surf->fogIndex, 0 );
+		R_AddDrawSurf( surf->data, entityNum, surf->shader, surf->fogIndex, 0, surf->cubemapIndex );
 		return;
 	}
 #endif // USE_PMLIGHT
@@ -467,7 +468,7 @@ static void R_AddWorldSurface( msurface_t *surf, int dlightBits, qboolean noView
 	else
 #endif
 	{
-		R_AddDrawSurf( surf->data, surf->shader, surf->fogIndex, dlightBits );
+		R_AddDrawSurf( surf->data, entityNum, surf->shader, surf->fogIndex, dlightBits, 0 );
 	}
 }
 
@@ -477,7 +478,7 @@ static void R_AddWorldSurface( msurface_t *surf, int dlightBits, qboolean noView
 =============================================================
 */
 #ifdef USE_PMLIGHT
-static void R_AddLitSurface( msurface_t *surf, const dlight_t *light )
+static void R_AddLitSurface( msurface_t *surf, const dlight_t *light, int entityNum )
 {
 	// since we're not worried about offscreen lights casting into the frustum (ATM !!!)
 	// only add the "lit" version of this surface if it was already added to the view
@@ -506,7 +507,7 @@ static void R_AddLitSurface( msurface_t *surf, const dlight_t *light )
 		return;
 	}
 
-	R_AddLitSurf(surf->data, surf->shader, surf->fogIndex);
+	R_AddLitSurf(surf->data, entityNum, surf->shader, surf->fogIndex);
 }
 
 
@@ -570,7 +571,7 @@ static void R_RecursiveLightNode( const mnode_t *node )
 	while (c--) {
 		// the surface may have already been added if it spans multiple leafs
 		surf = *mark;
-		R_AddLitSurface(surf, tr.light);
+		R_AddLitSurface( surf, tr.light, REFENTITYNUM_WORLD );
 		mark++;
 	}
 }
@@ -589,7 +590,7 @@ static void R_RecursiveLightNode( const mnode_t *node )
 R_AddBrushModelSurfaces
 =================
 */
-void R_AddBrushModelSurfaces ( trRefEntity_t *ent ) {
+void R_AddBrushModelSurfaces ( trRefEntity_t *ent, int entityNum ) {
 	bmodel_t		*bmodel;
 	int				clip;
 	const model_t	*pModel;
@@ -607,7 +608,7 @@ void R_AddBrushModelSurfaces ( trRefEntity_t *ent ) {
 
 #ifdef USE_PMLIGHT
 	for ( s = 0; s < bmodel->numSurfaces; s++ ) {
-		R_AddWorldSurface( bmodel->firstSurface + s, 0, qtrue );
+		R_AddWorldSurface( bmodel->firstSurface + s, ent, entityNum, 0, qtrue );
 	}
 
 	R_SetupEntityLighting( &tr.refdef, ent );
@@ -622,7 +623,7 @@ void R_AddBrushModelSurfaces ( trRefEntity_t *ent ) {
 			tr.light = dl;
 
 			for ( s = 0; s < bmodel->numSurfaces; s++ ) {
-				R_AddLitSurface( bmodel->firstSurface + s, dl );
+				R_AddLitSurface( bmodel->firstSurface + s, dl, entityNum );
 			}
 		}
 	}
@@ -1325,7 +1326,7 @@ static void R_RecursiveWorldNode( mnode_t *node, int planeBits, int dlightBits )
 			// the surface may have already been added if it
 			// spans multiple leafs
 			surf = *mark;
-			R_AddWorldSurface( surf, dlightBits );
+			R_AddWorldSurface( surf, nullptr, REFENTITYNUM_WORLD, dlightBits );
 			mark++;
 		}
 	}
@@ -1484,7 +1485,7 @@ static void R_MarkLeaves ( void ) {
 R_AddWorldSurfaces
 =============
 */
-void R_AddWorldSurfaces ( void ) {
+void R_AddWorldSurfaces ( viewParms_t *viewParms, trRefdef_t *refdef ) {
 #ifdef USE_PMLIGHT
 	dlight_t* dl;
 	int i;
@@ -1497,9 +1498,6 @@ void R_AddWorldSurfaces ( void ) {
 	if ( tr.refdef.rdflags & RDF_NOWORLDMODEL ) {
 		return;
 	}
-
-	tr.currentEntityNum = REFENTITYNUM_WORLD;
-	tr.shiftedEntityNum = tr.currentEntityNum << QSORT_REFENTITYNUM_SHIFT;
 
 	// determine which leaves are in the PVS / areamask
 	R_MarkLeaves ();

@@ -1324,7 +1324,7 @@ void R_BuildWorldVBO(msurface_t *surf, int surfCount)
 			ri.Error(ERR_DROP, "Unexpected surface type");
 		}
 		initItem(vbo->items + i + 1);
-		RB_BeginSurface(sf->shader, 0);
+		RB_BeginSurface(sf->shader, 0, sf->cubemapIndex );
 		tess.allowVBO = qfalse; // block execution of VBO path as we need to tesselate geometry
 #ifdef USE_TESS_NEEDS_NORMAL
 		tess.needsNormal = qtrue;
@@ -1481,7 +1481,7 @@ void VBO_Flush(void)
 	{
 		RB_EndSurface();
 		tess.vboIndex = 0;
-		RB_BeginSurface(tess.shader, tess.fogNum);
+		RB_BeginSurface( tess.shader, tess.fogNum, tess.cubemapIndex );
 	}
 }
 

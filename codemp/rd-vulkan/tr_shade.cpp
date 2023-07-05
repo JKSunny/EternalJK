@@ -38,7 +38,7 @@ because a surface may be forced to perform a RB_End due
 to overflow.
 ==============
 */
-void RB_BeginSurface( shader_t *shader, int fogNum ) {
+void RB_BeginSurface( shader_t *shader, int fogNum, int cubemapIndex ) {
 	shader_t *state = (shader->remappedShader) ? shader->remappedShader : shader;
 
 #ifdef USE_VBO
@@ -60,6 +60,7 @@ void RB_BeginSurface( shader_t *shader, int fogNum ) {
 	tess.numVertexes = 0;
 	tess.shader = state;
 	tess.fogNum = fogNum;
+	tess.cubemapIndex = cubemapIndex;
 	tess.xstages = state->stages;
 	tess.numPasses = state->numUnfoggedPasses;
 

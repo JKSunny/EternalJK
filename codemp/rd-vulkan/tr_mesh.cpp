@@ -264,7 +264,7 @@ R_AddMD3Surfaces
 
 =================
 */
-void R_AddMD3Surfaces( trRefEntity_t *ent ) {
+void R_AddMD3Surfaces( trRefEntity_t *ent, int entityNum ) {
 	vec3_t			bounds[2];
 	int				i;
 	mdvModel_t		*model = NULL;
@@ -393,7 +393,7 @@ void R_AddMD3Surfaces( trRefEntity_t *ent ) {
 			&& fogNum == 0
 			&& !(ent->e.renderfx & ( RF_NOSHADOW | RF_DEPTHHACK ) )
 			&& shader->sort == SS_OPAQUE ) {
-			R_AddDrawSurf( (surfaceType_t *)surface, tr.shadowShader, 0, qfalse );
+			R_AddDrawSurf( (surfaceType_t *)surface, entityNum, tr.shadowShader, 0, qfalse, 0 );
 		}
 
 		// projection shadows work fine with personal models
@@ -401,17 +401,17 @@ void R_AddMD3Surfaces( trRefEntity_t *ent ) {
 			&& fogNum == 0
 			&& (ent->e.renderfx & RF_SHADOW_PLANE )
 			&& shader->sort == SS_OPAQUE ) {
-			R_AddDrawSurf( (surfaceType_t *)surface, tr.projectionShadowShader, 0, qfalse );
+			R_AddDrawSurf( (surfaceType_t *)surface, entityNum, tr.projectionShadowShader, 0, qfalse, 0 );
 		}
 
 		// don't add third_person objects if not viewing through a portal
 		if ( !personalModel ) {
 #ifdef USE_VBO_MDV
 			if ( vk.vboMdvActive )
-				R_AddDrawSurf( (surfaceType_t *)&model->vboMeshes[i], shader, fogNum, qfalse );
+				R_AddDrawSurf( (surfaceType_t *)&model->vboMeshes[i], entityNum, shader, fogNum, qfalse, 0 );
 			else
 #endif
-				R_AddDrawSurf( (surfaceType_t *)surface, shader, fogNum, qfalse );
+				R_AddDrawSurf( (surfaceType_t *)surface, entityNum, shader, fogNum, qfalse, 0 );
 
 			
 			tr.needScreenMap |= shader->hasScreenMap;
@@ -422,7 +422,7 @@ void R_AddMD3Surfaces( trRefEntity_t *ent ) {
 			for (n = 0; n < numDlights; n++) {
 				dl = dlights[n];
 				tr.light = dl;
-				R_AddLitSurf((surfaceType_t*)surface, shader, fogNum);
+				R_AddLitSurf((surfaceType_t*)surface, entityNum, shader, fogNum);
 			}
 		}
 #endif

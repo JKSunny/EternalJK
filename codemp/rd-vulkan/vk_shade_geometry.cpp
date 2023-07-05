@@ -2263,10 +2263,12 @@ void RB_StageIteratorGeneric( void )
 		// PBR
 #ifdef USE_VK_PBR
 		// todo:
-		// use the bundles, and proper collapsing
-		// - assign cubemap index per surface
-		// - current situation will do for development purposes
+		// - use the bundles, and proper collapsing
+		// - submit cubemap parallax correction 
+		// current situation will do for development purposes
 		//
+		qboolean has_cubemap = ( tr.numCubemaps && tess.cubemapIndex > 0) ? qtrue : qfalse;
+
 		if ( is_pbr_surface && pStage->vk_pbr_flags ) {
 			vk_update_pbr_descriptor(6, vk.brdflut_image_descriptor);
 				
@@ -2276,14 +2278,12 @@ void RB_StageIteratorGeneric( void )
 			if ( pStage->vk_pbr_flags & PBR_HAS_PHYSICALMAP || pStage->vk_pbr_flags & PBR_HAS_SPECULARMAP )
 				vk_update_pbr_descriptor(8, pStage->physicalMap->descriptor_set);
 
-			if ( !tr.numCubemaps || backEnd.viewParms.targetCube != nullptr ) {
+			if ( !has_cubemap || backEnd.viewParms.targetCube != nullptr ) {
 				vk_update_pbr_descriptor(9, tr.emptyCubemap->descriptor_set);
 				//vk_update_pbr_descriptor(10, tr.emptyCubemap->descriptor_set);
 			}
-			// currently use the frist cubemap for every surface
-			// use the first cubemap index, indexes are not assigned per surface yet
 			else { 
-				vk_update_pbr_descriptor(9, tr.cubemaps[0].prefiltered_image->descriptor_set);
+				vk_update_pbr_descriptor(9, tr.cubemaps[tess.cubemapIndex-1].prefiltered_image->descriptor_set);
 				//vk_update_pbr_descriptor(10, tr.cubemaps[0].irradiance_image->descriptor_set);
 			}
 
