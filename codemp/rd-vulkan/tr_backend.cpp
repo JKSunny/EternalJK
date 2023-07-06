@@ -186,6 +186,41 @@ static void RB_BeginDrawingView( void ) {
 	backEnd.skyRenderedThisView = qfalse;
 }
 
+static void RB_PrepareForEntity( int entityNum, float originalTime )
+{
+	Vk_Depth_Range depthRange = DEPTH_RANGE_NORMAL;
+
+	if ( entityNum != REFENTITYNUM_WORLD )
+	{
+		backEnd.currentEntity = &backEnd.refdef.entities[entityNum];
+		backEnd.refdef.floatTime = originalTime - backEnd.currentEntity->e.shaderTime;
+
+		// set up the transformation matrix
+		R_RotateForEntity(backEnd.currentEntity, &backEnd.viewParms, &backEnd.ori );
+				
+		// No depth at all, very rare but some things for seeing through walls
+		if ( backEnd.currentEntity->e.renderfx & RF_NODEPTH )
+			depthRange = DEPTH_RANGE_ZERO;
+					
+		// hack the depth range to prevent view model from poking into walls
+		if (backEnd.currentEntity->e.renderfx & RF_DEPTHHACK)
+			depthRange = DEPTH_RANGE_WEAPON;
+	}
+	else
+	{
+		backEnd.currentEntity = &tr.worldEntity;
+		backEnd.refdef.floatTime = originalTime;
+
+		backEnd.ori  = backEnd.viewParms.world;
+	}
+
+	// we have to reset the shaderTime as well otherwise image animations on
+	// the world (like water) continue with the wrong frame
+	tess.shaderTime = backEnd.refdef.floatTime - tess.shader->timeOffset;
+	
+	vk_set_depthrange( depthRange );
+}
+
 /*
 ==================
 RB_RenderDrawSurfList
@@ -193,97 +228,71 @@ RB_RenderDrawSurfList
 */
 static void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) 
 {
-
-	uint32_t		i;
-	Vk_Depth_Range	depthRange; 
+	uint32_t		i; 
 	drawSurf_t		*drawSurf;
 	float			originalTime;
-
-#ifdef USE_VANILLA_SHADOWFINISH
-	qboolean		didShadowPass;
-
-	if ( backEnd.isGlowPass )
-	{ //only shadow on initial passes
-		didShadowPass = true;
-	}
-#endif
 
 	// save original time for entity shader offsets
 	originalTime = backEnd.refdef.floatTime;
 	
 	backEnd.currentEntity	= &tr.worldEntity;
-
-	shader_t *oldShader = nullptr;
-	int oldEntityNum = -1;
-	int oldSort = -1;
-	int oldShaderSort = -1;
-	int oldFogNum = -1;
-	int oldDepthRange = 0;
-	int oldPostRender = 0;
-	int oldCubemapIndex = -1;
-
-	depthRange				= DEPTH_RANGE_NORMAL;
-#ifdef USE_VANILLA_SHADOWFINISH
-	didShadowPass			= qfalse;
-#endif
-	
 	backEnd.pc.c_surfaces	+= numDrawSurfs;
-	
-	for (i = 0, drawSurf = drawSurfs; i < numDrawSurfs; i++, drawSurf++)
-	{
-		shader_t *shader;
-		int cubemapIndex;
-		int postRender;
-		int entityNum;
-		int fogNum;
 
+	shader_t *shader;
+	int entityNum, fogNum, cubemapIndex;
+
+	shader_t	*oldShader = nullptr;
+	int			oldEntityNum = -1;
+	uint32_t	oldSort = MAX_UINT;
+	float		oldShaderSort = -1;
+	int			oldFogNum = -1;
+	int			oldCubemapIndex = -1;
+
+	for ( i = 0, drawSurf = drawSurfs; i < numDrawSurfs; i++, drawSurf++ )
+	{
 		R_DecomposeSort( drawSurf->sort, &entityNum, &shader, &cubemapIndex );
 		fogNum = drawSurf->fogIndex;
 
-		if (vk.renderPassIndex == RENDER_PASS_SCREENMAP && entityNum != REFENTITYNUM_WORLD && backEnd.refdef.entities[entityNum].e.renderfx & RF_DEPTHHACK) {
+		if ( vk.renderPassIndex == RENDER_PASS_SCREENMAP && entityNum != REFENTITYNUM_WORLD && backEnd.refdef.entities[entityNum].e.renderfx & RF_DEPTHHACK )
 			continue;
-		}
 
-		// check if we have amy dynamic glow surfaces before dglow pass
+		// check if we have any dynamic glow surfaces before dglow pass
 		if( !backEnd.hasGlowSurfaces && vk.dglowActive && !backEnd.isGlowPass && shader->hasGlow )
 			backEnd.hasGlowSurfaces = qtrue;
 
 		// if we're rendering glowing objects, but this shader has no stages with glow, skip it!
 		if ( backEnd.isGlowPass && !shader->hasGlow )
-		{
-			shader = oldShader;
-			entityNum = oldEntityNum;
 			continue;
-		}
 
-		if (	shader == oldShader &&
-				fogNum == oldFogNum &&
-				cubemapIndex == oldCubemapIndex &&
-				entityNum == oldEntityNum )
+		if (shader == oldShader &&
+			fogNum == oldFogNum &&
+			cubemapIndex == oldCubemapIndex &&
+			entityNum == oldEntityNum )
 		{
 			// fast path, same as previous sort
 			rb_surfaceTable[*drawSurf->surface](drawSurf->surface);
 			continue;
 		}
 
-		oldSort = drawSurf->sort;
+		//oldSort = drawSurf->sort;
 
 		//
 		// change the tess parameters if needed
 		// a "entityMergable" shader is a shader that can have surfaces from seperate
 		// entities merged into a single batch, like smoke and blood puff sprites
 		//if (((oldSort ^ drawSurfs->sort) & ~QSORT_REFENTITYNUM_MASK) || !shader->entityMergable) {
-		if ( (shader != oldShader ||
-				fogNum != oldFogNum ||
-				cubemapIndex != oldCubemapIndex ||
-				(entityNum != oldEntityNum && !shader->entityMergable)) )
+		if (shader != oldShader ||
+			fogNum != oldFogNum ||
+			cubemapIndex != oldCubemapIndex ||
+			( entityNum != oldEntityNum && !shader->entityMergable ) )
 		{		
-			if (oldShader != NULL) {
+			if ( oldShader != NULL )
 				RB_EndSurface();
-			}
+
 #ifdef USE_PMLIGHT
-#define INSERT_POINT SS_FOG
-			if (backEnd.refdef.numLitSurfs && oldShaderSort < INSERT_POINT && shader->sort >= INSERT_POINT) {
+			#define INSERT_POINT SS_FOG
+
+			if ( backEnd.refdef.numLitSurfs && oldShaderSort < INSERT_POINT && shader->sort >= INSERT_POINT ) {
 				RB_LightingPass();
 
 				oldEntityNum = -1; // force matrix setup
@@ -291,13 +300,6 @@ static void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs )
 			oldShaderSort = shader->sort;
 #endif
 
-#ifdef USE_VANILLA_SHADOWFINISH
-			if (!didShadowPass && shader && shader->sort > SS_BANNER)
-			{
-				RB_ShadowFinish();
-				didShadowPass = qtrue;
-			}
-#endif
 			RB_BeginSurface( shader, fogNum, cubemapIndex );
 			oldShader = shader;
 			oldFogNum = fogNum;
@@ -309,68 +311,30 @@ static void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs )
 		//
 		// change the modelview matrix if needed
 		//
-		if (entityNum != oldEntityNum)
+		if ( entityNum != oldEntityNum )
 		{
-			depthRange = DEPTH_RANGE_NORMAL;
-
-			if (entityNum != REFENTITYNUM_WORLD)
-			{
-				backEnd.currentEntity = &backEnd.refdef.entities[entityNum];
-				backEnd.refdef.floatTime = originalTime - backEnd.currentEntity->e.shaderTime;
-
-				// set up the transformation matrix
-				R_RotateForEntity(backEnd.currentEntity, &backEnd.viewParms, &backEnd.ori );
-
-				if ( backEnd.currentEntity->e.renderfx & RF_NODEPTH ) {
-					// No depth at all, very rare but some things for seeing through walls
-					depthRange = DEPTH_RANGE_ZERO;
-				}
-
-				if (backEnd.currentEntity->e.renderfx & RF_DEPTHHACK) {
-					// hack the depth range to prevent view model from poking into walls
-					depthRange = DEPTH_RANGE_WEAPON;
-				}
-			}
-			else
-			{
-				backEnd.currentEntity = &tr.worldEntity;
-				backEnd.refdef.floatTime = originalTime;
-				backEnd.ori  = backEnd.viewParms.world;
-			}
-
-			// we have to reset the shaderTime as well otherwise image animations on
-			// the world (like water) continue with the wrong frame
-			tess.shaderTime = backEnd.refdef.floatTime - tess.shader->timeOffset;
+			RB_PrepareForEntity( entityNum, originalTime );
 
 			Com_Memcpy(vk_world.modelview_transform, backEnd.ori.modelViewMatrix, 64);
-			vk_set_depthrange( depthRange );
 			vk_update_mvp(NULL);
+
 			oldEntityNum = entityNum;
 		}
 
 		// add the triangles for this surface
-		rb_surfaceTable[*drawSurf->surface](drawSurf->surface);
+		rb_surfaceTable[*drawSurf->surface]( drawSurf->surface );
 	}
 
 	// draw the contents of the last shader batch
-	if (oldShader != NULL) {
+	if ( oldShader != NULL )
 		RB_EndSurface();
-	}
 
 	backEnd.refdef.floatTime = originalTime;
 
 	// go back to the world modelview matrix
-	Com_Memcpy(vk_world.modelview_transform, backEnd.viewParms.world.modelViewMatrix, 64);
-	//vk_update_mvp();
-	vk_set_depthrange(DEPTH_RANGE_NORMAL);
-
-#ifdef USE_VANILLA_SHADOWFINISH
-	if (!didShadowPass)
-	{
-		RB_ShadowFinish();
-		didShadowPass = qtrue;
-	}
-#endif 
+	Com_Memcpy( vk_world.modelview_transform, backEnd.viewParms.world.modelViewMatrix, 64 );
+	
+	vk_set_depthrange( DEPTH_RANGE_NORMAL );
 }
 
 #ifdef USE_PMLIGHT
@@ -399,41 +363,41 @@ static void RB_BeginDrawingLitSurfs( void )
 RB_RenderLitSurfList
 ==================
 */
-static void RB_RenderLitSurfList( dlight_t *dl ) {
-	shader_t		*shader, *oldShader;
-	int				fogNum;
-	int				entityNum, oldEntityNum;
-	Vk_Depth_Range	depthRange;
+static void RB_RenderLitSurfList( dlight_t *dl ) 
+{
+	// keep using fast path sort compare on litSurfs for now, ignore fog
 	const litSurf_t *litSurf;
-	unsigned int	oldSort;
-	double			originalTime; // -EC- 
+	float			originalTime;
 
 	// save original time for entity shader offsets
 	originalTime = backEnd.refdef.floatTime;
 
-	// draw everything
-	oldEntityNum			= -1;
 	backEnd.currentEntity	= &tr.worldEntity;
-	oldShader				= NULL;
-	oldSort					= MAX_UINT;
-	depthRange				= DEPTH_RANGE_NORMAL;
 
 	tess.dlightUpdateParams = qtrue;
+	
+	shader_t *shader;
+	int entityNum, fogNum;
 
-	for (litSurf = dl->head; litSurf; litSurf = litSurf->next) {
+	shader_t	*oldShader = nullptr;
+	int			oldEntityNum = -1;
+	uint32_t	oldSort = MAX_UINT;
+	//float		oldShaderSort = -1;
+	//int		oldFogNum = -1;	
 
-		if (litSurf->sort == oldSort) {
+	for ( litSurf = dl->head; litSurf; litSurf = litSurf->next ) 
+	{
+		if ( litSurf->sort == oldSort ) {
 			// fast path, same as previous sort
 			rb_surfaceTable[*litSurf->surface](litSurf->surface);
 			continue;
 		}
 
-		R_DecomposeLitSort(litSurf->sort, &entityNum, &shader);
+		R_DecomposeLitSort( litSurf->sort, &entityNum, &shader );
 		fogNum = litSurf->fogIndex;
 
-		if (vk.renderPassIndex == RENDER_PASS_SCREENMAP && entityNum != REFENTITYNUM_WORLD && backEnd.refdef.entities[entityNum].e.renderfx & RF_DEPTHHACK) {
+		if ( vk.renderPassIndex == RENDER_PASS_SCREENMAP && entityNum != REFENTITYNUM_WORLD && backEnd.refdef.entities[entityNum].e.renderfx & RF_DEPTHHACK )
 			continue;
-		}
 
 		// anything BEFORE opaque is sky/portal, anything AFTER it should never have been added
 		//assert( shader->sort == SS_OPAQUE );
@@ -445,10 +409,11 @@ static void RB_RenderLitSurfList( dlight_t *dl ) {
 		// change the tess parameters if needed
 		// a "entityMergable" shader is a shader that can have surfaces from seperate
 		// entities merged into a single batch, like smoke and blood puff sprites
-		if (((oldSort ^ litSurf->sort) & ~QSORT_ENTITYNUM_MASK) || !shader->entityMergable) {
-			if (oldShader != NULL) {
+		if ( ((oldSort ^ litSurf->sort) & ~QSORT_ENTITYNUM_MASK) || !shader->entityMergable ) 
+		{
+			if ( oldShader != NULL )
 				RB_EndSurface();
-			}
+
 			RB_BeginSurface( shader, fogNum, 0 );
 			oldShader = shader;
 		}
@@ -458,48 +423,16 @@ static void RB_RenderLitSurfList( dlight_t *dl ) {
 		//
 		// change the modelview matrix if needed
 		//
-		if (entityNum != oldEntityNum) {
-			depthRange = DEPTH_RANGE_NORMAL;
-
-			if (entityNum != REFENTITYNUM_WORLD) {
-				backEnd.currentEntity = &backEnd.refdef.entities[entityNum];
-
-				/*if (backEnd.currentEntity->intShaderTime)
-					backEnd.refdef.floatTime = originalTime - (double)(backEnd.currentEntity->e.shaderTime.i) * 0.001;
-				else*/
-				backEnd.refdef.floatTime = originalTime - (double)backEnd.currentEntity->e.shaderTime;
-
-				// set up the transformation matrix
-				R_RotateForEntity(backEnd.currentEntity, &backEnd.viewParms, &backEnd.ori );
-
-				if ( backEnd.currentEntity->e.renderfx & RF_NODEPTH ) {
-					// No depth at all, very rare but some things for seeing through walls
-					depthRange = DEPTH_RANGE_ZERO;
-				}
-
-				if (backEnd.currentEntity->e.renderfx & RF_DEPTHHACK) {
-					// hack the depth range to prevent view model from poking into walls
-					depthRange = DEPTH_RANGE_WEAPON;
-				}
-			}
-			else {
-				backEnd.currentEntity = &tr.worldEntity;
-				backEnd.refdef.floatTime = originalTime;
-				backEnd.ori = backEnd.viewParms.world;
-			}
-
-			// we have to reset the shaderTime as well otherwise image animations on
-			// the world (like water) continue with the wrong frame
-			tess.shaderTime = backEnd.refdef.floatTime - tess.shader->timeOffset;
+		if ( entityNum != oldEntityNum ) 
+		{
+			RB_PrepareForEntity( entityNum, originalTime );
 
 			// set up the dynamic lighting
-			R_TransformDlights(1, dl, &backEnd.ori );
+			R_TransformDlights( 1, dl, &backEnd.ori );
 			tess.dlightUpdateParams = qtrue;
 
-			vk_set_depthrange( depthRange );
-
-			Com_Memcpy(vk_world.modelview_transform, backEnd.ori.modelViewMatrix, 64);
-			vk_update_mvp(NULL);
+			Com_Memcpy( vk_world.modelview_transform, backEnd.ori.modelViewMatrix, 64 );
+			vk_update_mvp( NULL );
 
 			oldEntityNum = entityNum;
 		}
@@ -509,17 +442,15 @@ static void RB_RenderLitSurfList( dlight_t *dl ) {
 	}
 
 	// draw the contents of the last shader batch
-	if (oldShader != NULL) {
+	if ( oldShader != NULL )
 		RB_EndSurface();
-	}
 
 	backEnd.refdef.floatTime = originalTime;
 
 	// go back to the world modelview matrix
-	Com_Memcpy(vk_world.modelview_transform, backEnd.viewParms.world.modelViewMatrix, 64);
-	//vk_update_mvp();
+	Com_Memcpy( vk_world.modelview_transform, backEnd.viewParms.world.modelViewMatrix, 64 );
 
-	vk_set_depthrange(DEPTH_RANGE_NORMAL);
+	vk_set_depthrange( DEPTH_RANGE_NORMAL );
 }
 #endif // USE_PMLIGHT
 
@@ -895,9 +826,7 @@ const void	*RB_DrawSurfs( const void *data ) {
 		RB_DrawSun( 0.1f, tr.sunShader );
 	}
 
-#ifndef USE_VANILLA_SHADOWFINISH
 	RB_ShadowFinish();
-#endif
 
 	RB_RenderFlares();
 
