@@ -1406,7 +1406,7 @@ void R_AddLitSurf( surfaceType_t *surface, int entityNum, shader_t *shader, int 
 
 	litsurf = &tr.refdef.litSurfs[tr.refdef.numLitSurfs++];
 
-	litsurf->sort = R_CreateSortKey( entityNum, tr.defaultShader->sortedIndex, 0 );
+	litsurf->sort = R_CreateSortKey( entityNum, shader->sortedIndex, 0 );
 	litsurf->surface = surface;
 	litsurf->fogIndex = fogIndex;
 

@@ -2448,14 +2448,12 @@ static void R_LoadCubemapEntities( const char *cubemapEntityName )
 
 static void R_AssignCubemapsToWorldSurfaces( world_t &worldData )
 {
-	msurface_t *surf;
 	uint32_t i;
-
-	//for ( i = 0, sf = s_worldData.surfaces; i < s_worldData.numsurfaces; i++, sf++ ) {
+	msurface_t *surf;
 
 	for ( i = 0; i < worldData.numsurfaces; i++ )
 	{
-		msurface_t *surf = &worldData.surfaces[i];
+		surf = &worldData.surfaces[i];
 
 		vec3_t surfOrigin;
 
