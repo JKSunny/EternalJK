@@ -363,7 +363,7 @@ static void R_AddWorldSurface( msurface_t *surf, const trRefEntity_t *entity,
 #ifdef USE_PMLIGHT
 	{
 		surf->vcVisible = tr.viewCount;
-		R_AddDrawSurf( surf->data, surf->shader, surf->fogIndex, surf->cubemapIndex );
+		R_AddDrawSurf( surf->data, entityNum, surf->shader, surf->fogIndex, surf->cubemapIndex );
 
 #ifdef USE_VK_IMGUI
 		if ( vk_imgui_outline_selected() ) {
@@ -375,7 +375,7 @@ static void R_AddWorldSurface( msurface_t *surf, const trRefEntity_t *entity,
 				 ( !merge_shaders && debug_shader && debug_shader == surf->shader ) ||
 				 ( merge_shaders && debug_shader && !strcmp( debug_shader->name, surf->shader->name ) ) )
 			{
-				R_AddDrawSurf( surf->data, tr.outlineShader, surf->fogIndex, surf->cubemapIndex );
+				R_AddDrawSurf( surf->data, entityNum, tr.outlineShader, surf->fogIndex, 0 );
 			}
 		}
 #endif

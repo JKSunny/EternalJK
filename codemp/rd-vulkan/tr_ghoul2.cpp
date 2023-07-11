@@ -2529,7 +2529,7 @@ void RenderSurfaces( CRenderSurface &RS, const trRefEntity_t *ent, int entityNum
 					 ( !merge_shaders && debug_shader && debug_shader == shader ) ||
 					 ( merge_shaders && debug_shader && !strcmp( debug_shader->name, shader->name ) ) )
 				{
-					R_AddDrawSurf( (surfaceType_t *)newSurf, tr.outlineShader, RS.fogNum, qfalse );
+					R_AddDrawSurf( (surfaceType_t *)newSurf, entityNum, tr.outlineShader, RS.fogNum, qfalse );
 				}
 			}
 #endif
