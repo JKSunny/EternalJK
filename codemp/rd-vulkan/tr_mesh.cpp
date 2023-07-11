@@ -273,6 +273,7 @@ void R_AddMD3Surfaces( trRefEntity_t *ent, int entityNum ) {
 	int				cull;
 	int				lod;
 	int				fogNum;
+	int				cubemapIndex;
 	qboolean		personalModel;
 #ifdef USE_PMLIGHT
 	dlight_t		*dl;
@@ -346,6 +347,8 @@ void R_AddMD3Surfaces( trRefEntity_t *ent, int entityNum ) {
 	//
 	fogNum = R_ComputeFogNum( model, ent );
 
+	cubemapIndex = R_CubemapForPoint( ent->e.origin );
+
 	//
 	// draw all surfaces
 	//
@@ -407,8 +410,8 @@ void R_AddMD3Surfaces( trRefEntity_t *ent, int entityNum ) {
 		// don't add third_person objects if not viewing through a portal
 		if ( !personalModel ) {
 #ifdef USE_VBO_MDV
-			if ( vk.vboMdvActive )
-				R_AddDrawSurf( (surfaceType_t *)&model->vboMeshes[i], entityNum, shader, fogNum, 0 );
+			if ( vk.vboMdvActive ) 
+				R_AddDrawSurf( (surfaceType_t *)&model->vboMeshes[i], entityNum, shader, fogNum, cubemapIndex );
 			else
 #endif
 				R_AddDrawSurf( (surfaceType_t *)surface, entityNum, shader, fogNum, 0 );
