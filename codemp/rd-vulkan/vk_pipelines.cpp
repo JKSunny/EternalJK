@@ -2152,14 +2152,12 @@ void vk_create_dglow_pipelines( void )
 
 void vk_update_post_process_pipelines( void )
 {
-    if ( vk.fboActive ) {
-        // update gamma shader
-        vk_create_post_process_pipeline(0, 0, 0);
+    // update gamma shader
+    vk_create_post_process_pipeline(0, 0, 0);
 
-        if ( vk.capture.image ) {
-            // update capture pipeline
-            vk_create_post_process_pipeline( 3, gls.captureWidth, gls.captureHeight );
-        }
+    if ( vk.capture.image ) {
+        // update capture pipeline
+        vk_create_post_process_pipeline( 3, gls.captureWidth, gls.captureHeight );
     }
 }
 

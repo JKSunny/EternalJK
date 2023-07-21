@@ -1825,7 +1825,6 @@ extern cvar_t	*r_device;
 extern cvar_t	*r_ext_multisample;
 extern cvar_t	*r_ext_supersample;
 extern cvar_t	*r_ext_alpha_to_coverage;
-extern cvar_t	*r_fbo;
 extern cvar_t	*r_hdr;
 extern cvar_t	*r_mapGreyScale;
 extern cvar_t	*r_ext_max_anisotropy;
@@ -1846,11 +1845,7 @@ extern cvar_t	*r_dlightIntensity;		// 0.1 - 1.0
 extern cvar_t	*r_dlightSaturation;	// 0.0 - 1.0
 extern cvar_t	*r_roundImagesDown;
 extern cvar_t	*r_nomip;				// apply picmip only on worldspawn textures
-#ifdef USE_VBO
-extern cvar_t	*r_vbo;
-#endif
 #ifdef USE_VK_PBR
-extern cvar_t	*r_pbr;
 extern cvar_t	*r_normalMapping;
 extern cvar_t	*r_specularMapping;
 extern cvar_t	*r_baseNormalX;

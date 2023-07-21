@@ -67,7 +67,7 @@ static void vk_set_render_scale( void )
 		vk.windowAdjusted = qtrue;
 	}
 
-	if (r_fbo->integer && r_ext_supersample->integer && !r_renderScale->integer)
+	if (r_ext_supersample->integer && !r_renderScale->integer)
 	{
 		vk.blitFilter = GL_LINEAR;
 	}
@@ -319,7 +319,6 @@ void vk_create_window( void ) {
 
 		//ri.CL_SetScaling(1.0, glConfig.vidWidth, glConfig.vidHeight);	// consolefont and avi capture
 
-		if (r_fbo->integer)
 		{
 			if (r_renderScale->integer){
 				glConfig.vidWidth = r_renderWidth->integer;
@@ -434,38 +433,24 @@ void vk_initialize( void )
 
 	vk_set_render_scale();
 
-	if ( r_fbo->integer )
-		vk.fboActive = qtrue;		
+	vk.fboActive = qtrue;		
 
-#ifdef USE_VBO
-	if ( r_vbo->integer )
-		vk.vboWorldActive = qtrue;
-#ifdef USE_VBO_GHOUL2
-	if ( r_vbo->integer >= 2 )
-		vk.vboGhoul2Active = qtrue;
-#endif
-#ifdef USE_VBO_MDV
-	if ( r_vbo->integer >= 3 )
-		vk.vboMdvActive = qtrue; 
-#endif
-#endif
+	vk.vboWorldActive = qtrue;
+	vk.vboGhoul2Active = qtrue;
+	vk.vboMdvActive = qtrue; 
 
-#ifdef USE_VK_PBR
-	if ( vk.fboActive && r_normalMapping->integer )
+	if ( r_normalMapping->integer )
 		vk.normalMappingActive = qtrue;
 
-	if ( vk.fboActive && r_specularMapping->integer )
+	if ( r_specularMapping->integer )
 		vk.specularMappingActive = qtrue;
 
-	// if another pbr input attachment has been added
-	// up the maxBoundDescriptorSets here as well
 	if( ( !vk.normalMappingActive && !vk.specularMappingActive ) || vk.maxBoundDescriptorSets < 11 )
 		vk.useFastLight = qtrue;
 
 #ifdef VK_CUBEMAP
 	if ( r_cubeMapping->integer )
 		vk.cubemapActive = qtrue;
-#endif
 #endif
 
 	//if (r_ext_multisample->integer && !r_ext_supersample->integer)
@@ -491,11 +476,11 @@ void vk_initialize( void )
 	ri.Printf( PRINT_ALL, "Anisotropy max: %dx, using %dx\n\n", r_ext_max_anisotropy->integer, r_ext_texture_filter_anisotropic->integer );
 		
 	// Bloom
-	if ( vk.fboActive && r_bloom->integer )
+	if ( r_bloom->integer )
 		vk.bloomActive = qtrue;
 
 	// Dynamic glow
-	if( vk.fboActive && glConfig.maxActiveTextures >= 4 && r_DynamicGlow->integer )
+	if( glConfig.maxActiveTextures >= 4 && r_DynamicGlow->integer )
 		vk.dglowActive = qtrue;
 
 	// Screenmap

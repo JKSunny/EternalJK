@@ -114,19 +114,6 @@ void vk_create_swapchain( VkPhysicalDevice physical_device, VkDevice device,
 
     vk.fastSky = qtrue;
 
-    if ( !vk.fboActive ) {
-        // VK_IMAGE_USAGE_TRANSFER_DST_BIT is required by image clear operations.
-        if ( ( surface_caps.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_DST_BIT ) == 0 ) {
-            vk.fastSky = qfalse;
-            ri.Printf( PRINT_WARNING, "VK_IMAGE_USAGE_TRANSFER_DST_BIT is not supported by the swapchain\n" );
-        }
-
-        // VK_IMAGE_USAGE_TRANSFER_SRC_BIT is required in order to take screenshots.
-        if ( ( surface_caps.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_SRC_BIT ) == 0 ) {
-            ri.Error( ERR_FATAL, "create_swapchain: VK_IMAGE_USAGE_TRANSFER_SRC_BIT is not supported by the swapchain" );
-        }
-    }
-
     // determine present mode and swapchain image count
     VK_CHECK( qvkGetPhysicalDeviceSurfacePresentModesKHR( physical_device, surface, &present_mode_count, NULL ) );
 
@@ -200,10 +187,6 @@ void vk_create_swapchain( VkPhysicalDevice physical_device, VkDevice device,
     desc.imageExtent = image_extent;
     desc.imageArrayLayers = 1;
     desc.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-
-    if ( !vk.fboActive )
-        desc.imageUsage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-
     desc.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
     desc.queueFamilyIndexCount = 0;
     desc.pQueueFamilyIndices = NULL;

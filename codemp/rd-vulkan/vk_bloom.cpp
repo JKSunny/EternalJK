@@ -30,7 +30,7 @@ qboolean vk_bloom( void )
 	if ( vk.renderPassIndex == RENDER_PASS_SCREENMAP )
 		return qfalse;
 
-	if ( backEnd.doneBloom || !backEnd.doneSurfaces || !vk.fboActive )
+	if ( backEnd.doneBloom || !backEnd.doneSurfaces )
 		return qfalse;
 
 	vk_end_render_pass(); // end main

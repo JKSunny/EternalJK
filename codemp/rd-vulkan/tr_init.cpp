@@ -185,7 +185,6 @@ cvar_t	*r_stencilbits;
 cvar_t	*r_ext_multisample;
 cvar_t	*r_ext_supersample;
 cvar_t	*r_ext_alpha_to_coverage;
-cvar_t	*r_fbo;
 cvar_t	*r_hdr;
 cvar_t	*r_ext_max_anisotropy;
 cvar_t	*r_mapGreyScale;
@@ -208,11 +207,7 @@ cvar_t	*r_dlightIntensity;
 cvar_t	*r_dlightSaturation;
 cvar_t	*r_roundImagesDown;
 cvar_t	*r_nomip;
-#ifdef USE_VBO
-cvar_t	*r_vbo;
-#endif
 #ifdef USE_VK_PBR
-cvar_t	*r_pbr;
 cvar_t  *r_normalMapping;
 cvar_t  *r_specularMapping;
 cvar_t  *r_baseNormalX;
@@ -797,7 +792,7 @@ void R_Register( void )
 	r_ext_texture_filter_anisotropic	= ri.Cvar_Get( "r_ext_texture_filter_anisotropic",	"16",						CVAR_ARCHIVE_ND|CVAR_LATCH, "" );
 	r_gammaShaders						= ri.Cvar_Get( "r_gammaShaders",					"1",						CVAR_ARCHIVE_ND|CVAR_LATCH, "Set gamma using pixel shaders inside the game window only." );
 	r_environmentMapping				= ri.Cvar_Get( "r_environmentMapping",				"1",						CVAR_ARCHIVE_ND, "" );
-	r_DynamicGlow						= ri.Cvar_Get( "r_DynamicGlow",						"0",						CVAR_ARCHIVE_ND|CVAR_LATCH, "Enable dynamic glow effect\nRequires " S_COLOR_CYAN "\\r_fbo 1" );
+	r_DynamicGlow						= ri.Cvar_Get( "r_DynamicGlow",						"0",						CVAR_ARCHIVE_ND|CVAR_LATCH, "Enable dynamic glow effect" );
 	r_DynamicGlowPasses					= ri.Cvar_Get( "r_DynamicGlowPasses",				"5",						CVAR_ARCHIVE_ND, "" );
 	r_DynamicGlowDelta					= ri.Cvar_Get( "r_DynamicGlowDelta",				"0.8f",						CVAR_ARCHIVE_ND, "" );
 	r_DynamicGlowIntensity				= ri.Cvar_Get( "r_DynamicGlowIntensity",			"1.13f",					CVAR_ARCHIVE_ND, "" );
@@ -926,7 +921,6 @@ void R_Register( void )
 	ri.Cvar_CheckRange(r_ext_supersample, 0, 1, qtrue);
 	r_ext_alpha_to_coverage				= ri.Cvar_Get("r_ext_alpha_to_coverage",			"0",						CVAR_ARCHIVE_ND | CVAR_LATCH, "");
 	ri.Cvar_CheckRange(r_ext_alpha_to_coverage, 0, 1, qtrue);
-	r_fbo								= ri.Cvar_Get("r_fbo",								"0",						CVAR_ARCHIVE_ND | CVAR_LATCH, "");
 	r_hdr								= ri.Cvar_Get("r_hdr",								"1",						CVAR_ARCHIVE | CVAR_LATCH, "");
 	r_mapGreyScale						= ri.Cvar_Get("r_mapGreyScale",						"0",						CVAR_ARCHIVE_ND | CVAR_LATCH, "");
 	ri.Cvar_CheckRange(r_mapGreyScale, -1, 1, qfalse);
@@ -934,11 +928,11 @@ void R_Register( void )
 	ri.Cvar_CheckRange(r_ext_max_anisotropy, 1, 16, qtrue);
 	r_greyscale							= ri.Cvar_Get("r_greyscale",						"0",						CVAR_ARCHIVE_ND, "");
 	ri.Cvar_CheckRange(r_greyscale, -1, 1, qfalse);
-	r_dither							= ri.Cvar_Get("r_dither",							"0",						CVAR_ARCHIVE_ND, "Set dithering mode:\n 0 - disabled\n 1 - ordered\nRequires " S_COLOR_CYAN "\\r_fbo 1");
+	r_dither							= ri.Cvar_Get("r_dither",							"0",						CVAR_ARCHIVE_ND, "Set dithering mode:\n 0 - disabled\n 1 - ordered");
 	ri.Cvar_CheckRange(r_dither, 0, 1, qtrue);
-	r_presentBits						= ri.Cvar_Get("r_presentBits",						"24",						CVAR_ARCHIVE_ND | CVAR_LATCH, "Select color bits used for presentation surfaces\nRequires " S_COLOR_CYAN "\\r_fbo 1");
+	r_presentBits						= ri.Cvar_Get("r_presentBits",						"24",						CVAR_ARCHIVE_ND | CVAR_LATCH, "Select color bits used for presentation surfaces");
 	ri.Cvar_CheckRange(r_presentBits, 16, 30, qtrue);
-	r_bloom								= ri.Cvar_Get("r_bloom",							"0",						CVAR_ARCHIVE_ND | CVAR_LATCH, "Enable bloom effect\nRequires " S_COLOR_CYAN "\\r_fbo 1");
+	r_bloom								= ri.Cvar_Get("r_bloom",							"0",						CVAR_ARCHIVE_ND | CVAR_LATCH, "Enable bloom effect");
 	ri.Cvar_CheckRange(r_bloom, 0, 1, qtrue);
 	r_bloom_threshold					= ri.Cvar_Get("r_bloom_threshold",					"0.05",						CVAR_ARCHIVE_ND | CVAR_LATCH, "");
 	ri.Cvar_CheckRange(r_bloom_threshold, 0.01f, 1, qfalse);
@@ -959,11 +953,7 @@ void R_Register( void )
 	r_roundImagesDown					= ri.Cvar_Get("r_roundImagesDown",					"1",						CVAR_ARCHIVE_ND | CVAR_LATCH, "");
 	r_nomip								= ri.Cvar_Get("r_nomip",							"0",						CVAR_ARCHIVE | CVAR_LATCH, "Apply picmip only on worldspawn textures");
 	ri.Cvar_CheckRange(r_nomip, 0, 1, qtrue);
-#ifdef USE_VBO
-	r_vbo = ri.Cvar_Get("r_vbo",															"0",						CVAR_ARCHIVE | CVAR_LATCH, "Cache static surfaces:\n 0 - off\n 1 - world\n 2 - world + ghoul2\n 3 - world + ghoul2 + md3");
-#endif
 #ifdef USE_VK_PBR
-	r_pbr								= ri.Cvar_Get("r_pbr",								"0",						CVAR_ARCHIVE_ND | CVAR_LATCH, "Enables Physically Based Rendering. \nRequires " S_COLOR_CYAN "\\r_fbo 1 \n" S_COLOR_GREEN "Optional " S_COLOR_CYAN "\\r_vbo 1 " S_COLOR_GREEN "for static world geometry " S_COLOR_WHITE "*adviced\n" S_COLOR_GREEN "Optional " S_COLOR_CYAN "\\r_vbo 2 or 3 " S_COLOR_GREEN "for additional ghoul2 and md3 models" );
 	r_normalMapping						= ri.Cvar_Get("r_normalMapping",					"1",						CVAR_ARCHIVE | CVAR_LATCH, "Disable/enable normal mapping" );
 	r_specularMapping					= ri.Cvar_Get("r_specularMapping",					"1",						CVAR_ARCHIVE | CVAR_LATCH, "Disable/enable specular mapping" );	
 	r_baseNormalX						= ri.Cvar_Get("r_baseNormalX",						"1.0",						CVAR_ARCHIVE | CVAR_LATCH, "" );

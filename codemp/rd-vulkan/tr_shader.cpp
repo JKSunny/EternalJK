@@ -1390,10 +1390,10 @@ static qboolean ParseStage(shaderStage_t *stage, const char **text)
 
 			if (!Q_stricmp(token, "screenMap")) {
 				flags = IMGFLAG_NONE;
-				if (vk.fboActive) {
-					stage->bundle[0].isScreenMap = qtrue;
-					shader.hasScreenMap = 1;
-				}
+				
+				stage->bundle[0].isScreenMap = qtrue;
+				shader.hasScreenMap = 1;
+
 			}
 			else {
 				flags = IMGFLAG_CLAMPTOEDGE;

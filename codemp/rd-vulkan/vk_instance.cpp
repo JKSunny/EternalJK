@@ -331,10 +331,6 @@ static void vk_create_instance( void )
 
 static VkFormat get_hdr_format( VkFormat base_format )
 {
-    if (r_fbo->integer == 0) {
-        return base_format;
-    }
-
     switch (r_hdr->integer) {
         case -1: 
             return VK_FORMAT_B4G4R4A4_UNORM_PACK16;
@@ -449,14 +445,7 @@ qboolean vk_select_surface_format( VkPhysicalDevice physical_device, VkSurfaceKH
     VK_CHECK(qvkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &format_count, candidates));
 
 	get_present_format(24, &base_bgr, &base_rgb);
-
-	if (r_fbo->integer) {
-		get_present_format(r_presentBits->integer, &ext_bgr, &ext_rgb);
-	}
-	else {
-		ext_bgr = base_bgr;
-		ext_rgb = base_rgb;
-	}
+	get_present_format(r_presentBits->integer, &ext_bgr, &ext_rgb);
 
 	if (format_count == 1 && candidates[0].format == VK_FORMAT_UNDEFINED) {
 		// special case that means we can choose any format
@@ -485,10 +474,6 @@ qboolean vk_select_surface_format( VkPhysicalDevice physical_device, VkSurfaceKH
 		if (i == format_count) {
 			vk.present_format = vk.base_format;
 		}
-	}
-
-	if (!r_fbo->integer) {
-		vk.present_format = vk.base_format;
 	}
 
     free(candidates);
