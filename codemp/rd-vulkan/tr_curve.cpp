@@ -227,13 +227,11 @@ static void MakeMeshNormals( int width, int height, srfVert_t ctrl[MAX_GRID_SIZE
 				VectorAdd( normal, sum, sum );
 
 #ifdef USE_VK_PBR
-				if( vk.pbrActive ) {
-					R_CalcTangents( tangent, binormal,
-							vec3_origin, around[ k ], around[ ( k + 1 ) & 7 ],
-							dv->st, st[ k ], st[ ( k + 1 ) & 7 ] );
-					VectorAdd( tangent, sumTangents, sumTangents );
-					VectorAdd( binormal, sumBinormals, sumBinormals );
-				}
+				R_CalcTangents( tangent, binormal,
+						vec3_origin, around[ k ], around[ ( k + 1 ) & 7 ],
+						dv->st, st[ k ], st[ ( k + 1 ) & 7 ] );
+				VectorAdd( tangent, sumTangents, sumTangents );
+				VectorAdd( binormal, sumBinormals, sumBinormals );
 #endif
 				count++;
 			}
@@ -246,8 +244,7 @@ static void MakeMeshNormals( int width, int height, srfVert_t ctrl[MAX_GRID_SIZE
 			}
 
 #ifdef USE_VK_PBR
-			if( vk.pbrActive )
-				R_TBNtoQtangents( sumTangents, sumBinormals, dv->normal, dv->qtangent );
+			R_TBNtoQtangents( sumTangents, sumBinormals, dv->normal, dv->qtangent );
 #endif
 		}
 	}

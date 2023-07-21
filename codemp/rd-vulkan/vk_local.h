@@ -119,12 +119,12 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define TESS_ENV   						( 512 )	// mark shader stage with environment mapping
 
 #ifdef USE_VK_PBR
-#define TESS_PBR   						( 1024 ) // PBR shader variant, qtangent vertex attribute and eyePos uniform
+#define TESS_QTANGENT   				( 1024 ) // PBR shader variant, qtangent vertex attribute and eyePos uniform
+#define TESS_LIGHTDIR   				( 1024 ) // PBR shader variant, qtangent vertex attribute and eyePos uniform
 
 #define PBR_HAS_NORMALMAP				( 1 )
 #define PBR_HAS_PHYSICALMAP				( 2 )
 #define PBR_HAS_SPECULARMAP				( 4 )
-#define PBR_HAS_LIGHTMAP				( 8 )
 
 #define PHYS_NONE						( 1 )
 #define PHYS_RMO						( 2 )
@@ -137,6 +137,10 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define PHYS_NORMALHEIGHT				( 256 )	
 #define PHYS_SPECGLOSS					( 512 )	
 
+#define LIGHTDEF_USE_LIGHTMAP			0x0001
+#define LIGHTDEF_USE_LIGHT_VECTOR		0x0002
+#define LIGHTDEF_USE_LIGHT_VERTEX		0x0003
+#define LIGHTDEF_LIGHTTYPE_MASK			LIGHTDEF_USE_LIGHTMAP | LIGHTDEF_USE_LIGHT_VECTOR | LIGHTDEF_USE_LIGHT_VERTEX
 
 #define ByteToFloat(a)					((float)(a) * 1.0f/255.0f)
 #define FloatToByte(a)					(byte)((a) * 255.0f)
@@ -464,14 +468,11 @@ typedef struct {
 	int line_width;
 	int abs_light;
 	int allow_discard;
-#ifdef USE_VBO_GHOUL2_RGBAGEN_CONSTS
-	int rgbaGen[3];
-#endif
+
+	int						vk_light_flags;
 
 #ifdef USE_VK_PBR
 	uint32_t				vk_pbr_flags;
-	vec4_t					specularScale;	
-	vec4_t					normalScale;	
 #endif
 } Vk_Pipeline_Def;
 
@@ -501,26 +502,29 @@ typedef struct vkUniform_s {
 
 typedef struct vkUniformCamera_s {
 	vec4_t viewOrigin;
-	vec4_t localViewOrigin;
-	mat4_t modelMatrix;
+
 } vkUniformCamera_t;
 
 #ifdef USE_VBO_GHOUL2
-typedef struct vkUniformData_s {
+typedef struct vkUniformEntity_s {
 	vec4_t ambientLight;
 	vec4_t directedLight;
-	vec4_t lightDir;
+	vec4_t lightOrigin;
 	vec4_t rgbGen; 
 	vec4_t alphaGen;
 	vec4_t baseColor[3];
 	vec4_t vertColor[3];
 	vec4_t disintegrationInfo;
 	vec4_t deformInfo[3];
-} vkUniformData_t;
+	vec4_t specularScale;	
+	vec4_t normalScale;	
+	vec4_t localViewOrigin;
+	mat4_t modelMatrix;
+} vkUniformEntity_t;
 
-typedef struct vkUniformGhoul_s {
+typedef struct vkUniformBones_s {
 	mat3x4_t boneMatrices[72];
-} vkUniformGhoul_t;
+} vkUniformBones_t;
 #endif
 
 typedef struct {
@@ -871,7 +875,7 @@ typedef struct {
 		// vbo 0: cpu or vbo world, 1: vbo ghoul2, 2: vbo mdv
 
 		struct {	
-			VkShaderModule gen[3][2][3][2][2][2]; // vbo[0,1], pbr[0,1], tx[0,1,2], cl[0,1] env0[0,1] fog[0,1]
+			VkShaderModule gen[3][2][4][3][2][2][2]; // vbo[0,1], pbr[0,1], tx[0,1,2], cl[0,1] env0[0,1] fog[0,1]
 			VkShaderModule light[2]; // fog[0,1]
 			VkShaderModule gen0_ident;
 		}	vert;
@@ -879,7 +883,7 @@ typedef struct {
 		struct {
 			VkShaderModule gen0_ident;
 			VkShaderModule gen0_df;
-			VkShaderModule gen[3][2][3][2][2]; // vbo[0,1], pbr[0,1], tx[0,1,2] cl[0,1] fog[0,1]
+			VkShaderModule gen[2][4][3][2][2]; // pbr[0,1], tx[0,1,2] cl[0,1] fog[0,1]
 			VkShaderModule light[2][2]; // linear[0,1] fog[0,1]
 		}	frag;
 
@@ -923,9 +927,11 @@ typedef struct {
 	qboolean vboWorldActive;
 	qboolean vboGhoul2Active;
 	qboolean vboMdvActive;
-#ifdef USE_VK_PBR
-	qboolean pbrActive;
-#endif
+
+	qboolean normalMappingActive;
+	qboolean specularMappingActive;
+
+	qboolean useFastLight;
 
 	float maxAnisotropy;
 	float maxLod;

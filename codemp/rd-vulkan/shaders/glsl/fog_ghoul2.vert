@@ -20,7 +20,7 @@ layout(set = 1, binding = 0) uniform UBO {
 	vec4 lightVector;
 };
 
-layout(set = 1, binding = 3) uniform UBOG3 {
+layout(set = 1, binding = 3) uniform Bones {
 	mat3x4 u_BoneMatrices[72];
 };	
 

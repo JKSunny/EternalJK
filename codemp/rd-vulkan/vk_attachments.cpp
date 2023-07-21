@@ -416,7 +416,7 @@ void vk_create_attachments( void )
         }
 #ifdef VK_PBR_BRDFLUT
         // BRDF LUT
-        if( vk.pbrActive ) {
+        if( vk.cubemapActive ) {
             uint32_t size = 512;
             usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
             

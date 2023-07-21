@@ -272,7 +272,7 @@ static void VBO_AddGeometry(vbo_t *vbo, vbo_item_t *vi, shaderCommands_t *input)
 		offs = input->shader->normalOffset + input->shader->numVertexes * sizeof(input->normal[0]);
 
 #ifdef USE_VK_PBR
-		if( vk.pbrActive ) {
+		{
 			input->shader->qtangentOffset = input->shader->normalOffset + input->shader->numVertexes * sizeof(input->normal[0]);
 			input->shader->lightdirOffset = input->shader->qtangentOffset + input->shader->numVertexes * sizeof(input->qtangent[0]);
 
@@ -385,8 +385,7 @@ static void VBO_AddGeometry(vbo_t *vbo, vbo_item_t *vi, shaderCommands_t *input)
 	memcpy(vbo->vbo_buffer + offs, input->normal, size);
 
 #ifdef USE_VK_PBR
-	
-	if( vk.pbrActive ) {
+	{
 		// qtangent
 		offs = input->shader->qtangentOffset + input->shader->curVertexes * sizeof(input->qtangent[0]);
 		size = input->numVertexes * sizeof(input->qtangent[0]);
@@ -540,7 +539,7 @@ static void VBO_CalculateBonesMDXM( vbo_t *vbo, const mdxmSurface_t *surf, const
 			lastWeight -= weights[j];
 		}
 
-		assert(lastWeight > 0);
+		//assert(lastWeight > 0);
 
 		// Ensure that all the weights add up to 1.0
 		weights[lastInfluence] = lastWeight;
@@ -585,9 +584,6 @@ static void VBO_CalculateBonesMDXM( vbo_t *vbo, const mdxmSurface_t *surf, const
 #ifdef USE_VK_PBR
 static void VBO_CalculateTangentsMDXM( vbo_t *vbo, const mdxmSurface_t *surf, const mdxmVBOMesh_t *mesh )
 {
-	if ( !vk.pbrActive )
-		return;
-
 	vec3_t	*xyz0, *xyz1, *xyz2;
 	vec2_t	*st0, *st1, *st2;
 	vec3_t	*normal0, *normal1, *normal2;
@@ -682,16 +678,14 @@ static void VBO_AddGeometryMDXM( vbo_t *vbo, vbo_item_t *vi, mdxmVBOMesh_t *mesh
 	mesh->vboOffset = vbo->vbo_offset;
 	vbo->vbo_offset += mesh->numVertexes * ( sizeof(tess.xyz[0]) + sizeof(tess.normal[0]) + sizeof(vec2_t) + sizeof(vec4_t) + sizeof(vec4_t) );
 #ifdef USE_VK_PBR
-	if ( vk.pbrActive )
-		vbo->vbo_offset += mesh->numVertexes  * sizeof(vec4_t);
+	vbo->vbo_offset += mesh->numVertexes  * sizeof(vec4_t);
 #endif
 	mesh->normalOffset = mesh->vboOffset + mesh->numVertexes * sizeof(tess.xyz[0]);
 	mesh->texOffset = mesh->normalOffset + mesh->numVertexes * sizeof(tess.normal[0]);
 	mesh->boneOffset = mesh->texOffset + mesh->numVertexes * sizeof(vec2_t);
 	mesh->weightOffset = mesh->boneOffset + mesh->numVertexes * sizeof(vec4_t);
 #ifdef USE_VK_PBR	
-	if ( vk.pbrActive )
-		mesh->qtangentOffset = mesh->weightOffset + mesh->numVertexes * sizeof(vec4_t);
+	mesh->qtangentOffset = mesh->weightOffset + mesh->numVertexes * sizeof(vec4_t);
 #endif
 	vi->index_offset = 0;
 	vi->soft_offset = vbo->ibo_offset;
@@ -735,7 +729,7 @@ static void VBO_AddGeometryMDXM( vbo_t *vbo, vbo_item_t *vi, mdxmVBOMesh_t *mesh
 
 #ifdef USE_VK_PBR
 	// qtangent
-	if ( vk.pbrActive ) {	
+	{	
 		offs = mesh->qtangentOffset;
 		size = tess.numVertexes * sizeof( tess.qtangent[0] );
 		if (offs + size > vbo->vbo_size) {
@@ -806,8 +800,7 @@ void R_BuildMDXM( model_t *mod, mdxmHeader_t *mdxm )
 			vbo_size += surf->numVerts * ( sizeof(tess.xyz[0]) + sizeof( tess.normal[0] ) + sizeof( vec2_t ) + sizeof( vec4_t ) + sizeof( vec4_t ) );
 			
 #ifdef USE_VK_PBR
-			if( vk.pbrActive )
-				vbo_size += surf->numVerts * sizeof(vec4_t);
+			vbo_size += surf->numVerts * sizeof(vec4_t);
 #endif
 
 			mesh->numVertexes = surf->numVerts;
@@ -910,14 +903,12 @@ static void VBO_AddGeometryMD3( vbo_t *vbo, vbo_item_t *vi, mdvSurface_t *surf, 
 	vbo->vbo_offset += mesh->numVertexes * numFrames * ( sizeof(tess.xyz[0]) + sizeof(tess.normal[0]) );
 	vbo->vbo_offset += mesh->numVertexes * sizeof( vec2_t );
 #ifdef USE_VK_PBR
-	if ( vk.pbrActive )
-		vbo->vbo_offset += mesh->numVertexes * numFrames * sizeof(vec4_t);
+	vbo->vbo_offset += mesh->numVertexes * numFrames * sizeof(vec4_t);
 #endif
 
 	mesh->normalOffset = mesh->vboOffset + ( mesh->numVertexes * numFrames * sizeof(tess.xyz[0]) );
 #ifdef USE_VK_PBR	
-	if ( vk.pbrActive )
-		mesh->qtangentOffset = mesh->normalOffset + (mesh->numVertexes * numFrames * sizeof(vec4_t));
+	mesh->qtangentOffset = mesh->normalOffset + (mesh->numVertexes * numFrames * sizeof(vec4_t));
 #endif
 	mesh->texOffset = mesh->qtangentOffset + (mesh->numVertexes * numFrames * sizeof(vec4_t));
 
@@ -987,9 +978,6 @@ static void VBO_AddGeometryMD3( vbo_t *vbo, vbo_item_t *vi, mdvSurface_t *surf, 
 #ifdef USE_VK_PBR
 static void VBO_CalculateTangentsMD3( vbo_t *vbo, const mdvSurface_t *surf, const mdvVBOMesh_t *mesh )
 {
-	if ( !vk.pbrActive )
-		return;
-
 	mdvVertex_t	*dv0, *dv1, *dv2;
 	float		*st0, *st1, *st2;
 	int			i, i0, i1, i2;
@@ -1067,8 +1055,7 @@ void R_BuildMD3( model_t *mod, mdvModel_t *mdvModel ) {
 		vbo_size += surf->numVerts * sizeof( vec2_t );
 
 #ifdef USE_VK_PBR
-		if( vk.pbrActive )
-			vbo_size += surf->numVerts * mdvModel->numFrames * sizeof(vec4_t);
+		vbo_size += surf->numVerts * mdvModel->numFrames * sizeof(vec4_t);
 #endif
 
 		mesh->numVertexes = surf->numVerts;
@@ -1188,7 +1175,7 @@ void R_BuildWorldVBO(msurface_t *surf, int surfCount)
 
 			vbo_size += face->numPoints * (sf->shader->svarsSize + sizeof(tess.xyz[0]) + sizeof(tess.normal[0]));
 #ifdef USE_VK_PBR
-			if ( vk.pbrActive ) {
+			{
 				vbo_size += face->numPoints * sizeof(tess.qtangent[0]);
 				vbo_size += face->numPoints * sizeof(tess.lightdir[0]);
 			}
@@ -1205,7 +1192,7 @@ void R_BuildWorldVBO(msurface_t *surf, int surfCount)
 
 			vbo_size += tris->numVerts * (sf->shader->svarsSize + sizeof(tess.xyz[0]) + sizeof(tess.normal[0]));
 #ifdef USE_VK_PBR
-			if ( vk.pbrActive ) {
+			{
 				vbo_size += tris->numVerts * sizeof(tess.qtangent[0]);
 				vbo_size += tris->numVerts * sizeof(tess.lightdir[0]);
 			}
@@ -1223,7 +1210,7 @@ void R_BuildWorldVBO(msurface_t *surf, int surfCount)
 
 			vbo_size += grid->vboExpectVertices * (sf->shader->svarsSize + sizeof(tess.xyz[0]) + sizeof(tess.normal[0]));
 #ifdef USE_VK_PBR
-			if ( vk.pbrActive ) {
+			{
 				vbo_size += grid->vboExpectVertices * sizeof(tess.qtangent[0]);
 				vbo_size += grid->vboExpectVertices * sizeof(tess.lightdir[0]);
 			}

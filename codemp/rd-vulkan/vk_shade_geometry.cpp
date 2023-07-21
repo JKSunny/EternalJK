@@ -207,12 +207,11 @@ static void vk_vbo_bind_geometry_mdv( int32_t flags )
 	if (flags & TESS_ST2)
 		vk.cmd->vbo_offset[4] = mesh_ptr->texOffset;
 
-#ifdef USE_VK_PBR
-	if (flags & TESS_PBR) {
+	if (flags & TESS_QTANGENT)
 		vk.cmd->vbo_offset[8] = mesh_ptr->qtangentOffset;
-	}
-#endif
 
+
+	// 9?
 	qvkCmdBindVertexBuffers( vk.cmd->command_buffer, 0, 12, shade_bufs, vk.cmd->vbo_offset + 0 );
 }
 #endif
@@ -229,40 +228,17 @@ static void vk_vbo_bind_geometry_ghoul2( uint32_t flags )
 	vk.cmd->vbo_offset[5] = mesh_ptr->normalOffset;
 	vk.cmd->vbo_offset[10] = mesh_ptr->boneOffset;
 	vk.cmd->vbo_offset[11] = mesh_ptr->weightOffset;
-
+	
 	if (flags & TESS_ST1)
 		vk.cmd->vbo_offset[3] = mesh_ptr->texOffset;
 
 	if (flags & TESS_ST2)
 		vk.cmd->vbo_offset[4] = mesh_ptr->texOffset;
 
-#ifdef USE_VK_PBR
-	if (flags & TESS_PBR) {
+	if (flags & TESS_QTANGENT)
 		vk.cmd->vbo_offset[8] = mesh_ptr->qtangentOffset;
-	}
-#endif
 
 	qvkCmdBindVertexBuffers( vk.cmd->command_buffer, 0, 12, shade_bufs, vk.cmd->vbo_offset + 0 );
-
-#if 0
-	// use the vertex buffer for rgba ..
-	// or would ( #else const vec4 in_color0 = vec4(0.0); ) in glsl suffice
-	// if vertex is not used. rather, is it ever used for ghoul2?
-	if ( flags & TESS_RGBA0 ) { 
-		vk_bind_attr_ghoul2_vbo( 1, sizeof(color4ub_t), tess.svars.colors[0] );
-		qvkCmdBindVertexBuffers( vk.cmd->command_buffer, 1, 1, &vk.cmd->vertex_buffer, vk.cmd->buf_offset + 1 );
-	}
-
-	if ( flags & TESS_RGBA1 ) {
-		vk_bind_attr_ghoul2_vbo( 6, sizeof(color4ub_t), tess.svars.colors[1] );
-		qvkCmdBindVertexBuffers( vk.cmd->command_buffer, 6, 1, &vk.cmd->vertex_buffer, vk.cmd->buf_offset + 6 );
-	}
-
-	if ( flags & TESS_RGBA2 ) {
-		vk_bind_attr_ghoul2_vbo( 7, sizeof(color4ub_t), tess.svars.colors[2] );
-		qvkCmdBindVertexBuffers( vk.cmd->command_buffer, 7, 1, &vk.cmd->vertex_buffer, vk.cmd->buf_offset + 7 );
-	}
-#endif
 }
 #endif
 
@@ -337,15 +313,17 @@ void vk_bind_geometry( uint32_t flags )
 			vk.cmd->vbo_offset[7] = tess.shader->stages[tess.vboStage]->rgb_offset[2];
 			vk_bind_index_attr(7);
 		}
-#ifdef USE_VK_PBR
-		if (flags & TESS_PBR) {
+
+		if (flags & TESS_QTANGENT) {
 			vk.cmd->vbo_offset[8] = tess.shader->qtangentOffset;
 			vk_bind_index_attr(8);
+		}
 
+		if (flags & TESS_LIGHTDIR) {
 			vk.cmd->vbo_offset[9] = tess.shader->lightdirOffset;
 			vk_bind_index_attr(9);
 		}
-#endif
+
 		qvkCmdBindVertexBuffers(vk.cmd->command_buffer, bind_base, bind_count, shade_bufs, vk.cmd->vbo_offset + bind_base);
 	}
 	else
@@ -380,12 +358,13 @@ void vk_bind_geometry( uint32_t flags )
 
 		if (flags & TESS_RGBA2)
 			vk_bind_attr(7, sizeof(color4ub_t), tess.svars.colors[2]);
-#ifdef USE_VK_PBR
-		if (flags & TESS_PBR) {
+
+		if (flags & TESS_QTANGENT)
 			vk_bind_attr(8, sizeof(tess.qtangent[0]), tess.qtangent);
+
+		if (flags & TESS_LIGHTDIR)
 			vk_bind_attr(9, sizeof(tess.lightdir[0]), tess.lightdir);
-		}
-#endif
+
 		qvkCmdBindVertexBuffers(vk.cmd->command_buffer, bind_base, bind_count, shade_bufs, vk.cmd->buf_offset + bind_base);
 	}
 }
@@ -460,7 +439,7 @@ void vk_update_uniform_descriptor( VkDescriptorSet descriptor, VkBuffer buffer )
 		// data
 		info[count].buffer = buffer;
 		info[count].offset = 0;
-		info[count].range = sizeof(vkUniformData_t);
+		info[count].range = sizeof(vkUniformEntity_t);
 
 		vk_write_uniform_descriptor( desc + 2, info + 2, descriptor, 2 );
 		count++;
@@ -468,7 +447,7 @@ void vk_update_uniform_descriptor( VkDescriptorSet descriptor, VkBuffer buffer )
 		// bones
 		info[count].buffer = buffer;
 		info[count].offset = 0;
-		info[count].range = sizeof(vkUniformGhoul_t);
+		info[count].range = sizeof(vkUniformBones_t);
 
 		vk_write_uniform_descriptor( desc + 3, info + 3, descriptor, 3 );
 		count++;
@@ -589,7 +568,7 @@ void vk_update_attachment_descriptors( void ) {
 		}
 
 #ifdef VK_PBR_BRDFLUT
-		if( vk.pbrActive )
+		if( vk.cubemapActive )
 		{
 			// brdf
 			info.imageView = vk.brdflut_image_view;
@@ -674,7 +653,7 @@ void vk_init_descriptors( void ) {
 		VK_CHECK( qvkAllocateDescriptorSets( vk.device, &alloc, &vk.screenMap.color_descriptor ) ); // screenmap
 
 #ifdef VK_PBR_BRDFLUT
-		if( vk.pbrActive )
+		if( vk.cubemapActive )
 			VK_CHECK( qvkAllocateDescriptorSets( vk.device, &alloc, &vk.brdflut_image_descriptor ) );
 #endif
 
@@ -768,7 +747,7 @@ static void vk_set_valid_preceeding_descriptor( const int tmu )
 	if( vk.cmd->descriptor_set.current[tmu] != VK_NULL_HANDLE )
 		return;
 
-	vk_update_descriptor(tmu, tr.emptyImage->descriptor_set);
+	vk_update_descriptor(tmu, tr.whiteImage->descriptor_set);
 
 	if( tmu > 0 )
 		vk_set_valid_preceeding_descriptor( tmu - 1 );
@@ -1187,7 +1166,7 @@ static uint32_t vk_push_uniform_camera( const vkUniformCamera_t *uniform ) {
 #endif
 
 #ifdef USE_VBO_GHOUL2
-static uint32_t vk_push_uniform_data( const vkUniformData_t *uniform ) {	
+static uint32_t vk_push_uniform_data( const vkUniformEntity_t *uniform ) {	
 	const uint32_t offset = vk.cmd->uniform_read_offset = PAD(vk.cmd->vertex_buffer_offset, vk.uniform_alignment);
 
 	if ( offset + vk.uniform_data_item_size > vk.geometry_buffer_size )
@@ -1204,7 +1183,7 @@ static uint32_t vk_push_uniform_data( const vkUniformData_t *uniform ) {
 	return offset;
 }
 
-static uint32_t vk_push_uniform_ghoul2( const vkUniformGhoul_t *uniform ) {	
+static uint32_t vk_push_uniform_ghoul2( const vkUniformBones_t *uniform ) {	
 	const uint32_t offset = vk.cmd->uniform_read_offset = PAD( vk.cmd->vertex_buffer_offset, vk.uniform_alignment );
 
 	if ( offset + vk.uniform_ghoul_item_size > vk.geometry_buffer_size )
@@ -1345,8 +1324,8 @@ Blends a fog texture on top of everything else
 static vkUniform_t			uniform;
 static vkUniformCamera_t	uniform_camera;
 #ifdef USE_VBO_GHOUL2
-static vkUniformData_t		uniform_data;
-static vkUniformGhoul_t		uniform_ghoul;
+static vkUniformEntity_t	uniform_entity;
+static vkUniformBones_t		uniform_ghoul;
 
 mat3x4_t *vk_get_uniform_ghoul_bones( void ) {
 	return uniform_ghoul.boneMatrices;
@@ -1607,15 +1586,12 @@ static void vk_compute_colors( const int b, const shaderStage_t *pStage, int for
 		return;
 
 	float *baseColor, *vertColor;
-#ifdef USE_VBO_GHOUL2_RGBAGEN_CONSTS
-	qboolean skipInColor = qtrue;
-#endif
 
 	int rgbGen = forceRGBGen;
 	int alphaGen = pStage->bundle[b].alphaGen;
 
-	baseColor = (float*)uniform_data.baseColor[b];
-	vertColor = (float*)uniform_data.vertColor[b];
+	baseColor = (float*)uniform_entity.baseColor[b];
+	vertColor = (float*)uniform_entity.vertColor[b];
 
 	baseColor[0] = baseColor[1] = baseColor[2] = baseColor[3] = 1.0f;  	
    	vertColor[0] = vertColor[1] = vertColor[2] = vertColor[3] = 0.0f;
@@ -1664,8 +1640,8 @@ static void vk_compute_colors( const int b, const shaderStage_t *pStage, int for
 				baseColor[2] = ((unsigned char *)backEnd.currentEntity->e.shaderRGBA)[2] / 255.0f;
 				baseColor[3] = ((unsigned char *)backEnd.currentEntity->e.shaderRGBA)[3] / 255.0f;
 
-				vertColor[0] = vertColor[1] = vertColor[2] = tr.identityLight;
-				vertColor[3] = 1.0f;
+				//vertColor[0] = vertColor[1] = vertColor[2] = tr.identityLight;
+				//vertColor[3] = 1.0f;
 
 				if ( alphaGen == AGEN_IDENTITY && backEnd.currentEntity->e.shaderRGBA[3] == 255 )
 					alphaGen = AGEN_SKIP;
@@ -1737,23 +1713,6 @@ static void vk_compute_colors( const int b, const shaderStage_t *pStage, int for
 			break;
 	}
 
-#ifdef USE_VBO_GHOUL2_RGBAGEN_CONSTS
-	switch ( rgbGen) {
-		case CGEN_EXACT_VERTEX:
-		case CGEN_VERTEX:
-		case CGEN_ONE_MINUS_VERTEX:
-			skipInColor = qfalse; break;
-	}
-	switch ( alphaGen) {
-		case AGEN_VERTEX:
-		case AGEN_ONE_MINUS_VERTEX:
-			skipInColor = qfalse; break;
-	}
-
-	// skip ghoul2 vbo glsl in_colors for now
-	vk_set_attr_color( tess.svars.colors[b], skipInColor );
-#endif
-
 	if ( backEnd.currentEntity && backEnd.currentEntity->e.renderfx & RF_FORCE_ENT_ALPHA ) {
 		baseColor[3] = backEnd.currentEntity->e.shaderRGBA[3] / 255.0f; 
 		vertColor[3] = 0.0f;
@@ -1776,8 +1735,8 @@ static void vk_compute_colors( const int b, const shaderStage_t *pStage, int for
 		vertColor[2] *= scale;
 	}
 
-	uniform_data.rgbGen[b] = (float)rgbGen;
-	uniform_data.alphaGen[b] = (float)alphaGen;
+	uniform_entity.rgbGen[b] = (float)rgbGen;
+	uniform_entity.alphaGen[b] = (float)alphaGen;
 }
 
 static void vk_compute_deform( void ) {
@@ -1785,7 +1744,7 @@ static void vk_compute_deform( void ) {
 	int		waveFunc = GF_NONE;
 	float	*info;
 
-	info = (float*)uniform_data.deformInfo;
+	info = (float*)uniform_entity.deformInfo;
 
 	Com_Memset( info + 0, 0, sizeof(float) * 12 );
 
@@ -1887,7 +1846,7 @@ static void vk_compute_disintegration( int *forceRGBGen ){
 	else
 		*forceRGBGen = (int)CGEN_DISINTEGRATION_2;
 
-	info = (float*)uniform_data.disintegrationInfo;
+	info = (float*)uniform_entity.disintegrationInfo;
 
 	info[0] = backEnd.currentEntity->e.oldorigin[0];
 	info[1] = backEnd.currentEntity->e.oldorigin[1];
@@ -1973,8 +1932,9 @@ void ForceAlpha(unsigned char *dstColors, int TR_ForceEntAlpha)
 	}
 }
 
-static qboolean vk_is_valid_pbr_surface( const qboolean hasPBR, const qboolean is_ghoul2_vbo, const qboolean is_mdv_vbo ) {
-	if ( !vk.pbrActive || !hasPBR )
+static qboolean vk_is_valid_pbr_surface( const qboolean hasPBR, const qboolean is_ghoul2_vbo, const qboolean is_mdv_vbo ) 
+{
+	if ( vk.useFastLight || !hasPBR )
 		return qfalse;
 	
 	if ( backEnd.isGlowPass )
@@ -1994,6 +1954,58 @@ static qboolean vk_is_valid_pbr_surface( const qboolean hasPBR, const qboolean i
 	return qtrue;
 }
 
+static void vk_update_camera_constants( void ) 
+{
+	Com_Memcpy( &uniform_camera.viewOrigin, backEnd.refdef.vieworg, sizeof( vec3_t) );
+	uniform_camera.viewOrigin[3] = 0.0f;
+
+	vk_push_uniform_camera( &uniform_camera );
+}
+
+static void vk_update_light_constants( const trRefEntity_t *refEntity ) 
+{
+	static const float normalizeFactor = 1.0f / 255.0f;
+
+	VectorScale(refEntity->ambientLight, normalizeFactor, uniform_entity.ambientLight);
+	VectorScale(refEntity->directedLight, normalizeFactor, uniform_entity.directedLight);
+	VectorCopy(refEntity->lightDir, uniform_entity.lightOrigin);
+
+	uniform_entity.lightOrigin[3] = 0.0f;
+}
+
+
+static void vk_update_matrix_constants( const trRefEntity_t *refEntity ) 
+{
+	orientationr_t ori;
+
+	if ( refEntity == &tr.worldEntity ) {
+		ori = backEnd.viewParms.world;
+		Matrix16Identity( uniform_entity.modelMatrix );
+	}else{
+		R_RotateForEntity( refEntity, &backEnd.viewParms, &ori );
+		Matrix16Copy( ori.modelMatrix, uniform_entity.modelMatrix );
+	}
+
+	Com_Memcpy( &uniform_entity.localViewOrigin, ori.viewOrigin, sizeof( vec3_t) );
+	uniform_entity.localViewOrigin[3] = 0.0f;
+}
+
+static void vk_update_entity_constants( void ) 
+{
+	const trRefEntity_t *ent;
+
+	if ( backEnd.currentEntity != &tr.worldEntity )
+		ent = backEnd.currentEntity;
+
+	else
+		ent = &tr.worldEntity;
+
+	Com_Memset( &uniform_entity, 0, sizeof(uniform_entity) );
+	vk_update_light_constants( ent );
+	vk_update_matrix_constants( ent );
+}
+
+
 static ss_input ssInput;
 void RB_StageIteratorGeneric( void )
 {
@@ -2006,7 +2018,6 @@ void RB_StageIteratorGeneric( void )
 	qboolean				fogCollapse;
 	qboolean				is_ghoul2_vbo;
 	qboolean				is_mdv_vbo;
-	qboolean				is_pbr_surface;
 
 #ifdef USE_VBO
 	if (tess.vboIndex != 0) {
@@ -2033,65 +2044,30 @@ void RB_StageIteratorGeneric( void )
 	fogCollapse = qfalse;
 	is_ghoul2_vbo = qfalse;
 	is_mdv_vbo = qfalse;
-	is_pbr_surface = qfalse;
 
 #ifdef USE_FOG_COLLAPSE
 	if ( tess.fogNum && tess.shader->fogPass && tess.shader->fogCollapse && r_drawfog->value == 2 ) {
 		fogCollapse = qtrue;
 	}
 #endif
+	
+	vk_update_camera_constants();
+	vk_update_entity_constants();
 
-#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV) 
+#if defined(USE_VK_PBR) || defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV) 
 	if ( tess.vboIndex ) {
 		is_ghoul2_vbo = (qboolean)( tess.surfType == SF_MDX );
 		is_mdv_vbo = (qboolean)( tess.surfType == SF_VBO_MDVMESH );
 	}
 
-	if ( is_ghoul2_vbo || is_mdv_vbo ) {
-		trRefEntity_t *refEntity = backEnd.currentEntity;
-		orientationr_t ori;
-		vec4_t tmp;
-
-		Com_Memset( &uniform_data, 0, sizeof(uniform_data) );
-
-		VectorScale( refEntity->ambientLight, 1.0f / 255.0, tmp );
-		Com_Memcpy( &uniform_data.ambientLight, tmp, sizeof(vec4_t) );
-
-		VectorScale( refEntity->directedLight, 1.0f / 255.0, tmp );
-		Com_Memcpy( &uniform_data.directedLight, tmp, sizeof(vec4_t) );
-
-		VectorCopy( refEntity->lightDir, tmp ); tmp[3] = 0.0f;
-		Com_Memcpy( &uniform_data.lightDir, tmp, sizeof(vec4_t) );
-		
-		if ( refEntity == &tr.worldEntity ) {
-			ori = backEnd.viewParms.world;
-			Matrix16Identity( uniform_camera.modelMatrix );
-		}else{
-			R_RotateForEntity( refEntity, &backEnd.viewParms, &ori );
-			Matrix16Copy(ori.modelMatrix, uniform_camera.modelMatrix );
-		}
-
-		Com_Memcpy( &uniform_camera.localViewOrigin, ori.viewOrigin, sizeof( vec3_t) );
-		uniform_camera.localViewOrigin[3] = 0.0;
-
+	if ( backEnd.currentEntity != &tr.worldEntity ) 
+	{
 		if ( is_ghoul2_vbo )
 			vk_push_uniform_ghoul2( &uniform_ghoul ); // bone matrices
 
-		vk_compute_deform();	
+		vk_compute_deform();
 	}
 #endif
-
-#ifdef USE_VK_PBR
-	is_pbr_surface = vk_is_valid_pbr_surface( tess.shader->hasPBR, is_ghoul2_vbo, is_mdv_vbo );
-
-	if ( is_pbr_surface && !is_ghoul2_vbo && !is_mdv_vbo ) {
-		Com_Memcpy( &uniform_camera.modelMatrix, backEnd.ori.modelMatrix, sizeof(float) * 16 );
-		Com_Memcpy( &uniform_camera.viewOrigin, backEnd.refdef.vieworg, sizeof( vec3_t) );
-		uniform_camera.viewOrigin[3] = 0.0;
-	}
-#endif
-	if ( is_pbr_surface || is_ghoul2_vbo || is_mdv_vbo )
-		vk_push_uniform_camera( &uniform_camera );
 
 	if ( fogCollapse ) {
 		vk_set_fog_params( &uniform, &fog_stage );
@@ -2177,6 +2153,7 @@ void RB_StageIteratorGeneric( void )
 
 				// use an excisting pipeline with the same def or create a new one.
 				def.face_culling = CT_TWO_SIDED;
+				def.vk_light_flags = 0;
 				tess.xstages[stage]->vk_2d_pipeline = vk_find_pipeline_ext(0, &def, qfalse);
 			}
 
@@ -2186,12 +2163,7 @@ void RB_StageIteratorGeneric( void )
 			if ( backEnd.viewParms.portalView == PV_MIRROR )
 				vk_get_pipeline_def(pStage->vk_mirror_pipeline[fog_stage], &def);
 			else{
-#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV) 
-				if( tess_flags & TESS_PBR && ( is_ghoul2_vbo || is_mdv_vbo ) )
-					vk_get_pipeline_def(pStage->vk_pbr_pipeline[fog_stage], &def);
-				else
-#endif
-					vk_get_pipeline_def(pStage->vk_pipeline[fog_stage], &def);
+				vk_get_pipeline_def(pStage->vk_pipeline[fog_stage], &def);
 			}
 			// we want to be able to rip a hole in the thing being disintegrated,
 			// and by doing the depth-testing it avoids some kinds of artefacts, but will probably introduce others?
@@ -2208,24 +2180,11 @@ void RB_StageIteratorGeneric( void )
 					def.state_bits |= GLS_DEPTHMASK_TRUE;	
 			}
 #if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV) 
-			if ( is_ghoul2_vbo ){
-				def.vbo_ghoul2 = qtrue;
+			def.vbo_ghoul2 = is_ghoul2_vbo;
+			def.vbo_mdv = is_mdv_vbo;
 
-#ifdef USE_VBO_GHOUL2_RGBAGEN_CONSTS
-				for ( i = 0; i < pStage->numTexBundles; i++ ) {
-					if ( backEnd.currentEntity->e.renderfx & ( RF_DISINTEGRATE1 | RF_DISINTEGRATE2 ) ||
-						 (int)uniform_data.rgbGen[i] ==		CGEN_LIGHTING_DIFFUSE || 
-						 (int)uniform_data.alphaGen[i] ==	AGEN_LIGHTING_SPECULAR ||
-						 (int)uniform_data.alphaGen[i] ==	AGEN_PORTAL )
-					{
-						def.rgbaGen[i] = 1;
-					}
-				}
-#endif
-			} 
-			else if ( is_mdv_vbo ) {
-				def.vbo_mdv = qtrue;
-			}
+			if ( !tess.vboIndex )
+				def.vk_light_flags = 0;
 #endif			
 			pipeline = vk_find_pipeline_ext( 0, &def, qfalse );
 		}
@@ -2241,16 +2200,18 @@ void RB_StageIteratorGeneric( void )
 			vk_bind( tr.whiteImage ); // replace diffuse texture with a white one thus effectively render only lightmap
 		}
 
+		VectorCopy4( pStage->normalScale, uniform_entity.normalScale );
+		VectorCopy4( pStage->specularScale, uniform_entity.specularScale );
+
 		// move glow bundle to texture 0
 		// does not work with multitextured dglow yet.
 		if ( backEnd.isGlowPass && pStage->glow ){
 			vk_get_pipeline_def( pStage->vk_pipeline[fog_stage], &def );
 #if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV) 		
-			if ( is_ghoul2_vbo )
-				def.vbo_ghoul2 = qtrue;
-			else if ( is_mdv_vbo )
-				def.vbo_mdv = qtrue;		
-
+				def.vbo_ghoul2 = is_ghoul2_vbo;
+				def.vbo_mdv = is_mdv_vbo;
+				def.vk_light_flags = 0;
+				def.vk_pbr_flags = 0;
 #endif	
 			def.shader_type = TYPE_SINGLE_TEXTURE;
 			pipeline = vk_find_pipeline_ext( 0, &def, qfalse );
@@ -2260,37 +2221,34 @@ void RB_StageIteratorGeneric( void )
 			Com_Memcpy( tess.svars.colors[0], tess.svars.colors[( pStage->numTexBundles - 1 )], sizeof(tess.svars.colors[0]) );
 		}
 
-		// PBR
-#ifdef USE_VK_PBR
-		// todo:
-		// - use the bundles, and proper collapsing
-		// - submit cubemap parallax correction 
-		// current situation will do for development purposes
-		//
-		qboolean has_cubemap = ( tr.numCubemaps && tess.cubemapIndex > 0) ? qtrue : qfalse;
+		else {
+			if ( tess.vboIndex )
+				vk_update_pbr_descriptor(6, vk.brdflut_image_descriptor);
 
-		if ( is_pbr_surface && pStage->vk_pbr_flags ) {
-			vk_update_pbr_descriptor(6, vk.brdflut_image_descriptor);
-				
 			if ( pStage->vk_pbr_flags & PBR_HAS_NORMALMAP )
 				vk_update_pbr_descriptor(7, pStage->normalMap->descriptor_set);
+			else
+				vk_update_pbr_descriptor(7, tr.whiteImage->descriptor_set);
 
 			if ( pStage->vk_pbr_flags & PBR_HAS_PHYSICALMAP || pStage->vk_pbr_flags & PBR_HAS_SPECULARMAP )
 				vk_update_pbr_descriptor(8, pStage->physicalMap->descriptor_set);
+			else
+			{
+				vk_update_pbr_descriptor(8, tr.whiteImage->descriptor_set);
+				
+				uniform_entity.specularScale[0] = 0.0f;
+				uniform_entity.specularScale[2] =
+				uniform_entity.specularScale[3] = 1.0f;
+				uniform_entity.specularScale[1] = 0.5f;
+			}
 
-			if ( !has_cubemap || backEnd.viewParms.targetCube != nullptr ) {
+			qboolean has_cubemap = ( !vk.useFastLight && tr.numCubemaps && tess.cubemapIndex > 0) ? qtrue : qfalse;
+
+			if ( !has_cubemap || backEnd.viewParms.targetCube != nullptr )
 				vk_update_pbr_descriptor(9, tr.emptyCubemap->descriptor_set);
-				//vk_update_pbr_descriptor(10, tr.emptyCubemap->descriptor_set);
-			}
-			else { 
+			else 	
 				vk_update_pbr_descriptor(9, tr.cubemaps[tess.cubemapIndex-1].prefiltered_image->descriptor_set);
-				//vk_update_pbr_descriptor(10, tr.cubemaps[0].irradiance_image->descriptor_set);
-			}
-
-			if ( !is_ghoul2_vbo && !is_mdv_vbo )
-				pipeline = pStage->vk_pbr_pipeline[fog_stage];
 		}
-#endif
 
 #if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV) 
 		if ( is_ghoul2_vbo || is_mdv_vbo )

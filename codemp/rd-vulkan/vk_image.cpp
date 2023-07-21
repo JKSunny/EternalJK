@@ -1277,6 +1277,9 @@ qboolean vk_create_normal_texture( shaderStage_t *stage, const char *name, imgFl
 		return qfalse;
 
 	stage->vk_pbr_flags |= PBR_HAS_NORMALMAP;
+
+	VectorSet4( stage->normalScale, r_baseNormalX->value, r_baseNormalY->value, 1.0f, r_baseParallax->value );
+	
 	return qtrue;
 }
 
@@ -1609,13 +1612,8 @@ static void R_CreateBuiltinImages( void ) {
 		//	IMGFLAG_PICMIP | IMGFLAG_CLAMPTOEDGE | IMGFLAG_RGB );
 	//}
 
-#ifdef USE_VK_PBR
-	if ( vk.pbrActive )
-		tr.emptyImage = R_CreateImage("*empty", (byte*)data, 2, 2, IMGFLAG_NONE, 0, 0);
-
 #ifdef VK_CUBEMAP
 	tr.emptyCubemap = R_CreateImage( "*emptyCubemap", NULL, 1, 1, IMGFLAG_CUBEMAP, vk.color_format, 0 );
-#endif
 #endif
 
 	R_CreateDlightImage();

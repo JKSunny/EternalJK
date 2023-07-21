@@ -338,9 +338,6 @@ static shader_t *ShaderForShaderNum( int shaderNum, const int *lightmapNum, cons
 #ifdef USE_VK_PBR
 static void GenerateFaceTangents( srfSurfaceFace_t *face )
 {
-	if ( !vk.pbrActive )
-		return;
-
 	float		*xyz0, *xyz1, *xyz2;
 	float		*st0, *st1, *st2;
 	float		*normal0, *normal1, *normal2;
@@ -388,9 +385,6 @@ static void GenerateFaceTangents( srfSurfaceFace_t *face )
 
 static void GenerateTriTangents( srfTriangles_t *tri )
 {
-	if ( !vk.pbrActive )
-		return;
-
 	srfVert_t	*dv0, *dv1, *dv2;
 	int			i, i0, i1, i2;
 	vec3_t		tangent, binormal;
@@ -443,9 +437,6 @@ static void GenerateGridLightDirs( srfGridMesh_t *grid, world_t &worldData ) {
 
 static void vk_generate_light_directions( world_t &worldData )
 {
-	if ( !vk.pbrActive )
-		return;
-
 	srfSurfaceFace_t *face;
 	srfTriangles_t *tris;
 	srfGridMesh_t *grid;

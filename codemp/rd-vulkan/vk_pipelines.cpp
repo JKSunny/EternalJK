@@ -100,7 +100,7 @@ void vk_create_descriptor_layout( void )
         pool_size[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         pool_size[0].descriptorCount = MAX_DRAWIMAGES + 1 + 1 + 1 + ( VK_NUM_BLUR_PASSES * 4 ) + 1;
 #ifdef USE_VK_PBR
-        if ( vk.pbrActive )
+        if ( !vk.useFastLight || vk.cubemapActive )
             pool_size[0].descriptorCount += 1 + ( MAX_DRAWIMAGES * 2 ); // + 1:  brdf-lut | MAX_DRAWIMAGES * (physical + normal)
 #endif
 
@@ -207,7 +207,7 @@ void vk_create_pipeline_layout( void )
     VK_SET_OBJECT_NAME(vk.pipeline_layout_blend, "pipeline layout - blend", VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT);
 
 #ifdef VK_PBR_BRDFLUT
-    if( vk.pbrActive ) {
+    if( vk.cubemapActive ) {
         desc.setLayoutCount = 1;
 
         VK_CHECK(qvkCreatePipelineLayout(vk.device, &desc, NULL, &vk.pipeline_layout_brdflut));
@@ -458,14 +458,15 @@ static void vk_push_vertex_input_binding_attribute( const Vk_Pipeline_Def *def )
             break;
     }
 
- #ifdef USE_VK_PBR  
-    if ( def->vk_pbr_flags ){    
-        vk_push_bind( 8, sizeof(vec4_t) );                // qtangent
+ #ifdef USE_VK_PBR 
+    if ( def->vk_light_flags )
+    {
+        vk_push_bind( 8, sizeof(vec4_t) );                          // qtangent
         vk_push_attr( 8, 8, VK_FORMAT_R32G32B32A32_SFLOAT );
 
-        if ( !def->vbo_ghoul2 && !def->vbo_mdv ) 
+        if ( def->vk_light_flags & LIGHTDEF_USE_LIGHTMAP )
         {
-            vk_push_bind( 9, sizeof(vec4_t) );                // lightdir
+            vk_push_bind( 9, sizeof(vec4_t) );                      // lightdir
             vk_push_attr( 9, 9, VK_FORMAT_R32G32B32A32_SFLOAT );
         }
     }
@@ -617,11 +618,7 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
     VkPipelineDynamicStateCreateInfo dynamic_state;
     VkDynamicState dynamic_state_array[3] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR, VK_DYNAMIC_STATE_DEPTH_BIAS };
     VkGraphicsPipelineCreateInfo create_info;
-#ifdef USE_VBO_GHOUL2_RGBAGEN_CONSTS
-    int32_t vert_spec_data[3];
-#else
     int32_t vert_spec_data[1]; // clipping (def->clipping_plane). NULL
-#endif
     VkSpecializationInfo vert_spec_info;
     struct FragSpecData {
         int32_t alpha_test_func; 
@@ -634,23 +631,14 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
         int32_t discard_mode;
         float   identity_color;
 #ifdef USE_VK_PBR
-        float   specularScale_x;
-        float   specularScale_y;
-        float   specularScale_z;
-        float   specularScale_w;
-        float   normalScale_x;
-        float   normalScale_y;
-        float   normalScale_z;
-        float   normalScale_w;
         int32_t normal_texture_set;
         int32_t physical_texture_set;
         int32_t env_texture_set;
-        int32_t lightmap_texture_set;
 #endif
     } frag_spec_data; 
 
 #ifdef USE_VK_PBR
-    VkSpecializationMapEntry spec_entries[22];
+    VkSpecializationMapEntry spec_entries[13];
 #else
     VkSpecializationMapEntry spec_entries[10];
 #endif
@@ -658,6 +646,9 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
     VkBool32 alphaToCoverage = VK_FALSE;
     unsigned int atest_bits;
     unsigned int state_bits = def->state_bits;
+
+    const int light = def->vk_light_flags;
+    const int fastlight = vk.useFastLight ? 1 : 0;
 
     const int pbr = def->vk_pbr_flags ? 1 : 0;      // 0: off, 1: on
     const int vbo_g2_fog = def->vbo_ghoul2 ? 1 : 0; // 0: fog, 1: fog ghoul2-vbo
@@ -679,7 +670,7 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
 
         case TYPE_SINGLE_TEXTURE_DF:
             state_bits |= GLS_DEPTHMASK_TRUE;
-            vs_module = &vk.shaders.vert.gen[0][0][0][0][0][0];    // need compatible fragment shader
+            vs_module = &vk.shaders.vert.gen[0][0][0][0][0][0][0];    // need compatible fragment shader
             fs_module = &vk.shaders.frag.gen0_df;
             break;
 
@@ -689,41 +680,41 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
             break;
 
         case TYPE_SINGLE_TEXTURE:
-            vs_module = &vk.shaders.vert.gen[vbo][pbr][0][0][0][0];
-            fs_module = &vk.shaders.frag.gen[vbo][pbr][0][0][0];
+            vs_module = &vk.shaders.vert.gen[vbo][fastlight][light][0][0][0][0];
+            fs_module = &vk.shaders.frag.gen[fastlight][light][0][0][0];
             break;
 
         case TYPE_SINGLE_TEXTURE_ENV:
-            vs_module = &vk.shaders.vert.gen[vbo][pbr][0][0][1][0];
-            fs_module = &vk.shaders.frag.gen[vbo][pbr][0][0][0];
+            vs_module = &vk.shaders.vert.gen[vbo][fastlight][light][0][0][1][0];
+            fs_module = &vk.shaders.frag.gen[fastlight][light][0][0][0];
             break;
 
         case TYPE_MULTI_TEXTURE_MUL2:
         case TYPE_MULTI_TEXTURE_ADD2_IDENTITY:
         case TYPE_MULTI_TEXTURE_ADD2:
-            vs_module = &vk.shaders.vert.gen[vbo][pbr][1][0][0][0];
-            fs_module = &vk.shaders.frag.gen[vbo][pbr][1][0][0];
+            vs_module = &vk.shaders.vert.gen[vbo][fastlight][light][1][0][0][0];
+            fs_module = &vk.shaders.frag.gen[fastlight][light][1][0][0];
             break;
 
         case TYPE_MULTI_TEXTURE_MUL2_ENV:
         case TYPE_MULTI_TEXTURE_ADD2_IDENTITY_ENV:
         case TYPE_MULTI_TEXTURE_ADD2_ENV:
-            vs_module = &vk.shaders.vert.gen[vbo][pbr][1][0][1][0];
-            fs_module = &vk.shaders.frag.gen[vbo][pbr][1][0][0];
+            vs_module = &vk.shaders.vert.gen[vbo][fastlight][light][1][0][1][0];
+            fs_module = &vk.shaders.frag.gen[fastlight][light][1][0][0];
             break;
 
         case TYPE_MULTI_TEXTURE_MUL3:
         case TYPE_MULTI_TEXTURE_ADD3_IDENTITY:
         case TYPE_MULTI_TEXTURE_ADD3:
-            vs_module = &vk.shaders.vert.gen[vbo][pbr][2][0][0][0];
-            fs_module = &vk.shaders.frag.gen[vbo][pbr][2][0][0];
+            vs_module = &vk.shaders.vert.gen[vbo][fastlight][light][2][0][0][0];
+            fs_module = &vk.shaders.frag.gen[fastlight][light][2][0][0];
             break;
 
         case TYPE_MULTI_TEXTURE_MUL3_ENV:
         case TYPE_MULTI_TEXTURE_ADD3_IDENTITY_ENV:
         case TYPE_MULTI_TEXTURE_ADD3_ENV:
-            vs_module = &vk.shaders.vert.gen[vbo][pbr][2][0][1][0];
-            fs_module = &vk.shaders.frag.gen[vbo][pbr][2][0][0];
+            vs_module = &vk.shaders.vert.gen[vbo][fastlight][light][2][0][1][0];
+            fs_module = &vk.shaders.frag.gen[fastlight][light][2][0][0];
             break;
 
         case TYPE_BLEND2_ADD:
@@ -733,8 +724,8 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
         case TYPE_BLEND2_MIX_ALPHA:
         case TYPE_BLEND2_MIX_ONE_MINUS_ALPHA:
         case TYPE_BLEND2_DST_COLOR_SRC_ALPHA:
-            vs_module = &vk.shaders.vert.gen[vbo][pbr][1][1][0][0];
-            fs_module = &vk.shaders.frag.gen[vbo][pbr][1][1][0];
+            vs_module = &vk.shaders.vert.gen[vbo][fastlight][light][1][1][0][0];
+            fs_module = &vk.shaders.frag.gen[fastlight][light][1][1][0];
             break;
 
         case TYPE_BLEND2_ADD_ENV:
@@ -744,8 +735,8 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
         case TYPE_BLEND2_MIX_ALPHA_ENV:
         case TYPE_BLEND2_MIX_ONE_MINUS_ALPHA_ENV:
         case TYPE_BLEND2_DST_COLOR_SRC_ALPHA_ENV:
-            vs_module = &vk.shaders.vert.gen[vbo][pbr][1][1][1][0];
-            fs_module = &vk.shaders.frag.gen[vbo][pbr][1][1][0];
+            vs_module = &vk.shaders.vert.gen[vbo][fastlight][light][1][1][1][0];
+            fs_module = &vk.shaders.frag.gen[fastlight][light][1][1][0];
             break;
 
         case TYPE_BLEND3_ADD:
@@ -755,8 +746,8 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
         case TYPE_BLEND3_MIX_ALPHA:
         case TYPE_BLEND3_MIX_ONE_MINUS_ALPHA:
         case TYPE_BLEND3_DST_COLOR_SRC_ALPHA:
-            vs_module = &vk.shaders.vert.gen[vbo][pbr][2][1][0][0];
-            fs_module = &vk.shaders.frag.gen[vbo][pbr][2][1][0];
+            vs_module = &vk.shaders.vert.gen[vbo][fastlight][light][2][1][0][0];
+            fs_module = &vk.shaders.frag.gen[fastlight][light][2][1][0];
             break;
 
         case TYPE_BLEND3_ADD_ENV:
@@ -766,8 +757,8 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
         case TYPE_BLEND3_MIX_ALPHA_ENV:
         case TYPE_BLEND3_MIX_ONE_MINUS_ALPHA_ENV:
         case TYPE_BLEND3_DST_COLOR_SRC_ALPHA_ENV:
-            vs_module = &vk.shaders.vert.gen[vbo][pbr][2][1][1][0];
-            fs_module = &vk.shaders.frag.gen[vbo][pbr][2][1][0];
+            vs_module = &vk.shaders.vert.gen[vbo][fastlight][light][2][1][1][0];
+            fs_module = &vk.shaders.frag.gen[fastlight][light][2][1][0];
             break;
 
         case TYPE_COLOR_WHITE:
@@ -818,13 +809,6 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
 
     Com_Memset( vert_spec_data, 0, sizeof(vert_spec_data) ); // clipping
     Com_Memset( &frag_spec_data, 0, sizeof(FragSpecData) );   
-#ifdef USE_VBO_GHOUL2_RGBAGEN_CONSTS
-    vert_spec_data[0] = def->rgbaGen[0]; // used by ghoul2-vbo vertex shader.
-    vert_spec_data[1] = def->rgbaGen[1]; // used by ghoul2-vbo vertex shader.
-    vert_spec_data[2] = def->rgbaGen[2]; // used by ghoul2-vbo vertex shader.
-#else
-    //vert_spec_data[0] = def->clipping_plane ? 1 : 0; // used by vertex shader.   
-#endif
 
     // fragment shader specialization data
     atest_bits = state_bits & GLS_ATEST_BITS;
@@ -1003,85 +987,29 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
     frag_spec_info.mapEntryCount = 9;
 #ifdef USE_VK_PBR
     {
-        frag_spec_info.mapEntryCount += 12;
+        frag_spec_info.mapEntryCount += 3;
 
-        {
-            spec_entries[10].constantID = 9;
-            spec_entries[10].offset = offsetof(struct FragSpecData, specularScale_x);
-            spec_entries[10].size = sizeof(frag_spec_data.specularScale_x);
-
-            spec_entries[11].constantID = 10;
-            spec_entries[11].offset = offsetof(struct FragSpecData, specularScale_y);
-            spec_entries[11].size = sizeof(frag_spec_data.specularScale_y);
-
-            spec_entries[12].constantID = 11;
-            spec_entries[12].offset = offsetof(struct FragSpecData, specularScale_z);
-            spec_entries[12].size = sizeof(frag_spec_data.specularScale_z);
-
-            spec_entries[13].constantID = 12;
-            spec_entries[13].offset = offsetof(struct FragSpecData, specularScale_w);
-            spec_entries[13].size = sizeof(frag_spec_data.specularScale_w);
-        }
-
-        {
-            spec_entries[14].constantID = 13;
-            spec_entries[14].offset = offsetof(struct FragSpecData, normalScale_x);
-            spec_entries[14].size = sizeof(frag_spec_data.normalScale_x);
-
-            spec_entries[15].constantID = 14;
-            spec_entries[15].offset = offsetof(struct FragSpecData, normalScale_y);
-            spec_entries[15].size = sizeof(frag_spec_data.normalScale_y);
-
-            spec_entries[16].constantID = 15;
-            spec_entries[16].offset = offsetof(struct FragSpecData, normalScale_z);
-            spec_entries[16].size = sizeof(frag_spec_data.normalScale_z);
-
-            spec_entries[17].constantID = 16;
-            spec_entries[17].offset = offsetof(struct FragSpecData, normalScale_w);
-            spec_entries[17].size = sizeof(frag_spec_data.normalScale_w);
-        }
-
-        spec_entries[18].constantID = 17;
-        spec_entries[18].offset = offsetof(struct FragSpecData, normal_texture_set);
-        spec_entries[18].size = sizeof(frag_spec_data.normal_texture_set);
+        spec_entries[10].constantID = 9;
+        spec_entries[10].offset = offsetof(struct FragSpecData, normal_texture_set);
+        spec_entries[10].size = sizeof(frag_spec_data.normal_texture_set);
     
-        spec_entries[19].constantID = 18;
-        spec_entries[19].offset = offsetof(struct FragSpecData, physical_texture_set);
-        spec_entries[19].size = sizeof(frag_spec_data.physical_texture_set);
+        spec_entries[11].constantID = 10;
+        spec_entries[11].offset = offsetof(struct FragSpecData, physical_texture_set);
+        spec_entries[11].size = sizeof(frag_spec_data.physical_texture_set);
 
-        spec_entries[20].constantID = 19;
-        spec_entries[20].offset = offsetof(struct FragSpecData, env_texture_set);
-        spec_entries[20].size = sizeof(frag_spec_data.env_texture_set);
+        spec_entries[12].constantID = 11;
+        spec_entries[12].offset = offsetof(struct FragSpecData, env_texture_set);
+        spec_entries[12].size = sizeof(frag_spec_data.env_texture_set);
 
-        spec_entries[21].constantID = 20;
-        spec_entries[21].offset = offsetof(struct FragSpecData, lightmap_texture_set);
-        spec_entries[21].size = sizeof(frag_spec_data.lightmap_texture_set);
         
-        // only use w value, specgloss maps are not supported
-        frag_spec_data.specularScale_x = def->specularScale[0];
-        frag_spec_data.specularScale_y = def->specularScale[1];
-        frag_spec_data.specularScale_z = def->specularScale[2];
-        frag_spec_data.specularScale_w = def->specularScale[3];
-
-        frag_spec_data.normalScale_x = def->normalScale[0];
-        frag_spec_data.normalScale_y = def->normalScale[1];
-        frag_spec_data.normalScale_z = def->normalScale[2];
-        frag_spec_data.normalScale_w = def->normalScale[3];
-
 	    if ( ( def->vk_pbr_flags & PBR_HAS_NORMALMAP ) == 0 )
             frag_spec_data.normal_texture_set = -1;
 
-	    if ( ( def->vk_pbr_flags & PBR_HAS_PHYSICALMAP ) == 0 )
+	    if ( ( def->vk_pbr_flags & PBR_HAS_SPECULARMAP ) == 0 )
             frag_spec_data.physical_texture_set = -1;
-
-        if ( def->vk_pbr_flags & PBR_HAS_SPECULARMAP )
-            frag_spec_data.physical_texture_set = 1;
 
         if ( !vk.cubemapActive )
             frag_spec_data.env_texture_set = -1;
-
-        if ( ( def->vk_pbr_flags & PBR_HAS_LIGHTMAP ) == 0 )
-            frag_spec_data.lightmap_texture_set = -1;
     }
 #endif
     frag_spec_info.pMapEntries = spec_entries + 1;
@@ -2173,7 +2101,7 @@ void vk_create_pipelines( void )
 #ifdef VK_PBR_BRDFLUT
 void vk_create_brdflut_pipeline( void )
 {
-    if( !vk.pbrActive )
+    if( !vk.cubemapActive )
         return;
 
     uint32_t size = 512;
