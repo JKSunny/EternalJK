@@ -1301,7 +1301,7 @@ static qboolean ParseStage(shaderStage_t *stage, const char **text)
 		}
 		
 #ifdef USE_VK_PBR 
-		else if ( (!Q_stricmp(token, "normalMap") || !Q_stricmp(token, "normalHeightMap")) && vk.pbrActive )
+		else if ( (!Q_stricmp(token, "normalMap") || !Q_stricmp(token, "normalHeightMap")) )
 		{
 			token = COM_ParseExt(text, qfalse);
 			if ( !token[0] )
@@ -2079,7 +2079,8 @@ static qboolean ParseStage(shaderStage_t *stage, const char **text)
 	}
 
 #ifdef USE_VK_PBR
-	if ( vk.pbrActive && ( physicalAlbedoName || stage->physicalMapType != PHYS_NONE ) ) {
+	if ( !vk.useFastLight && ( physicalAlbedoName || stage->physicalMapType != PHYS_NONE ) ) 
+	{
 		uint32_t i;
 		imgFlags_t flags = IMGFLAG_NOLIGHTSCALE;
 
@@ -2110,7 +2111,6 @@ static qboolean ParseStage(shaderStage_t *stage, const char **text)
 			}
 		}
 		
-		
 		flags |= IMGFLAG_NO_COMPRESSION;
 		
 		// load defined normal map
@@ -2129,6 +2129,18 @@ static qboolean ParseStage(shaderStage_t *stage, const char **text)
 					break;
 				}
 			}
+		}
+
+		// set whiteImage when normalMap is found
+		if ( stage->normalMap && !stage->physicalMap ) {
+			stage->specularScale[0] = 0.0f;
+			stage->specularScale[2] =
+			stage->specularScale[3] = 1.0f;
+			stage->specularScale[1] = 0.5f;
+
+			stage->physicalMap = tr.whiteImage;
+			stage->physicalMapType = PHYS_RMO;
+			stage->vk_pbr_flags |= PBR_HAS_PHYSICALMAP;
 		}
 	}
 
@@ -3251,7 +3263,7 @@ static void ScanAndLoadShaderFiles( void )
 
 #ifdef USE_VK_PBR
 		// look for a .mtr file first
-		if( vk.pbrActive ){
+		{
 			char *ext;
 			Com_sprintf( filename, sizeof( filename ), "shaders/%s", shaderFiles[i] );
 			if ( (ext = strrchr(filename, '.')) )
@@ -3263,8 +3275,6 @@ static void ScanAndLoadShaderFiles( void )
 			{
 				Com_sprintf( filename, sizeof( filename ), "shaders/%s", shaderFiles[i] );
 			}
-		}else{
-			Com_sprintf(filename, sizeof(filename), "shaders/%s", shaderFiles[i]);
 		}
 #else
 		Com_sprintf(filename, sizeof(filename), "shaders/%s", shaderFiles[i]);
@@ -3714,7 +3724,7 @@ shader_t *R_FindShader( const char *name, const int *lightmapIndex, const byte *
 
 		image = R_FindImageFile(strippedName, flags, 0 );
 		if (!image) {
-			vk_debug("shader [%s] image not found, fallback to default shader\n", name);
+			vk_debug("shader [%s] image [%s] not found, fallback to default shader\n", name, strippedName);
 			setDefaultShader();
 			return FinishShader();
 		}
@@ -3826,6 +3836,21 @@ static collapse_t	collapse[] = {
 	{ -1 }
 };
 
+static int vk_get_light_mode_collapse( shaderStage_t *stage ) 
+{
+	if ( stage->bundle[0].rgbGen == CGEN_LIGHTING_DIFFUSE || 
+		 stage->bundle[0].rgbGen == CGEN_LIGHTING_DIFFUSE_ENTITY ) {
+		return LIGHTDEF_USE_LIGHT_VECTOR;
+	}
+
+	if ( stage->bundle[0].rgbGen == CGEN_VERTEX || 
+		 stage->bundle[0].rgbGen == CGEN_EXACT_VERTEX ) {
+		return LIGHTDEF_USE_LIGHT_VERTEX;
+	}
+
+	return 0;
+}
+
 /*
 ================
 CollapseMultitexture
@@ -3841,6 +3866,9 @@ static int CollapseMultitexture( unsigned int st0bits, shaderStage_t *st0, shade
 	qboolean nonIdenticalColors;
 	qboolean swapLightmap;
 
+	//if ( shader.numDeforms == 1 )
+	//	return 0;
+
 	// make sure both stages are active
 	if (!st0->active || !st1->active) {
 		return 0;
@@ -3849,6 +3877,13 @@ static int CollapseMultitexture( unsigned int st0bits, shaderStage_t *st0, shade
 	if (st0->depthFragment || (st0->stateBits & GLS_ATEST_BITS)) {
 		return 0;
 	}
+
+	if ( st1->glow )
+		return 0;
+
+	// dont collapse non matching light types stages
+	if ( vk_get_light_mode_collapse( st0 ) != vk_get_light_mode_collapse( st1 ) )
+		return 0;
 
 	abits = st0bits; // st0->stateBits;
 	bbits = st1->stateBits;
@@ -3965,18 +4000,18 @@ static int CollapseMultitexture( unsigned int st0bits, shaderStage_t *st0, shade
 
 	st0->numTexBundles++;
 
-	if( st1->glow )
-		st0->glow = true;
+	//if ( st1->glow )
+	//	st0->glow = st1->glow;
 
-#ifdef USE_VK_PBR
-	if( st1->vk_pbr_flags ) {
+	if ( st1->vk_pbr_flags ) 
+	{
 		st0->vk_pbr_flags = st1->vk_pbr_flags;
 		st0->normalMap = st1->normalMap;
 		st0->physicalMap = st1->physicalMap;
 		VectorCopy4( st1->specularScale, st0->specularScale );
 		VectorCopy4( st1->normalScale, st0->normalScale );
 	}
-#endif
+
 
 	//
 	// move down subsequent shaders
@@ -4675,11 +4710,6 @@ shader_t *FinishShader( void )
 	shader.tessFlags = TESS_XYZ;
 	stages[0].tessFlags = TESS_RGBA0 | TESS_ST0;
 
-#if defined( USE_VK_PBR ) && defined( VK_PBR_FORCE )
-	if( vk.pbrActive )					// debug
-		shader.tessFlags |= TESS_PBR;	// force pbr for all geometry
-#endif
-
 	/*
 	for (iStage = 1; iStage < shader.numUnfoggedPasses; iStage++)
 	{
@@ -4704,6 +4734,8 @@ shader_t *FinishShader( void )
 		def.face_culling = shader.cullType;
 		def.polygon_offset = shader.polygonOffset;
 
+
+
 		if ((stages[0].stateBits & GLS_DEPTHMASK_TRUE) == 0) {
 			def.allow_discard = 1;
 		}
@@ -4713,6 +4745,8 @@ shader_t *FinishShader( void )
 			int env_mask;
 			shaderStage_t *pStage = &stages[i];
 			def.state_bits = pStage->stateBits;
+			def.vk_light_flags = 0;
+			def.vk_pbr_flags = 0;
 
 			if (pStage->mtEnv3) {
 				switch (pStage->mtEnv3) {
@@ -4834,12 +4868,42 @@ shader_t *FinishShader( void )
 				}
 			}
 
-#ifdef USE_VK_PBR
-			def.vk_pbr_flags = 0;
-#endif
-
 			if (pStage->ss && pStage->ss->surfaceSpriteType) {
 				def.face_culling = CT_TWO_SIDED;
+			}
+
+			//if ( !Q_stricmp(shader.name, "textures/bespin/control02") ){
+			//if ( !Q_stricmp(pStage->bundle[0].image[0]->imgName, "textures/bespin/control02_glw") ){
+			//	Com_Printf( "here stage %d : %d\n", i, def.shader_type );
+			//}
+
+			if ( def.shader_type >= TYPE_GENERIC_BEGIN  )
+			{
+				if ( pStage->numTexBundles > 1 && pStage->bundle[1].isLightmap )
+					def.vk_light_flags |= LIGHTDEF_USE_LIGHTMAP;
+
+				else if ( pStage->bundle[0].rgbGen == CGEN_LIGHTING_DIFFUSE ||
+						  pStage->bundle[0].rgbGen == CGEN_LIGHTING_DIFFUSE_ENTITY )
+				{
+					def.vk_light_flags |= LIGHTDEF_USE_LIGHT_VECTOR;
+				}
+
+				else if ( pStage->bundle[0].rgbGen == CGEN_VERTEX || 
+						  pStage->bundle[0].rgbGen == CGEN_EXACT_VERTEX )
+					def.vk_light_flags |= LIGHTDEF_USE_LIGHT_VERTEX;
+
+#ifdef USE_VK_PBR	
+				def.vk_pbr_flags = pStage->vk_pbr_flags;
+#endif
+
+				if ( def.vk_light_flags ) 
+				{
+					//if ( !vk.useFastLight)
+						pStage->tessFlags |= TESS_QTANGENT;
+
+					if ( def.vk_light_flags & LIGHTDEF_USE_LIGHTMAP )
+						pStage->tessFlags |= TESS_LIGHTDIR;
+				}
 			}
 
 			stype = def.shader_type;
@@ -4852,6 +4916,7 @@ shader_t *FinishShader( void )
 			}
 
 			def.mirror = qtrue;
+			def.vk_pbr_flags = 0;
 			pStage->vk_mirror_pipeline[0] = vk_find_pipeline_ext(0, &def, qfalse);
 			if (pStage->depthFragment) {
 				def.shader_type = TYPE_SINGLE_TEXTURE_DF;
@@ -4861,23 +4926,6 @@ shader_t *FinishShader( void )
 
 			// this will be a copy of the vk_pipeline[0] but with faceculling disabled
 			pStage->vk_2d_pipeline = NULL;
-
-#ifdef USE_VK_PBR
-			if ( pStage->vk_pbr_flags && def.shader_type >= TYPE_GENERIC_BEGIN ) {
-				pStage->tessFlags |= TESS_PBR;
-				shader.hasPBR = qtrue;
-
-				def.mirror = qfalse;
-				def.vk_pbr_flags = pStage->vk_pbr_flags;
-				VectorCopy4( pStage->specularScale, def.specularScale );
-				VectorCopy4( pStage->normalScale, def.normalScale );
-
-				if ( hasLightmapStage ) 
-					def.vk_pbr_flags |= PBR_HAS_LIGHTMAP;
-
-				pStage->vk_pbr_pipeline[0] = vk_find_pipeline_ext(0, &def, qfalse);
-			}
-#endif
 		}
 	}
 
@@ -4887,32 +4935,16 @@ shader_t *FinishShader( void )
 	if (vk.maxBoundDescriptorSets >= 6 && stage == 1 && tr.mapLoading && !(shader.contentFlags & CONTENTS_FOG) && fogCollapse) {
 		Vk_Pipeline_Def def;
 		Vk_Pipeline_Def def_mirror;
-
+		
 		shaderStage_t *pStage = &stages[0];
 
 		vk_get_pipeline_def(pStage->vk_pipeline[0], &def);
 		vk_get_pipeline_def(pStage->vk_mirror_pipeline[0], &def_mirror);
-
+		
 		def.fog_stage = 1;
 		def_mirror.fog_stage = 1;
 		pStage->vk_pipeline[1] = vk_find_pipeline_ext(0, &def, qfalse);
 		pStage->vk_mirror_pipeline[1] = vk_find_pipeline_ext(0, &def_mirror, qfalse);
-
-#ifdef USE_VK_PBR
-		if( pStage->tessFlags & TESS_PBR ) {
-			Vk_Pipeline_Def def_pbr;
-			vk_get_pipeline_def(pStage->vk_pipeline[0], &def_pbr);
-			def_pbr.fog_stage = 1;
-			def_pbr.vk_pbr_flags = pStage->vk_pbr_flags;
-			VectorCopy4( pStage->specularScale, def_pbr.specularScale );
-			VectorCopy4( pStage->normalScale, def_pbr.normalScale );
-
-			if ( hasLightmapStage ) 
-				def_pbr.vk_pbr_flags |= PBR_HAS_LIGHTMAP;
-
-			pStage->vk_pbr_pipeline[1] = vk_find_pipeline_ext(0, &def_pbr, qfalse);
-		}
-#endif
 
 		shader.fogCollapse = qtrue;
 		//stages[0].adjustColorsForFog = ACFF_NONE;

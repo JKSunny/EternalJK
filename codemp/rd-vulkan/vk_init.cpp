@@ -394,8 +394,8 @@ void vk_initialize( void )
 	vk.uniform_item_size = PAD( sizeof(vkUniform_t), vk.uniform_alignment );
 #ifdef USE_VBO_GHOUL2
 	vk.uniform_camera_item_size = PAD( sizeof(vkUniformCamera_t), vk.uniform_alignment );
-	vk.uniform_data_item_size = PAD( sizeof(vkUniformData_t), vk.uniform_alignment );
-	vk.uniform_ghoul_item_size = PAD( sizeof(vkUniformGhoul_t), vk.uniform_alignment );
+	vk.uniform_data_item_size = PAD( sizeof(vkUniformEntity_t), vk.uniform_alignment );
+	vk.uniform_ghoul_item_size = PAD( sizeof(vkUniformBones_t), vk.uniform_alignment );
 #endif
 	vk.storage_alignment = MAX( props.limits.minStorageBufferOffsetAlignment, sizeof(uint32_t) ); //for flare visibility tests
 
@@ -451,13 +451,19 @@ void vk_initialize( void )
 #endif
 
 #ifdef USE_VK_PBR
+	if ( vk.fboActive && r_normalMapping->integer )
+		vk.normalMappingActive = qtrue;
+
+	if ( vk.fboActive && r_specularMapping->integer )
+		vk.specularMappingActive = qtrue;
+
 	// if another pbr input attachment has been added
 	// up the maxBoundDescriptorSets here as well
-	if( vk.fboActive && r_pbr->integer && vk.maxBoundDescriptorSets >= 11 )
-		vk.pbrActive = qtrue;
+	if( ( !vk.normalMappingActive && !vk.specularMappingActive ) || vk.maxBoundDescriptorSets < 11 )
+		vk.useFastLight = qtrue;
 
 #ifdef VK_CUBEMAP
-	if ( vk.pbrActive && r_cubeMapping->integer )
+	if ( r_cubeMapping->integer )
 		vk.cubemapActive = qtrue;
 #endif
 #endif

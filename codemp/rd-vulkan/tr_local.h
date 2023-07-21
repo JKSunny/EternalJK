@@ -1582,11 +1582,8 @@ typedef struct trGlobals_s {
 	image_t					*whiteImage;		// full of 0xff
 	image_t					*blackImage;			
 	image_t					*identityLightImage;// full of tr.identityLightByte
-#ifdef USE_VK_PBR
-	image_t					*emptyImage;		// full of 0xff
 #ifdef VK_CUBEMAP
 	image_t					*emptyCubemap;
-#endif
 #endif
 
 	shader_t				*defaultShader;
@@ -1898,6 +1895,8 @@ extern cvar_t	*r_vbo;
 #endif
 #ifdef USE_VK_PBR
 extern cvar_t	*r_pbr;
+extern cvar_t	*r_normalMapping;
+extern cvar_t	*r_specularMapping;
 extern cvar_t	*r_baseNormalX;
 extern cvar_t	*r_baseNormalY;
 extern cvar_t	*r_baseParallax;

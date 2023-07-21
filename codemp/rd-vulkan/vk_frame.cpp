@@ -495,11 +495,9 @@ void vk_create_render_passes()
     VK_SET_OBJECT_NAME(vk.render_pass.screenmap, "render pass - screenmap", VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT);
 
 #ifdef VK_PBR_BRDFLUT
-    if( vk.pbrActive )
+    if( vk.cubemapActive )
     {
-    #ifdef VK_CUBEMAP 
-        if ( vk.cubemapActive ) 
-        {   
+        #ifdef VK_CUBEMAP 
             desc.attachmentCount = 2;
 			attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 			attachments[1].samples = (VkSampleCountFlagBits)vkSamples;
@@ -531,9 +529,8 @@ void vk_create_render_passes()
 			}
 
             VK_CHECK( qvkCreateRenderPass( device, &desc, NULL, &vk.render_pass.cubemap ) );
-            VK_SET_OBJECT_NAME( vk.render_pass.cubemap, "render pass - cubemap", VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT );
-        }  
-    #endif
+            VK_SET_OBJECT_NAME( vk.render_pass.cubemap, "render pass - cubemap", VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT );           
+        #endif
 
         deps[0].srcSubpass = VK_SUBPASS_EXTERNAL;
         deps[0].dstSubpass = 0;
@@ -807,7 +804,7 @@ void vk_create_framebuffers()
         }
 
 #ifdef VK_PBR_BRDFLUT
-        if( vk.pbrActive )
+        if ( vk.cubemapActive )
 {
             desc.renderPass = vk.render_pass.brdflut;
             desc.width = desc.height = 512;  
@@ -1179,7 +1176,7 @@ void vk_begin_dglow_extract_render_pass( void )
 #ifdef VK_PBR_BRDFLUT
 void vk_create_brfdlut( void )
 {
-    if( !vk.pbrActive )
+    if( !vk.cubemapActive )
         return;
 
     VkRenderPassBeginInfo   begin_info;

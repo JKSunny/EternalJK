@@ -431,10 +431,10 @@ void RB_SurfaceTriangles( const srfTriangles_t *srf ) {
 	dv = srf->verts;
 	xyz = tess.xyz[ tess.numVertexes ];
 	normal = tess.normal[ tess.numVertexes ];
-#ifdef USE_VK_PBR
+
 	qtangent = tess.qtangent[ tess.numVertexes ];
 	lightdir = tess.lightdir[ tess.numVertexes ];
-#endif
+
 	texCoords0 = tess.texCoords[0][tess.numVertexes];
 	texCoords1 = tess.texCoords[1][tess.numVertexes];
 	texCoords2 = tess.texCoords[2][tess.numVertexes];
@@ -454,8 +454,7 @@ void RB_SurfaceTriangles( const srfTriangles_t *srf ) {
 		normal[2] = dv->normal[2];
 		normal += 4;
 
-#ifdef USE_VK_PBR
-		if( vk.pbrActive ) {
+		{
 			qtangent[0] = dv->qtangent[0];
 			qtangent[1] = dv->qtangent[1];
 			qtangent[2] = dv->qtangent[2];
@@ -468,7 +467,6 @@ void RB_SurfaceTriangles( const srfTriangles_t *srf ) {
 			lightdir[3] = 0.0;
 			lightdir += 4;
 		}
-#endif
 
 		texCoords0[0] = dv->st[0];
 		texCoords0[1] = dv->st[1];
@@ -1665,25 +1663,22 @@ void RB_SurfaceFace( srfSurfaceFace_t *surf ) {
 		}
 	}
 
-#ifdef USE_VK_PBR
-		if( vk.pbrActive && surf->qtangents )	
-			memcpy( &tess.qtangent[ tess.numVertexes ], surf->qtangents, numPoints * sizeof( vec4_t ) );	
+	if ( surf->qtangents )	
+		memcpy( &tess.qtangent[ tess.numVertexes ], surf->qtangents, numPoints * sizeof( vec4_t ) );	
 
-		if( vk.pbrActive && surf->lightdir )	
-			memcpy( &tess.lightdir[ tess.numVertexes ], surf->lightdir, numPoints * sizeof( vec4_t ) );	
-#endif
+	if ( surf->lightdir )	
+		memcpy( &tess.lightdir[ tess.numVertexes ], surf->lightdir, numPoints * sizeof( vec4_t ) );	
 
 	for ( i = 0, v = surf->points[0], ndx = tess.numVertexes; i < numPoints; i++, v += VERTEXSIZE, ndx++ )
 	{
 		VectorCopy( v, tess.xyz[ndx]);
 
-#ifdef USE_VK_PBR
+
 		tess.texCoords[0][ndx][0] = v[6];	// squeezed in in normals
 		tess.texCoords[0][ndx][1] = v[7];
-#else
-		tess.texCoords[0][ndx][0] = v[3];
-		tess.texCoords[0][ndx][1] = v[4];
-#endif
+		//tess.texCoords[0][ndx][0] = v[3];
+		//tess.texCoords[0][ndx][1] = v[4];
+
 		for(k=0;k<MAXLIGHTMAPS;k++)
 		{
 			if (tess.shader->lightmapIndex[k] >= 0)
@@ -1938,10 +1933,10 @@ void RB_SurfaceGrid( srfGridMesh_t *cv ) {
 
 		xyz = tess.xyz[numVertexes];
 		normal = tess.normal[numVertexes];
-#ifdef USE_VK_PBR
+
 		qtangent = tess.qtangent[numVertexes];
 		lightdir = tess.lightdir[numVertexes];
-#endif
+
 		texCoords0 = tess.texCoords[0][numVertexes];
 		texCoords1 = tess.texCoords[1][numVertexes];
 		texCoords2 = tess.texCoords[2][numVertexes];
@@ -1990,8 +1985,7 @@ void RB_SurfaceGrid( srfGridMesh_t *cv ) {
 				normal[2] = dv->normal[2];
 				normal += 4;
 
-#ifdef USE_VK_PBR
-				if( vk.pbrActive ) {
+				if ( !vk.useFastLight ) {
 					qtangent[0] = dv->qtangent[0];
 					qtangent[1] = dv->qtangent[1];
 					qtangent[2] = dv->qtangent[2];
@@ -2004,7 +1998,6 @@ void RB_SurfaceGrid( srfGridMesh_t *cv ) {
 					lightdir[3] = 0.0;
 					lightdir += 4;
 				}
-#endif
 
 				*(unsigned *)color = ComputeFinalVertexColor((byte *)dv->color);
 				color += 4;
