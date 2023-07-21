@@ -503,7 +503,7 @@ void RE_TakeVideoFrame( int width, int height, byte *captureBuffer, byte *encode
 
 qboolean R_CanMinimize( void )
 {
-	if (vk.fboActive || vk.offscreenRender)
+	if (vk.offscreenRender)
 		return qtrue;
 
 	return qfalse;

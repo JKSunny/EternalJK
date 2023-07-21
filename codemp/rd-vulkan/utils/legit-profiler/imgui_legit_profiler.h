@@ -391,13 +391,7 @@ namespace ImGuiUtils
                 TextColumn( "ID3 shaders", va( "%i", tr.numShaders ), columnWidth);
 
                 #ifdef USE_VBO
-                    const int vbo_mode = MIN( r_vbo->integer, 3 );
-                    const char *vbo_mode_string[4] = { "off", "world", "world + models", "models" };
-
-                    TextColumn( "VBO mode:", vbo_mode_string[vbo_mode], columnWidth );
-
-                    if ( r_vbo->integer )
-                        TextColumn( "VBO buffers", va( "%i, world index: %i", vk.vbo_count, vk.vbo_world_index ) ,columnWidth);
+                    TextColumn( "VBO buffers", va( "%i, world index: %i", vk.vbo_count, vk.vbo_world_index ) ,columnWidth);
                 #endif
             #endif
 

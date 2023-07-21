@@ -42,17 +42,12 @@ void R_SetColorMappings( void)
 
 
 	// never overbright in windowed mode
-	if ( !glConfig.isFullscreen && r_overBrightBits->integer >= 0 && !vk.fboActive ) {
-		tr.overbrightBits = 0;
+	if ( !glConfig.deviceSupportsGamma && !vk.fboActive ) {
+		tr.overbrightBits = 0; // need hardware gamma for overbright
 		applyGamma = qfalse;
 	} else {
-		if ( !glConfig.deviceSupportsGamma && !vk.fboActive ) {
-			tr.overbrightBits = 0; // need hardware gamma for overbright
-			applyGamma = qfalse;
-		} else {
-			applyGamma = qtrue;
-		}
-	}
+		applyGamma = qtrue;
+	}	
 
     // clear
     for (i = 0; i < 255; i++)
@@ -118,15 +113,8 @@ void R_SetColorMappings( void)
 
     vk_update_post_process_pipelines();
 
-    if (glConfig.deviceSupportsGamma) {
-        if (vk.fboActive)
-            ri.WIN_SetGamma(&glConfig, s_gammatable_linear, s_gammatable_linear, s_gammatable_linear);
-        else {
-            if ( applyGamma ) {
-                ri.WIN_SetGamma(&glConfig, s_gammatable, s_gammatable, s_gammatable);
-            }
-        }
-    }
+    if (glConfig.deviceSupportsGamma)
+        ri.WIN_SetGamma(&glConfig, s_gammatable_linear, s_gammatable_linear, s_gammatable_linear);
 }
 
 /*

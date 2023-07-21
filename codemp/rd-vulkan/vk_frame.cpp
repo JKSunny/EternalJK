@@ -86,24 +86,7 @@ void vk_create_render_passes()
     depth_format = vk.depth_format;
     device = vk.device;
 
-    if (r_fbo->integer == 0)
     {
-        // presentation
-        attachments[0].flags = 0;
-        attachments[0].format = vk.present_format.format;
-        attachments[0].samples = VK_SAMPLE_COUNT_1_BIT;
-#ifdef USE_BUFFER_CLEAR
-        attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-#else
-        attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;	// Assuming this will be completely overwritten
-#endif
-        attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        attachments[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        attachments[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        attachments[0].initialLayout = vk.initSwapchainLayout;
-        attachments[0].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-    }
-    else {
         // resolve/color buffer
         attachments[0].flags = 0;
         attachments[0].format = vk.color_format;
@@ -200,25 +183,6 @@ void vk_create_render_passes()
 
     // subpass dependencies
     Com_Memset(&deps, 0, sizeof(deps));
-
-    if (r_fbo->integer == 0)
-    {
-        desc.dependencyCount = 1;
-        desc.pDependencies = deps;
-
-        deps[0].srcSubpass = VK_SUBPASS_EXTERNAL;
-        deps[0].dstSubpass = 0;
-        deps[0].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;	// What pipeline stage is waiting on the dependency
-        deps[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;	// What pipeline stage is waiting on the dependency
-        deps[0].srcAccessMask = 0;											// What access scopes are influence the dependency
-        deps[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT; // What access scopes are waiting on the dependency
-        deps[0].dependencyFlags = 0;
-
-        VK_CHECK(qvkCreateRenderPass(device, &desc, NULL, &vk.render_pass.main));
-        VK_SET_OBJECT_NAME(vk.render_pass.main, "render pass - main", VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT);
-
-        return;
-    }
 
     desc.dependencyCount = 2;
     desc.pDependencies = deps;
@@ -601,11 +565,11 @@ void vk_create_framebuffers()
     {
         desc.renderPass = vk.render_pass.main;
         desc.attachmentCount = 2;
-
-        if (r_fbo->integer == 0) {
-            desc.width = gls.windowWidth;
-            desc.height = gls.windowHeight;
-            attachments[0] = vk.swapchain_image_views[i];
+   
+        if (i == 0) {
+            desc.width = glConfig.vidWidth;
+            desc.height = glConfig.vidHeight;
+            attachments[0] = vk.color_image_view;
             attachments[1] = vk.depth_image_view;
 
             if (vk.msaaActive) {
@@ -614,38 +578,21 @@ void vk_create_framebuffers()
             }
 
             VK_CHECK(qvkCreateFramebuffer(vk.device, &desc, NULL, &vk.framebuffers.main[i]));
-            VK_SET_OBJECT_NAME(vk.framebuffers.main[i], va("framebuffer - main %i"), VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT);
+            VK_SET_OBJECT_NAME(vk.framebuffers.main[i], "framebuffer - main", VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT);
         }
         else {
-            if (i == 0) {
-                desc.width = glConfig.vidWidth;
-                desc.height = glConfig.vidHeight;
-                attachments[0] = vk.color_image_view;
-                attachments[1] = vk.depth_image_view;
-
-                if (vk.msaaActive) {
-                    desc.attachmentCount = 3;
-                    attachments[2] = vk.msaa_image_view;
-                }
-
-                VK_CHECK(qvkCreateFramebuffer(vk.device, &desc, NULL, &vk.framebuffers.main[i]));
-                VK_SET_OBJECT_NAME(vk.framebuffers.main[i], "framebuffer - main", VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT);
-            }
-            else {
-                vk.framebuffers.main[i] = vk.framebuffers.main[0];
-            }
-
-            // inspector / present
-            desc.renderPass = vk.render_pass.inspector;
-            desc.attachmentCount = 1;
-            desc.width = gls.windowWidth;
-            desc.height = gls.windowHeight;
-            attachments[0] = vk.swapchain_image_views[i];
-  
-            VK_CHECK(qvkCreateFramebuffer(vk.device, &desc, NULL, &vk.framebuffers.inspector[i]));
-            VK_SET_OBJECT_NAME(vk.framebuffers.inspector[i], "framebuffer - inspector", VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT);
-
+            vk.framebuffers.main[i] = vk.framebuffers.main[0];
         }
+
+        // inspector / present
+        desc.renderPass = vk.render_pass.inspector;
+        desc.attachmentCount = 1;
+        desc.width = gls.windowWidth;
+        desc.height = gls.windowHeight;
+        attachments[0] = vk.swapchain_image_views[i];
+  
+        VK_CHECK(qvkCreateFramebuffer(vk.device, &desc, NULL, &vk.framebuffers.inspector[i]));
+        VK_SET_OBJECT_NAME(vk.framebuffers.inspector[i], "framebuffer - inspector", VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT); 
     }
 
     // gamma correction
@@ -657,170 +604,161 @@ void vk_create_framebuffers()
     VK_CHECK(qvkCreateFramebuffer(vk.device, &desc, NULL, &vk.framebuffers.gamma));
     VK_SET_OBJECT_NAME(vk.framebuffers.gamma, "framebuffer - gamma-correction", VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT);
 
-    vk_debug("Created vk.framebuffers with fbo off\n");
+    // screenmap
+    desc.renderPass = vk.render_pass.screenmap;
+    desc.attachmentCount = 2;
+    desc.width = vk.screenMapWidth;
+    desc.height = vk.screenMapHeight;
 
-    if (vk.fboActive)
+    // set color and depth attachment
+    attachments[0] = vk.screenMap.color_image_view;
+    attachments[1] = vk.screenMap.depth_image_view;
+
+    if ((VkSampleCountFlagBits)vk.screenMapSamples > VK_SAMPLE_COUNT_1_BIT)
     {
-        // screenmap
-        desc.renderPass = vk.render_pass.screenmap;
-        desc.attachmentCount = 2;
-        desc.width = vk.screenMapWidth;
-        desc.height = vk.screenMapHeight;
-
-        // set color and depth attachment
-        attachments[0] = vk.screenMap.color_image_view;
-        attachments[1] = vk.screenMap.depth_image_view;
-
-        if ((VkSampleCountFlagBits)vk.screenMapSamples > VK_SAMPLE_COUNT_1_BIT)
-        {
-            desc.attachmentCount = 3;
-            attachments[2] = vk.screenMap.color_image_view_msaa;
-        }
-
-        VK_CHECK(qvkCreateFramebuffer(vk.device, &desc, NULL, &vk.framebuffers.screenmap));
-        VK_SET_OBJECT_NAME(vk.framebuffers.screenmap, "framebuffer - screenmap", VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT);
-
-#ifdef VK_CUBEMAP
-        if ( vk.cubemapActive )
-        {
-            // cubemap
-            desc.renderPass = vk.render_pass.cubemap;
-            desc.attachmentCount = 2;
-            desc.width = REF_CUBEMAP_SIZE;
-            desc.height = REF_CUBEMAP_SIZE;
-        
-            attachments[1] = vk.cubeMap.depth_image_view;
-
-            if ( vk.msaaActive )
-                desc.attachmentCount = 3;
-
-            for ( int j = 0; j < 6; j++  ) 
-            {
-                attachments[0] = vk.cubeMap.color_image_view[j+1];
-
-                if ( vk.msaaActive ) {
-                    attachments[2] = vk.cubeMap.color_image_view_msaa[0];
-                }
-
-                VK_CHECK( qvkCreateFramebuffer( vk.device, &desc, NULL, &vk.framebuffers.cubemap[j] ) );
-                VK_SET_OBJECT_NAME( vk.framebuffers.cubemap[j], va( "framebuffer - cubemap face %d", j ), VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT );
-            } 
-        }
-#endif
-
-
-        if ( vk.capture.image != VK_NULL_HANDLE )
-        {
-            attachments[0] = vk.capture.image_view;
-
-            desc.renderPass = vk.render_pass.capture;
-            desc.pAttachments = attachments;
-            desc.attachmentCount = 1;
-            desc.width = gls.captureWidth;
-            desc.height = gls.captureHeight;
-
-            VK_CHECK(qvkCreateFramebuffer(vk.device, &desc, NULL, &vk.framebuffers.capture));
-            VK_SET_OBJECT_NAME(vk.framebuffers.capture, "framebuffer - capture", VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT);
-        }
-
-        if( vk.dglowActive )
-        {
-            uint32_t width = gls.captureWidth;
-            uint32_t height = gls.captureHeight;
-
-            desc.renderPass = vk.render_pass.dglow.extract;
-            desc.width = width;
-            desc.height = height;
-
-            desc.attachmentCount = 2;
-            attachments[0] = vk.dglow_image_view[0];
-            attachments[1] = vk.depth_image_view;
-
-            if ( vk.msaaActive ) {
-                desc.attachmentCount = 3;
-                attachments[2] = vk.dglow_msaa_image_view;
-            }
-
-            VK_CHECK( qvkCreateFramebuffer( vk.device, &desc, NULL, &vk.framebuffers.dglow.extract ) );
-            VK_SET_OBJECT_NAME( vk.framebuffers.dglow.extract, "framebuffer - dglow extract", VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT );
-
-            for ( i = 0; i < ARRAY_LEN( vk.framebuffers.dglow.blur ); i += 2 )
-            {
-                width /= 2;
-                height /= 2;
-
-                desc.renderPass = vk.render_pass.dglow.blur[i];
-                desc.width = width;
-                desc.height = height;    
-                desc.attachmentCount = 1;
-
-                attachments[0] = vk.dglow_image_view[i + 0 + 1];
-                VK_CHECK( qvkCreateFramebuffer( vk.device, &desc, NULL, &vk.framebuffers.dglow.blur[i + 0] ) );
-
-                attachments[0] = vk.dglow_image_view[i + 1 + 1];
-                VK_CHECK( qvkCreateFramebuffer( vk.device, &desc, NULL, &vk.framebuffers.dglow.blur[i + 1] ) );
-
-                VK_SET_OBJECT_NAME( vk.framebuffers.dglow.blur[i + 0], va( "framebuffer - dglow blur %i", i + 0 ), VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT );
-                VK_SET_OBJECT_NAME( vk.framebuffers.dglow.blur[i + 1], va( "framebuffer - dglow blur %i", i + 1 ), VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT );
-            }
-        }
-
-        if ( vk.bloomActive )
-        {
-            uint32_t width = gls.captureWidth;
-            uint32_t height = gls.captureHeight;
-
-            // bloom color extraction
-            desc.renderPass = vk.render_pass.bloom.extract;
-            desc.width = width;
-            desc.height = height;
-
-            desc.attachmentCount = 1;
-            attachments[0] = vk.bloom_image_view[0];
-
-            VK_CHECK( qvkCreateFramebuffer( vk.device, &desc, NULL, &vk.framebuffers.bloom.extract ) );
-
-            VK_SET_OBJECT_NAME( vk.framebuffers.bloom.extract, "framebuffer - bloom extraction", VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT );
-
-            for ( i = 0; i < ARRAY_LEN(vk.framebuffers.bloom.blur); i += 2 )
-            {
-                width /= 2;
-                height /= 2;
-
-                desc.renderPass = vk.render_pass.bloom.blur[i];
-                desc.width = width;
-                desc.height = height;    
-                desc.attachmentCount = 1;
-
-                attachments[0] = vk.bloom_image_view[i + 0 + 1];
-                VK_CHECK( qvkCreateFramebuffer( vk.device, &desc, NULL, &vk.framebuffers.bloom.blur[i + 0] ) );
-
-                attachments[0] = vk.bloom_image_view[i + 1 + 1];
-                VK_CHECK( qvkCreateFramebuffer( vk.device, &desc, NULL, &vk.framebuffers.bloom.blur[i + 1] ) );
-
-                VK_SET_OBJECT_NAME( vk.framebuffers.bloom.blur[i + 0], va( "framebuffer - bloom blur %i", i + 0 ), VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT );
-                VK_SET_OBJECT_NAME( vk.framebuffers.bloom.blur[i + 1], va( "framebuffer - bloom blur %i", i + 1 ), VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT );
-            }
-        }
-
-#ifdef VK_PBR_BRDFLUT
-        if ( vk.cubemapActive )
-{
-            desc.renderPass = vk.render_pass.brdflut;
-            desc.width = desc.height = 512;  
-            desc.attachmentCount = 1;
-
-            attachments[0] = vk.brdflut_image_view;
-
-            VK_CHECK( qvkCreateFramebuffer( vk.device, &desc, NULL, &vk.framebuffers.brdflut ) );
-            VK_SET_OBJECT_NAME( vk.framebuffers.brdflut, va( "framebuffer - brdf LUT" ), VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT );
-        }
-#endif
-
-        vk_debug("Created vk.framebuffers with fbo on\n");
+        desc.attachmentCount = 3;
+        attachments[2] = vk.screenMap.color_image_view_msaa;
     }
 
-    
+    VK_CHECK(qvkCreateFramebuffer(vk.device, &desc, NULL, &vk.framebuffers.screenmap));
+    VK_SET_OBJECT_NAME(vk.framebuffers.screenmap, "framebuffer - screenmap", VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT);
+
+#ifdef VK_CUBEMAP
+    if ( vk.cubemapActive )
+    {
+        // cubemap
+        desc.renderPass = vk.render_pass.cubemap;
+        desc.attachmentCount = 2;
+        desc.width = REF_CUBEMAP_SIZE;
+        desc.height = REF_CUBEMAP_SIZE;
+        
+        attachments[1] = vk.cubeMap.depth_image_view;
+
+        if ( vk.msaaActive )
+            desc.attachmentCount = 3;
+
+        for ( int j = 0; j < 6; j++  ) 
+        {
+            attachments[0] = vk.cubeMap.color_image_view[j+1];
+
+            if ( vk.msaaActive ) {
+                attachments[2] = vk.cubeMap.color_image_view_msaa[0];
+            }
+
+            VK_CHECK( qvkCreateFramebuffer( vk.device, &desc, NULL, &vk.framebuffers.cubemap[j] ) );
+            VK_SET_OBJECT_NAME( vk.framebuffers.cubemap[j], va( "framebuffer - cubemap face %d", j ), VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT );
+        } 
+    }
+#endif
+
+
+    if ( vk.capture.image != VK_NULL_HANDLE )
+    {
+        attachments[0] = vk.capture.image_view;
+
+        desc.renderPass = vk.render_pass.capture;
+        desc.pAttachments = attachments;
+        desc.attachmentCount = 1;
+        desc.width = gls.captureWidth;
+        desc.height = gls.captureHeight;
+
+        VK_CHECK(qvkCreateFramebuffer(vk.device, &desc, NULL, &vk.framebuffers.capture));
+        VK_SET_OBJECT_NAME(vk.framebuffers.capture, "framebuffer - capture", VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT);
+    }
+
+    if( vk.dglowActive )
+    {
+        uint32_t width = gls.captureWidth;
+        uint32_t height = gls.captureHeight;
+
+        desc.renderPass = vk.render_pass.dglow.extract;
+        desc.width = width;
+        desc.height = height;
+
+        desc.attachmentCount = 2;
+        attachments[0] = vk.dglow_image_view[0];
+        attachments[1] = vk.depth_image_view;
+
+        if ( vk.msaaActive ) {
+            desc.attachmentCount = 3;
+            attachments[2] = vk.dglow_msaa_image_view;
+        }
+
+        VK_CHECK( qvkCreateFramebuffer( vk.device, &desc, NULL, &vk.framebuffers.dglow.extract ) );
+        VK_SET_OBJECT_NAME( vk.framebuffers.dglow.extract, "framebuffer - dglow extract", VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT );
+
+        for ( i = 0; i < ARRAY_LEN( vk.framebuffers.dglow.blur ); i += 2 )
+        {
+            width /= 2;
+            height /= 2;
+
+            desc.renderPass = vk.render_pass.dglow.blur[i];
+            desc.width = width;
+            desc.height = height;    
+            desc.attachmentCount = 1;
+
+            attachments[0] = vk.dglow_image_view[i + 0 + 1];
+            VK_CHECK( qvkCreateFramebuffer( vk.device, &desc, NULL, &vk.framebuffers.dglow.blur[i + 0] ) );
+
+            attachments[0] = vk.dglow_image_view[i + 1 + 1];
+            VK_CHECK( qvkCreateFramebuffer( vk.device, &desc, NULL, &vk.framebuffers.dglow.blur[i + 1] ) );
+
+            VK_SET_OBJECT_NAME( vk.framebuffers.dglow.blur[i + 0], va( "framebuffer - dglow blur %i", i + 0 ), VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT );
+            VK_SET_OBJECT_NAME( vk.framebuffers.dglow.blur[i + 1], va( "framebuffer - dglow blur %i", i + 1 ), VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT );
+        }
+    }
+
+    if ( vk.bloomActive )
+    {
+        uint32_t width = gls.captureWidth;
+        uint32_t height = gls.captureHeight;
+
+        // bloom color extraction
+        desc.renderPass = vk.render_pass.bloom.extract;
+        desc.width = width;
+        desc.height = height;
+
+        desc.attachmentCount = 1;
+        attachments[0] = vk.bloom_image_view[0];
+
+        VK_CHECK( qvkCreateFramebuffer( vk.device, &desc, NULL, &vk.framebuffers.bloom.extract ) );
+
+        VK_SET_OBJECT_NAME( vk.framebuffers.bloom.extract, "framebuffer - bloom extraction", VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT );
+
+        for ( i = 0; i < ARRAY_LEN(vk.framebuffers.bloom.blur); i += 2 )
+        {
+            width /= 2;
+            height /= 2;
+
+            desc.renderPass = vk.render_pass.bloom.blur[i];
+            desc.width = width;
+            desc.height = height;    
+            desc.attachmentCount = 1;
+
+            attachments[0] = vk.bloom_image_view[i + 0 + 1];
+            VK_CHECK( qvkCreateFramebuffer( vk.device, &desc, NULL, &vk.framebuffers.bloom.blur[i + 0] ) );
+
+            attachments[0] = vk.bloom_image_view[i + 1 + 1];
+            VK_CHECK( qvkCreateFramebuffer( vk.device, &desc, NULL, &vk.framebuffers.bloom.blur[i + 1] ) );
+
+            VK_SET_OBJECT_NAME( vk.framebuffers.bloom.blur[i + 0], va( "framebuffer - bloom blur %i", i + 0 ), VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT );
+            VK_SET_OBJECT_NAME( vk.framebuffers.bloom.blur[i + 1], va( "framebuffer - bloom blur %i", i + 1 ), VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT );
+        }
+    }
+
+#ifdef VK_PBR_BRDFLUT
+    if ( vk.cubemapActive )
+    {
+        desc.renderPass = vk.render_pass.brdflut;
+        desc.width = desc.height = 512;  
+        desc.attachmentCount = 1;
+
+        attachments[0] = vk.brdflut_image_view;
+
+        VK_CHECK( qvkCreateFramebuffer( vk.device, &desc, NULL, &vk.framebuffers.brdflut ) );
+        VK_SET_OBJECT_NAME( vk.framebuffers.brdflut, va( "framebuffer - brdf LUT" ), VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT );
+    }
+#endif
 }
 
 void vk_destroy_render_passes( void )
@@ -914,7 +852,7 @@ void vk_destroy_framebuffers( void )
     for ( i = 0; i < vk.swapchain_image_count; i++ )
     {
         if ( vk.framebuffers.main[i] != VK_NULL_HANDLE ) {
-            if ( !vk.fboActive || i == 0 ) {
+            if ( i == 0 ) {
                 qvkDestroyFramebuffer( vk.device, vk.framebuffers.main[i], NULL );
             }
             vk.framebuffers.main[i] = VK_NULL_HANDLE;
@@ -1432,56 +1370,56 @@ void vk_end_frame( void )
         return;
     }
 
-    if ( vk.fboActive ) {
+
+    {
+        vk.cmd->last_pipeline = VK_NULL_HANDLE; // do not restore clobbered descriptors in vk_bloom()
+
+        if ( vk.bloomActive )
+            vk_bloom();
+
+        if ( backEnd.screenshotMask && vk.capture.image )
         {
-            vk.cmd->last_pipeline = VK_NULL_HANDLE; // do not restore clobbered descriptors in vk_bloom()
+            vk_end_render_pass();
 
-            if ( vk.bloomActive )
-                vk_bloom();
+            // render to capture FBO
+            vk_begin_render_pass(vk.render_pass.capture, vk.framebuffers.capture, qfalse, gls.captureWidth, gls.captureHeight);
+            qvkCmdBindPipeline(vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.capture_pipeline);
+            qvkCmdBindDescriptorSets(vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout_post_process, 0, 1, &vk.color_descriptor, 0, NULL);
 
-            if ( backEnd.screenshotMask && vk.capture.image )
-            {
-                vk_end_render_pass();
+            qvkCmdDraw(vk.cmd->command_buffer, 4, 1, 0, 0);
+        }
 
-                // render to capture FBO
-                vk_begin_render_pass(vk.render_pass.capture, vk.framebuffers.capture, qfalse, gls.captureWidth, gls.captureHeight);
-                qvkCmdBindPipeline(vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.capture_pipeline);
-                qvkCmdBindDescriptorSets(vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout_post_process, 0, 1, &vk.color_descriptor, 0, NULL);
+        if ( !ri.VK_IsMinimized() ) {
+            vk_end_render_pass();
 
-                qvkCmdDraw(vk.cmd->command_buffer, 4, 1, 0, 0);
-            }
+            vk.renderWidth = glConfig.vidWidth;
+            vk.renderHeight = glConfig.vidHeight;
+            vk.renderScaleX = vk.renderScaleY = 1.0;
 
-            if ( !ri.VK_IsMinimized() ) {
-                vk_end_render_pass();
+            vk_begin_render_pass( vk.render_pass.gamma, vk.framebuffers.gamma,
+                qfalse, vk.renderWidth, vk.renderHeight );
 
-                vk.renderWidth = glConfig.vidWidth;
-                vk.renderHeight = glConfig.vidHeight;
-                vk.renderScaleX = vk.renderScaleY = 1.0;
+            qvkCmdBindPipeline( vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.gamma_pipeline );
 
-                vk_begin_render_pass( vk.render_pass.gamma, vk.framebuffers.gamma,
-                    qfalse, vk.renderWidth, vk.renderHeight );
+            qvkCmdBindDescriptorSets( vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                vk.pipeline_layout_post_process, 0, 1, &vk.color_descriptor, 0, NULL );
 
-                qvkCmdBindPipeline( vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.gamma_pipeline );
+            qvkCmdDraw( vk.cmd->command_buffer, 4, 1, 0, 0 );
 
-                qvkCmdBindDescriptorSets( vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                    vk.pipeline_layout_post_process, 0, 1, &vk.color_descriptor, 0, NULL );
+            vk_end_render_pass();
 
-                qvkCmdDraw( vk.cmd->command_buffer, 4, 1, 0, 0 );
-
-                vk_end_render_pass();
-
-                vk.renderPassIndex = RENDER_PASS_INSPECTOR;
-                vk.renderWidth = gls.windowWidth;
-                vk.renderHeight = gls.windowHeight;
-                vk.renderScaleX = vk.renderScaleY = 1.0;
-                vk_begin_render_pass( vk.render_pass.inspector, vk.framebuffers.inspector[vk.swapchain_image_index],
-                    qtrue, vk.renderWidth, vk.renderHeight );
+            vk.renderPassIndex = RENDER_PASS_INSPECTOR;
+            vk.renderWidth = gls.windowWidth;
+            vk.renderHeight = gls.windowHeight;
+            vk.renderScaleX = vk.renderScaleY = 1.0;
+            vk_begin_render_pass( vk.render_pass.inspector, vk.framebuffers.inspector[vk.swapchain_image_index],
+                qtrue, vk.renderWidth, vk.renderHeight );
 #ifdef USE_VK_IMGUI
-                vk_imgui_draw();
+            vk_imgui_draw();
 #endif
-            }
         }
     }
+    
 
     vk_end_render_pass();
 
@@ -1584,7 +1522,7 @@ void vk_read_pixels( byte *buffer, uint32_t width, uint32_t height )
 
     VK_CHECK(qvkWaitForFences(vk.device, 1, &vk.cmd->rendering_finished_fence, VK_FALSE, 1e12));
 
-    if (vk.fboActive) {
+    {
         srcImageAccess = VK_ACCESS_SHADER_READ_BIT;
         if (vk.capture.image) {
             // dedicated capture buffer
@@ -1595,11 +1533,6 @@ void vk_read_pixels( byte *buffer, uint32_t width, uint32_t height )
             srcImageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
             srcImage = vk.color_image;
         }
-    }
-    else {
-        srcImageAccess = VK_ACCESS_MEMORY_READ_BIT;
-        srcImageLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-        srcImage = vk.swapchain_images[vk.swapchain_image_index];
     }
 
     Com_Memset(&desc, 0, sizeof(desc));
