@@ -1525,6 +1525,9 @@ typedef struct trGlobals_s {
 	int						frameSceneNum;		// zeroed at RE_BeginFrame
 
 	qboolean				worldMapLoaded;
+	qboolean				worldInternalLightmapping; // qtrue indicates lightmap atlasing
+	qboolean				worldDeluxeMapping;
+	qboolean				worldInternalDeluxeMapping;
 	world_t					*world;
 	char					worldDir[MAX_QPATH];// ie: maps/tim_dm2 (copy of world_t::name sans extension but still includes the path)
 
@@ -1555,7 +1558,13 @@ typedef struct trGlobals_s {
 	shader_t				*outlineShader;
 
 	int						numLightmaps;
-	image_t					*lightmaps[MAX_LIGHTMAPS];
+	image_t					**lightmaps;
+	image_t					**deluxemaps;
+
+	qboolean				hdrLighting;
+
+	int						lightmapAtlasSize[2];
+	int						lightmapsPerAtlasSide[2];
 
 #ifdef VK_CUBEMAP
 	int                     numCubemaps;
@@ -1967,7 +1976,7 @@ qhandle_t	RE_RegisterShader( const char *name );
 qhandle_t	RE_RegisterShaderNoMip( const char *name );
 const char	*RE_ShaderNameFromIndex(int index);
 
-shader_t	*R_FindShader( const char *name, const int *lightmapIndex, const byte *styles, qboolean mipRawImage );
+shader_t	*R_FindShader( const char *name, const int *lightmapIndexes, const byte *styles, qboolean mipRawImage );
 shader_t	*R_GetShaderByHandle( qhandle_t hShader );
 shader_t	*R_FindShaderByName( const char *name );
 shader_t	*FinishShader( void );
