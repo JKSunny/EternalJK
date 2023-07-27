@@ -247,9 +247,12 @@ static void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs )
 	float		oldShaderSort = -1;
 	int			oldFogNum = -1;
 	int			oldCubemapIndex = -1;
+	qboolean	push_constant;
 
 	for ( i = 0, drawSurf = drawSurfs; i < numDrawSurfs; i++, drawSurf++ )
 	{
+		
+
 		R_DecomposeSort( drawSurf->sort, &entityNum, &shader, &cubemapIndex );
 		fogNum = drawSurf->fogIndex;
 
@@ -280,6 +283,9 @@ static void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs )
 		// change the tess parameters if needed
 		// a "entityMergable" shader is a shader that can have surfaces from seperate
 		// entities merged into a single batch, like smoke and blood puff sprites
+		
+		push_constant = qfalse;
+		
 		//if (((oldSort ^ drawSurfs->sort) & ~QSORT_REFENTITYNUM_MASK) || !shader->entityMergable) {
 		if (shader != oldShader ||
 			fogNum != oldFogNum ||
@@ -304,6 +310,8 @@ static void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs )
 			oldShader = shader;
 			oldFogNum = fogNum;
 			oldCubemapIndex = cubemapIndex;
+
+			push_constant = qtrue;
 		}
 
 		//oldSort = drawSurf->sort;
@@ -315,8 +323,10 @@ static void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs )
 		{
 			RB_PrepareForEntity( entityNum, originalTime );
 
-			Com_Memcpy(vk_world.modelview_transform, backEnd.ori.modelViewMatrix, 64);
-			vk_update_mvp(NULL);
+			if ( push_constant ) {
+				Com_Memcpy(vk_world.modelview_transform, backEnd.ori.modelViewMatrix, 64);
+				vk_update_mvp(NULL);
+			}
 
 			oldEntityNum = entityNum;
 		}

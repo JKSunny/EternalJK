@@ -3462,55 +3462,23 @@ static void InitShader( const char *name, const int *lightmapIndex, const byte *
 
 /*
  ===============
- R_FindLightmap ( needed for -external LMs created by ydnar's q3map2 )
- given a (potentially erroneous) lightmap index, attempts to load
- an external lightmap image and/or sets the index to a valid number
+ R_FindLightmaps
  ===============
  */
-#define EXTERNAL_LIGHTMAP     "lm_%04d.tga"     // THIS MUST BE IN SYNC WITH Q3MAP2
-static inline const int *R_FindLightmap( const int *lightmapIndex )
+static inline const int *R_FindLightmaps( const int *lightmapIndexes )
 {
-	image_t	*image;
-	char	fileName[MAX_QPATH];
-
-
-	//vk_debug("lightmapindex: %d\n", lightmapIndex);
-
 	// don't bother with vertex lighting
-	if (*lightmapIndex < 0)
-		return lightmapIndex;
+	if ( *lightmapIndexes < 0 )
+		return lightmapIndexes;
 
-	// does this lightmap already exist?
-	if (*lightmapIndex < tr.numLightmaps && tr.lightmaps[*lightmapIndex] != NULL)
-		return lightmapIndex;
-
-	// bail if no world dir
-	if (tr.worldDir[0] == '\0')
+	// do the lightmaps exist?
+	for ( int i = 0; i < MAXLIGHTMAPS; i++ )
 	{
-		return lightmapsVertex;
+		if ( lightmapIndexes[i] >= tr.numLightmaps || tr.lightmaps[lightmapIndexes[i]] == NULL )
+			return lightmapsVertex;
 	}
 
-	// sync up render thread, because we're going to have to load an image
-	//R_SyncRenderThread();
-
-	// attempt to load an external lightmap
-	imgFlags_t flags;
-
-	flags = IMGFLAG_NONE | IMGFLAG_CLAMPTOEDGE;
-
-	vk_debug("attempt to load lightmap: %s\n", fileName);
-	Com_sprintf(fileName, sizeof(fileName), "%s/" EXTERNAL_LIGHTMAP, tr.worldDir, *lightmapIndex);
-	image = R_FindImageFile(fileName, flags, 0);
-	if (image == NULL)
-	{
-		return lightmapsVertex;
-	}
-
-	// add it to the lightmap list
-	if (*lightmapIndex >= tr.numLightmaps)
-		tr.numLightmaps = *lightmapIndex + 1;
-	tr.lightmaps[*lightmapIndex] = image;
-	return lightmapIndex;
+	return lightmapIndexes;
 }
 
 #ifdef USE_VBO
@@ -3643,7 +3611,7 @@ void R_UpdateShader( int index, const char *shaderText, qboolean bulk ) {
 	return;
 }
 
-shader_t *R_FindShader( const char *name, const int *lightmapIndex, const byte *styles, qboolean mipRawImage )
+shader_t *R_FindShader( const char *name, const int *lightmapIndexes, const byte *styles, qboolean mipRawImage )
 {
 	char		strippedName[MAX_QPATH];
 	int			hash;
@@ -3655,14 +3623,16 @@ shader_t *R_FindShader( const char *name, const int *lightmapIndex, const byte *
 		return tr.defaultShader;
 	}
 
-	lightmapIndex = R_FindLightmap(lightmapIndex);
-
-	if (lightmapIndex[0] < LIGHTMAP_2D)
+	if ( lightmapIndexes[0] >= 0 && lightmapIndexes[0] >= tr.numLightmaps ) {
+		lightmapIndexes = lightmapsVertex;
+	} else if (lightmapIndexes[0] < LIGHTMAP_2D)
 	{
 		// negative lightmap indexes cause stray pointers (think tr.lightmaps[lightmapIndex])
-		vk_debug("WARNING: shader '%s' has invalid lightmap index of %d\n", name, lightmapIndex[0]);
-		lightmapIndex = lightmapsVertex;
+		ri.Printf( PRINT_WARNING, "WARNING: shader '%s' has invalid lightmap index of %d\n", name, lightmapIndexes[0] );
+		lightmapIndexes = lightmapsVertex;
 	}
+
+	lightmapIndexes = R_FindLightmaps(lightmapIndexes);
 
 	COM_StripExtension(name, strippedName, sizeof(strippedName));
 
@@ -3675,7 +3645,7 @@ shader_t *R_FindShader( const char *name, const int *lightmapIndex, const byte *
 		// then a default shader is created with lightmapIndex == LIGHTMAP_NONE, so we
 		// have to check all default shaders otherwise for every call to R_FindShader
 		// with that same strippedName a new default shader is created.
-		if (IsShader(sh, strippedName, lightmapIndex, styles))
+		if (IsShader(sh, strippedName, lightmapIndexes, styles))
 		{
 			return sh;
 		}
@@ -3684,7 +3654,7 @@ shader_t *R_FindShader( const char *name, const int *lightmapIndex, const byte *
 	}
 
 	// clear the global shader
-	InitShader(strippedName, lightmapIndex, styles);
+	InitShader(strippedName, lightmapIndexes, styles);
 
 	//
 	// attempt to define shader from an explicit parameter file
