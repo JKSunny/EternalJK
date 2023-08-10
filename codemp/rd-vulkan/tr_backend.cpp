@@ -22,7 +22,9 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "tr_local.h"
+#include "tr_allocator.h"
 #include "tr_WorldEffects.h"
+#include <algorithm>
 
 backEndData_t	*backEndData;
 backEndState_t	backEnd;
@@ -221,23 +223,11 @@ static void RB_PrepareForEntity( int entityNum, float originalTime )
 	vk_set_depthrange( depthRange );
 }
 
-/*
-==================
-RB_RenderDrawSurfList
-==================
-*/
-static void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) 
+
+static void RB_SubmitDrawSurfs( drawSurf_t *drawSurfs, int numDrawSurfs, float originalTime ) 
 {
 	uint32_t		i; 
-	drawSurf_t		*drawSurf;
-	float			originalTime;
-
-	// save original time for entity shader offsets
-	originalTime = backEnd.refdef.floatTime;
-	
-	backEnd.currentEntity	= &tr.worldEntity;
-	backEnd.pc.c_surfaces	+= numDrawSurfs;
-
+	drawSurf_t		*drawSurf;	
 	shader_t *shader;
 	int entityNum, fogNum, cubemapIndex;
 
@@ -247,12 +237,12 @@ static void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs )
 	float		oldShaderSort = -1;
 	int			oldFogNum = -1;
 	int			oldCubemapIndex = -1;
+	CBoneCache *oldBoneCache = nullptr;
+
 	qboolean	push_constant;
 
 	for ( i = 0, drawSurf = drawSurfs; i < numDrawSurfs; i++, drawSurf++ )
 	{
-		
-
 		R_DecomposeSort( drawSurf->sort, &entityNum, &shader, &cubemapIndex );
 		fogNum = drawSurf->fogIndex;
 
@@ -266,6 +256,17 @@ static void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs )
 		// if we're rendering glowing objects, but this shader has no stages with glow, skip it!
 		if ( backEnd.isGlowPass && !shader->hasGlow )
 			continue;
+
+		if ( *drawSurf->surface == SF_MDX )
+		{
+			if ( ((CRenderableSurface*)drawSurf->surface)->boneCache != oldBoneCache )
+			{
+				RB_EndSurface();
+				RB_BeginSurface(shader, fogNum, cubemapIndex);
+				oldBoneCache = ((CRenderableSurface*)drawSurf->surface)->boneCache;
+				vk.cmd->animationBoneUboOffset = RB_GetBoneUboOffset((CRenderableSurface*)drawSurf->surface);
+			}
+		}
 
 		if (shader == oldShader &&
 			fogNum == oldFogNum &&
@@ -296,13 +297,13 @@ static void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs )
 				RB_EndSurface();
 
 #ifdef USE_PMLIGHT
-			#define INSERT_POINT SS_FOG
+			//#define INSERT_POINT SS_FOG
 
-			if ( backEnd.refdef.numLitSurfs && oldShaderSort < INSERT_POINT && shader->sort >= INSERT_POINT ) {
+			/*if ( backEnd.refdef.numLitSurfs && oldShaderSort < INSERT_POINT && shader->sort >= INSERT_POINT ) {
 				RB_LightingPass();
 
 				oldEntityNum = -1; // force matrix setup
-			}
+			}*/
 			oldShaderSort = shader->sort;
 #endif
 
@@ -338,6 +339,323 @@ static void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs )
 	// draw the contents of the last shader batch
 	if ( oldShader != NULL )
 		RB_EndSurface();
+}
+
+static void vk_update_camera_constants( const trRefdef_t *refdef, const viewParms_t *viewParms ) 
+{
+	// set
+	vkUniformCamera_t uniform = {};
+
+	Com_Memcpy( uniform.viewOrigin, refdef->vieworg, sizeof( vec3_t) );
+	uniform.viewOrigin[3] = 0.0f;
+
+	/*
+	const float* p = viewParms->projectionMatrix;
+	float proj[16];
+	Com_Memcpy(proj, p, 64);
+
+	proj[5] = -p[5];
+	//myGlMultMatrix(vk_world.modelview_transform, proj, uniform.mvp);
+	myGlMultMatrix(viewParms->world.modelViewMatrix, proj, uniform.mvp);
+	*/
+
+	vk.cmd->camera_ubo_offset = vk_append_uniform( &uniform, sizeof(uniform), vk.uniform_camera_item_size );
+}
+
+static void vk_update_light_constants( const trRefdef_t *refdef ) {
+	// set
+	vkUniformLight_t uniform = {};
+
+	uniform.item[0] = 0.0f;
+	uniform.item[1] = 1.0f;
+	uniform.item[2] = 2.0f;
+	uniform.item[3] = 3.0f;
+
+	vk.cmd->light_ubo_offset = vk_append_uniform( &uniform, sizeof(uniform), vk.uniform_light_item_size );
+}
+
+static void vk_update_entity_light_constants( vkUniformEntity_t &uniform, const trRefEntity_t *refEntity ) 
+{
+	static const float normalizeFactor = 1.0f / 255.0f;
+
+	VectorScale(refEntity->ambientLight, normalizeFactor, uniform.ambientLight);
+	VectorScale(refEntity->directedLight, normalizeFactor, uniform.directedLight);
+	VectorCopy(refEntity->lightDir, uniform.lightOrigin);
+
+	uniform.lightOrigin[3] = 0.0f;
+}
+
+static void vk_update_entity_matrix_constants( vkUniformEntity_t &uniform, const trRefEntity_t *refEntity ) 
+{
+	orientationr_t ori;
+
+	// backend ref cant be right
+	/*if ( refEntity == &tr.worldEntity ) {
+		ori = backEnd.viewParms.world;
+		Matrix16Identity( uniform.modelMatrix );
+	}else{
+		R_RotateForEntity( refEntity, &backEnd.viewParms, &ori );
+		Matrix16Copy( ori.modelMatrix, uniform.modelMatrix );
+	}*/
+
+	R_RotateForEntity(refEntity, &backEnd.viewParms, &ori);
+	Matrix16Copy(ori.modelMatrix, uniform.modelMatrix);
+	VectorCopy(ori.viewOrigin, uniform.localViewOrigin);
+
+	Com_Memcpy( &uniform.localViewOrigin, ori.viewOrigin, sizeof( vec3_t) );
+	uniform.localViewOrigin[3] = 0.0f;
+}
+
+static void vk_update_entity_constants( const trRefdef_t *refdef ) {
+	uint32_t i;
+	Com_Memset( vk.cmd->entity_ubo_offset, 0, sizeof(vk.cmd->entity_ubo_offset) );
+
+	for ( i = 0; i < refdef->num_entities; i++ ) {
+		trRefEntity_t *ent = &refdef->entities[i];
+
+		R_SetupEntityLighting( refdef, ent );
+
+		vkUniformEntity_t uniform = {};
+		vk_update_entity_light_constants( uniform, ent );
+		vk_update_entity_matrix_constants( uniform, ent );
+
+		vk.cmd->entity_ubo_offset[i] = vk_append_uniform( &uniform, sizeof(uniform), vk.uniform_entity_item_size );
+	}
+
+	const trRefEntity_t *ent = &tr.worldEntity;
+	vkUniformEntity_t uniform = {};
+	vk_update_entity_light_constants( uniform, ent );
+	vk_update_entity_matrix_constants( uniform, ent );
+
+	vk.cmd->entity_ubo_offset[REFENTITYNUM_WORLD] = vk_append_uniform( &uniform, sizeof(uniform), vk.uniform_entity_item_size );
+}
+
+static void vk_update_ghoul2_constants( const trRefdef_t *refdef ) {
+	uint32_t i;
+
+	for ( i = 0; i < refdef->num_entities; i++ )
+	{
+		const trRefEntity_t *ent = &refdef->entities[i];
+		if (ent->e.reType != RT_MODEL)
+			continue;
+
+		model_t *model = R_GetModelByHandle(ent->e.hModel);
+		if (!model)
+			continue;
+
+		switch (model->type)
+		{
+		case MOD_MDXM:
+		case MOD_BAD:
+		{
+			// Transform Bones and upload them
+			RB_TransformBones( ent, refdef );
+		}
+		break;
+
+		default:
+			break;
+		}
+	}
+}
+
+static void RB_UpdateUniformConstants( const trRefdef_t *refdef, const viewParms_t *viewParms ) 
+{
+	vk_update_camera_constants( refdef, viewParms );
+	vk_update_light_constants( refdef );
+	vk_update_entity_constants( refdef );
+	vk_update_ghoul2_constants( refdef );
+}
+
+void RB_BindDescriptorSets( const DrawItem& drawItem ) 
+{
+	uint32_t offsets[6], offset_count;
+	uint32_t start, end, count;
+
+	start = drawItem.descriptor_set.start;
+	if (start == ~0U)
+		return;
+
+	end = drawItem.descriptor_set.end;
+
+	offset_count = 0;
+	if (start <= 1) { // uniform offset or storage offset
+		offsets[offset_count++] = drawItem.descriptor_set.offset[start];
+
+		if ( start == 1 ){
+			offsets[offset_count++] = drawItem.descriptor_set.offset[start+1];	// 1: camera
+			offsets[offset_count++] = drawItem.descriptor_set.offset[start+2];	// 2: light
+			offsets[offset_count++] = drawItem.descriptor_set.offset[start+3];	// 3: entity
+			offsets[offset_count++] = drawItem.descriptor_set.offset[start+4];	// 4: bones
+			offsets[offset_count++] = drawItem.descriptor_set.offset[start+5];	// 5: global
+		}
+	}
+
+	count = end - start + 1;
+
+	qvkCmdBindDescriptorSets(vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+		vk.pipeline_layout, start, count, drawItem.descriptor_set.current + start, offset_count, offsets);
+}
+
+static Pass *RB_CreatePass( Allocator& allocator, int capacity )
+{
+	Pass *pass = ojkAlloc<Pass>( *backEndData->perFrameMemory );
+	*pass = {};
+	pass->maxDrawItems = capacity;
+	pass->drawItems = ojkAllocArray<DrawItem>( allocator, pass->maxDrawItems );
+	return pass;
+}
+
+static void RB_DrawItems( int numDrawItems, const DrawItem *drawItems ) 
+{
+	uint32_t i;
+	VkViewport viewport;
+	VkRect2D scissor_rect;
+
+	for ( i = 0; i < numDrawItems; ++i )
+	{
+		const DrawItem& drawItem = drawItems[i];
+
+		RB_BindDescriptorSets( drawItem );
+
+		vk_bind_pipeline( drawItem.pipeline );
+
+		if( drawItem.bind_count )
+			qvkCmdBindVertexBuffers( vk.cmd->command_buffer, 
+			drawItem.bind_base, drawItem.bind_count, 
+			drawItem.shade_buffers, drawItem.shade_offset + drawItem.bind_base );
+
+		if ( vk.cmd->depth_range != drawItem.depthRange ) 
+		{
+			vk.cmd->depth_range = drawItem.depthRange;
+
+			get_scissor_rect(&scissor_rect);
+
+			if (memcmp(&vk.cmd->scissor_rect, &scissor_rect, sizeof(scissor_rect)) != 0) {
+				qvkCmdSetScissor(vk.cmd->command_buffer, 0, 1, &scissor_rect);
+				vk.cmd->scissor_rect = scissor_rect;
+			}
+
+			get_viewport(&viewport, drawItem.depthRange);
+			qvkCmdSetViewport(vk.cmd->command_buffer, 0, 1, &viewport);
+		}
+
+		if ( drawItem.polygonOffset )
+			qvkCmdSetDepthBias( vk.cmd->command_buffer, r_offsetUnits->value, 0.0f, r_offsetFactor->value );
+
+		// push constants
+		// use push constants for materials as well?
+		vk_update_mvp( drawItem.mvp );
+		
+		
+		
+		// model vbo
+		if ( drawItem.ibo != nullptr ) 
+		{		
+			if ( drawItem.indexedIndirect ) {
+				vk_bind_index_buffer( drawItem.ibo->buffer,  0 );
+
+				qvkCmdDrawIndexedIndirect( 
+					vk.cmd->command_buffer, 
+					vk.cmd->indirect_buffer,
+					drawItem.draw.params.indexedIndirect.offset,
+					drawItem.draw.params.indexedIndirect.numDraws,
+					sizeof(VkDrawIndexedIndirectCommand)
+					);
+				continue;
+			}
+
+			vk_bind_index_buffer( drawItem.ibo->buffer,  drawItem.draw.params.indexed.index_offset );
+			qvkCmdDrawIndexed( vk.cmd->command_buffer, drawItem.draw.params.indexed.num_indexes, 1, 0, 0, 0 );
+		}
+
+		// world vbo
+		else if ( drawItem.vbo_world_index ) 
+		{
+			uint32_t j;
+
+			// can render both ibo items and soft buffer items consecutive
+			if ( drawItem.draw.params.indexed.world.ibo_items_count ) {
+				vk_bind_index_buffer( vk.vbo.vertex_buffer, drawItem.draw.params.indexed.world.ibo_offset );
+
+				for ( j = 0; j < drawItem.draw.params.indexed.world.ibo_items_count; ++j )
+					qvkCmdDrawIndexed( vk.cmd->command_buffer,  drawItem.draw.params.indexed.world.ibo_items[j].indexCount, 1, drawItem.draw.params.indexed.world.ibo_items[j].firstIndex, 0, 0 );
+			}
+
+			if ( drawItem.draw.params.indexed.world.soft_buffer_indexes ) {
+				vk_bind_index_buffer( vk.cmd->vertex_buffer, drawItem.draw.params.indexed.world.soft_buffer_offset );
+				qvkCmdDrawIndexed( vk.cmd->command_buffer, drawItem.draw.params.indexed.world.soft_buffer_indexes, 1, 0, 0, 0 );	
+			}
+		}
+
+		// draw from vertex buffer
+		else 
+		{
+			if ( drawItem.indexed ) {
+				vk_bind_index_buffer( vk.cmd->vertex_buffer, drawItem.draw.params.indexed.index_offset );
+				qvkCmdDrawIndexed( vk.cmd->command_buffer, drawItem.draw.params.indexed.num_indexes, 1, 0, 0, 0 ) ;
+				continue;
+			}
+
+			qvkCmdDraw( vk.cmd->command_buffer, drawItem.draw.params.arrays.num_vertexes, 1, 0, 0 );
+		}
+	}
+}
+
+void RB_AddDrawItem( Pass *pass, const DrawItem& drawItem )
+{
+	// there will be no pass if we are drawing a 2D object, 
+	// flare, shadow or debug item.
+	if ( pass )
+	{
+		if ( pass->numDrawItems >= pass->maxDrawItems )
+		{
+			assert(!"Ran out of space for pass");
+			return;
+		}
+
+		pass->drawItems[pass->numDrawItems++] = drawItem;
+		return;
+	}
+
+	RB_DrawItems( 1, &drawItem ); // draw immidiate	
+}
+
+static void RB_SubmitRenderPass( Pass& renderPass, Allocator& allocator )
+{
+	RB_DrawItems ( renderPass.numDrawItems, renderPass.drawItems );
+}
+
+/*
+==================
+RB_RenderDrawSurfList
+==================
+*/
+static void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) 
+{
+	void *allocMark = nullptr;
+
+
+	const int estimatedNumShaderStages = 4;
+
+	allocMark = backEndData->perFrameMemory->Mark();
+	backEndData->currentPass = RB_CreatePass( *backEndData->perFrameMemory, 
+		numDrawSurfs * estimatedNumShaderStages );
+
+	// save original time for entity shader offsets
+	float originalTime = backEnd.refdef.floatTime;
+	
+	backEnd.currentEntity	= &tr.worldEntity;
+	backEnd.pc.c_surfaces	+= numDrawSurfs;
+
+	RB_SubmitDrawSurfs( drawSurfs, numDrawSurfs, originalTime );
+
+	RB_SubmitRenderPass(
+		*backEndData->currentPass,
+		*backEndData->perFrameMemory );
+
+	backEndData->perFrameMemory->ResetTo( allocMark );
+	backEndData->currentPass = nullptr;
 
 	backEnd.refdef.floatTime = originalTime;
 
@@ -810,6 +1128,8 @@ const void	*RB_DrawSurfs( const void *data ) {
 	VBO_UnBind();
 #endif
 
+	RB_UpdateUniformConstants( &backEnd.refdef, &backEnd.viewParms );
+
 	// clear the z buffer, set the modelview, etc
 	RB_BeginDrawingView();
 
@@ -826,22 +1146,19 @@ const void	*RB_DrawSurfs( const void *data ) {
 		return (const void*)(cmd + 1);
 	}
 #endif
+
 	RB_RenderDrawSurfList( cmd->drawSurfs, cmd->numDrawSurfs );
 
 #ifdef USE_VBO
 	VBO_UnBind();
 #endif
 
-	if ( r_drawSun->integer ) {
-		RB_DrawSun( 0.1f, tr.sunShader );
-	}
-
+	RB_DrawSun( 0.1f, tr.sunShader );
 	RB_ShadowFinish();
-
 	RB_RenderFlares();
 
 #ifdef USE_PMLIGHT
-	if ( backEnd.refdef.numLitSurfs ) {
+	if ( vk.useFastLight && backEnd.refdef.numLitSurfs ) {
 		RB_BeginDrawingLitSurfs();
 		RB_LightingPass();
 	}

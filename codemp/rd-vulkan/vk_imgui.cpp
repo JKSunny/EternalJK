@@ -25,7 +25,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include "ghoul2/g2_local.h"
 qboolean	G2_SetupModelPointers( CGhoul2Info_v &ghoul2 );
-void		G2_Sort_Models( CGhoul2Info_v &ghoul2, int * const modelList, int * const modelCount );
+void		G2_Sort_Models( CGhoul2Info_v &ghoul2, int * const modelList, int modelListCapacity, int * const modelCount );
 int			G2_ComputeLOD( trRefEntity_t *ent, const model_t *currentModel, int lodBias );
 
 //
@@ -1685,7 +1685,7 @@ static void vk_imgui_draw_inspector_entity_mdxm( trRefEntity_t *ent )
 	int	modelCount;
 	int modelList[256];
 	modelList[255]=548;
-	G2_Sort_Models( ghoul2, modelList, &modelCount );
+	G2_Sort_Models( ghoul2, modelList, ARRAY_LEN(modelList), &modelCount );
 
 	inspector.surface.surf = NULL;
 

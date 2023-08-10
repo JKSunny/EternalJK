@@ -390,17 +390,18 @@ void vk_initialize( void )
 
 	// Memory alignment
 	vk.uniform_alignment = props.limits.minUniformBufferOffsetAlignment;
-	vk.uniform_item_size = PAD( sizeof(vkUniform_t), vk.uniform_alignment );
-#ifdef USE_VBO_GHOUL2
-	vk.uniform_camera_item_size = PAD( sizeof(vkUniformCamera_t), vk.uniform_alignment );
-	vk.uniform_data_item_size = PAD( sizeof(vkUniformEntity_t), vk.uniform_alignment );
-	vk.uniform_ghoul_item_size = PAD( sizeof(vkUniformBones_t), vk.uniform_alignment );
-#endif
+	vk.uniform_item_size		= PAD( sizeof(vkUniform_t),			vk.uniform_alignment );
+	vk.uniform_camera_item_size = PAD( sizeof(vkUniformCamera_t),	vk.uniform_alignment );
+	vk.uniform_light_item_size	= PAD( sizeof(vkUniformLight_t),	vk.uniform_alignment );
+	vk.uniform_entity_item_size = PAD( sizeof(vkUniformEntity_t),	vk.uniform_alignment );
+	vk.uniform_bones_item_size	= PAD( sizeof(vkUniformBones_t),	vk.uniform_alignment );
+	vk.uniform_global_item_size = PAD( sizeof(vkUniformGlobal_t),	vk.uniform_alignment );
+
 	vk.storage_alignment = MAX( props.limits.minStorageBufferOffsetAlignment, sizeof(uint32_t) ); //for flare visibility tests
 
 	// maxTextureSize must not exceed IMAGE_CHUNK_SIZE
 	glConfig.maxTextureSize = MIN( props.limits.maxImageDimension2D, log2pad( sqrtf( IMAGE_CHUNK_SIZE / 4 ), 0 ) );
-	if (glConfig.maxTextureSize > MAX_TEXTURE_SIZE)
+	if ( glConfig.maxTextureSize > MAX_TEXTURE_SIZE )
 		glConfig.maxTextureSize = MAX_TEXTURE_SIZE; // ResampleTexture() relies on that maximum
 
 	// default chunk size, may be doubled on demand
@@ -445,7 +446,7 @@ void vk_initialize( void )
 	if ( r_specularMapping->integer )
 		vk.specularMappingActive = qtrue;
 
-	if( ( !vk.normalMappingActive && !vk.specularMappingActive ) || vk.maxBoundDescriptorSets < 11 )
+	if ( ( !vk.normalMappingActive && !vk.specularMappingActive ) || vk.maxBoundDescriptorSets < 11 )
 		vk.useFastLight = qtrue;
 
 #ifdef VK_CUBEMAP
@@ -501,7 +502,9 @@ void vk_initialize( void )
 	vk_create_pipeline_layout();
 
 	vk.geometry_buffer_size_new = VERTEX_BUFFER_SIZE;
+	vk.indirect_buffer_size_new = sizeof(VkDrawIndexedIndirectCommand) * 1024 * 1024;
 	vk_create_vertex_buffer( vk.geometry_buffer_size_new );
+	vk_create_indirect_buffer( vk.indirect_buffer_size_new );
 	vk_create_storage_buffer( MAX_FLARES * vk.storage_alignment );
 	vk_create_shader_modules();
 
@@ -574,7 +577,8 @@ void vk_shutdown( void )
 #endif
 
 #ifdef USE_VBO	
-	vk_clear_vbo();
+	vk_release_vbo();
+	vk_release_model_vbo();
 #endif
 
 	vk_release_geometry_buffers();

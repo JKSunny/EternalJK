@@ -424,7 +424,8 @@ void vk_info_f( void ) {
     ri.Printf(PRINT_ALL, "image chunks: %i\n", vk_world.num_image_chunks);
 
 #ifdef USE_VBO
-    ri.Printf( PRINT_ALL, "VBO buffers: %i, world index: %i\n", vk.vbo_count, vk.vbo_world_index );
+    ri.Printf( PRINT_ALL, "VBO buffers: %i, \n", tr.numVBOs );
+    ri.Printf( PRINT_ALL, "IBO buffers: %i, \n", tr.numIBOs );
 #endif
 #else
     ri.Printf(PRINT_ALL, "vk_info statistics are not enabled in this build.\n");

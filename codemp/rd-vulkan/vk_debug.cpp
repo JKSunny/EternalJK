@@ -141,7 +141,7 @@ void DrawTris( const shaderCommands_t *pInput){
 	//memset(pInput->svars.colors, 255, pInput->numVertexes * 4);
 
 #ifdef USE_VBO
-	if (tess.vboIndex) {
+	if (tess.vbo_world_index) {
 #ifdef USE_PMLIGHT
 		if (tess.dlightPass)
 			pipeline = backEnd.viewParms.portalView == PV_MIRROR ? vk.std_pipeline.tris_mirror_debug_red_pipeline : vk.std_pipeline.tris_debug_red_pipeline;
@@ -160,8 +160,25 @@ void DrawTris( const shaderCommands_t *pInput){
 			pipeline = (backEnd.viewParms.portalView == PV_MIRROR) ? vk.std_pipeline.tris_mirror_debug_pipeline : vk.std_pipeline.tris_debug_pipeline;
 	}
 
-	vk_bind_pipeline(pipeline);
-    vk_draw_geometry(DEPTH_RANGE_ZERO, qtrue);
+	//vk_bind_pipeline(pipeline);
+    //vk_draw_geometry(DEPTH_RANGE_ZERO, qtrue);
+
+	// create draw item
+	{
+		DrawItem item = {};
+		item.pipeline = pipeline;
+		item.depthRange = DEPTH_RANGE_ZERO;
+		item.polygonOffset = tess.shader->polygonOffset;
+		item.indexed = qtrue;
+		item.identifier = 11;
+
+		RB_AddDrawItemIndexBinding( item );
+		RB_AddDrawItemVertexBinding( item );
+		RB_AddDrawItemUniformBinding( item, backEnd.currentEntity );
+
+		RB_AddDrawItem( backEndData->currentPass, item );
+	}
+
 }
 
 /*
@@ -174,7 +191,7 @@ void DrawNormals( const shaderCommands_t *input)
 	int		i;
 
 #ifdef USE_VBO	
-	if (tess.vboIndex)
+	if (tess.vbo_world_index)
 		return; // must be handled specially
 #endif
 
@@ -190,10 +207,26 @@ void DrawNormals( const shaderCommands_t *input)
 	tess.numVertexes *= 2;
 	Com_Memset(tess.svars.colors[0], tr.identityLightByte, tess.numVertexes * sizeof(color4ub_t));
 
-	vk_bind_pipeline(vk.std_pipeline.normals_debug_pipeline);
+	//vk_bind_pipeline(vk.std_pipeline.normals_debug_pipeline);
 	vk_bind_index();
 	vk_bind_geometry(TESS_XYZ | TESS_RGBA0);
-	vk_draw_geometry(DEPTH_RANGE_ZERO, qtrue);
+	//vk_draw_geometry(DEPTH_RANGE_ZERO, qtrue);
+
+	// create draw item
+	{
+		DrawItem item = {};
+		item.pipeline = vk.std_pipeline.normals_debug_pipeline;
+		item.depthRange = DEPTH_RANGE_ZERO;
+		item.polygonOffset = tess.shader->polygonOffset;
+		item.indexed = qtrue;
+		item.identifier = 12;
+
+		RB_AddDrawItemIndexBinding( item );
+		RB_AddDrawItemVertexBinding( item );
+		RB_AddDrawItemUniformBinding( item, backEnd.currentEntity );
+
+		RB_AddDrawItem( backEndData->currentPass, item );
+	}
 }
 
 /*
@@ -255,66 +288,31 @@ void RB_ShowImages ( image_t** const pImg, uint32_t numImages )
 
 		tess.svars.texcoordPtr[0] = tess.svars.texcoords[0];
 
-		vk_bind_pipeline(vk.std_pipeline.images_debug_pipeline);
+		//vk_bind_pipeline(vk.std_pipeline.images_debug_pipeline);
 		vk_bind_geometry(TESS_XYZ | TESS_RGBA0 | TESS_ST0);
-		vk_draw_geometry(DEPTH_RANGE_NORMAL, qfalse);
+		//vk_draw_geometry(DEPTH_RANGE_NORMAL, qfalse);
+
+
+		// create draw item
+		{
+			DrawItem item = {};
+			item.pipeline = vk.std_pipeline.images_debug_pipeline;
+			item.depthRange = DEPTH_RANGE_NORMAL;
+			item.draw.params.arrays.num_vertexes = tess.numVertexes;
+			item.polygonOffset = tess.shader->polygonOffset;
+			item.indexed = qfalse;
+			item.identifier = 13;
+
+			RB_AddDrawItemVertexBinding( item );
+			//RB_AddDrawItemIndexBinding( item );
+			RB_AddDrawItemUniformBinding( item, backEnd.currentEntity );
+
+			RB_AddDrawItem( backEndData->currentPass, item );
+		}
 	}
 
 	tess.numIndexes = 0;
 	tess.numVertexes = 0;
-
-#if 0
-	tess.numIndexes = 6;
-	tess.numVertexes = 4;
-
-	uint32_t i;
-	for (i = 0; i < numImages; ++i)
-	{
-		//image_t* image = tr.images[i];
-		float x = i % 20 * w;
-		float y = i / 20 * h;
-
-		vk_bind(pImg[i]);
-		Com_Memset(tess.svars.colors[0], 255, tess.numVertexes * 4);
-
-		tess.indexes[0] = 0;
-		tess.indexes[1] = 1;
-		tess.indexes[2] = 2;
-		tess.indexes[3] = 0;
-		tess.indexes[4] = 2;
-		tess.indexes[5] = 3;
-
-		tess.xyz[0][0] = x;
-		tess.xyz[0][1] = y;
-
-		tess.xyz[1][0] = x + w;
-		tess.xyz[1][1] = y;
-
-		tess.xyz[2][0] = x + w;
-		tess.xyz[2][1] = y + h;
-
-		tess.xyz[3][0] = x;
-		tess.xyz[3][1] = y + h;
-
-		tess.svars.texcoords[0][0][0] = 0;
-		tess.svars.texcoords[0][0][1] = 0;
-		tess.svars.texcoords[0][1][0] = 1;
-		tess.svars.texcoords[0][1][1] = 0;
-		tess.svars.texcoords[0][2][0] = 1;
-		tess.svars.texcoords[0][2][1] = 1;
-		tess.svars.texcoords[0][3][0] = 0;
-		tess.svars.texcoords[0][3][1] = 1;
-
-		tess.svars.texcoordPtr[0] = tess.svars.texcoords[0];
-
-		vk_bind_pipeline(vk.std_pipeline.images_debug_pipeline);
-		vk_bind_geometry(TESS_XYZ | TESS_RGBA0 | TESS_ST0);
-		vk_draw_geometry(DEPTH_RANGE_NORMAL, qtrue);
-	}
-
-	tess.numIndexes = 0;
-	tess.numVertexes = 0;
-#endif
 }
 
 /*
@@ -332,6 +330,7 @@ static void transform_to_eye_space( const vec3_t v, vec3_t v_eye )
 
 static void R_DebugPolygon( int color, int numPoints, float *points )
 {
+#if 0
 	vec3_t pa;
 	vec3_t pb;
 	vec3_t p;
@@ -399,6 +398,7 @@ static void R_DebugPolygon( int color, int numPoints, float *points )
 	vk_draw_geometry(DEPTH_RANGE_ZERO, qfalse);
 
 	tess.numVertexes = 0;
+#endif
 }
 
 /*

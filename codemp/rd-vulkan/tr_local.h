@@ -67,6 +67,9 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "rd-common/tr_common.h"
 #include "ghoul2/ghoul2_shared.h" //rwwRMG - added
 
+#include "tr_allocator.h"
+
+
 #if defined(_WIN32)
 #	include <windows.h>
 #endif
@@ -130,6 +133,8 @@ typedef enum {
 #define GL_COMPRESSED_RGB_S3TC_DXT1_EXT		0x83F0
 #define GL_COMPRESSED_RGBA_S3TC_DXT5_EXT	0x83F3
 
+typedef void GLvoid;
+typedef int GLsizei;
 typedef unsigned int glIndex_t;
 
 #define LL(x) x=LittleLong(x)
@@ -288,6 +293,22 @@ typedef struct cubemap_s {
 	image_t		*prefiltered_image;
 	image_t		*irradiance_image;
 } cubemap_t;
+
+typedef struct VBO_s
+{	
+	int				index;
+
+	VkBuffer		buffer;
+	VkDeviceMemory	memory;
+
+	uint32_t		offsets[12];
+} VBO_t;
+
+typedef struct IBO_s
+{
+	VkBuffer		buffer;
+	VkDeviceMemory	memory;
+} IBO_t;
 
 //===============================================================================
 
@@ -1182,7 +1203,7 @@ typedef struct
 typedef struct
 {
 	char            name[MAX_QPATH];	// tag name
-} mdvTagName_t; //not found
+} mdvTagName_t;
 
 typedef struct
 {
@@ -1190,10 +1211,7 @@ typedef struct
 	vec3_t          normal;
 	vec3_t          tangent;
 	vec3_t          bitangent;
-#ifdef USE_VK_PBR
-	vec4_t			qtangent;
-#endif
-} mdvVertex_t; //
+} mdvVertex_t;
 
 typedef struct
 {
@@ -1219,26 +1237,24 @@ typedef struct mdvSurface_s
 	struct mdvModel_s *model;
 } mdvSurface_t;
 
-typedef struct mdvVBOMesh_s
+typedef struct srfVBOMDVMesh_s
 {
 	surfaceType_t   surfaceType;
 
-	int			numIndexes;
-	int			numVertexes;
+	struct mdvModel_s *mdvModel;
+	struct mdvSurface_s *mdvSurface;
 
-	int			iboOffset;
-	int			vboOffset;
-	int			texOffset;
-	int			normalOffset;
-	int			boneOffset;
-	int			weightOffset;
-#ifdef USE_VK_PBR
-	int			qtangentOffset;
-#endif
+	// backEnd stats
+	int				indexOffset;
+	int             numIndexes;
+	int             numVerts;
+	glIndex_t       minIndex;
+	glIndex_t       maxIndex;
 
-	int			vboMeshIndex;	// vbo model (LOD) index
-	int			vboItemIndex;	// vbo surface index
-} mdvVBOMesh_t;
+	// static render data
+	VBO_t          *vbo;
+	IBO_t          *ibo;
+} srfVBOMDVMesh_t;
 
 typedef struct mdvModel_s
 {
@@ -1252,7 +1268,8 @@ typedef struct mdvModel_s
 	int             numSurfaces;
 	mdvSurface_t   *surfaces;
 
-	mdvVBOMesh_t	*vboMeshes;
+	int             numVBOSurfaces;
+	srfVBOMDVMesh_t  *vboSurfaces;
 
 	int             numSkins;
 } mdvModel_t;
@@ -1260,26 +1277,25 @@ typedef struct mdvModel_s
 #ifdef USE_VBO_GHOUL2
 typedef struct mdxmVBOMesh_s
 {
-	int			numIndexes;
-	int			numVertexes;
+	surfaceType_t surfaceType;
 
-	int			iboOffset;
-	int			vboOffset;
-	int			texOffset;
-	int			normalOffset;
-	int			boneOffset;
-	int			weightOffset;
-#ifdef USE_VK_PBR
-	int			qtangentOffset;
-#endif
+	int indexOffset;
+	int minIndex;
+	int maxIndex;
+	int numIndexes;
+	int numVertexes;
 
-	int			vboMeshIndex;	// vbo model (LOD) index
-	int			vboItemIndex;	// vbo surface index
+	VBO_t *vbo;
+	IBO_t *ibo;
 } mdxmVBOMesh_t;
 
 typedef struct mdxmVBOModel_s
 {
+	int numVBOMeshes;
 	mdxmVBOMesh_t *vboMeshes;
+
+	VBO_t *vbo;
+	IBO_t *ibo;
 } mdxmVBOModel_t;
 #endif
 
@@ -1652,6 +1668,12 @@ typedef struct trGlobals_s {
 
 	world_t					bspModels[MAX_SUB_BSP];
 	int						numBSPModels;
+
+	int						numVBOs;
+	VBO_t					*vbos[4069];
+
+	int						numIBOs;
+	IBO_t					*ibos[4069];
 
 	// shader indexes from other modules will be looked up in tr.shaders[]
 	// shader indexes from drawsurfs will be looked up in sortedShaders[]
@@ -2064,15 +2086,15 @@ typedef struct stageVars
 
 #define	NUM_TEX_COORDS		( MAXLIGHTMAPS + 1 )
 
+#define MAX_MULTIDRAW_PRIMITIVES	16384
+
 struct shaderCommands_s
 {
 	glIndex_t		indexes[SHADER_MAX_INDEXES]						QALIGN(16);
 	vec4_t			xyz[SHADER_MAX_VERTEXES*2]						QALIGN(16);
 	vec4_t			normal[SHADER_MAX_VERTEXES]						QALIGN(16);
-#ifdef USE_VK_PBR
 	vec4_t			qtangent[SHADER_MAX_VERTEXES]					QALIGN(16);
 	vec4_t			lightdir[SHADER_MAX_VERTEXES]					QALIGN(16);
-#endif
 	vec2_t			texCoords[NUM_TEX_COORDS][SHADER_MAX_VERTEXES]	QALIGN(16);
 	vec2_t			texCoords00[SHADER_MAX_VERTEXES]				QALIGN(16);
 	color4ub_t		vertexColors[SHADER_MAX_VERTEXES]				QALIGN(16);
@@ -2081,10 +2103,13 @@ struct shaderCommands_s
 
 #ifdef USE_VBO
 	surfaceType_t		surfType;
-	int					vboIndex;
+
+	int					vbo_world_index;		// world item index
+	int					vbo_model_index;		// ghoul2/mdv item index
+
 	int					vboStage;
 	qboolean			allowVBO;
-	const void			*vboMeshPtr;
+
 #endif
 
 	shader_t		*shader;
@@ -2093,6 +2118,16 @@ struct shaderCommands_s
 	int				cubemapIndex;
 	int				numIndexes;
 	int				numVertexes;
+
+	glIndex_t	minIndex;
+	glIndex_t	maxIndex;
+
+	int			multiDrawPrimitives;
+	GLsizei		multiDrawNumIndexes[MAX_MULTIDRAW_PRIMITIVES];
+	glIndex_t	*multiDrawFirstIndex[MAX_MULTIDRAW_PRIMITIVES];
+	glIndex_t	*multiDrawLastIndex[MAX_MULTIDRAW_PRIMITIVES];
+	glIndex_t	multiDrawMinIndex[MAX_MULTIDRAW_PRIMITIVES];
+	glIndex_t	multiDrawMaxIndex[MAX_MULTIDRAW_PRIMITIVES];
 
 #ifdef USE_PMLIGHT
 	const dlight_t	*light;
@@ -2464,10 +2499,96 @@ typedef enum {
 	RC_CONVOLVECUBEMAP
 } renderCommand_t;
 
+enum DrawCommandType
+{
+	DRAW_COMMAND_MULTI_INDEXED,
+	DRAW_COMMAND_INDEXED,
+	DRAW_COMMAND_ARRAYS
+};
+
+
+struct DrawCommand 
+{
+	DrawCommandType type;
+
+	struct DrawParams
+	{
+		struct MultiDrawIndexed
+		{
+			int numDraws;
+			uint32_t offset;
+		} indexedIndirect;
+
+		struct DrawIndexed
+		{	
+			// no world vbo
+			uint32_t			num_indexes;
+			uint32_t			index_offset;
+
+			// world vbo
+			struct WorldVBO {
+				uint32_t	soft_buffer_indexes;
+				uint32_t	soft_buffer_offset;
+		
+				int			ibo_offset;
+				int			ibo_items_count;	
+				VkMultiDrawIndexedInfoEXT	*ibo_items;	
+			} world;
+		} indexed;
+
+		struct DrawArrays
+		{
+			uint32_t			num_vertexes;
+		} arrays;
+	} params;
+};
+
+struct DrawItem 
+{
+	float			mvp[16];
+
+	int				vbo_world_index;	// world vbo/ibo
+	IBO_t			*ibo;				// model vbo/ibo
+
+	uint32_t		pipeline;
+	Vk_Depth_Range	depthRange;
+	qboolean		polygonOffset;
+	qboolean		indexed;	// draw type
+	qboolean		indexedIndirect;	// draw type
+
+	int				identifier;
+
+	struct {
+		uint32_t		start, end;
+		VkDescriptorSet	current[VK_LAYOUT_COUNT];	// 0:storage, 1:uniform, 2:color0, 3:color1, 4:color2, 5:fog, 6:brdf lut, 7:normal, 8:physical, 9:prefilterd envmap, !10:irradiance envmap
+		uint32_t		offset[7];					// 0:storage, 1:uniform, 2: camera, 3: data, 4:ghoul2, 5: global
+	} descriptor_set;
+
+	VkBuffer			shade_buffers[12];
+	VkDeviceSize		shade_offset[12];
+	int					bind_base;
+	int					bind_count;
+
+	DrawCommand draw;
+};
+
+struct Pass
+{
+	int maxDrawItems;
+	int numDrawItems;
+	DrawItem *drawItems;
+};
+
 // all of the information needed by the back end must be
 // contained in a backEndData_t.
+#define MAX_FRAMES (2)
+#define PER_FRAME_MEMORY_BYTES (32 * 1024 * 1024)
 typedef struct backEndData_s {
 	drawSurf_t			drawSurfs[MAX_DRAWSURFS];
+
+	Allocator			*perFrameMemory;
+	Pass				*currentPass;
+
 #ifdef USE_PMLIGHT
 	litSurf_t			litSurfs[MAX_LITSURFS];
 	dlight_t			dlights[MAX_REAL_DLIGHTS];
@@ -2537,6 +2658,15 @@ void RB_DrawSurfaceSprites(const shaderStage_t *stage, const ss_input *input);
 qboolean ShaderHashTableExists(void);
 
 // Vulkan
+void		RB_AddDrawItem( Pass *pass, const DrawItem& drawItem );
+void		RB_AddDrawItemUniformBinding( DrawItem &item, const trRefEntity_t *refEntity );
+void		RB_AddDrawItemVertexBinding( DrawItem &item );
+void		RB_AddDrawItemIndexBinding( DrawItem &item );
+
+// extra vbo
+void		VBO_GetDeviceBuffer( DrawItem& drawItem );
+void		VBO_GetSoftbuffer( DrawItem& drawItem );
+
 #ifdef USE_VK_PBR
 // pbr
 void		R_CalcTangents( vec3_t tangent, vec3_t binormal,
@@ -2579,6 +2709,10 @@ void		vk_upload_image_data( image_t *image, int x, int y, int width, int height,
 void		vk_generate_image_upload_data( image_t *image, byte *data, Image_Upload_Data *upload_data );
 void		vk_create_image( image_t *image, int width, int height, int mip_levels );
 
+// ghoul2
+void RB_TransformBones( const trRefEntity_t *ent, const trRefdef_t *refdef );
+int RB_GetBoneUboOffset( CRenderableSurface *surf );
+
 #ifdef VK_CUBEMAP
 void		vk_generate_cubemaps( cubemap_t *cube );
 #endif
@@ -2607,7 +2741,7 @@ extern void R_BuildWorldVBO( msurface_t *surf, int surfCount );
 extern void R_BuildMDXM( model_t *mod, mdxmHeader_t *mdxm );
 extern void R_BuildMD3( model_t *mod, mdvModel_t *mdvModel );
 
-extern void VBO_PushData( uint32_t vbo_index, int itemIndex, shaderCommands_t *input );
+extern void VBO_PushData( int itemIndex, shaderCommands_t *input );
 extern void VBO_UnBind( void );
 
 extern void VBO_Cleanup( void );

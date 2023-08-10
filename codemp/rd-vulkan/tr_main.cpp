@@ -378,7 +378,7 @@ void R_RotateForEntity( const trRefEntity_t *ent, const viewParms_t *viewParms,
 	vec3_t	delta;
 	float	axisLength;
 
-	if (ent->e.reType != RT_MODEL) {
+	if ( ent->e.reType != RT_MODEL || ent == &tr.worldEntity ) {
 		*ori = viewParms->world;
 		return;
 	}

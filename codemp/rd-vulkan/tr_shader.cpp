@@ -2009,7 +2009,7 @@ static qboolean ParseStage(shaderStage_t *stage, const char **text)
 		// depthFragment
 		else if (!Q_stricmp(token, "depthFragment"))
 		{
-			stage->depthFragment = qtrue;
+			//stage->depthFragment = qtrue;
 		}
 
 		// If this stage has glow...	GLOWXXX

@@ -79,8 +79,9 @@ void CQuickSpriteSystem::Flush( void )
 	tess.svars.texcoordPtr[0] = mTextureCoords;
 	
 	vk_bind_pipeline(vk_pipeline);
-	vk_bind_index();
+	vk_bind_index_ext(tess.numIndexes, tess.indexes);
 	vk_bind_geometry(TESS_XYZ | TESS_RGBA0 | TESS_ST0);
+	vk_bind_geometry_buffer();
 	vk_draw_geometry(DEPTH_RANGE_NORMAL, qtrue);
 
 	//only for software fog pass (global soft/volumetric) -rww
@@ -105,6 +106,7 @@ void CQuickSpriteSystem::Flush( void )
 		vk_bind(tr.fogImage);
 		vk_bind_pipeline(pipeline);
 		vk_bind_geometry(TESS_ST0 | TESS_RGBA0);
+		vk_bind_geometry_buffer();
 		vk_draw_geometry(DEPTH_RANGE_NORMAL, qtrue);
 	}
 

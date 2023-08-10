@@ -41,10 +41,10 @@ static void vk_create_layout_binding( int binding, VkDescriptorType type,
     VkShaderStageFlags flags, VkDescriptorSetLayout *layout, qboolean is_uniform ) 
 {
     uint32_t count = 0;
-    VkDescriptorSetLayoutBinding bind[4];
+    VkDescriptorSetLayoutBinding bind[6];
     VkDescriptorSetLayoutCreateInfo desc;
 
-    bind[count].binding = binding;
+    bind[count].binding = binding;  // 0: data
     bind[count].descriptorType = type;
     bind[count].descriptorCount = 1;
     bind[count].stageFlags = flags;
@@ -52,30 +52,40 @@ static void vk_create_layout_binding( int binding, VkDescriptorType type,
     count++;
 
     if ( is_uniform ) {
-        bind[count].binding = binding + 1; // binding 1 
+        bind[count].binding = binding + 1; // 1: camera 
         bind[count].descriptorType = type;
         bind[count].descriptorCount = 1;
         bind[count].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
         bind[count].pImmutableSamplers = NULL;
         count++;    
 
-#ifdef USE_VBO_GHOUL2      
-        if ( vk.vboGhoul2Active  ) {
-            bind[count].binding = binding + 2; // binding 2 
-            bind[count].descriptorType = type;
-            bind[count].descriptorCount = 1;
-            bind[count].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-            bind[count].pImmutableSamplers = NULL;
-            count++;
+        bind[count].binding = binding + 2; // 2: lights 
+        bind[count].descriptorType = type;
+        bind[count].descriptorCount = 1;
+        bind[count].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        bind[count].pImmutableSamplers = NULL;
+        count++;
 
-            bind[count].binding = binding + 3; // binding 3 
-            bind[count].descriptorType = type;
-            bind[count].descriptorCount = 1;
-            bind[count].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-            bind[count].pImmutableSamplers = NULL;
-            count++;  
-        }
-#endif
+        bind[count].binding = binding + 3; // 3: entity 
+        bind[count].descriptorType = type;
+        bind[count].descriptorCount = 1;
+        bind[count].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+        bind[count].pImmutableSamplers = NULL;
+        count++;
+ 
+        bind[count].binding = binding + 4; // 4: bones
+        bind[count].descriptorType = type;
+        bind[count].descriptorCount = 1;
+        bind[count].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        bind[count].pImmutableSamplers = NULL;
+        count++;  
+        
+        bind[count].binding = binding + 5; // 5: global
+        bind[count].descriptorType = type;
+        bind[count].descriptorCount = 1;
+        bind[count].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+        bind[count].pImmutableSamplers = NULL;
+        count++;  
     }
 
     desc.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -99,19 +109,17 @@ void vk_create_descriptor_layout( void )
 
         pool_size[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         pool_size[0].descriptorCount = MAX_DRAWIMAGES + 1 + 1 + 1 + ( VK_NUM_BLUR_PASSES * 4 ) + 1;
-#ifdef USE_VK_PBR
+
         if ( !vk.useFastLight || vk.cubemapActive )
             pool_size[0].descriptorCount += 1 + ( MAX_DRAWIMAGES * 2 ); // + 1:  brdf-lut | MAX_DRAWIMAGES * (physical + normal)
-#endif
 
         pool_size[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-        pool_size[1].descriptorCount = NUM_COMMAND_BUFFERS;
-        pool_size[1].descriptorCount += NUM_COMMAND_BUFFERS;    // camera uniform
-
-#ifdef USE_VBO_GHOUL2
-        if ( vk.vboGhoul2Active )
-            pool_size[1].descriptorCount += NUM_COMMAND_BUFFERS * 2;
-#endif
+        pool_size[1].descriptorCount = NUM_COMMAND_BUFFERS;     // 0: data
+        pool_size[1].descriptorCount += NUM_COMMAND_BUFFERS;    // 1: camera
+        pool_size[1].descriptorCount += NUM_COMMAND_BUFFERS;    // 2: lights
+        pool_size[1].descriptorCount += NUM_COMMAND_BUFFERS;    // 3: entity
+        pool_size[1].descriptorCount += NUM_COMMAND_BUFFERS;    // 4: bones  
+        pool_size[1].descriptorCount += NUM_COMMAND_BUFFERS;    // 5: global
 
         pool_size[2].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
         pool_size[2].descriptorCount = 1;
@@ -157,12 +165,11 @@ void vk_create_pipeline_layout( void )
     set_layouts[4] = vk.set_layout_sampler; // blend
     set_layouts[5] = vk.set_layout_sampler; // collapsed fog texture
     set_layouts[6] = vk.set_layout_sampler; // empty or brdfLUT
-#ifdef USE_VK_PBR
     set_layouts[7] = vk.set_layout_sampler; // normalMap
     set_layouts[8] = vk.set_layout_sampler; // physicalMap
     set_layouts[9] = vk.set_layout_sampler; // prefiltered envmap
     //set_layouts[10] = vk.set_layout_sampler; // irradiance envmap
-#endif
+
     desc.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     desc.pNext = NULL;
     desc.flags = 0;
@@ -217,24 +224,33 @@ void vk_create_pipeline_layout( void )
 
 }
 
+static uint32_t vk_bind_stride( uint32_t in ) 
+{
+    if ( is_ghoul2_vbo )
+        return vk.ghoul2_vbo_stride;
+
+    else if ( is_mdv_vbo )
+        return vk.mdv_vbo_stride;
+
+    return in;
+}
+
 static void vk_push_bind( uint32_t binding, uint32_t stride )
 {
-#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
     if( ( is_ghoul2_vbo || is_mdv_vbo ) && ( binding == 1 || binding == 6 || binding == 7 ) )
         return; // skip in_color bindings
-#endif
+
     bindings[num_binds].binding = binding;
-    bindings[num_binds].stride = stride;
+    bindings[num_binds].stride = vk_bind_stride( stride );
     bindings[num_binds].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
     num_binds++;
 }
 
 static void vk_push_attr( uint32_t location, uint32_t binding, VkFormat format )
 {
-#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
     if( ( is_ghoul2_vbo || is_mdv_vbo ) && ( binding == 1 || binding == 6 || binding == 7 ) )
         return; // skip in_color bindings
-#endif
+
     attribs[num_attrs].location = location;
     attribs[num_attrs].binding = binding;
     attribs[num_attrs].format = format;
@@ -248,10 +264,9 @@ static void vk_push_attr( uint32_t location, uint32_t binding, VkFormat format )
 // from memory throughout the vertices
 static void vk_push_vertex_input_binding_attribute( const Vk_Pipeline_Def *def ) {
     num_binds = num_attrs = 0; // reset
-#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
+
     is_ghoul2_vbo = def->vbo_ghoul2;
     is_mdv_vbo = def->vbo_mdv;
-#endif
 
     switch ( def->shader_type ) {
         case TYPE_FOG_ONLY:
@@ -472,8 +487,8 @@ static void vk_push_vertex_input_binding_attribute( const Vk_Pipeline_Def *def )
     }
 #endif
 
-#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
-    if ( ( is_ghoul2_vbo || is_mdv_vbo ) ) {
+    if ( is_ghoul2_vbo || is_mdv_vbo ) 
+    {
         if ( def->shader_type == TYPE_FOG_ONLY || 
              def->shader_type >= TYPE_GENERIC_BEGIN && def->shader_type <= TYPE_GENERIC_END )
         {
@@ -503,21 +518,21 @@ static void vk_push_vertex_input_binding_attribute( const Vk_Pipeline_Def *def )
                 case TYPE_BLEND3_DST_COLOR_SRC_ALPHA_ENV:  
                     break;
                 default:
-                    vk_push_bind( 5, sizeof( vec4_t ) );// normals
+                    vk_push_bind( 5, sizeof( vec4_t ) );    // normals
                     vk_push_attr( 5, 5, VK_FORMAT_R32G32B32A32_SFLOAT );
                     break;
             }
 
-            if ( is_ghoul2_vbo ) {
+            if ( is_ghoul2_vbo ) 
+            {
                 vk_push_bind( 10, sizeof( vec4_t ) );		// bone indexes
-                vk_push_attr( 10, 10, VK_FORMAT_R32G32B32A32_SFLOAT );
+                vk_push_attr( 10, 10, VK_FORMAT_R8G8B8A8_UINT );
 
                 vk_push_bind( 11, sizeof( vec4_t ) );		// bone weights
-                vk_push_attr( 11, 11, VK_FORMAT_R32G32B32A32_SFLOAT );
+                vk_push_attr( 11, 11, VK_FORMAT_R8G8B8A8_UNORM );
             }
         }
     }
-#endif
 }
 
 static void vk_set_pipeline_color_blend_attachment_factor( const Vk_Pipeline_Def *def, 

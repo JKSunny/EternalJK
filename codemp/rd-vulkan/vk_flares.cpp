@@ -319,7 +319,7 @@ static void RB_TestFlare( flare_t *f ) {
 	tess.numVertexes = 1;
 
 #ifdef USE_VBO
-	tess.vboIndex = 0;
+	tess.vbo_world_index = 0;
 #endif
 	// render test dot
 	vk_bind_pipeline(vk.std_pipeline.dot_pipeline);
@@ -328,6 +328,7 @@ static void RB_TestFlare( flare_t *f ) {
 	vk_update_descriptor_offset(0, offset);
 
 	vk_bind_geometry(TESS_XYZ);
+	vk_bind_geometry_buffer();
 	vk_draw_geometry(DEPTH_RANGE_NORMAL, qfalse);
 
 	if (visible) {

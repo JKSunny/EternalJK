@@ -38,6 +38,8 @@ set(MPVulkanRendererFiles
 	"${MPDir}/rd-vulkan/G2_bones.cpp"
 	"${MPDir}/rd-vulkan/G2_misc.cpp"
 	"${MPDir}/rd-vulkan/G2_surfaces.cpp"
+	"${MPDir}/rd-vulkan/tr_allocator.h"
+	"${MPDir}/rd-vulkan/tr_allocator.cpp"
 	"${MPDir}/rd-vulkan/tr_backend.cpp"
 	"${MPDir}/rd-vulkan/tr_bsp.cpp"
 	"${MPDir}/rd-vulkan/tr_cmds.cpp"

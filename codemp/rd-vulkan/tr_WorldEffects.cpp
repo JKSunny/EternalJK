@@ -1303,9 +1303,10 @@ public:
 
 		tess.svars.texcoordPtr[0] = tess.texCoords[0];
 
-		vk_bind_pipeline(vk.std_pipeline.worldeffect_pipeline[mBlendMode]);
-		vk_bind_index();
+		vk_bind_pipeline( vk.std_pipeline.worldeffect_pipeline[mBlendMode] );
+		vk_bind_index_ext( tess.numIndexes, tess.indexes );
 		vk_bind_geometry(TESS_XYZ | TESS_RGBA0 | TESS_ST0);
+		vk_bind_geometry_buffer();
 		vk_draw_geometry(DEPTH_RANGE_NORMAL, qtrue);
 
 		mParticlesRendered += mParticleCountRender;

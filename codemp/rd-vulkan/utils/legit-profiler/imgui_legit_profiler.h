@@ -391,7 +391,8 @@ namespace ImGuiUtils
                 TextColumn( "ID3 shaders", va( "%i", tr.numShaders ), columnWidth);
 
                 #ifdef USE_VBO
-                    TextColumn( "VBO buffers", va( "%i, world index: %i", vk.vbo_count, vk.vbo_world_index ) ,columnWidth);
+                    TextColumn( "VBO buffers", va( ": %i", tr.numVBOs ) ,columnWidth);
+                    TextColumn( "IBO buffers", va( ": %i", tr.numIBOs ) ,columnWidth);
                 #endif
             #endif
 
