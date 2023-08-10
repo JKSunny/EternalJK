@@ -58,6 +58,8 @@ void RB_BeginSurface( shader_t *shader, int fogNum, int cubemapIndex ) {
 
 	tess.numIndexes = 0;
 	tess.numVertexes = 0;
+	tess.multiDrawPrimitives = 0;
+
 	tess.shader = state;
 	tess.fogNum = fogNum;
 	tess.cubemapIndex = cubemapIndex;
@@ -102,7 +104,7 @@ void RB_EndSurface( void ) {
 	// for debugging of sort order issues, stop rendering after a given sort value
 	if (r_debugSort->integer && r_debugSort->integer < tess.shader->sort && !backEnd.doneSurfaces) {
 #ifdef USE_VBO
-		tess.vboIndex = 0; //VBO_UnBind();
+		tess.vbo_world_index = 0; //VBO_UnBind();
 #endif
 		return;
 	}
@@ -165,9 +167,11 @@ void RB_EndSurface( void ) {
 	// clear shader so we can tell we don't have any unclosed surfaces
 	tess.numIndexes = 0;
 	tess.numVertexes = 0;
+	tess.multiDrawPrimitives = 0;
 
 #ifdef USE_VBO
-	tess.vboIndex = 0;
+	tess.vbo_world_index = 0;
+	tess.vbo_model_index = 0;
 	//VBO_ClearQueue();
 #endif
 }

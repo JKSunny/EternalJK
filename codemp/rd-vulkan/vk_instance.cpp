@@ -148,6 +148,13 @@ PFN_vkDebugMarkerSetObjectNameEXT				qvkDebugMarkerSetObjectNameEXT;
 
 PFN_vkCmdClearColorImage						qvkCmdClearColorImage;
 
+#ifdef USE_VK_IMGUI
+PFN_vkFlushMappedMemoryRanges					qvkFlushMappedMemoryRanges;
+PFN_vkResetCommandPool							qvkResetCommandPool;
+#endif
+
+PFN_vkCmdDrawIndexedIndirect					qvkCmdDrawIndexedIndirect;
+
 static char *Q_stradd( char *dst, const char *src )
 {
     char c;
@@ -552,6 +559,7 @@ static qboolean vk_create_device( VkPhysicalDevice physical_device, int device_i
 		qboolean dedicatedAllocation = qfalse;
 		qboolean memoryRequirements2 = qfalse;
 		qboolean debugMarker = qfalse;
+		qboolean multidraw = qfalse;
 		uint32_t i, len, count = 0;
 
 		VK_CHECK(qvkEnumerateDeviceExtensionProperties(physical_device, NULL, &count, NULL));
@@ -576,6 +584,9 @@ static qboolean vk_create_device( VkPhysicalDevice physical_device, int device_i
 			}
 			else if (strcmp(ext, VK_EXT_DEBUG_MARKER_EXTENSION_NAME) == 0) {
 				debugMarker = qtrue;
+			}
+			else if (strcmp(ext, VK_EXT_MULTI_DRAW_EXTENSION_NAME) == 0) {
+				multidraw = qtrue;
 			}
 
 			// add this device extension to glConfig
@@ -620,6 +631,9 @@ static qboolean vk_create_device( VkPhysicalDevice physical_device, int device_i
 			vk.debugMarkers = qtrue;
 		}
 
+		if ( multidraw )
+			device_extension_list[device_extension_count++] = VK_EXT_MULTI_DRAW_EXTENSION_NAME;
+
 		qvkGetPhysicalDeviceFeatures(physical_device, &device_features);
 
 		if (device_features.fillModeNonSolid == VK_FALSE) {
@@ -650,6 +664,10 @@ static qboolean vk_create_device( VkPhysicalDevice physical_device, int device_i
 		if (device_features.fragmentStoresAndAtomics) {
 			features.fragmentStoresAndAtomics = VK_TRUE;
 			vk.fragmentStores = qtrue;
+		}
+
+		if(device_features.multiDrawIndirect) {
+			features.multiDrawIndirect = VK_TRUE;
 		}
 
 #ifdef USE_VK_PBR
@@ -923,6 +941,13 @@ __initStart:
 	}
 
 	INIT_DEVICE_FUNCTION_EXT(vkCmdClearColorImage)
+
+	INIT_DEVICE_FUNCTION(vkCmdDrawIndexedIndirect)
+
+#ifdef USE_VK_IMGUI
+	INIT_DEVICE_FUNCTION(vkFlushMappedMemoryRanges)
+	INIT_DEVICE_FUNCTION(vkResetCommandPool)
+#endif
 }
 
 #undef INIT_INSTANCE_FUNCTION
@@ -1042,6 +1067,13 @@ void vk_deinit_library( void )
 	qvkDebugMarkerSetObjectNameEXT = NULL;
 
 	qvkCmdClearColorImage = NULL;
+
+#ifdef USE_VK_IMGUI
+	qvkFlushMappedMemoryRanges = NULL;
+	qvkResetCommandPool = NULL;
+#endif
+
+	qvkCmdDrawIndexedIndirect = NULL;
 }
 
 #define FORMAT_DEPTH(format, r_bits, g_bits, b_bits) case(VK_FORMAT_##format): *r = r_bits; *b = b_bits; *g = g_bits; return qtrue;

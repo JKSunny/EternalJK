@@ -77,8 +77,14 @@ static void get_mvp_transform( float *mvp )
 	}
 }
 
+static pushConst push_constants = { 0 };
+
+pushConst *vk_get_push_constant() {
+	return &push_constants;
+}
+
 void vk_update_mvp( const float *m ) {
-	float push_constants[16]; // mvp transform
+	//pushConst push_constants;
 
 	// Specify push constants.
 	if (m)
@@ -167,14 +173,14 @@ void vk_bind_index_buffer( VkBuffer buffer, uint32_t offset )
 void vk_bind_index( void )
 {
 #ifdef USE_VBO
-	if (tess.vboIndex) {
+	if ( tess.vbo_world_index ) {
 		vk.cmd->num_indexes = 0;
 		//qvkCmdBindIndexBuffer( vk.cmd->command_buffer, vk.vbo.index_buffer, tess.shader->iboOffset, VK_INDEX_TYPE_UINT32 );
 		return;
 	}
 #endif
 
-	vk_bind_index_ext(tess.numIndexes, tess.indexes);
+	//vk_bind_index_ext(tess.numIndexes, tess.indexes);
 }
 
 void vk_bind_index_ext( const int numIndexes, const uint32_t *indexes )
@@ -190,57 +196,59 @@ void vk_bind_index_ext( const int numIndexes, const uint32_t *indexes )
 	}
 }
 
-#ifdef USE_VBO_MDV
 static void vk_vbo_bind_geometry_mdv( int32_t flags )
 {
-	shade_bufs[8] = shade_bufs[9] = shade_bufs[10] = shade_bufs[11] = vk.vbo[vk.vbo_index].vertex_buffer;
+	VBO_t *vbo = tr.vbos[tess.vbo_model_index-1];
 
-	mdvVBOMesh_t *mesh_ptr = (mdvVBOMesh_t*)tess.vboMeshPtr;
+	shade_bufs[0] = shade_bufs[1] = shade_bufs[2] = shade_bufs[3] = shade_bufs[4] = shade_bufs[5] = shade_bufs[6] = shade_bufs[7] = shade_bufs[8] = shade_bufs[9] = shade_bufs[10] = shade_bufs[11] = vbo->buffer;
+	
+	Com_Memset( vk.cmd->vbo_offset, 0, sizeof(vk.cmd->vbo_offset) );
 
-	vk.cmd->vbo_offset[0] = mesh_ptr->vboOffset + 0; // possibly add framenum here
-	vk.cmd->vbo_offset[2] = mesh_ptr->texOffset;
-	vk.cmd->vbo_offset[5] = mesh_ptr->normalOffset; // possibly add framenum here
+	vk.cmd->vbo_offset[0] = vbo->offsets[0];	// xyz
+	vk.cmd->vbo_offset[2] = vbo->offsets[2];	// texture coords
+	vk.cmd->vbo_offset[5] = vbo->offsets[5];	// normals
 
 	if (flags & TESS_ST1)
-		vk.cmd->vbo_offset[3] = mesh_ptr->texOffset;
+		vk.cmd->vbo_offset[3] = vbo->offsets[2];
 
 	if (flags & TESS_ST2)
-		vk.cmd->vbo_offset[4] = mesh_ptr->texOffset;
+		vk.cmd->vbo_offset[4] = vbo->offsets[2];
 
 	if (flags & TESS_QTANGENT)
-		vk.cmd->vbo_offset[8] = mesh_ptr->qtangentOffset;
+		vk.cmd->vbo_offset[8] = vbo->offsets[8];
 
-
-	// 9?
-	qvkCmdBindVertexBuffers( vk.cmd->command_buffer, 0, 12, shade_bufs, vk.cmd->vbo_offset + 0 );
+	bind_base = 0;
+	bind_count = 12;	// shouldn't 9 suffice for mdv
 }
-#endif
 
-#ifdef USE_VBO_GHOUL2
 static void vk_vbo_bind_geometry_ghoul2( uint32_t flags )
 {
-	shade_bufs[8] = shade_bufs[9] = shade_bufs[10] = shade_bufs[11] = vk.vbo[vk.vbo_index].vertex_buffer;
+	VBO_t *vbo = tr.vbos[tess.vbo_model_index-1];
 
-	mdxmVBOMesh_t *mesh_ptr = (mdxmVBOMesh_t*)tess.vboMeshPtr;
+	shade_bufs[0] = shade_bufs[1] = shade_bufs[2] = shade_bufs[3] = shade_bufs[4] = shade_bufs[5] = shade_bufs[6] = shade_bufs[7] = shade_bufs[8] = shade_bufs[9] = shade_bufs[10] = shade_bufs[11] = vbo->buffer;
 
-	vk.cmd->vbo_offset[0] = mesh_ptr->vboOffset + 0;
-	vk.cmd->vbo_offset[2] = mesh_ptr->texOffset;
-	vk.cmd->vbo_offset[5] = mesh_ptr->normalOffset;
-	vk.cmd->vbo_offset[10] = mesh_ptr->boneOffset;
-	vk.cmd->vbo_offset[11] = mesh_ptr->weightOffset;
+	Com_Memset( vk.cmd->vbo_offset, 0, sizeof(vk.cmd->vbo_offset) );
+
+	vk.cmd->vbo_offset[0] = vbo->offsets[0];	// xyz
+	vk.cmd->vbo_offset[2] = vbo->offsets[2];	// texture coords
+	vk.cmd->vbo_offset[5] = vbo->offsets[5];	// normals
+
+	// use flag for this?
+	vk.cmd->vbo_offset[10] = vbo->offsets[10];	// bones
+	vk.cmd->vbo_offset[11] = vbo->offsets[11];	// weight
 	
 	if (flags & TESS_ST1)
-		vk.cmd->vbo_offset[3] = mesh_ptr->texOffset;
+		vk.cmd->vbo_offset[3] = vbo->offsets[2];
 
 	if (flags & TESS_ST2)
-		vk.cmd->vbo_offset[4] = mesh_ptr->texOffset;
+		vk.cmd->vbo_offset[4] = vbo->offsets[2];
 
 	if (flags & TESS_QTANGENT)
-		vk.cmd->vbo_offset[8] = mesh_ptr->qtangentOffset;
+		vk.cmd->vbo_offset[8] = vbo->offsets[8];
 
-	qvkCmdBindVertexBuffers( vk.cmd->command_buffer, 0, 12, shade_bufs, vk.cmd->vbo_offset + 0 );
+	bind_base = 0;
+	bind_count = 12;
 }
-#endif
 
 void vk_bind_geometry( uint32_t flags )
 {
@@ -251,27 +259,22 @@ void vk_bind_geometry( uint32_t flags )
 		return;
 
 #ifdef USE_VBO
-	if (tess.vboIndex) {
+	if ( tess.vbo_model_index ) {
+		if ( tess.surfType == SF_MDX )
+			return vk_vbo_bind_geometry_ghoul2( flags );
 
-		shade_bufs[0] = shade_bufs[1] = shade_bufs[2] = shade_bufs[3] = shade_bufs[4] = shade_bufs[5] = shade_bufs[6] = shade_bufs[7] = vk.vbo[vk.vbo_index].vertex_buffer;
+		if ( tess.surfType == SF_VBO_MDVMESH )
+			return vk_vbo_bind_geometry_mdv( flags );
+	}
 
-#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)  
-		// clear, because vbo buffers don't share sizes
-		// previously set offsets might be out of scope
-		if ( vk.vboGhoul2Active || vk.vboMdvActive ) {
-			Com_Memset( vk.cmd->vbo_offset, 0, sizeof(vk.cmd->vbo_offset) );
+	if ( tess.vbo_world_index ) {
+		shade_bufs[0] = shade_bufs[1] = shade_bufs[2] = shade_bufs[3] = shade_bufs[4] = shade_bufs[5] = shade_bufs[6] = shade_bufs[7] = vk.vbo.vertex_buffer;
 
-			if ( tess.surfType == SF_MDX )
-				return vk_vbo_bind_geometry_ghoul2( flags );
-
-			if ( tess.surfType == SF_VBO_MDVMESH )
-				return vk_vbo_bind_geometry_mdv( flags );
-		}
-#endif
+		//Com_Memset( vk.cmd->vbo_offset, 0, sizeof(vk.cmd->vbo_offset) );
 
 #ifdef USE_VK_PBR
-		shade_bufs[8] = vk.vbo[vk.vbo_index].vertex_buffer;
-		shade_bufs[9] = vk.vbo[vk.vbo_index].vertex_buffer;
+		shade_bufs[8] = vk.vbo.vertex_buffer;
+		shade_bufs[9] = vk.vbo.vertex_buffer;
 #endif
 
 		if (flags & TESS_XYZ) {  // 0
@@ -324,7 +327,7 @@ void vk_bind_geometry( uint32_t flags )
 			vk_bind_index_attr(9);
 		}
 
-		qvkCmdBindVertexBuffers(vk.cmd->command_buffer, bind_base, bind_count, shade_bufs, vk.cmd->vbo_offset + bind_base);
+		//qvkCmdBindVertexBuffers(vk.cmd->command_buffer, bind_base, bind_count, shade_bufs, vk.cmd->vbo_offset + bind_base);
 	}
 	else
 #endif // USE_VBO
@@ -365,9 +368,20 @@ void vk_bind_geometry( uint32_t flags )
 		if (flags & TESS_LIGHTDIR)
 			vk_bind_attr(9, sizeof(tess.lightdir[0]), tess.lightdir);
 
-		qvkCmdBindVertexBuffers(vk.cmd->command_buffer, bind_base, bind_count, shade_bufs, vk.cmd->buf_offset + bind_base);
+		//qvkCmdBindVertexBuffers(vk.cmd->command_buffer, bind_base, bind_count, shade_bufs, vk.cmd->buf_offset + bind_base);
 	}
 }
+
+void vk_bind_geometry_buffer( void ) {
+
+	if ( tess.vbo_world_index ) {
+		qvkCmdBindVertexBuffers(vk.cmd->command_buffer, bind_base, bind_count, shade_bufs, vk.cmd->vbo_offset + bind_base);
+		return;
+	}
+
+	qvkCmdBindVertexBuffers(vk.cmd->command_buffer, bind_base, bind_count, shade_bufs, vk.cmd->buf_offset + bind_base);
+}
+
 
 void vk_bind_lighting( int stage, int bundle )
 {
@@ -375,16 +389,17 @@ void vk_bind_lighting( int stage, int bundle )
 	bind_count = 0;
 
 #ifdef USE_VBO
-	if (tess.vboIndex) {
+	if ( tess.vbo_world_index ) {
+		Com_Memset( vk.cmd->vbo_offset, 0, sizeof(vk.cmd->vbo_offset) );
 
-		shade_bufs[0] = shade_bufs[1] = shade_bufs[2] = vk.vbo[vk.vbo_index].vertex_buffer;
+		shade_bufs[0] = shade_bufs[1] = shade_bufs[2] = vk.vbo.vertex_buffer;
 
 		vk.cmd->vbo_offset[0] = tess.shader->vboOffset + 0;
 		vk.cmd->vbo_offset[1] = tess.shader->stages[stage]->tex_offset[bundle];
 		vk.cmd->vbo_offset[2] = tess.shader->normalOffset;
 
-		qvkCmdBindVertexBuffers(vk.cmd->command_buffer, 0, 3, shade_bufs, vk.cmd->vbo_offset + 0);
-
+		bind_base = 0;
+		bind_count = 3;
 	}
 	else
 #endif // USE_VBO
@@ -394,8 +409,6 @@ void vk_bind_lighting( int stage, int bundle )
 		vk_bind_attr(0, sizeof(tess.xyz[0]), &tess.xyz[0]);
 		vk_bind_attr(1, sizeof(vec2_t), tess.svars.texcoordPtr[bundle]);
 		vk_bind_attr(2, sizeof(tess.normal[0]), tess.normal);
-
-		qvkCmdBindVertexBuffers(vk.cmd->command_buffer, bind_base, bind_count, shade_bufs, vk.cmd->buf_offset + bind_base);
 	}
 }
 
@@ -416,8 +429,8 @@ static void vk_write_uniform_descriptor( VkWriteDescriptorSet *desc, VkDescripto
 void vk_update_uniform_descriptor( VkDescriptorSet descriptor, VkBuffer buffer )
 {
 	uint32_t count = 0;
-	VkDescriptorBufferInfo info[4];
-	VkWriteDescriptorSet desc[4];
+	VkDescriptorBufferInfo info[6];
+	VkWriteDescriptorSet desc[6];
 
 	info[count].buffer = buffer;
 	info[count].offset = 0;
@@ -426,7 +439,7 @@ void vk_update_uniform_descriptor( VkDescriptorSet descriptor, VkBuffer buffer )
 	vk_write_uniform_descriptor( desc + 0, info + 0, descriptor, 0 );
 	count++;
 
-	// camera
+	// 1: camera
 	info[count].buffer = buffer;
 	info[count].offset = 0;
 	info[count].range = sizeof(vkUniformCamera_t);
@@ -434,25 +447,37 @@ void vk_update_uniform_descriptor( VkDescriptorSet descriptor, VkBuffer buffer )
 	vk_write_uniform_descriptor( desc + 1, info + 1, descriptor, 1 );
 	count++;
 
-#ifdef USE_VBO_GHOUL2
-	if ( vk.vboGhoul2Active ) {
-		// data
-		info[count].buffer = buffer;
-		info[count].offset = 0;
-		info[count].range = sizeof(vkUniformEntity_t);
+	// 2: light
+	info[count].buffer = buffer;
+	info[count].offset = 0;
+	info[count].range = sizeof(vkUniformLight_t);
 
-		vk_write_uniform_descriptor( desc + 2, info + 2, descriptor, 2 );
-		count++;
+	vk_write_uniform_descriptor( desc + 2, info + 2, descriptor, 2 );
+	count++;
 
-		// bones
-		info[count].buffer = buffer;
-		info[count].offset = 0;
-		info[count].range = sizeof(vkUniformBones_t);
+	// 3: entity
+	info[count].buffer = buffer;
+	info[count].offset = 0;
+	info[count].range = sizeof(vkUniformEntity_t);
 
-		vk_write_uniform_descriptor( desc + 3, info + 3, descriptor, 3 );
-		count++;
-	}
-#endif
+	vk_write_uniform_descriptor( desc + 3, info + 3, descriptor, 3 );
+	count++;
+
+	// 4: bones
+	info[count].buffer = buffer;
+	info[count].offset = 0;
+	info[count].range = sizeof(vkUniformBones_t);
+
+	vk_write_uniform_descriptor( desc + 4, info + 4, descriptor, 4 );
+	count++;
+
+	// 5: global
+	info[count].buffer = buffer;
+	info[count].offset = 0;
+	info[count].range = sizeof(vkUniformGlobal_t);
+
+	vk_write_uniform_descriptor( desc + 5, info + 5, descriptor, 5 );
+	count++;
 
 	qvkUpdateDescriptorSets(vk.device, count, desc, 0, NULL);
 }
@@ -664,6 +689,67 @@ void vk_init_descriptors( void ) {
 	}
 }
 
+void vk_create_indirect_buffer( VkDeviceSize size )
+{
+	VkMemoryRequirements vb_memory_requirements;
+	VkDeviceSize indirect_buffer_offset;
+	VkMemoryAllocateInfo alloc_info;
+	VkBufferCreateInfo desc;
+	uint32_t memory_type_bits;
+	void *data;
+	int i;
+
+	vk_debug("Create indirect buffer: vk.cmd->indirect_buffer \n");
+	
+	desc.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	desc.pNext = NULL;
+	desc.flags = 0;
+	desc.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	desc.queueFamilyIndexCount = 0;
+	desc.pQueueFamilyIndices = NULL;
+	
+	Com_Memset(&vb_memory_requirements, 0, sizeof(vb_memory_requirements));
+
+	for (i = 0; i < NUM_COMMAND_BUFFERS; i++) {
+		desc.size = size;
+		desc.usage = VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
+		VK_CHECK(qvkCreateBuffer(vk.device, &desc, NULL, &vk.tess[i].indirect_buffer));
+
+		qvkGetBufferMemoryRequirements(vk.device, vk.tess[i].indirect_buffer, &vb_memory_requirements);
+	}
+
+	memory_type_bits = vb_memory_requirements.memoryTypeBits;
+
+	alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	alloc_info.pNext = NULL;
+	alloc_info.allocationSize = vb_memory_requirements.size * NUM_COMMAND_BUFFERS;
+	alloc_info.memoryTypeIndex = vk_find_memory_type(memory_type_bits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+	vk_debug("Allocate device memory for Indirect Buffer: %ld bytes. \n", alloc_info.allocationSize);
+
+	VK_CHECK(qvkAllocateMemory(vk.device, &alloc_info, NULL, &vk.indirect_buffer_memory));
+	VK_CHECK(qvkMapMemory(vk.device, vk.indirect_buffer_memory, 0, VK_WHOLE_SIZE, 0, &data));
+
+	indirect_buffer_offset = 0;
+
+	for (i = 0; i < NUM_COMMAND_BUFFERS; i++) {
+		qvkBindBufferMemory(vk.device, vk.tess[i].indirect_buffer, vk.indirect_buffer_memory, indirect_buffer_offset);
+		vk.tess[i].indirect_buffer_ptr = (byte*)data + indirect_buffer_offset;
+		vk.tess[i].indirect_buffer_offset = 0;
+		indirect_buffer_offset += vb_memory_requirements.size;
+
+		VK_SET_OBJECT_NAME(vk.tess[i].indirect_buffer, "indirect_buffer", VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT);
+	}
+
+	VK_SET_OBJECT_NAME(vk.indirect_buffer_memory, "indirect buffer memory", VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT);
+
+	vk.indirect_buffer_size = vb_memory_requirements.size;
+	vk.indirect_buffer_size_new = 0;
+
+	//Com_Memset(&vk.stats, 0, sizeof(vk.stats));
+}
+
+
 void vk_create_vertex_buffer( VkDeviceSize size )
 {
 	VkMemoryRequirements vb_memory_requirements;
@@ -767,7 +853,7 @@ void vk_update_descriptor_offset( int index, uint32_t offset )
 
 void vk_bind_descriptor_sets( void ) 
 {
-	uint32_t offsets[5], offset_count;
+	uint32_t offsets[6], offset_count;
 	uint32_t start, end, count;
 
 	start = vk.cmd->descriptor_set.start;
@@ -781,14 +867,11 @@ void vk_bind_descriptor_sets( void )
 		offsets[offset_count++] = vk.cmd->descriptor_set.offset[start];
 
 		if ( start == 1 ){
-			offsets[offset_count++] = vk.cmd->descriptor_set.offset[start+1];
-
-#ifdef USE_VBO_GHOUL2
-			if ( vk.vboGhoul2Active ){
-				offsets[offset_count++] = vk.cmd->descriptor_set.offset[start+2];
-				offsets[offset_count++] = vk.cmd->descriptor_set.offset[start+3];
-			}
-#endif
+			offsets[offset_count++] = vk.cmd->descriptor_set.offset[start+1];	// 1: camera
+			offsets[offset_count++] = vk.cmd->descriptor_set.offset[start+2];	// 2: entity
+			offsets[offset_count++] = vk.cmd->descriptor_set.offset[start+3];	// 3: light
+			offsets[offset_count++] = vk.cmd->descriptor_set.offset[start+4];	// 4: bones
+			offsets[offset_count++] = vk.cmd->descriptor_set.offset[start+5];	// 5: global
 		}
 	}
 
@@ -846,7 +929,7 @@ void vk_draw_geometry( Vk_Depth_Range depRg, qboolean indexed )
 
 	// issue draw call(s)
 #ifdef USE_VBO
-	if (tess.vboIndex)
+	if (tess.vbo_world_index)
 		VBO_RenderIBOItems();
 	else
 #endif
@@ -1129,8 +1212,20 @@ avoidGen:
 	}
 }
 
+uint32_t vk_append_uniform( void *uniform, size_t size, uint32_t min_offset ) {
+	const uint32_t offset = PAD(vk.cmd->vertex_buffer_offset, vk.uniform_alignment);
+
+	if ( offset + min_offset > vk.geometry_buffer_size )
+		return ~0U;
+
+	Com_Memcpy( vk.cmd->vertex_buffer_ptr + offset, uniform, size );
+	vk.cmd->vertex_buffer_offset = offset + min_offset;
+
+	return offset;
+}
+
 static uint32_t vk_push_uniform( const vkUniform_t *uniform ) {
-	const uint32_t offset = vk.cmd->uniform_read_offset = PAD(vk.cmd->vertex_buffer_offset, vk.uniform_alignment);
+	const uint32_t offset = PAD(vk.cmd->vertex_buffer_offset, vk.uniform_alignment);
 
 	if ( offset + vk.uniform_item_size > vk.geometry_buffer_size )
 		return ~0U;
@@ -1141,65 +1236,44 @@ static uint32_t vk_push_uniform( const vkUniform_t *uniform ) {
 
 	vk_reset_descriptor( 1 );
 	vk_update_descriptor( 1, vk.cmd->uniform_descriptor );
-	vk_update_descriptor_offset( 1, vk.cmd->uniform_read_offset );
+	vk_update_descriptor_offset( 1, offset );
 
 	return offset;
 }
 
-#if defined(USE_VBO_GHOUL2) && defined(USE_VK_PBR)
-static uint32_t vk_push_uniform_camera( const vkUniformCamera_t *uniform ) {	
-	const uint32_t offset = vk.cmd->uniform_read_offset = PAD(vk.cmd->vertex_buffer_offset, vk.uniform_alignment);
+static uint32_t vk_push_uniform_global( const vkUniformGlobal_t *uniform ) {	
+	const uint32_t offset = PAD(vk.cmd->vertex_buffer_offset, vk.uniform_alignment);
 
-	if ( offset + vk.uniform_camera_item_size > vk.geometry_buffer_size )
+	if ( offset + vk.uniform_global_item_size > vk.geometry_buffer_size )
 		return ~0U;
 
 	Com_Memcpy( vk.cmd->vertex_buffer_ptr + offset, uniform, sizeof(*uniform) );
-	vk.cmd->vertex_buffer_offset = offset + vk.uniform_camera_item_size;
+	vk.cmd->vertex_buffer_offset = offset + vk.uniform_global_item_size;
 
-	vk_reset_descriptor( 1 );
-	vk_update_descriptor( 1, vk.cmd->uniform_descriptor );
-	vk_update_descriptor_offset( 1, 0 );
-	vk_update_descriptor_offset( 2, vk.cmd->uniform_read_offset );
+	//vk_reset_descriptor( 1 );
+	//vk_update_descriptor( 1, vk.cmd->uniform_descriptor );
+	//vk_update_descriptor_offset( 1, 0 );
+	vk_update_descriptor_offset( 6, offset );
+
+	return 0;
+}
+
+uint32_t vk_push_indirect( int count, const void *data ) {
+	const uint32_t offset = PAD(vk.cmd->indirect_buffer_offset, 32);
+	const uint32_t size = count * sizeof(VkDrawIndexedIndirectCommand);
+
+	if (offset + size > vk.indirect_buffer_size) {
+		// schedule geometry buffer resize
+		vk.indirect_buffer_size_new = log2pad(offset + size, 1);
+		Com_Printf("resize");
+	}
+	else {
+		Com_Memcpy(vk.cmd->indirect_buffer_ptr + offset, data, size);
+		vk.cmd->indirect_buffer_offset = (VkDeviceSize)offset + size;
+	}
 
 	return offset;
 }
-#endif
-
-#ifdef USE_VBO_GHOUL2
-static uint32_t vk_push_uniform_data( const vkUniformEntity_t *uniform ) {	
-	const uint32_t offset = vk.cmd->uniform_read_offset = PAD(vk.cmd->vertex_buffer_offset, vk.uniform_alignment);
-
-	if ( offset + vk.uniform_data_item_size > vk.geometry_buffer_size )
-		return ~0U;
-
-	Com_Memcpy( vk.cmd->vertex_buffer_ptr + offset, uniform, sizeof(*uniform) );
-	vk.cmd->vertex_buffer_offset = offset + vk.uniform_data_item_size;
-
-	vk_reset_descriptor( 1 );
-	vk_update_descriptor( 1, vk.cmd->uniform_descriptor );
-	vk_update_descriptor_offset( 1, 0 );
-	vk_update_descriptor_offset( 3, vk.cmd->uniform_read_offset );
-
-	return offset;
-}
-
-static uint32_t vk_push_uniform_ghoul2( const vkUniformBones_t *uniform ) {	
-	const uint32_t offset = vk.cmd->uniform_read_offset = PAD( vk.cmd->vertex_buffer_offset, vk.uniform_alignment );
-
-	if ( offset + vk.uniform_ghoul_item_size > vk.geometry_buffer_size )
-		return ~0U;
-
-	Com_Memcpy( vk.cmd->vertex_buffer_ptr + offset, uniform, sizeof(*uniform) );
-	vk.cmd->vertex_buffer_offset = offset + vk.uniform_ghoul_item_size;
-
-	vk_reset_descriptor( 1 );
-	vk_update_descriptor( 1, vk.cmd->uniform_descriptor );
-	vk_update_descriptor_offset( 1, 0 );
-	vk_update_descriptor_offset( 4, vk.cmd->uniform_read_offset );
-
-	return offset;
-}
-#endif
 
 /*
 ========================
@@ -1322,19 +1396,11 @@ Blends a fog texture on top of everything else
 ===================
 */
 static vkUniform_t			uniform;
-static vkUniformCamera_t	uniform_camera;
-#ifdef USE_VBO_GHOUL2
-static vkUniformEntity_t	uniform_entity;
-static vkUniformBones_t		uniform_ghoul;
-
-mat3x4_t *vk_get_uniform_ghoul_bones( void ) {
-	return uniform_ghoul.boneMatrices;
-}
-#endif
+static vkUniformGlobal_t	uniform_global;
 
 static void RB_FogPass( void ) {
 #ifdef USE_VBO_GHOUL2
-	const int sh = ( tess.vboIndex && tess.surfType == SF_MDX ) ? 1 : 0;
+	const int sh = ( tess.vbo_world_index && tess.surfType == SF_MDX ) ? 1 : 0;
 #else
 	const int sh = 0;
 #endif
@@ -1343,11 +1409,27 @@ static void RB_FogPass( void ) {
 #ifdef USE_FOG_ONLY
 	int fog_stage;
 	
-	vk_bind_pipeline(pipeline);
+	//vk_bind_pipeline(pipeline);
 	vk_set_fog_params(&uniform, &fog_stage);
 	vk_push_uniform(&uniform);
 	vk_update_descriptor(3, tr.fogImage->descriptor_set);
-	vk_draw_geometry(DEPTH_RANGE_NORMAL, qtrue);
+	//vk_draw_geometry(DEPTH_RANGE_NORMAL, qtrue);
+
+	// create draw item
+	{
+		DrawItem item = {};
+		item.pipeline = pipeline;
+		item.depthRange = DEPTH_RANGE_NORMAL;
+		item.polygonOffset = tess.shader->polygonOffset;
+		item.identifier = 18;
+		
+		RB_AddDrawItemIndexBinding( item );
+		RB_AddDrawItemVertexBinding( item );
+		RB_AddDrawItemUniformBinding( item, backEnd.currentEntity );
+
+		RB_AddDrawItem( backEndData->currentPass, item );
+	}
+
 #else
 	const fog_t *fog;
 	int			i;
@@ -1564,7 +1646,7 @@ static void vk_set_attr_color( color4ub_t *dest, const qboolean skip ){
 	uint32_t i;
 	int numVerts;
 
-	numVerts = ( tess.vboIndex && tess.surfType == SF_MDX ) ? 
+	numVerts = ( tess.vbo_world_index && tess.surfType == SF_MDX ) ? 
 		tess.mesh_ptr->numVertexes : tess.numVertexes;
 
 	if ( skip ) {
@@ -1590,8 +1672,8 @@ static void vk_compute_colors( const int b, const shaderStage_t *pStage, int for
 	int rgbGen = forceRGBGen;
 	int alphaGen = pStage->bundle[b].alphaGen;
 
-	baseColor = (float*)uniform_entity.baseColor[b];
-	vertColor = (float*)uniform_entity.vertColor[b];
+	baseColor = (float*)uniform_global.baseColor[b];
+	vertColor = (float*)uniform_global.vertColor[b];
 
 	baseColor[0] = baseColor[1] = baseColor[2] = baseColor[3] = 1.0f;  	
    	vertColor[0] = vertColor[1] = vertColor[2] = vertColor[3] = 0.0f;
@@ -1735,8 +1817,8 @@ static void vk_compute_colors( const int b, const shaderStage_t *pStage, int for
 		vertColor[2] *= scale;
 	}
 
-	uniform_entity.rgbGen[b] = (float)rgbGen;
-	uniform_entity.alphaGen[b] = (float)alphaGen;
+	uniform_global.rgbGen[b] = (float)rgbGen;
+	uniform_global.alphaGen[b] = (float)alphaGen;
 }
 
 static void vk_compute_deform( void ) {
@@ -1744,7 +1826,7 @@ static void vk_compute_deform( void ) {
 	int		waveFunc = GF_NONE;
 	float	*info;
 
-	info = (float*)uniform_entity.deformInfo;
+	info = (float*)uniform_global.deformInfo;
 
 	Com_Memset( info + 0, 0, sizeof(float) * 12 );
 
@@ -1846,7 +1928,7 @@ static void vk_compute_disintegration( int *forceRGBGen ){
 	else
 		*forceRGBGen = (int)CGEN_DISINTEGRATION_2;
 
-	info = (float*)uniform_entity.disintegrationInfo;
+	info = (float*)uniform_global.disintegrationInfo;
 
 	info[0] = backEnd.currentEntity->e.oldorigin[0];
 	info[1] = backEnd.currentEntity->e.oldorigin[1];
@@ -1907,7 +1989,7 @@ void vk_lighting_pass( void )
 	R_BindAnimatedImage(&pStage->bundle[tess.shader->lightingBundle]);
 
 #ifdef USE_VBO
-	if (tess.vboIndex == 0)
+	if (tess.vbo_world_index == 0)
 #endif
 	{
 		ComputeTexCoords(tess.shader->lightingBundle, &pStage->bundle[tess.shader->lightingBundle]);
@@ -1915,8 +1997,9 @@ void vk_lighting_pass( void )
 	
 	vk_bind_pipeline(pipeline);
 	vk_bind_index();
-	vk_bind_lighting(tess.shader->lightingStage, tess.shader->lightingBundle);
-	vk_draw_geometry(tess.depthRange, qtrue);
+	vk_bind_lighting( tess.shader->lightingStage, tess.shader->lightingBundle );
+	vk_bind_geometry_buffer();
+	vk_draw_geometry( tess.depthRange, qtrue );
 }
 #endif // USE_PMLIGHT
 
@@ -1932,79 +2015,132 @@ void ForceAlpha(unsigned char *dstColors, int TR_ForceEntAlpha)
 	}
 }
 
-static qboolean vk_is_valid_pbr_surface( const qboolean hasPBR, const qboolean is_ghoul2_vbo, const qboolean is_mdv_vbo ) 
+void RB_AddDrawItemUniformBinding( DrawItem &item, const trRefEntity_t *refEntity ) 
 {
-	if ( vk.useFastLight || !hasPBR )
-		return qfalse;
-	
-	if ( backEnd.isGlowPass )
-		return qfalse;
+	vk_reset_descriptor( 1 );	// to set start/end
+	vk_update_descriptor( 1, vk.cmd->uniform_descriptor );
+
+	vk.cmd->descriptor_set.offset[1] = 0;
+	vk.cmd->descriptor_set.offset[2] = vk.cmd->camera_ubo_offset;
+	vk.cmd->descriptor_set.offset[3] = vk.cmd->light_ubo_offset;
+
+	if ( backEnd.currentEntity ) 
+	{
+		if ( backEnd.currentEntity == &backEnd.entity2D ) 
+		{
+			vk.cmd->descriptor_set.offset[4] = vk.cmd->entity_ubo_offset[REFENTITYNUM_WORLD];
+			vk.cmd->descriptor_set.offset[5] = 0;
+		}
+		else if ( backEnd.currentEntity == &tr.worldEntity ) 
+		{
+			vk.cmd->descriptor_set.offset[4] = vk.cmd->entity_ubo_offset[REFENTITYNUM_WORLD];
+			vk.cmd->descriptor_set.offset[5] = 0;
+		}
+		else 
+		{
+			const int refEntityNum = backEnd.currentEntity - backEnd.refdef.entities;
+
+			vk.cmd->descriptor_set.offset[4] = vk.cmd->entity_ubo_offset[refEntityNum];
+			vk.cmd->descriptor_set.offset[5] = vk.cmd->animationBoneUboOffset;
+		}
+	}
 			
-	if ( backEnd.projection2D )
-		return qfalse;
-
-	if ( backEnd.viewParms.portalView == PV_MIRROR)
-		return qfalse;
-
-	if ( backEnd.currentEntity ){
-		if ( backEnd.currentEntity != &tr.worldEntity && !is_ghoul2_vbo && !is_mdv_vbo )
-			return qfalse;
-	}
-	
-	return qtrue;
+	Com_Memcpy( &item.descriptor_set, &vk.cmd->descriptor_set, sizeof(vk.cmd->descriptor_set));
+	vk.cmd->descriptor_set.end = 0;
+	vk.cmd->descriptor_set.start = ~0U;
 }
 
-static void vk_update_camera_constants( void ) 
+void RB_AddDrawItemVertexBinding( DrawItem &item ) 
 {
-	Com_Memcpy( &uniform_camera.viewOrigin, backEnd.refdef.vieworg, sizeof( vec3_t) );
-	uniform_camera.viewOrigin[3] = 0.0f;
+	// only set appropiate data please, fix this. acceptable for now
+	const pushConst *constants = vk_get_push_constant();
+	Com_Memcpy( item.mvp, constants->mvp, sizeof(float)*16);
 
-	vk_push_uniform_camera( &uniform_camera );
-}
+	Com_Memcpy( &item.shade_buffers, shade_bufs, sizeof(shade_bufs));
 
-static void vk_update_light_constants( const trRefEntity_t *refEntity ) 
-{
-	static const float normalizeFactor = 1.0f / 255.0f;
-
-	VectorScale(refEntity->ambientLight, normalizeFactor, uniform_entity.ambientLight);
-	VectorScale(refEntity->directedLight, normalizeFactor, uniform_entity.directedLight);
-	VectorCopy(refEntity->lightDir, uniform_entity.lightOrigin);
-
-	uniform_entity.lightOrigin[3] = 0.0f;
-}
-
-
-static void vk_update_matrix_constants( const trRefEntity_t *refEntity ) 
-{
-	orientationr_t ori;
-
-	if ( refEntity == &tr.worldEntity ) {
-		ori = backEnd.viewParms.world;
-		Matrix16Identity( uniform_entity.modelMatrix );
-	}else{
-		R_RotateForEntity( refEntity, &backEnd.viewParms, &ori );
-		Matrix16Copy( ori.modelMatrix, uniform_entity.modelMatrix );
-	}
-
-	Com_Memcpy( &uniform_entity.localViewOrigin, ori.viewOrigin, sizeof( vec3_t) );
-	uniform_entity.localViewOrigin[3] = 0.0f;
-}
-
-static void vk_update_entity_constants( void ) 
-{
-	const trRefEntity_t *ent;
-
-	if ( backEnd.currentEntity != &tr.worldEntity )
-		ent = backEnd.currentEntity;
-
+	if ( tess.vbo_world_index || tess.vbo_model_index ) 
+		Com_Memcpy( &item.shade_offset, &vk.cmd->vbo_offset, sizeof(vk.cmd->vbo_offset));
 	else
-		ent = &tr.worldEntity;
+		Com_Memcpy( &item.shade_offset, &vk.cmd->buf_offset, sizeof(vk.cmd->buf_offset));
 
-	Com_Memset( &uniform_entity, 0, sizeof(uniform_entity) );
-	vk_update_light_constants( ent );
-	vk_update_matrix_constants( ent );
+	item.bind_base = bind_base;
+	item.bind_count = bind_count;
 }
 
+static std::vector<VkDrawIndexedIndirectCommand> indirectCommands;
+
+void RB_AddDrawItemIndexBinding( DrawItem &item ) 
+{
+	// model vbo
+	if ( tess.vbo_model_index ) 
+	{
+		item.ibo = tr.ibos[ tess.vbo_model_index - 1 ];
+
+		if ( tess.multiDrawPrimitives ) 
+		{
+			// draw indexed indirect
+			if ( tess.multiDrawPrimitives > 1 ) {
+				item.indexedIndirect = qtrue;		// change type
+
+				item.draw.params.indexedIndirect.numDraws = tess.multiDrawPrimitives;
+
+				indirectCommands.clear();
+				for ( uint32_t j = 0; j < tess.multiDrawPrimitives; j++ ) 
+				{
+					VkDrawIndexedIndirectCommand indirectCmd{};
+
+					uint32_t *index = ((uint32_t*)tess.multiDrawFirstIndex) + j;
+
+					indirectCmd.indexCount = tess.multiDrawNumIndexes[j];
+					indirectCmd.instanceCount = 1;
+					indirectCmd.firstIndex = *index;
+					indirectCmd.vertexOffset = 0;
+					indirectCmd.firstInstance = 0;
+
+					indirectCommands.push_back( indirectCmd );
+				}
+
+				item.draw.params.indexedIndirect.offset = vk_push_indirect( tess.multiDrawPrimitives, indirectCommands.data() );
+
+				return;
+			}
+
+			// draw regular indexed
+			item.indexed = qtrue;
+			item.draw.params.indexed.num_indexes = tess.multiDrawNumIndexes[0];
+			item.draw.params.indexed.index_offset = (uint32_t)BUFFER_OFFSET((glIndex_t)(size_t)(tess.multiDrawFirstIndex[0]) * sizeof(uint32_t));
+		}
+	}
+
+	// world vbo
+	else if ( tess.vbo_world_index ) 
+	{
+		item.indexed = qtrue;
+		item.vbo_world_index = tess.vbo_world_index;
+		item.draw.params.indexed.world.ibo_offset = tess.shader->iboOffset;
+
+		VBO_GetDeviceBuffer( item );
+		VBO_GetSoftbuffer( item );
+
+		return;
+	}
+
+	else 
+	{
+		uint32_t offset	= vk_tess_index( tess.numIndexes, tess.indexes );
+
+		if ( offset != ~0U ) {
+			item.indexed = qtrue;
+			item.draw.params.indexed.index_offset = offset;
+			item.draw.params.indexed.num_indexes = tess.numIndexes;
+
+			return;
+		}
+
+		// overflowed
+		item.draw.params.indexed.num_indexes = 0;
+	}
+}
 
 static ss_input ssInput;
 void RB_StageIteratorGeneric( void )
@@ -2019,8 +2155,16 @@ void RB_StageIteratorGeneric( void )
 	qboolean				is_ghoul2_vbo;
 	qboolean				is_mdv_vbo;
 
+	is_ghoul2_vbo = qfalse;
+	is_mdv_vbo = qfalse;
+
+	if ( tess.vbo_world_index || tess.vbo_model_index ) {
+		is_ghoul2_vbo = (qboolean)( tess.surfType == SF_MDX );
+		is_mdv_vbo = (qboolean)( tess.surfType == SF_VBO_MDVMESH );
+	}
+
 #ifdef USE_VBO
-	if (tess.vboIndex != 0) {
+	if ( tess.vbo_world_index != 0 ) {
 		VBO_PrepareQueues();
 		tess.vboStage = 0;
 	} 
@@ -2031,7 +2175,7 @@ void RB_StageIteratorGeneric( void )
 	}
 
 #ifdef USE_PMLIGHT
-	if (tess.dlightPass) {
+	if ( tess.dlightPass ) {
 		vk_lighting_pass();
 		return;
 	}
@@ -2042,31 +2186,19 @@ void RB_StageIteratorGeneric( void )
 	tess_flags = tess.shader->tessFlags;
 
 	fogCollapse = qfalse;
-	is_ghoul2_vbo = qfalse;
-	is_mdv_vbo = qfalse;
+
 
 #ifdef USE_FOG_COLLAPSE
 	if ( tess.fogNum && tess.shader->fogPass && tess.shader->fogCollapse && r_drawfog->value == 2 ) {
 		fogCollapse = qtrue;
 	}
 #endif
+
+	Com_Memset( &uniform_global, 0, sizeof(uniform_global) );
 	
-	vk_update_camera_constants();
-	vk_update_entity_constants();
-
 #if defined(USE_VK_PBR) || defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV) 
-	if ( tess.vboIndex ) {
-		is_ghoul2_vbo = (qboolean)( tess.surfType == SF_MDX );
-		is_mdv_vbo = (qboolean)( tess.surfType == SF_VBO_MDVMESH );
-	}
-
 	if ( backEnd.currentEntity != &tr.worldEntity ) 
-	{
-		if ( is_ghoul2_vbo )
-			vk_push_uniform_ghoul2( &uniform_ghoul ); // bone matrices
-
 		vk_compute_deform();
-	}
 #endif
 
 	if ( fogCollapse ) {
@@ -2179,13 +2311,13 @@ void RB_StageIteratorGeneric( void )
 				if ( backEnd.currentEntity->e.renderfx & RF_ALPHA_DEPTH ) 
 					def.state_bits |= GLS_DEPTHMASK_TRUE;	
 			}
-#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV) 
+
 			def.vbo_ghoul2 = is_ghoul2_vbo;
 			def.vbo_mdv = is_mdv_vbo;
 
-			if ( !tess.vboIndex )
+			if ( !tess.vbo_world_index && !is_ghoul2_vbo && !is_mdv_vbo )
 				def.vk_light_flags = 0;
-#endif			
+		
 			pipeline = vk_find_pipeline_ext( 0, &def, qfalse );
 		}
 		else {
@@ -2200,19 +2332,19 @@ void RB_StageIteratorGeneric( void )
 			vk_bind( tr.whiteImage ); // replace diffuse texture with a white one thus effectively render only lightmap
 		}
 
-		VectorCopy4( pStage->normalScale, uniform_entity.normalScale );
-		VectorCopy4( pStage->specularScale, uniform_entity.specularScale );
+		VectorCopy4( pStage->normalScale, uniform_global.normalScale );
+		VectorCopy4( pStage->specularScale, uniform_global.specularScale );
 
 		// move glow bundle to texture 0
 		// does not work with multitextured dglow yet.
 		if ( backEnd.isGlowPass && pStage->glow ){
 			vk_get_pipeline_def( pStage->vk_pipeline[fog_stage], &def );
-#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV) 		
-				def.vbo_ghoul2 = is_ghoul2_vbo;
-				def.vbo_mdv = is_mdv_vbo;
-				def.vk_light_flags = 0;
-				def.vk_pbr_flags = 0;
-#endif	
+	
+			def.vbo_ghoul2 = is_ghoul2_vbo;
+			def.vbo_mdv = is_mdv_vbo;
+			def.vk_light_flags = 0;
+			def.vk_pbr_flags = 0;
+
 			def.shader_type = TYPE_SINGLE_TEXTURE;
 			pipeline = vk_find_pipeline_ext( 0, &def, qfalse );
 
@@ -2222,7 +2354,7 @@ void RB_StageIteratorGeneric( void )
 		}
 
 		else {
-			if ( tess.vboIndex )
+			if ( tess.vbo_world_index || tess.vbo_model_index )
 				vk_update_pbr_descriptor(6, vk.brdflut_image_descriptor);
 
 			if ( pStage->vk_pbr_flags & PBR_HAS_NORMALMAP )
@@ -2236,10 +2368,10 @@ void RB_StageIteratorGeneric( void )
 			{
 				vk_update_pbr_descriptor(8, tr.whiteImage->descriptor_set);
 				
-				uniform_entity.specularScale[0] = 0.0f;
-				uniform_entity.specularScale[2] =
-				uniform_entity.specularScale[3] = 1.0f;
-				uniform_entity.specularScale[1] = 0.5f;
+				uniform_global.specularScale[0] = 0.0f;
+				uniform_global.specularScale[2] =
+				uniform_global.specularScale[3] = 1.0f;
+				uniform_global.specularScale[1] = 0.5f;
 			}
 
 			qboolean has_cubemap = ( !vk.useFastLight && tr.numCubemaps && tess.cubemapIndex > 0) ? qtrue : qfalse;
@@ -2250,22 +2382,33 @@ void RB_StageIteratorGeneric( void )
 				vk_update_pbr_descriptor(9, tr.cubemaps[tess.cubemapIndex-1].prefiltered_image->descriptor_set);
 		}
 
-#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV) 
-		if ( is_ghoul2_vbo || is_mdv_vbo )
-			vk_push_uniform_data( &uniform_data );
+		vk_push_uniform_global( &uniform_global );
+
+		Vk_Depth_Range depthRange = tess.depthRange;
+
+#ifdef USE_VK_IMGUI
+		// ImGui outline surface/shader 
+		if ( tess.shader == tr.outlineShader ) {
+			pipeline = vk.std_pipeline.inspector_object_debug_pipeline;
+			depthRange = DEPTH_RANGE_ZERO;
+		}
 #endif
-		vk_bind_pipeline( pipeline );
+
 		vk_bind_geometry( tess_flags );
-		vk_draw_geometry( tess.depthRange, qtrue );
 
-		if ( pStage->depthFragment ) {
-			if ( backEnd.viewParms.portalView == PV_MIRROR )
-				pipeline = pStage->vk_mirror_pipeline_df;
-			else
-				pipeline = pStage->vk_pipeline_df;
+		// create draw item
+		{
+			DrawItem item = {};
+			item.pipeline = pipeline;
+			item.depthRange = depthRange;
+			item.polygonOffset = tess.shader->polygonOffset;
+			item.identifier = 23;
 
-			vk_bind_pipeline( pipeline );
-			vk_draw_geometry( tess.depthRange, qtrue );
+			RB_AddDrawItemIndexBinding( item );
+			RB_AddDrawItemVertexBinding( item );
+			RB_AddDrawItemUniformBinding( item, backEnd.currentEntity );
+
+			RB_AddDrawItem( backEndData->currentPass, item );
 		}
 
 		// allow skipping out to show just lightmaps during development
@@ -2279,9 +2422,11 @@ void RB_StageIteratorGeneric( void )
 		vk_bind_geometry(tess_flags);
 
 	// now do fog
-	if (tr.world && r_drawfog->value && tess.fogNum && tess.shader->fogPass && !fogCollapse) {
+	if ( tr.world && r_drawfog->value && tess.fogNum && tess.shader->fogPass && !fogCollapse )
 		RB_FogPass();
-	}
+
+	// skip surfacesprites, not rendered anyway
+	return;
 
 	// Now check for surfacesprites.
 	if ( r_surfaceSprites->integer && !vk.vboWorldActive )

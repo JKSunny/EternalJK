@@ -1087,11 +1087,25 @@ void R_Init( void ) {
 	max_polys = Q_min( r_maxpolys->integer, DEFAULT_MAX_POLYS );
 	max_polyverts = Q_min( r_maxpolyverts->integer, DEFAULT_MAX_POLYVERTS );
 
-	ptr = (byte *)Hunk_Alloc( sizeof( *backEndData ) + sizeof(srfPoly_t) * max_polys + sizeof(polyVert_t) * max_polyverts, h_low);
-	backEndData = (backEndData_t *) ptr;
-	backEndData->polys = (srfPoly_t *) ((char *) ptr + sizeof( *backEndData ));
-	backEndData->polyVerts = (polyVert_t *) ((char *) ptr + sizeof( *backEndData ) + sizeof(srfPoly_t) * max_polys);
+	ptr = (byte *)Hunk_Alloc( 
+		sizeof( *backEndData ) + 
+		sizeof(srfPoly_t) * max_polys + 
+		sizeof(polyVert_t) * max_polyverts +
+		sizeof(Allocator) +
+		PER_FRAME_MEMORY_BYTES,
+		h_low);
+	backEndData = (backEndData_t *)ptr;
 
+	ptr = (byte *)(backEndData + 1);
+
+	backEndData->polys = (srfPoly_t *)ptr;
+	ptr += sizeof(*backEndData->polys) * max_polys;
+
+	backEndData->polyVerts = (polyVert_t *)ptr;
+	ptr += sizeof(*backEndData->polyVerts) * max_polyverts;
+
+	backEndData->perFrameMemory = new(ptr) Allocator(ptr + sizeof(*backEndData->perFrameMemory), PER_FRAME_MEMORY_BYTES);
+	
 	R_InitNextFrame();
 
 	for(i = 0; i < MAX_LIGHT_STYLES; i++)
@@ -1102,7 +1116,8 @@ void R_Init( void ) {
 	vk_create_window();		// Vulkan
 
 #ifdef USE_VBO
-	vk_clear_vbo();
+	vk_release_vbo();
+	vk_release_model_vbo();
 #endif
 
 	R_Set2DRatio();

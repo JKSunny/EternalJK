@@ -411,7 +411,7 @@ void R_AddMD3Surfaces( trRefEntity_t *ent, int entityNum ) {
 		if ( !personalModel ) {
 #ifdef USE_VBO_MDV
 			if ( vk.vboMdvActive ) 
-				R_AddDrawSurf( (surfaceType_t *)&model->vboMeshes[i], entityNum, shader, fogNum, cubemapIndex );
+				R_AddDrawSurf( (surfaceType_t *)&model->vboSurfaces[i], entityNum, shader, fogNum, cubemapIndex );
 			else
 #endif
 				R_AddDrawSurf( (surfaceType_t *)surface, entityNum, shader, fogNum, 0 );

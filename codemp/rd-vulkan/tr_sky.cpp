@@ -451,10 +451,25 @@ static void DrawSkySide( image_t *image, const int mins[2], const int maxs[2] )
 
 		tess.svars.texcoordPtr[0] = tess.texCoords[0];
 
-		vk_bind_pipeline(vk.std_pipeline.skybox_pipeline);
+		//vk_bind_pipeline(vk.std_pipeline.skybox_pipeline);
 		vk_bind_index();
 		vk_bind_geometry(TESS_XYZ | TESS_ST0);
-		vk_draw_geometry(r_showsky->integer ? DEPTH_RANGE_ZERO : DEPTH_RANGE_ONE, qtrue);
+		//vk_draw_geometry(r_showsky->integer ? DEPTH_RANGE_ZERO : DEPTH_RANGE_ONE, qtrue);
+
+		// create draw item
+		{
+			DrawItem item = {};
+			item.pipeline = vk.std_pipeline.skybox_pipeline;
+			item.depthRange = r_showsky->integer ? DEPTH_RANGE_ZERO : DEPTH_RANGE_ONE;
+			item.polygonOffset = tess.shader->polygonOffset;
+			item.identifier = 6;
+		
+			RB_AddDrawItemIndexBinding( item );
+			RB_AddDrawItemVertexBinding( item );
+			RB_AddDrawItemUniformBinding( item, backEnd.currentEntity );
+			
+			RB_AddDrawItem( backEndData->currentPass, item );
+		}
 
 		tess.numVertexes = 0;
 		tess.numIndexes = 0;
@@ -753,6 +768,9 @@ void RB_DrawSun( float scale, shader_t *shader ) {
 	float		dist;
 	vec3_t		origin, vec1, vec2;
 	color4ub_t	sunColor = { 255, 255, 255, 255 };
+
+	if ( !r_drawSun->integer )
+		return;
 
 	if ( !backEnd.skyRenderedThisView )
 		return;

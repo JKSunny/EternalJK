@@ -20,12 +20,12 @@ layout(set = 1, binding = 0) uniform UBO {
 	vec4 lightVector;
 };
 
-layout(set = 1, binding = 3) uniform Bones {
+layout(set = 1, binding = 4) uniform Bones {
 	mat3x4 u_BoneMatrices[72];
 };	
 
 layout(location = 0) in vec3 in_position;
-layout(location = 10) in vec4 in_bones;
+layout(location = 10) in uvec4 in_bones;
 layout(location = 11) in vec4 in_weights;
 
 layout(location = 4) out vec2 fog_tex_coord;
@@ -46,10 +46,10 @@ mat4x3 GetBoneMatrix(uint index)
 
 void main() {
 	mat4x3 skin_matrix =
-		GetBoneMatrix(uint(in_bones[0])) * in_weights[0] +
-        GetBoneMatrix(uint(in_bones[1])) * in_weights[1] +
-        GetBoneMatrix(uint(in_bones[2])) * in_weights[2] +
-        GetBoneMatrix(uint(in_bones[3])) * in_weights[3];
+		GetBoneMatrix(in_bones.x) * in_weights.x +
+        GetBoneMatrix(in_bones.y) * in_weights.y +
+        GetBoneMatrix(in_bones.z) * in_weights.z +
+        GetBoneMatrix(in_bones.w) * in_weights.w;
 
 	vec3 position = skin_matrix * vec4(in_position, 1.0);
 	gl_Position = mvp * vec4(position, 1.0);

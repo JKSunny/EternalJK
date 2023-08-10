@@ -236,9 +236,11 @@ void RB_ShadowTessEnd(void) {
 	}
 
 	vk_bind_pipeline(pipeline[0]); // back-sided
-	vk_bind_index();
+	vk_bind_index_ext(tess.numIndexes, tess.indexes);
 	vk_bind_geometry(TESS_XYZ | TESS_RGBA0);
+	vk_bind_geometry_buffer();
 	vk_draw_geometry(DEPTH_RANGE_NORMAL, qtrue);
+	
 	vk_bind_pipeline(pipeline[1]); // front-sided
 	vk_draw_geometry(DEPTH_RANGE_NORMAL, qtrue);
 
@@ -302,6 +304,7 @@ void RB_ShadowFinish(void)
 	vk_bind_pipeline(vk.std_pipeline.shadow_finish_pipeline);
 	vk_update_mvp(NULL);
 	vk_bind_geometry(TESS_XYZ | TESS_RGBA0);
+	vk_bind_geometry_buffer();
 	vk_draw_geometry(DEPTH_RANGE_NORMAL, qfalse);
 
 	Com_Memcpy(vk_world.modelview_transform, tmp, 64);

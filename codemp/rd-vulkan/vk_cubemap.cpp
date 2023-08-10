@@ -398,7 +398,7 @@ void vk_generate_cubemaps( cubemap_t *cube )
 	VkClearValue			clear_values[1];
 	VkCommandBuffer			command_buffer;
 
-	image_t		*cubemap;
+	image_t		*cubemap = NULL;
 	uint32_t	i, j;
 	filterDef	*def;
 
@@ -420,6 +420,9 @@ void vk_generate_cubemaps( cubemap_t *cube )
 			case IRRADIANCE: cubemap = cube->irradiance_image; break;
 			case PREFILTEREDENV: cubemap = cube->prefiltered_image; break;
 		};
+
+		if ( !cubemap )
+			continue;
 
 		Com_Memset( clear_values, 0, sizeof( clear_values ) );
 		clear_values[0].color = { { 0.75f, 0.75f, 0.75f, 0.0f } };

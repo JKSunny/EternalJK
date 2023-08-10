@@ -36,10 +36,19 @@
 #endif
 
 #if defined(PER_PIXEL_LIGHTING) || defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
-layout(set = 1, binding = 2) uniform Entity {
+layout(set = 1, binding = 3) uniform Entity {
 	vec4 ambientLight;
 	vec4 directedLight;
-	vec4 lightDir;
+	vec4 u_LocalLightOrigin;
+	vec4 u_localViewOrigin;
+	mat4 u_ModelMatrix;
+};
+
+layout(set = 1, binding = 2) uniform Light {
+	vec4 item;
+};
+
+layout(set = 1, binding = 5) uniform Global {
 	vec4 rgbGen; 
 	vec4 alphaGen;
 	vec4 baseColor[3];
@@ -48,9 +57,7 @@ layout(set = 1, binding = 2) uniform Entity {
 	vec4 deformInfo[3];
 	vec4 u_SpecularScale;	
 	vec4 u_NormalScale;	
-	vec4 u_localViewOrigin;
-	mat4 u_ModelMatrix;
-};
+};	
 #endif
 
 layout(set = 2, binding = 0) uniform sampler2D texture0;

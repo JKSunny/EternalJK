@@ -363,12 +363,20 @@ public:
 	bool			mUnsquash;
 	float			mSmoothFactor;
 
+	// GPU Data
+	mat3x4_t boneMatrices[72];
+	int      uboOffset;
+
 	CBoneCache(const model_t *amod,const mdxaHeader_t *aheader) :
 		header(aheader),
 		mod(amod)
 	{
 		assert(amod);
 		assert(aheader);
+
+		Com_Memset(boneMatrices, 0, sizeof(boneMatrices));
+		uboOffset = -1;
+
 		mSmoothingActive=false;
 		mUnsquash=false;
 		mSmoothFactor=0.0f;
@@ -2817,12 +2825,15 @@ void G2_ConstructUsedBoneList(CConstructBoneList &CBL)
 // on the previous model, since it ensures the model being attached to is built and rendered first.
 
 // NOTE!! This assumes at least one model will NOT have a parent. If it does - we are screwed
-static void G2_Sort_Models(CGhoul2Info_v &ghoul2, int * const modelList, int * const modelCount)
+void G2_Sort_Models(CGhoul2Info_v &ghoul2, int * const modelList, int modelListCapacity, int * const modelCount)
 {
 	int		startPoint, endPoint;
 	int		i, boltTo, j;
 
 	*modelCount = 0;
+
+	if ( modelListCapacity < ghoul2.size() )
+		return;
 
 	// first walk all the possible ghoul2 models, and stuff the out array with those with no parents
 	for (i=0; i<ghoul2.size();i++)
@@ -3343,7 +3354,7 @@ void R_AddGhoulSurfaces( trRefEntity_t *ent, int entityNum ) {
 	fogNum = R_GComputeFogNum( ent );
 
 	// order sort the ghoul 2 models so bolt ons get bolted to the right model
-	G2_Sort_Models(ghoul2, modelList, &modelCount);
+	G2_Sort_Models(ghoul2, modelList, ARRAY_LEN(modelList), &modelCount);
 	assert(modelList[255]==548);
 
 #ifdef _G2_GORE
@@ -3354,7 +3365,7 @@ void R_AddGhoulSurfaces( trRefEntity_t *ent, int entityNum ) {
 #endif
 
 	// construct a world matrix for this entity
-	G2_GenerateWorldMatrix(ent->e.angles, ent->e.origin);
+	//G2_GenerateWorldMatrix(ent->e.angles, ent->e.origin);
 
 	// walk each possible model for this entity and try rendering it out
 	for (j=0; j<modelCount; j++)
@@ -3485,7 +3496,7 @@ void G2_ConstructGhoulSkeleton( CGhoul2Info_v &ghoul2,const int frameNum,bool ch
 		rootMatrix = identityMatrix;
 	}
 
-	G2_Sort_Models(ghoul2, modelList, &modelCount);
+	G2_Sort_Models(ghoul2, modelList, ARRAY_LEN(modelList), &modelCount);
 	assert(modelList[255]==548);
 
 	for (j=0; j<modelCount; j++)
@@ -3532,325 +3543,214 @@ static inline float G2_GetVertBoneWeightNotSlow( const mdxmVertex_t *pVert, cons
 	return fBoneWeight;
 }
 
-//This is a slightly mangled version of the same function from the sof2sp base.
-//It provides a pretty significant performance increase over the existing one.
-void RB_SurfaceGhoul(CRenderableSurface* surf)
-{	
-	mdxmSurface_t	*surface;
+void RB_TransformBones( const trRefEntity_t *ent, const trRefdef_t *refdef )
+{
+	if (!ent->e.ghoul2 || !G2API_HaveWeGhoul2Models(*((CGhoul2Info_v *)ent->e.ghoul2)))
+		return;
 
-#ifdef USE_VBO_GHOUL2
-	if ( vk.vboGhoul2Active && surf->vboMesh != NULL && surf->vboMesh->vboItemIndex )
+	CGhoul2Info_v &ghoul2 = *((CGhoul2Info_v *)ent->e.ghoul2);
+
+	if (!ghoul2.IsValid())
+		return;
+
+	// if we don't want server ghoul2 models and this is one, or we just don't
+	// want ghoul2 models at all, then return
+	if (r_noServerGhoul2->integer)
 	{
-		surface = surf->surfaceData;
-
-		// transition to vbo render list
-		if ( tess.vboIndex == 0 ) {
-			RB_EndSurface();
-			RB_BeginSurface( tess.shader, tess.fogNum, tess.cubemapIndex );
-			// set some dummy parameters for RB_EndSurface
-			tess.numIndexes = 1;
-			tess.numVertexes = 0;
-			VBO_ClearQueue();
-		}
-
-		tess.surfType = SF_MDX;
-		tess.shader->iboOffset = surf->vboMesh->iboOffset;
-		tess.vboIndex = surf->vboMesh->vboItemIndex;
-		tess.vboMeshPtr = surf->vboMesh;
-
-		vk_bind_vbo_index( (uint32_t)surf->vboMesh->vboMeshIndex );
-		VBO_QueueItem( surf->vboMesh->vboItemIndex );
-
-		mat3x4_t *boneMatrices = vk_get_uniform_ghoul_bones();
-		const int *boneReferences = (const int *)( (const byte *)surface + surface->ofsBoneReferences );
-		
-		for ( uint32_t i = 0; i < surface->numBoneReferences; i++ ) {
-			int boneIndex = boneReferences[i];
-			const mdxaBone_t& bone = surf->boneCache->EvalRender( boneReferences[i] );
-			Com_Memcpy(
-				boneMatrices[boneIndex],
-				&bone.matrix[0][0],
-				sizeof(mat3x4_t));
-		}
-
-		tess.shader->optimalStageIteratorFunc();
-		tess.numIndexes = 0;
-		tess.numVertexes = 0;
-		tess.vboIndex = 0;
-
-		return;		
-	}
-#endif
-
-#ifdef G2_PERFORMANCE_ANALYSIS
-	G2PerformanceTimer_RB_SurfaceGhoul.Start();
-#endif
-
-#ifdef _G2_GORE
-	if (surf->alternateTex)
-	{
-		// a gore surface ready to go.
-
-		/*
-			sizeof(int)+ // num verts
-			sizeof(int)+ // num tris
-			sizeof(int)*newNumVerts+ // which verts to copy from original surface
-			sizeof(float)*4*newNumVerts+ // storgage for deformed verts
-			sizeof(float)*4*newNumVerts+ // storgage for deformed normal
-			sizeof(float)*2*newNumVerts+ // texture coordinates
-			sizeof(int)*newNumTris*3;  // new indecies
-		*/
-
-		int* data = (int*)surf->alternateTex;
-		int numVerts = *data++;
-		int indexes = (*data++);
-
-		// first up, sanity check our numbers
-		RB_CheckOverflow(numVerts, indexes);
-		indexes *= 3;
-
-		data += numVerts;
-
-		int baseIndex = tess.numIndexes;
-		int baseVertex = tess.numVertexes;
-
-		memcpy(&tess.xyz[baseVertex][0], data, sizeof(float) * 4 * numVerts);
-		data += 4 * numVerts;
-
-		memcpy(&tess.normal[baseVertex][0], data, sizeof(float) * 4 * numVerts);
-		data += 4 * numVerts;
-
-		assert(numVerts > 0);
-
-		//float *texCoords = tess.texCoords[0][baseVertex];
-		float* texCoords = tess.texCoords[0][baseVertex];
-		int hack = baseVertex;
-		//rww - since the array is arranged as such we cannot increment
-		//the relative memory position to get where we want. Maybe this
-		//is why sof2 has the texCoords array reversed. In any case, I
-		//am currently too lazy to get around it.
-		//Or can you += array[.][x]+2?
-		//edit 2020:
-		//array is reversed
-		if (surf->scale > 1.0f)
-		{
-			for (int j = 0; j < numVerts; j++, texCoords += 2)
-			{
-				texCoords[0] = ((*(float*)data++) - 0.5f) * surf->scale + 0.5f;
-				texCoords[1] = ((*(float*)data++) - 0.5f) * surf->scale + 0.5f;
-			}
-		}
-		else
-		{
-			for (int j = 0; j < numVerts; j++, texCoords += 2)
-			{
-				texCoords[0] = *(float*)(data++);
-				texCoords[1] = *(float*)(data++);
-			}
-		}
-
-		//now check for fade overrides -rww
-		if (surf->fade)
-		{
-			if (surf->fade < 1.0)
-			{
-				tess.fading = true;
-				int lFade = Q_ftol(254.4f * surf->fade);
-
-				for (int j = 0; j < numVerts; j++)
-				{
-					tess.svars.colors[0][j + baseVertex][3] = lFade;
-				}
-			}
-			else if (surf->fade > 2.0f && surf->fade < 3.0f)
-			{ //hack to fade out on RGB if desired (don't want to add more to CRenderableSurface) -rww
-				tess.fading = true;
-				int lFade = Q_ftol(254.4f * (surf->fade - 2.0f));
-
-				for (int j = 0; j < numVerts; j++)
-				{
-					if (lFade < tess.svars.colors[0][j + baseVertex][0])
-					{ //don't set it unless the fade is less than the current r value (to avoid brightening suddenly before we start fading)
-						tess.svars.colors[0][j + baseVertex][0] = tess.svars.colors[0][j + baseVertex][1] = tess.svars.colors[0][j + baseVertex][2] = lFade;
-					}
-
-					//Set the alpha as well I suppose, no matter what
-					tess.svars.colors[0][j + baseVertex][3] = lFade;
-				}
-			}
-		}
-
-		glIndex_t* indexPtr = &tess.indexes[baseIndex];
-		int* triangles = data;
-		for (int j = indexes; j; j--)
-		{
-			*indexPtr++ = baseVertex + (*triangles++);
-		}
-		tess.numIndexes += indexes;
-		tess.numVertexes += numVerts;
 		return;
 	}
-#endif
 
-	// grab the pointer to the surface info within the loaded mesh file
-	surface = surf->surfaceData;
-	CBoneCache *bones = surf->boneCache;
-
-#ifndef _G2_GORE //we use this later, for gore
-	delete surf;
-#endif
-
-	// first up, sanity check our numbers
-	RB_CheckOverflow(surface->numVerts, surface->numTriangles);
-
-	//
-	// deform the vertexes by the lerped bones
-	//
-
-	// first up, sanity check our numbers
-	int baseVertex = tess.numVertexes;
-	int* triangles = (int*)((byte*)surface + surface->ofsTriangles);
-	int baseIndex = tess.numIndexes;
-	int indexes = surface->numTriangles; //*3;	//unrolled 3 times, don't multiply
-
-	glIndex_t* tessIndexes = &tess.indexes[baseIndex];
-	for (int j = 0; j < indexes; j++) {
-		*tessIndexes++ = baseVertex + *triangles++;
-		*tessIndexes++ = baseVertex + *triangles++;
-		*tessIndexes++ = baseVertex + *triangles++;
-	}
-	tess.numIndexes += indexes * 3;
-
-	int numVerts = surface->numVerts;
-	int* piBoneReferences = (int*)((byte*)surface + surface->ofsBoneReferences);
-	mdxmVertex_t* v = (mdxmVertex_t*)((byte*)surface + surface->ofsVerts);
-	mdxmVertexTexCoord_t* pTexCoords = (mdxmVertexTexCoord_t*)&v[numVerts];
-
-	for (int j = 0; j < numVerts; j++, baseVertex++, v++)
+	if (!G2_SetupModelPointers(ghoul2))
 	{
-		const mdxaBone_t* bone = &bones->EvalRender(piBoneReferences[G2_GetVertBoneIndex(v, 0)]);
-		int iNumWeights = G2_GetVertWeights(v);
-		tess.normal[baseVertex][0] = DotProduct(bone->matrix[0], v->normal);
-		tess.normal[baseVertex][1] = DotProduct(bone->matrix[1], v->normal);
-		tess.normal[baseVertex][2] = DotProduct(bone->matrix[2], v->normal);
+		return;
+	}
 
-		if (iNumWeights == 1)
+	int currentTime = G2API_GetTime(refdef->time);
+
+	HackadelicOnClient = true;
+
+	mdxaBone_t rootMatrix;
+	RootMatrix(ghoul2, currentTime, ent->e.modelScale, rootMatrix);
+
+	int modelList[256];
+	assert(ghoul2.size() < ARRAY_LEN(modelList));
+	modelList[255] = 548;
+
+	// order sort the ghoul 2 models so bolt ons get bolted to the right model
+	int modelCount;
+	G2_Sort_Models(ghoul2, modelList, ARRAY_LEN(modelList), &modelCount);
+	assert(modelList[255] == 548);
+
+	// construct a world matrix for this entity
+	G2_GenerateWorldMatrix(ent->e.angles, ent->e.origin);
+
+	// walk each possible model for this entity and try transforming all bones
+	for (int j = 0; j < modelCount; ++j)
+	{
+		CGhoul2Info& g2Info = ghoul2[modelList[j]];
+
+		if (!g2Info.mValid)
 		{
-			tess.xyz[baseVertex][0] = (DotProduct(bone->matrix[0], v->vertCoords) + bone->matrix[0][3]);
-			tess.xyz[baseVertex][1] = (DotProduct(bone->matrix[1], v->vertCoords) + bone->matrix[1][3]);
-			tess.xyz[baseVertex][2] = (DotProduct(bone->matrix[2], v->vertCoords) + bone->matrix[2][3]);
+			continue;
+		}
+
+		if ((g2Info.mFlags & (GHOUL2_NOMODEL | GHOUL2_NORENDER)) != 0)
+		{
+			continue;
+		}
+
+		if (j && g2Info.mModelBoltLink != -1)
+		{
+			int	boltMod = (g2Info.mModelBoltLink >> MODEL_SHIFT) & MODEL_AND;
+			int	boltNum = (g2Info.mModelBoltLink >> BOLT_SHIFT) & BOLT_AND;
+
+			mdxaBone_t bolt;
+			G2_GetBoltMatrixLow(ghoul2[boltMod], boltNum, ent->e.modelScale, bolt);
+			G2_TransformGhoulBones(g2Info.mBlist, bolt, g2Info, currentTime);
 		}
 		else
 		{
-			float fBoneWeight = G2_GetVertBoneWeightNotSlow(v, 0);
-			if (iNumWeights == 2)
-			{
-				const mdxaBone_t* bone2 = &bones->EvalRender(piBoneReferences[G2_GetVertBoneIndex(v, 1)]);
-				float t1 = 0.0f;
-				float t2 = 0.0f;
-
-				t1 = (DotProduct(bone->matrix[0], v->vertCoords) + bone->matrix[0][3]);
-				t2 = (DotProduct(bone2->matrix[0], v->vertCoords) + bone2->matrix[0][3]);
-				tess.xyz[baseVertex][0] = fBoneWeight * (t1 - t2) + t2;
-
-				t1 = (DotProduct(bone->matrix[1], v->vertCoords) + bone->matrix[1][3]);
-				t2 = (DotProduct(bone2->matrix[1], v->vertCoords) + bone2->matrix[1][3]);
-				tess.xyz[baseVertex][1] = fBoneWeight * (t1 - t2) + t2;
-
-				t1 = (DotProduct(bone->matrix[2], v->vertCoords) + bone->matrix[2][3]);
-				t2 = (DotProduct(bone2->matrix[2], v->vertCoords) + bone2->matrix[2][3]);
-				tess.xyz[baseVertex][2] = fBoneWeight * (t1 - t2) + t2;
-			}
-			else
-			{
-
-				tess.xyz[baseVertex][0] = fBoneWeight * (DotProduct(bone->matrix[0], v->vertCoords) + bone->matrix[0][3]);
-				tess.xyz[baseVertex][1] = fBoneWeight * (DotProduct(bone->matrix[1], v->vertCoords) + bone->matrix[1][3]);
-				tess.xyz[baseVertex][2] = fBoneWeight * (DotProduct(bone->matrix[2], v->vertCoords) + bone->matrix[2][3]);
-
-				float fTotalWeight = fBoneWeight;
-				for (int k = 1; k < iNumWeights - 1; k++)
-				{
-					bone = &bones->EvalRender(piBoneReferences[G2_GetVertBoneIndex(v, k)]);
-					fBoneWeight = G2_GetVertBoneWeightNotSlow(v, k);
-					fTotalWeight += fBoneWeight;
-
-					tess.xyz[baseVertex][0] += fBoneWeight * (DotProduct(bone->matrix[0], v->vertCoords) + bone->matrix[0][3]);
-					tess.xyz[baseVertex][1] += fBoneWeight * (DotProduct(bone->matrix[1], v->vertCoords) + bone->matrix[1][3]);
-					tess.xyz[baseVertex][2] += fBoneWeight * (DotProduct(bone->matrix[2], v->vertCoords) + bone->matrix[2][3]);
-				}
-				bone = &bones->EvalRender(piBoneReferences[G2_GetVertBoneIndex(v, iNumWeights - 1)]);
-				fBoneWeight = 1.0f - fTotalWeight;
-
-				tess.xyz[baseVertex][0] += fBoneWeight * (DotProduct(bone->matrix[0], v->vertCoords) + bone->matrix[0][3]);
-				tess.xyz[baseVertex][1] += fBoneWeight * (DotProduct(bone->matrix[1], v->vertCoords) + bone->matrix[1][3]);
-				tess.xyz[baseVertex][2] += fBoneWeight * (DotProduct(bone->matrix[2], v->vertCoords) + bone->matrix[2][3]);
-			}
+			G2_TransformGhoulBones(g2Info.mBlist, rootMatrix, g2Info, currentTime);
 		}
 
-		tess.texCoords[0][baseVertex][0] = pTexCoords[j].texCoords[0];
-		tess.texCoords[0][baseVertex][1] = pTexCoords[j].texCoords[1];
+		CBoneCache *bc = g2Info.mBoneCache;
+		//if (bc->uboGPUFrame == currentFrameNum)
+		//	return;
+
+		for (int bone = 0; bone < (int)bc->mBones.size(); bone++)
+		{
+			const mdxaBone_t& b = bc->EvalRender(bone);
+			Com_Memcpy(
+				bc->boneMatrices + bone,
+				&b.matrix[0][0],
+				sizeof(mat3x4_t));
 		}
+		bc->uboOffset = -1;
 
-#ifdef _G2_GORE
-	//CRenderableSurface* storeSurf = surf;
+		vkUniformBones_t bonesBlock = {};
+		Com_Memcpy(
+			bonesBlock.boneMatrices,
+			bc->boneMatrices,
+			sizeof(mat3x4_t) * bc->mBones.size());
 
-	while (surf->goreChain)
+		int uboOffset = vk_append_uniform( &bonesBlock, sizeof(bonesBlock), vk.uniform_bones_item_size );
+
+		bc->uboOffset = uboOffset;
+		//bc->uboGPUFrame = currentFrameNum;
+	}
+}
+
+int RB_GetBoneUboOffset( CRenderableSurface *surf )
+{
+	if (surf->boneCache)
+		return surf->boneCache->uboOffset;
+	else
+		return -1;
+}
+
+//This is a slightly mangled version of the same function from the sof2sp base.
+//It provides a pretty significant performance increase over the existing one.
+void RB_SurfaceGhoul( CRenderableSurface *surf )
+{	
+	if ( surf->vboMesh == NULL )
+		return;
+
+	mdxmVBOMesh_t *surface = surf->vboMesh;
+
+	if ( surface->vbo == NULL || surface->ibo == NULL )
+		return;
+
+	int numIndexes = surface->numIndexes;
+	int numVertexes = surface->numVertexes;
+	int minIndex = surface->minIndex;
+	int maxIndex = surface->maxIndex;
+	int indexOffset = surface->indexOffset;
+
+	tess.surfType = SF_MDX;
+	tess.vbo_model_index = surf->vboMesh->vbo->index;
+
+	int i, mergeForward, mergeBack;
+	GLvoid *firstIndexOffset, *lastIndexOffset;
+
+	// merge this into any existing multidraw primitives
+	mergeForward = -1;
+	mergeBack = -1;
+	firstIndexOffset = BUFFER_OFFSET( indexOffset );
+	lastIndexOffset = BUFFER_OFFSET( indexOffset + numIndexes );
+
+	//if (r_mergeMultidraws->integer)
 	{
-		surf = (CRenderableSurface*)surf->goreChain;
-		if (surf->alternateTex)
+		i = 0;
+
+		//if (r_mergeMultidraws->integer == 1)
 		{
-			// get a gore surface ready to go.
-
-			/*
-				sizeof(int)+ // num verts
-				sizeof(int)+ // num tris
-				sizeof(int)*newNumVerts+ // which verts to copy from original surface
-				sizeof(float)*4*newNumVerts+ // storgage for deformed verts
-				sizeof(float)*4*newNumVerts+ // storgage for deformed normal
-				sizeof(float)*2*newNumVerts+ // texture coordinates
-				sizeof(int)*newNumTris*3;  // new indecies
-			*/
-
-			int* data = (int*)surf->alternateTex;
-			int gnumVerts = *data++;
-			data++;
-
-			float* fdata = (float*)data;
-			fdata += gnumVerts;
-			for (int j = 0; j < gnumVerts; j++)
+			// lazy merge, only check the last primitive
+			if (tess.multiDrawPrimitives)
 			{
-				assert(data[j] >= 0 && data[j] < numVerts);
-				memcpy(fdata, &tess.xyz[tess.numVertexes + data[j]][0], sizeof(float) * 3);
-				fdata += 4;
-			}
-			for (int j = 0; j < gnumVerts; j++)
-			{
-				assert(data[j] >= 0 && data[j] < numVerts);
-				memcpy(fdata, &tess.normal[tess.numVertexes + data[j]][0], sizeof(float) * 3);
-				fdata += 4;
+				i = tess.multiDrawPrimitives - 1;
 			}
 		}
-		else
+
+		for (; i < tess.multiDrawPrimitives; i++)
 		{
-			assert(0);
+			if (tess.multiDrawLastIndex[i] == firstIndexOffset)
+			{
+				mergeBack = i;
+			}
+
+			if (lastIndexOffset == tess.multiDrawFirstIndex[i])
+			{
+				mergeForward = i;
+			}
 		}
-
 	}
 
-	// NOTE: This is required because a ghoul model might need to be rendered twice a frame (don't cringe,
-	// it's not THAT bad), so we only delete it when doing the glow pass. Warning though, this assumes that
-	// the glow is rendered _second_!!! If that changes, change this!
-	//if ( !tess.shader->hasGlow || backEnd.isGlowPass || !vk.dglowActive )
-		//delete storeSurf;
-#endif
-
-	tess.numVertexes += surface->numVerts;
-
-#ifdef G2_PERFORMANCE_ANALYSIS
-	G2Time_RB_SurfaceGhoul += G2PerformanceTimer_RB_SurfaceGhoul.End();
-#endif
+	if (mergeBack != -1 && mergeForward == -1)
+	{
+		tess.multiDrawNumIndexes[mergeBack] += numIndexes;
+		tess.multiDrawLastIndex[mergeBack] = tess.multiDrawFirstIndex[mergeBack] + tess.multiDrawNumIndexes[mergeBack];
+		tess.multiDrawMinIndex[mergeBack] = MIN(tess.multiDrawMinIndex[mergeBack], minIndex);
+		tess.multiDrawMaxIndex[mergeBack] = MAX(tess.multiDrawMaxIndex[mergeBack], maxIndex);
+		//backEnd.pc.c_multidrawsMerged++;
 	}
+	else if (mergeBack == -1 && mergeForward != -1)
+	{
+		tess.multiDrawNumIndexes[mergeForward] += numIndexes;
+		tess.multiDrawFirstIndex[mergeForward] = (glIndex_t *)firstIndexOffset;
+		tess.multiDrawLastIndex[mergeForward] = tess.multiDrawFirstIndex[mergeForward] + tess.multiDrawNumIndexes[mergeForward];
+		tess.multiDrawMinIndex[mergeForward] = MIN(tess.multiDrawMinIndex[mergeForward], minIndex);
+		tess.multiDrawMaxIndex[mergeForward] = MAX(tess.multiDrawMaxIndex[mergeForward], maxIndex);
+		//backEnd.pc.c_multidrawsMerged++;
+	}
+	else if (mergeBack != -1 && mergeForward != -1)
+	{
+		tess.multiDrawNumIndexes[mergeBack] += numIndexes + tess.multiDrawNumIndexes[mergeForward];
+		tess.multiDrawLastIndex[mergeBack] = tess.multiDrawFirstIndex[mergeBack] + tess.multiDrawNumIndexes[mergeBack];
+		tess.multiDrawMinIndex[mergeBack] = MIN(tess.multiDrawMinIndex[mergeBack], MIN(tess.multiDrawMinIndex[mergeForward], minIndex));
+		tess.multiDrawMaxIndex[mergeBack] = MAX(tess.multiDrawMaxIndex[mergeBack], MAX(tess.multiDrawMaxIndex[mergeForward], maxIndex));
+		tess.multiDrawPrimitives--;
+
+		if (mergeForward != tess.multiDrawPrimitives)
+		{
+			tess.multiDrawNumIndexes[mergeForward] = tess.multiDrawNumIndexes[tess.multiDrawPrimitives];
+			tess.multiDrawFirstIndex[mergeForward] = tess.multiDrawFirstIndex[tess.multiDrawPrimitives];
+		}
+		//backEnd.pc.c_multidrawsMerged += 2;
+	}
+	else if (mergeBack == -1 && mergeForward == -1)
+	{
+		tess.multiDrawNumIndexes[tess.multiDrawPrimitives] = numIndexes;
+		tess.multiDrawFirstIndex[tess.multiDrawPrimitives] = (glIndex_t *)firstIndexOffset;
+		tess.multiDrawLastIndex[tess.multiDrawPrimitives] = (glIndex_t *)lastIndexOffset;
+		tess.multiDrawMinIndex[tess.multiDrawPrimitives] = minIndex;
+		tess.multiDrawMaxIndex[tess.multiDrawPrimitives] = maxIndex;
+		tess.multiDrawPrimitives++;
+	}
+
+	tess.numIndexes = numIndexes;
+	tess.numVertexes = numVertexes;
+	return;
+}
 
 /*
 =================
