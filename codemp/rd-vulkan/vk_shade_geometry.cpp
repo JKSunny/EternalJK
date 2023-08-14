@@ -2113,7 +2113,7 @@ void RB_AddDrawItemIndexBinding( DrawItem &item )
 			// draw regular indexed
 			item.indexed = qtrue;
 			item.draw.params.indexed.num_indexes = tess.multiDrawNumIndexes[0];
-			item.draw.params.indexed.index_offset = (uint32_t)BUFFER_OFFSET((glIndex_t)(size_t)(tess.multiDrawFirstIndex[0]) * sizeof(uint32_t));
+			item.draw.params.indexed.index_offset = (glIndex_t)(size_t)(tess.multiDrawFirstIndex[0]) * sizeof(uint32_t);
 		}
 	}
 
