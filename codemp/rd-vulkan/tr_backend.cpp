@@ -264,7 +264,7 @@ static void RB_SubmitDrawSurfs( drawSurf_t *drawSurfs, int numDrawSurfs, float o
 				RB_EndSurface();
 				RB_BeginSurface(shader, fogNum, cubemapIndex);
 				oldBoneCache = ((CRenderableSurface*)drawSurf->surface)->boneCache;
-				vk.cmd->animationBoneUboOffset = RB_GetBoneUboOffset((CRenderableSurface*)drawSurf->surface);
+				vk.cmd->bones_ubo_offset = RB_GetBoneUboOffset((CRenderableSurface*)drawSurf->surface);
 			}
 		}
 
@@ -546,8 +546,6 @@ static void RB_DrawItems( int numDrawItems, const DrawItem *drawItems )
 		// push constants
 		// use push constants for materials as well?
 		vk_update_mvp( drawItem.mvp );
-		
-		
 		
 		// model vbo
 		if ( drawItem.ibo != nullptr ) 
@@ -1158,7 +1156,8 @@ const void	*RB_DrawSurfs( const void *data ) {
 	RB_RenderFlares();
 
 #ifdef USE_PMLIGHT
-	if ( vk.useFastLight && backEnd.refdef.numLitSurfs ) {
+	// revisit this when implementing gpu dlights
+	if ( /*vk.useFastLight &&*/ backEnd.refdef.numLitSurfs ) {
 		RB_BeginDrawingLitSurfs();
 		RB_LightingPass();
 	}

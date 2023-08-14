@@ -439,10 +439,6 @@ void main() {
 	base = color0;
 #endif
 
-#ifdef USE_FOG
-	base = mix( base, fog * fogColor, fog.a );
-#endif
-
 	if ( discard_mode == 1 ) {
 		if ( base.a == 0.0 ) {
 			discard;
@@ -545,7 +541,6 @@ void main() {
 		if ( env_texture_set > -1 )
 			out_color.rgb += CalcIBLContribution( roughness, N, E, NE, specular.rgb * AO );
 
-
 		out_color.a = diffuse.a;
 
 		if(  Var_RenderMode > 0 ) {
@@ -576,6 +571,10 @@ void main() {
 		}	
 	#else
 		out_color = base;
+	#endif
+
+	#if defined(USE_FOG)
+		out_color = mix( out_color, fog * fogColor, fog.a );
 	#endif
 
 #endif

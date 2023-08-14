@@ -262,6 +262,8 @@ void vk_bind_geometry( uint32_t flags )
 
 #ifdef USE_VBO
 	if ( tess.vbo_model_index ) {
+		Com_Memset( vk.cmd->vbo_offset, 0, sizeof(vk.cmd->vbo_offset) );
+
 		if ( tess.surfType == SF_MDX )
 			return vk_vbo_bind_geometry_ghoul2( flags );
 
@@ -271,8 +273,6 @@ void vk_bind_geometry( uint32_t flags )
 
 	if ( tess.vbo_world_index ) {
 		shade_bufs[0] = shade_bufs[1] = shade_bufs[2] = shade_bufs[3] = shade_bufs[4] = shade_bufs[5] = shade_bufs[6] = shade_bufs[7] = vk.vbo.vertex_buffer;
-
-		//Com_Memset( vk.cmd->vbo_offset, 0, sizeof(vk.cmd->vbo_offset) );
 
 #ifdef USE_VK_PBR
 		shade_bufs[8] = vk.vbo.vertex_buffer;
@@ -1400,12 +1400,10 @@ Blends a fog texture on top of everything else
 static vkUniform_t			uniform;
 static vkUniformGlobal_t	uniform_global;
 
-static void RB_FogPass( void ) {
-#ifdef USE_VBO_GHOUL2
-	const int sh = ( tess.vbo_world_index && tess.surfType == SF_MDX ) ? 1 : 0;
-#else
-	const int sh = 0;
-#endif
+static void RB_FogPass( void ) 
+{
+	const int sh = ( tess.vbo_model_index ) ? ( tess.surfType == SF_MDX ? 1 : 2 ) : 0;
+
 	uint32_t pipeline = vk.std_pipeline.fog_pipelines[sh][tess.shader->fogPass - 1][tess.shader->cullType][tess.shader->polygonOffset];
 
 #ifdef USE_FOG_ONLY
@@ -1424,7 +1422,8 @@ static void RB_FogPass( void ) {
 		item.depthRange = DEPTH_RANGE_NORMAL;
 		item.polygonOffset = tess.shader->polygonOffset;
 		item.identifier = 18;
-		
+		item.reset_uniform = qfalse;
+
 		RB_AddDrawItemIndexBinding( item );
 		RB_AddDrawItemVertexBinding( item );
 		RB_AddDrawItemUniformBinding( item, backEnd.currentEntity );
@@ -2019,10 +2018,14 @@ void ForceAlpha(unsigned char *dstColors, int TR_ForceEntAlpha)
 
 void RB_AddDrawItemUniformBinding( DrawItem &item, const trRefEntity_t *refEntity ) 
 {
-	vk_reset_descriptor( 1 );	// to set start/end
-	vk_update_descriptor( 1, vk.cmd->uniform_descriptor );
+	// fog or env will have this slot bound
+	if ( item.reset_uniform ) 
+	{
+		vk_reset_descriptor( 1 );	// to set start/end
+		vk_update_descriptor( 1, vk.cmd->uniform_descriptor );
+		vk.cmd->descriptor_set.offset[1] = 0;
+	}
 
-	vk.cmd->descriptor_set.offset[1] = 0;
 	vk.cmd->descriptor_set.offset[2] = vk.cmd->camera_ubo_offset;
 	vk.cmd->descriptor_set.offset[3] = vk.cmd->light_ubo_offset;
 
@@ -2043,7 +2046,7 @@ void RB_AddDrawItemUniformBinding( DrawItem &item, const trRefEntity_t *refEntit
 			const int refEntityNum = backEnd.currentEntity - backEnd.refdef.entities;
 
 			vk.cmd->descriptor_set.offset[4] = vk.cmd->entity_ubo_offset[refEntityNum];
-			vk.cmd->descriptor_set.offset[5] = vk.cmd->animationBoneUboOffset;
+			vk.cmd->descriptor_set.offset[5] = vk.cmd->bones_ubo_offset;
 		}
 	}
 			
@@ -2160,7 +2163,7 @@ void RB_StageIteratorGeneric( void )
 	is_ghoul2_vbo = qfalse;
 	is_mdv_vbo = qfalse;
 
-	if ( tess.vbo_world_index || tess.vbo_model_index ) {
+	if ( tess.vbo_model_index ) {
 		is_ghoul2_vbo = (qboolean)( tess.surfType == SF_MDX );
 		is_mdv_vbo = (qboolean)( tess.surfType == SF_VBO_MDVMESH );
 	}
@@ -2189,34 +2192,18 @@ void RB_StageIteratorGeneric( void )
 
 	fogCollapse = qfalse;
 
-
 #ifdef USE_FOG_COLLAPSE
 	if ( tess.fogNum && tess.shader->fogPass && tess.shader->fogCollapse && r_drawfog->value == 2 ) {
+		vk_set_fog_params( &uniform, &fog_stage );
+
 		fogCollapse = qtrue;
 	}
 #endif
 
 	Com_Memset( &uniform_global, 0, sizeof(uniform_global) );
 	
-#if defined(USE_VK_PBR) || defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV) 
 	if ( backEnd.currentEntity != &tr.worldEntity ) 
 		vk_compute_deform();
-#endif
-
-	if ( fogCollapse ) {
-		vk_set_fog_params( &uniform, &fog_stage );
-		VectorCopy( backEnd.ori.viewOrigin, uniform.eyePos );
-		vk_push_uniform( &uniform );
-		vk_update_descriptor( 5, tr.fogImage->descriptor_set );
-	}
-	else {
-		fog_stage = 0;
-		if ( tess_flags & TESS_VPOS ) {
-			VectorCopy( backEnd.ori.viewOrigin, uniform.eyePos );
-			vk_push_uniform( &uniform );
-			tess_flags &= ~TESS_VPOS;
-		}
-	}
 
 	for ( stage = 0; stage < MAX_SHADER_STAGES; stage++ )
 	{
@@ -2241,17 +2228,13 @@ void RB_StageIteratorGeneric( void )
 
 		if ( backEnd.currentEntity ) {
 			assert( backEnd.currentEntity->e.renderfx >= 0 );
-#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV) 
+
 			if ( is_ghoul2_vbo && backEnd.currentEntity->e.renderfx & ( RF_DISINTEGRATE1 | RF_DISINTEGRATE2 ) )
 				vk_compute_disintegration( &forceRGBGen );
 
 			//want to use RGBGen from ent
 			else if ( backEnd.currentEntity->e.renderfx & RF_RGB_TINT )
 				forceRGBGen = CGEN_ENTITY;
-#else
-			if ( backEnd.currentEntity->e.renderfx & RF_RGB_TINT )
-				forceRGBGen = CGEN_ENTITY;
-#endif
 		}
 
 		tess_flags |= pStage->tessFlags;
@@ -2262,12 +2245,12 @@ void RB_StageIteratorGeneric( void )
 
 				vk_select_texture(i);
 				R_BindAnimatedImage(&pStage->bundle[i]);
-#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV) 
+
 				if ( tess_flags & (TESS_RGBA0 << i) && ( is_ghoul2_vbo || is_mdv_vbo ) ) {
 					vk_compute_colors( i, pStage, forceRGBGen );
 					continue;
 				}
-#endif
+
 				if (tess_flags & (TESS_ST0 << i))
 					ComputeTexCoords(i, &pStage->bundle[i]);
 
@@ -2292,6 +2275,7 @@ void RB_StageIteratorGeneric( void )
 				def.vk_light_flags = 0;
 				tess.xstages[stage]->vk_2d_pipeline = vk_find_pipeline_ext(0, &def, qfalse);
 			}
+
 
 			pipeline = pStage->vk_2d_pipeline;
 		}
@@ -2341,7 +2325,8 @@ void RB_StageIteratorGeneric( void )
 
 		// move glow bundle to texture 0
 		// does not work with multitextured dglow yet.
-		if ( backEnd.isGlowPass && pStage->glow ){
+		if ( backEnd.isGlowPass && pStage->glow ) 
+		{
 			vk_get_pipeline_def( pStage->vk_pipeline[fog_stage], &def );
 	
 			def.vbo_ghoul2 = is_ghoul2_vbo;
@@ -2357,7 +2342,8 @@ void RB_StageIteratorGeneric( void )
 			Com_Memcpy( tess.svars.colors[0], tess.svars.colors[( pStage->numTexBundles - 1 )], sizeof(tess.svars.colors[0]) );
 		}
 
-		else {
+		else 
+		{
 			if ( tess.vbo_world_index || tess.vbo_model_index )
 				vk_update_pbr_descriptor(6, vk.brdflut_image_descriptor);
 
@@ -2386,8 +2372,6 @@ void RB_StageIteratorGeneric( void )
 				vk_update_pbr_descriptor(9, tr.cubemaps[tess.cubemapIndex-1].prefiltered_image->descriptor_set);
 		}
 
-		vk_push_uniform_global( &uniform_global );
-
 		Vk_Depth_Range depthRange = tess.depthRange;
 
 #ifdef USE_VK_IMGUI
@@ -2407,6 +2391,26 @@ void RB_StageIteratorGeneric( void )
 			item.depthRange = depthRange;
 			item.polygonOffset = tess.shader->polygonOffset;
 			item.identifier = 23;
+			item.reset_uniform = qtrue;
+
+			{
+				if ( fogCollapse ) {
+					VectorCopy( backEnd.ori.viewOrigin, uniform.eyePos );
+					vk_push_uniform( &uniform );
+					vk_update_descriptor( 5, tr.fogImage->descriptor_set );
+
+					item.reset_uniform = qfalse;
+				}
+				else if ( tess_flags & TESS_VPOS ) {
+					VectorCopy( backEnd.ori.viewOrigin, uniform.eyePos );
+					vk_push_uniform( &uniform );
+					tess_flags &= ~TESS_VPOS;
+
+					item.reset_uniform = qfalse;
+				}
+	
+				vk_push_uniform_global( &uniform_global );
+			}
 
 			RB_AddDrawItemIndexBinding( item );
 			RB_AddDrawItemVertexBinding( item );
@@ -2426,8 +2430,9 @@ void RB_StageIteratorGeneric( void )
 		vk_bind_geometry(tess_flags);
 
 	// now do fog
-	if ( tr.world && r_drawfog->value && tess.fogNum && tess.shader->fogPass && !fogCollapse )
+	if ( tr.world && r_drawfog->value && tess.fogNum && tess.shader->fogPass && !fogCollapse ) {
 		RB_FogPass();
+	}
 
 	// skip surfacesprites, not rendered anyway
 	return;
