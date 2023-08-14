@@ -570,26 +570,23 @@ void vk_create_framebuffers()
             vk.framebuffers.main[i] = vk.framebuffers.main[0];
         }
 
-            // gamma correction
-            desc.renderPass = vk.render_pass.gamma;
-            desc.attachmentCount = 1;
-            desc.width = gls.windowWidth;
-            desc.height = gls.windowHeight;
-            attachments[0] = vk.swapchain_image_views[i];
-            VK_CHECK(qvkCreateFramebuffer(vk.device, &desc, NULL, &vk.framebuffers.gamma[i]));
-            VK_SET_OBJECT_NAME(vk.framebuffers.gamma[i], "framebuffer - gamma-correction", VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT);
-        }
+        // gamma correction
+        desc.renderPass = vk.render_pass.gamma;
+        desc.attachmentCount = 1;
+        desc.width = gls.windowWidth;
+        desc.height = gls.windowHeight;
+        attachments[0] = vk.swapchain_image_views[i];
+        VK_CHECK(qvkCreateFramebuffer(vk.device, &desc, NULL, &vk.framebuffers.gamma[i]));
+        VK_SET_OBJECT_NAME(vk.framebuffers.gamma[i], "framebuffer - gamma-correction", VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT);
     }
 
     vk_debug("Created vk.framebuffers with fbo off\n");
 
-    if (vk.fboActive)
-    {
-        // screenmap
-        desc.renderPass = vk.render_pass.screenmap;
-        desc.attachmentCount = 2;
-        desc.width = vk.screenMapWidth;
-        desc.height = vk.screenMapHeight;
+    // screenmap
+    desc.renderPass = vk.render_pass.screenmap;
+    desc.attachmentCount = 2;
+    desc.width = vk.screenMapWidth;
+    desc.height = vk.screenMapHeight;
 
     // set color and depth attachment
     attachments[0] = vk.screenMap.color_image_view;
@@ -1351,20 +1348,20 @@ void vk_end_frame( void )
         if ( !ri.VK_IsMinimized() ) {
             vk_end_render_pass();
 
-                vk.renderWidth = gls.windowWidth;
-                vk.renderHeight = gls.windowHeight;
-                vk.renderScaleX = vk.renderScaleY = 1.0;
+            vk.renderWidth = gls.windowWidth;
+            vk.renderHeight = gls.windowHeight;
+            vk.renderScaleX = vk.renderScaleY = 1.0;
 
-                vk_begin_render_pass( vk.render_pass.gamma, vk.framebuffers.gamma[vk.swapchain_image_index],
-                    qfalse, vk.renderWidth, vk.renderHeight );
+            vk_begin_render_pass( vk.render_pass.gamma, vk.framebuffers.gamma[vk.swapchain_image_index],
+                qfalse, vk.renderWidth, vk.renderHeight );
 
             qvkCmdBindPipeline( vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.gamma_pipeline );
 
             qvkCmdBindDescriptorSets( vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                 vk.pipeline_layout_post_process, 0, 1, &vk.color_descriptor, 0, NULL );
 
-                qvkCmdDraw( vk.cmd->command_buffer, 4, 1, 0, 0 );
-            }
+            qvkCmdDraw( vk.cmd->command_buffer, 4, 1, 0, 0 );
+            
         }
     }
 

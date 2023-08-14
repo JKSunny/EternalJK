@@ -3441,7 +3441,7 @@ static inline const int *R_FindLightmaps( const int *lightmapIndexes )
 	return lightmapIndexes;
 }
 
-shader_t *R_FindShader( const char *name, const int *lightmapIndex, const byte *styles, qboolean mipRawImage )
+shader_t *R_FindShader( const char *name, const int *lightmapIndexes, const byte *styles, qboolean mipRawImage )
 {
 	char		strippedName[MAX_QPATH];
 	int			hash;

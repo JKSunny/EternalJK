@@ -491,6 +491,10 @@ typedef struct VK_Pipeline {
 } VK_Pipeline_t;
 
 // this structure must be in sync with shader uniforms!
+typedef struct {
+	float	mvp[16];
+} pushConst;
+
 typedef struct vkUniform_s {
 	// vertex shader reference
 	vec4_t eyePos;
