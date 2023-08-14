@@ -12354,6 +12354,7 @@ Q_EXPORT uiExport_t* QDECL GetModuleAPI( int apiVersion, uiImport_t *import )
 	uie.DrawConnectScreen	= UI_DrawConnectScreen;
 	uie.MenuReset			= Menu_Reset;
 	uie.CvarHelp			= UI_CvarHelp;
+	uie.UI_ResChanged		= UI_ResChanged;
 
 	return &uie;
 }
@@ -12407,6 +12408,10 @@ Q_EXPORT intptr_t vmMain( int command, intptr_t arg0, intptr_t arg1, intptr_t ar
 
 	case UI_MENU_RESET:
 		Menu_Reset();
+		return 0;
+
+	case UI_RES_CHANGED:
+		UI_ResChanged();
 		return 0;
 	}
 

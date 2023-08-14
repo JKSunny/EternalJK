@@ -26,6 +26,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include "client.h"
 #include "cl_cgameapi.h"
+#include "cl_uiapi.h"
 #include "qcommon/stringed_ingame.h"
 #include "qcommon/game_version.h"
 
@@ -431,6 +432,9 @@ void CL_ResChanged( void )
 
 	if ( cls.cgameStarted )
 		CGVM_ResChanged();
+
+	if ( cls.uiStarted )
+		UIVM_ResChanged();
 
 	resChanged = qtrue;
 }

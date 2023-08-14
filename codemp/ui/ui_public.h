@@ -230,7 +230,8 @@ typedef enum uiExportLegacy_e {
 	// newmod start
 	UI_POST_CONNECT = 1000,
 	UI_CVAR_HELP,
-	UI_CMD_HELP
+	UI_CMD_HELP,
+	UI_RES_CHANGED,
 } uiExportLegacy_t;
 
 typedef struct uiImport_s {
@@ -401,6 +402,7 @@ typedef struct uiExport_s {
 	void		(*DrawConnectScreen)	( qboolean overlay );
 	void		(*MenuReset)			( void );
 	void		(*CvarHelp)				(const char *cvarName, qboolean enter, char *helpBuffer, size_t helpBufferSize);
+	void		(*UI_ResChanged)		( void );
 } uiExport_t;
 
 //linking of ui library

@@ -111,6 +111,16 @@ void UIVM_SetActiveMenu( uiMenuCommand_t menu ) {
 	uie->SetActiveMenu( menu );
 }
 
+void UIVM_ResChanged( void ) {
+	if ( uivm->isLegacy ) {
+		VM_Call( uivm, UI_RES_CHANGED );
+		return;
+	}
+	VMSwap v( uivm );
+
+	uie->UI_ResChanged();
+}
+
 qboolean UIVM_ConsoleCommand( int realTime ) {
 	if ( uivm->isLegacy ) {
 		return (qboolean)VM_Call( uivm, UI_CONSOLE_COMMAND, realTime );

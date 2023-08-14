@@ -185,6 +185,18 @@ qboolean UI_OutOfMemory( void ) {
 	return outOfMemory;
 }
 
+#if defined(UI_BUILD)
+void UI_ResChanged( void ) {
+	// get the rendering configuration from the client system
+	trap->GetGlconfig( &uiInfo.uiDC.glconfig );
+
+	uiInfo.uiDC.yscale = uiInfo.uiDC.glconfig.vidHeight * (1.0/SCREEN_HEIGHT);
+	uiInfo.uiDC.xscale = uiInfo.uiDC.glconfig.vidWidth * (1.0/SCREEN_WIDTH);
+
+	UI_Set2DRatio();
+}
+#endif
+
 void UI_Set2DRatio(void)
 {
 	float ratio = 0.0f;
@@ -193,6 +205,8 @@ void UI_Set2DRatio(void)
 #ifdef _CGAME
 	glconfig = &cgs.glconfig;
 #elif defined(UI_BUILD)
+	trap->GetGlconfig( &uiInfo.uiDC.glconfig );
+
 	glconfig = &uiInfo.uiDC.glconfig;
 #endif
 
@@ -5477,6 +5491,7 @@ void Item_Model_Paint(itemDef_t *item)
 	w = item->window.rect.w-2;
 	h = item->window.rect.h-2;
 
+	// here 
 	refdef.x = x * DC->xscale;
 	refdef.y = y * DC->yscale;
 	refdef.width = w * DC->xscale;
@@ -9722,7 +9737,6 @@ void Display_CacheAll() {
 		Menu_CacheContents(&Menus[i]);
 	}
 }
-
 
 static qboolean Menu_OverActiveItem(menuDef_t *menu, float x, float y) {
  	if (menu && menu->window.flags & (WINDOW_VISIBLE | WINDOW_FORCED)) {
