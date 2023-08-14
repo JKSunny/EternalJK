@@ -2491,18 +2491,19 @@ struct DrawCommand
 
 struct DrawItem 
 {
-	float			mvp[16];
+	float				mvp[16];
 
-	int				vbo_world_index;	// world vbo/ibo
-	IBO_t			*ibo;				// model vbo/ibo
+	int					vbo_world_index;	// world vbo/ibo
+	IBO_t				*ibo;				// model vbo/ibo
 
-	uint32_t		pipeline;
-	Vk_Depth_Range	depthRange;
-	qboolean		polygonOffset;
-	qboolean		indexed;	// draw type
-	qboolean		indexedIndirect;	// draw type
+	uint32_t			pipeline;
+	Vk_Depth_Range		depthRange;
+	qboolean			polygonOffset;
+	qboolean			reset_uniform;
 
-	int				identifier;
+	qboolean			indexed;			// draw type
+	qboolean			indexedIndirect;	// draw type
+
 
 	struct {
 		uint32_t		start, end;
@@ -2514,6 +2515,8 @@ struct DrawItem
 	VkDeviceSize		shade_offset[12];
 	int					bind_base;
 	int					bind_count;
+
+	int					identifier;
 
 	DrawCommand draw;
 };

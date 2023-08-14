@@ -227,10 +227,10 @@ void vk_create_pipeline_layout( void )
 static uint32_t vk_bind_stride( uint32_t in ) 
 {
     if ( is_ghoul2_vbo )
-        return vk.ghoul2_vbo_stride;
+        return get_mdxm_stride();
 
     else if ( is_mdv_vbo )
-        return vk.mdv_vbo_stride;
+        return get_mdv_stride();
 
     return in;
 }

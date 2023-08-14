@@ -789,6 +789,64 @@ static void VBO_CalculateTangentsMDXM( const mdxmSurface_t *surf, vec4_t *tangen
 	}
 }
 
+typedef struct mdxm_attributes_s {
+	vec4_t	*verts;
+	vec4_t	*normals;
+	vec2_t	*texcoords;
+	byte	*weights;
+	byte	*bonerefs;
+	vec4_t	*tangents;
+} mdxm_attributes_t;
+
+typedef struct mdv_attributes_s {
+	vec4_t *verts;
+	vec4_t *normals;
+	vec2_t *texcoords;
+	vec4_t *tangents;
+} mdv_attributes_t;
+
+// in vulkan, pipelines like fog are created before a model is loaded
+// therefor the stride is undefined in vk_push_bind() during creation
+// use these methods to calculate the strides beforehand.
+// apply attribute type changes from R_BuildMDXM or R_BuildMD3 here as well
+int get_mdxm_stride( void ) {
+	int stride = 0;
+
+	if ( vk.ghoul2_vbo_stride )
+		return vk.ghoul2_vbo_stride;
+
+	const mdxm_attributes_t attr = {};
+
+	stride += sizeof (*attr.verts);
+	stride += sizeof (*attr.normals);
+	stride += sizeof (*attr.texcoords);
+	stride += sizeof (*attr.bonerefs) * 4;
+	stride += sizeof (*attr.weights) * 4;
+	stride += sizeof (*attr.tangents);
+	
+	vk.ghoul2_vbo_stride = stride;
+
+	return stride;
+}
+
+int get_mdv_stride( void ) {
+	int stride = 0;
+
+	if ( vk.mdv_vbo_stride )
+		return vk.mdv_vbo_stride;
+
+	const mdv_attributes_t attr = {};
+
+	stride += sizeof(*attr.verts);
+	stride += sizeof(*attr.normals);
+	stride += sizeof(*attr.texcoords);
+	stride += sizeof(*attr.tangents);
+	
+	vk.mdv_vbo_stride = stride;
+
+	return stride;
+}
+
 void R_BuildMDXM( model_t *mod, mdxmHeader_t *mdxm )
 {
 	if( !vk.vboGhoul2Active )
@@ -813,12 +871,7 @@ void R_BuildMDXM( model_t *mod, mdxmHeader_t *mdxm )
 		
 		surf = (mdxmSurface_t *)( (byte *)lod + sizeof (mdxmLOD_t) + ( mdxm->numSurfaces * sizeof (mdxmLODSurfOffset_t) ) );		
 		
-		vec4_t *verts;
-		vec4_t *normals;
-		vec2_t *texcoords;
-		byte *bonerefs;
-		byte *weights;
-		vec4_t *tangents;
+		mdxm_attributes_t attr = {};
 
 		byte *data;
 		int dataSize = 0;
@@ -846,12 +899,12 @@ void R_BuildMDXM( model_t *mod, mdxmHeader_t *mdxm )
 
 		baseVertexes[mdxm->numSurfaces] = numVerts;
 
-		dataSize += numVerts * sizeof (*verts);
-		dataSize += numVerts * sizeof (*normals);
-		dataSize += numVerts * sizeof (*texcoords);
-		dataSize += numVerts * sizeof (*weights) * 4;
-		dataSize += numVerts * sizeof (*bonerefs) * 4;
-		dataSize += numVerts * sizeof (*tangents);
+		dataSize += numVerts * sizeof (*attr.verts);
+		dataSize += numVerts * sizeof (*attr.normals);
+		dataSize += numVerts * sizeof (*attr.texcoords);
+		dataSize += numVerts * sizeof (*attr.weights) * 4;
+		dataSize += numVerts * sizeof (*attr.bonerefs) * 4;
+		dataSize += numVerts * sizeof (*attr.tangents);
 
 		//dataSize = PAD(dataSize, 32);
 
@@ -859,31 +912,28 @@ void R_BuildMDXM( model_t *mod, mdxmHeader_t *mdxm )
 		data = (byte *)ri.Hunk_AllocateTempMemory (dataSize);
 
 		ofsPosition = stride;
-		verts = (vec4_t *)(data + ofsPosition);
-		stride += sizeof (*verts);
+		attr.verts = (vec4_t *)(data + ofsPosition);
+		stride += sizeof (*attr.verts);
 
 		ofsNormals = stride;
-		normals = (vec4_t *)(data + ofsNormals);
-		stride += sizeof (*normals);
+		attr.normals = (vec4_t *)(data + ofsNormals);
+		stride += sizeof (*attr.normals);
 
 		ofsTexcoords = stride;
-		texcoords = (vec2_t *)(data + ofsTexcoords);
-		stride += sizeof (*texcoords);
+		attr.texcoords = (vec2_t *)(data + ofsTexcoords);
+		stride += sizeof (*attr.texcoords);
 
 		ofsBoneRefs = stride;
-		bonerefs = data + ofsBoneRefs;
-		stride += sizeof (*bonerefs) * 4;
+		attr.bonerefs = data + ofsBoneRefs;
+		stride += sizeof (*attr.bonerefs) * 4;
 
 		ofsWeights = stride;
-		weights = data + ofsWeights;
-		stride += sizeof (*weights) * 4;
+		attr.weights = data + ofsWeights;
+		stride += sizeof (*attr.weights) * 4;
 
 		ofsTangents = stride;
-		tangents = (vec4_t *)(data + ofsTangents);
-		stride += sizeof (*tangents);
-
-		if ( !vk.ghoul2_vbo_stride )
-			vk.ghoul2_vbo_stride = stride;
+		attr.tangents = (vec4_t *)(data + ofsTangents);
+		stride += sizeof (*attr.tangents);
 
 		// Fill in the index buffer and compute tangents
 		uint32_t *indices = (uint32_t *)ri.Hunk_AllocateTempMemory(sizeof(uint32_t) * numTriangles * 3);
@@ -926,11 +976,11 @@ void R_BuildMDXM( model_t *mod, mdxmHeader_t *mdxm )
 
 			for ( k = 0; k < surf->numVerts; k++ )
 			{
-				VectorCopy( v[k].vertCoords, *verts );
-				VectorCopy( v[k].normal, *normals );
+				VectorCopy( v[k].vertCoords, *attr.verts );
+				VectorCopy( v[k].normal, *attr.normals );
 
-				verts = (vec4_t *)((byte *)verts + stride);
-				normals = (vec4_t *)((byte *)normals + stride);
+				attr.verts = (vec4_t *)((byte *)attr.verts + stride);
+				attr.normals = (vec4_t *)((byte *)attr.normals + stride);
 			}
 
 			// Weights
@@ -944,50 +994,50 @@ void R_BuildMDXM( model_t *mod, mdxmHeader_t *mdxm )
 					float weight = G2_GetVertBoneWeightNotSlow( &v[k], w );
 					int packedIndex = G2_GetVertBoneIndex( &v[k], w );
 
-					weights[w] = (byte)(weight * 255.0f);		
-					bonerefs[w] = boneRef[packedIndex];
+					attr.weights[w] = (byte)(weight * 255.0f);		
+					attr.bonerefs[w] = boneRef[packedIndex];
 
-					lastWeight -= weights[w];
+					lastWeight -= attr.weights[w];
 				}
 
 				assert(lastWeight > 0);
 
 				// Ensure that all the weights add up to 1.0
-				weights[lastInfluence] = lastWeight;
+				attr.weights[lastInfluence] = lastWeight;
 				int packedIndex = G2_GetVertBoneIndex(&v[k], lastInfluence);
-				bonerefs[lastInfluence] = boneRef[packedIndex];
+				attr.bonerefs[lastInfluence] = boneRef[packedIndex];
 
 				// Fill in the rest of the info with zeroes.
 				for ( w = numWeights; w < 4; w++ )
 				{
-					weights[w] = 0;
-					bonerefs[w] = 0;
+					attr.weights[w] = 0;
+					attr.bonerefs[w] = 0;
 				}
 
-				weights += stride;
-				bonerefs += stride;
+				attr.weights += stride;
+				attr.bonerefs += stride;
 			}
 
 			// Texture coordinates
 			mdxmVertexTexCoord_t *tc = (mdxmVertexTexCoord_t *)(v + surf->numVerts);
 			for ( k = 0; k < surf->numVerts; k++ )
 			{
-				(*texcoords)[0] = tc[k].texCoords[0];
-				(*texcoords)[1] = tc[k].texCoords[1];
+				(*attr.texcoords)[0] = tc[k].texCoords[0];
+				(*attr.texcoords)[1] = tc[k].texCoords[1];
 
-				texcoords = (vec2_t *)((byte *)texcoords + stride);
+				attr.texcoords = (vec2_t *)((byte *)attr.texcoords + stride);
 			}
 
 			for ( k = 0; k < surf->numVerts; k++ )
 			{
-				VectorCopy4( (float*)(tangentsf + baseVertexes[n] + k), *tangents );
-				tangents = (vec4_t *)((byte *)tangents + stride);
+				VectorCopy4( (float*)(tangentsf + baseVertexes[n] + k), *attr.tangents );
+				attr.tangents = (vec4_t *)((byte *)attr.tangents + stride);
 			}
 
 			surf = (mdxmSurface_t *)((byte *)surf + surf->ofsEnd);
 		}
 
-		//assert ((byte *)verts == (data + dataSize));
+		assert ((byte *)attr.verts == (data + dataSize));
 
 		const char *modelName = strrchr( mdxm->name, '/' );
 		if ( modelName == NULL )
@@ -1094,10 +1144,7 @@ void R_BuildMD3( model_t *mod, mdvModel_t *mdvModel )
 	vboSurf = mdvModel->vboSurfaces;
 	surf = mdvModel->surfaces;
 
-	vec4_t *verts;
-	vec4_t *normals;
-	vec2_t *texcoords;
-	vec4_t *tangents;
+	mdv_attributes_t attr = {};
 
 	byte *data;
 	int dataSize = 0;
@@ -1121,32 +1168,29 @@ void R_BuildMD3( model_t *mod, mdvModel_t *mdvModel )
 	}
 	baseVertexes[mdvModel->numSurfaces] = numVerts;
 
-	dataSize += numVerts * sizeof(*verts);
-	dataSize += numVerts * sizeof(*normals);
-	dataSize += numVerts * sizeof(*texcoords);
-	dataSize += numVerts * sizeof(*tangents);
+	dataSize += numVerts * sizeof(*attr.verts);
+	dataSize += numVerts * sizeof(*attr.normals);
+	dataSize += numVerts * sizeof(*attr.texcoords);
+	dataSize += numVerts * sizeof(*attr.tangents);
 
 	// Allocate and write to memory
 	data = (byte *)ri.Hunk_AllocateTempMemory(dataSize);
 
 	ofsPosition = stride;
-	verts = (vec4_t *)(data + ofsPosition);
-	stride += sizeof(*verts);
+	attr.verts = (vec4_t *)(data + ofsPosition);
+	stride += sizeof(*attr.verts);
 
 	ofsNormals = stride;
-	normals = (vec4_t *)(data + ofsNormals);
-	stride += sizeof(*normals);
+	attr.normals = (vec4_t *)(data + ofsNormals);
+	stride += sizeof(*attr.normals);
 
 	ofsTexcoords = stride;
-	texcoords = (vec2_t *)(data + ofsTexcoords);
-	stride += sizeof(*texcoords);
+	attr.texcoords = (vec2_t *)(data + ofsTexcoords);
+	stride += sizeof(*attr.texcoords);
 
 	ofsTangents = stride;
-	tangents = (vec4_t *)(data + ofsTangents);
-	stride += sizeof(*tangents);
-
-	if ( !vk.mdv_vbo_stride )
-		vk.mdv_vbo_stride = stride;
+	attr.tangents = (vec4_t *)(data + ofsTangents);
+	stride += sizeof(*attr.tangents);
 
 	// Fill in the index buffer and compute tangents
 	glIndex_t *indices = (glIndex_t *)ri.Hunk_AllocateTempMemory(sizeof(glIndex_t) * numIndexes);
@@ -1168,30 +1212,30 @@ void R_BuildMD3( model_t *mod, mdvModel_t *mdvModel )
 		v = surf->verts;
 		for ( j = 0; j < surf->numVerts; j++, v++ )
 		{
-			VectorCopy(v->xyz, *verts);
-			VectorCopy(v->normal, *normals);
-			VectorCopy4( (float*)(tangentsf + j), *tangents );
+			VectorCopy(v->xyz, *attr.verts);
+			VectorCopy(v->normal, *attr.normals);
+			VectorCopy4( (float*)(tangentsf + j), *attr.tangents );
 
 			//*normals = R_VboPackNormal(v->normal);
 			//*tangents = tangentsf[j];
 
-			verts = (vec4_t *)((byte *)verts + stride);
-			normals = (vec4_t *)((byte *)normals + stride);
-			tangents = (vec4_t *)((byte *)tangents + stride);
+			attr.verts = (vec4_t *)((byte *)attr.verts + stride);
+			attr.normals = (vec4_t *)((byte *)attr.normals + stride);
+			attr.tangents = (vec4_t *)((byte *)attr.tangents + stride);
 		}
 		ri.Hunk_FreeTempMemory(tangentsf);
 
 		st = surf->st;
 		for ( j = 0; j < surf->numVerts; j++, st++ ) 
 		{
-			(*texcoords)[0] = st->st[0];
-			(*texcoords)[1] = st->st[1];
+			(*attr.texcoords)[0] = st->st[0];
+			(*attr.texcoords)[1] = st->st[1];
 
-			texcoords = (vec2_t *)((byte *)texcoords + stride);
+			attr.texcoords = (vec2_t *)((byte *)attr.texcoords + stride);
 		}
 	}
 
-	assert((byte *)verts == (data + dataSize));
+	assert((byte *)attr.verts == (data + dataSize));
 
 	VBO_t *vbo = R_CreateVBO( mod->name, data, dataSize );
 	IBO_t *ibo = R_CreateIBO( mod->name, (byte *)indices, sizeof(glIndex_t) * numIndexes );

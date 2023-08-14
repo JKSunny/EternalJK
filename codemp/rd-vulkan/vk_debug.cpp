@@ -160,9 +160,6 @@ void DrawTris( const shaderCommands_t *pInput){
 			pipeline = (backEnd.viewParms.portalView == PV_MIRROR) ? vk.std_pipeline.tris_mirror_debug_pipeline : vk.std_pipeline.tris_debug_pipeline;
 	}
 
-	//vk_bind_pipeline(pipeline);
-    //vk_draw_geometry(DEPTH_RANGE_ZERO, qtrue);
-
 	// create draw item
 	{
 		DrawItem item = {};
@@ -171,6 +168,7 @@ void DrawTris( const shaderCommands_t *pInput){
 		item.polygonOffset = tess.shader->polygonOffset;
 		item.indexed = qtrue;
 		item.identifier = 11;
+		item.reset_uniform = qtrue;
 
 		RB_AddDrawItemIndexBinding( item );
 		RB_AddDrawItemVertexBinding( item );
@@ -207,10 +205,8 @@ void DrawNormals( const shaderCommands_t *input)
 	tess.numVertexes *= 2;
 	Com_Memset(tess.svars.colors[0], tr.identityLightByte, tess.numVertexes * sizeof(color4ub_t));
 
-	//vk_bind_pipeline(vk.std_pipeline.normals_debug_pipeline);
 	vk_bind_index();
 	vk_bind_geometry(TESS_XYZ | TESS_RGBA0);
-	//vk_draw_geometry(DEPTH_RANGE_ZERO, qtrue);
 
 	// create draw item
 	{
@@ -220,6 +216,7 @@ void DrawNormals( const shaderCommands_t *input)
 		item.polygonOffset = tess.shader->polygonOffset;
 		item.indexed = qtrue;
 		item.identifier = 12;
+		item.reset_uniform = qtrue;
 
 		RB_AddDrawItemIndexBinding( item );
 		RB_AddDrawItemVertexBinding( item );
@@ -288,10 +285,7 @@ void RB_ShowImages ( image_t** const pImg, uint32_t numImages )
 
 		tess.svars.texcoordPtr[0] = tess.svars.texcoords[0];
 
-		//vk_bind_pipeline(vk.std_pipeline.images_debug_pipeline);
 		vk_bind_geometry(TESS_XYZ | TESS_RGBA0 | TESS_ST0);
-		//vk_draw_geometry(DEPTH_RANGE_NORMAL, qfalse);
-
 
 		// create draw item
 		{
@@ -302,6 +296,7 @@ void RB_ShowImages ( image_t** const pImg, uint32_t numImages )
 			item.polygonOffset = tess.shader->polygonOffset;
 			item.indexed = qfalse;
 			item.identifier = 13;
+			item.reset_uniform = qtrue;
 
 			RB_AddDrawItemVertexBinding( item );
 			//RB_AddDrawItemIndexBinding( item );

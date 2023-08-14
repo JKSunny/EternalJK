@@ -638,8 +638,7 @@ typedef struct vk_tess_s {
 	uint32_t			camera_ubo_offset;
 	uint32_t			light_ubo_offset;
 	uint32_t			entity_ubo_offset[REFENTITYNUM_WORLD + 1];
-	uint32_t			bones_ubo_offset[REFENTITYNUM_WORLD + 1];
-	uint32_t			animationBoneUboOffset;
+	uint32_t			bones_ubo_offset;
 } vk_tess_t;
 
 // Vk_Instance contains engine-specific vulkan resources that persist entire renderer lifetime.
@@ -1070,6 +1069,9 @@ qboolean	vk_alloc_vbo( const char *name, const byte *vbo_data, int vbo_size );
 void		VBO_PrepareQueues( void );
 void		VBO_RenderIBOItems( void );
 void		VBO_ClearQueue( void );
+
+int			get_mdv_stride( void );
+int			get_mdxm_stride( void );
 
 // shader
 void		vk_create_shader_modules( void );
