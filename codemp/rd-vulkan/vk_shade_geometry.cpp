@@ -1261,7 +1261,7 @@ static uint32_t vk_push_uniform_global( const vkUniformGlobal_t *uniform ) {
 }
 
 uint32_t vk_push_indirect( int count, const void *data ) {
-	const uint32_t offset = PAD(vk.cmd->indirect_buffer_offset, 32);
+	const uint32_t offset = vk.cmd->indirect_buffer_offset;	// no alignment for indirect buffer?
 	const uint32_t size = count * sizeof(VkDrawIndexedIndirectCommand);
 
 	if (offset + size > vk.indirect_buffer_size) {
@@ -2072,7 +2072,7 @@ void RB_AddDrawItemVertexBinding( DrawItem &item )
 	item.bind_count = bind_count;
 }
 
-static std::vector<VkDrawIndexedIndirectCommand> indirectCommands;
+//static std::vector<VkDrawIndexedIndirectCommand> indirectCommands;
 
 void RB_AddDrawItemIndexBinding( DrawItem &item ) 
 {
@@ -2084,17 +2084,18 @@ void RB_AddDrawItemIndexBinding( DrawItem &item )
 		if ( tess.multiDrawPrimitives ) 
 		{
 			// draw indexed indirect
-			if ( tess.multiDrawPrimitives > 1 ) {
-				item.indexedIndirect = qtrue;		// change type
+			if ( tess.multiDrawPrimitives > 1 ) 
+			{
+				uint32_t j, offset, *index;
 
+				item.indexedIndirect = qtrue;		// change type
 				item.draw.params.indexedIndirect.numDraws = tess.multiDrawPrimitives;
 
-				indirectCommands.clear();
-				for ( uint32_t j = 0; j < tess.multiDrawPrimitives; j++ ) 
+				for ( j = 0; j < tess.multiDrawPrimitives; j++ ) 
 				{
-					VkDrawIndexedIndirectCommand indirectCmd{};
+					VkDrawIndexedIndirectCommand indirectCmd = {};
 
-					uint32_t *index = ((uint32_t*)tess.multiDrawFirstIndex) + j;
+					index = ((uint32_t*)tess.multiDrawFirstIndex) + j;
 
 					indirectCmd.indexCount = tess.multiDrawNumIndexes[j];
 					indirectCmd.instanceCount = 1;
@@ -2102,10 +2103,11 @@ void RB_AddDrawItemIndexBinding( DrawItem &item )
 					indirectCmd.vertexOffset = 0;
 					indirectCmd.firstInstance = 0;
 
-					indirectCommands.push_back( indirectCmd );
-				}
+					offset = vk_push_indirect( 1, &indirectCmd );
 
-				item.draw.params.indexedIndirect.offset = vk_push_indirect( tess.multiDrawPrimitives, indirectCommands.data() );
+					if ( j  == 0 )
+						item.draw.params.indexedIndirect.offset = offset;
+				}
 
 				return;
 			}
