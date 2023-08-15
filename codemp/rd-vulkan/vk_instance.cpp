@@ -559,7 +559,6 @@ static qboolean vk_create_device( VkPhysicalDevice physical_device, int device_i
 		qboolean dedicatedAllocation = qfalse;
 		qboolean memoryRequirements2 = qfalse;
 		qboolean debugMarker = qfalse;
-		qboolean multidraw = qfalse;
 		uint32_t i, len, count = 0;
 
 		VK_CHECK(qvkEnumerateDeviceExtensionProperties(physical_device, NULL, &count, NULL));
@@ -584,9 +583,6 @@ static qboolean vk_create_device( VkPhysicalDevice physical_device, int device_i
 			}
 			else if (strcmp(ext, VK_EXT_DEBUG_MARKER_EXTENSION_NAME) == 0) {
 				debugMarker = qtrue;
-			}
-			else if (strcmp(ext, VK_EXT_MULTI_DRAW_EXTENSION_NAME) == 0) {
-				multidraw = qtrue;
 			}
 
 			// add this device extension to glConfig
@@ -630,9 +626,6 @@ static qboolean vk_create_device( VkPhysicalDevice physical_device, int device_i
 			device_extension_list[device_extension_count++] = VK_EXT_DEBUG_MARKER_EXTENSION_NAME;
 			vk.debugMarkers = qtrue;
 		}
-
-		if ( multidraw )
-			device_extension_list[device_extension_count++] = VK_EXT_MULTI_DRAW_EXTENSION_NAME;
 
 		qvkGetPhysicalDeviceFeatures(physical_device, &device_features);
 
