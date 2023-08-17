@@ -233,6 +233,7 @@ typedef enum {
 	TYPE_COLOR_WHITE,
 	TYPE_COLOR_GREEN,
 	TYPE_COLOR_RED,
+	TYPE_COLOR_ORANGE,
 	TYPE_FOG_ONLY,
 	TYPE_DOT,
 
@@ -885,7 +886,7 @@ typedef struct {
 		uint32_t dot_pipeline;
 
 #ifdef USE_VK_IMGUI
-		uint32_t inspector_object_debug_pipeline;
+		uint32_t inspector_object_debug_pipeline[2];
 #endif
 	} std_pipeline;
 
@@ -942,7 +943,7 @@ typedef struct {
 		VkShaderModule fog_vs[2];
 		VkShaderModule fog_fs;
 
-		VkShaderModule color_vs;
+		VkShaderModule color_vs[2];
 		VkShaderModule color_fs;
 
 		VkShaderModule bloom_fs;

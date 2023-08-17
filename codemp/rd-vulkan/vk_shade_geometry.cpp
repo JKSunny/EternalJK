@@ -2379,7 +2379,7 @@ void RB_StageIteratorGeneric( void )
 #ifdef USE_VK_IMGUI
 		// ImGui outline surface/shader 
 		if ( tess.shader == tr.outlineShader ) {
-			pipeline = vk.std_pipeline.inspector_object_debug_pipeline;
+			pipeline = vk.std_pipeline.inspector_object_debug_pipeline[ is_ghoul2_vbo ? 1 : 0 ];
 			depthRange = DEPTH_RANGE_ZERO;
 		}
 #endif

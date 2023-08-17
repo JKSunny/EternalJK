@@ -120,19 +120,22 @@ void vk_create_shader_modules( void )
     VK_SET_OBJECT_NAME(vk.shaders.frag.light[1][0], "linear light fragment module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
     VK_SET_OBJECT_NAME(vk.shaders.frag.light[1][1], "linear light fog fragment module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
 
+    
+    vk.shaders.color_vs[0] = SHADER_MODULE(color_vert_spv);
+    vk.shaders.color_vs[1] = SHADER_MODULE(color_ghoul2_vert_spv);
     vk.shaders.color_fs = SHADER_MODULE(color_frag_spv);
-    vk.shaders.color_vs = SHADER_MODULE(color_vert_spv);
-    VK_SET_OBJECT_NAME(vk.shaders.color_vs, "single-color vertex module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
+    VK_SET_OBJECT_NAME(vk.shaders.color_vs[0], "single-color vertex module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
+    VK_SET_OBJECT_NAME(vk.shaders.color_vs[1], "single-color ghoul2 vertex module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
     VK_SET_OBJECT_NAME(vk.shaders.color_fs, "single-color fragment module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
 
     vk.shaders.fog_vs[0] = SHADER_MODULE(fog_vert_spv);
+    vk.shaders.fog_vs[1] = SHADER_MODULE(fog_ghoul2_vert_spv);
     vk.shaders.fog_fs = SHADER_MODULE(fog_frag_spv);
     VK_SET_OBJECT_NAME(vk.shaders.fog_vs[0], "fog-only vertex module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
-    VK_SET_OBJECT_NAME(vk.shaders.fog_fs, "fog-only fragment module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
-#ifdef USE_VBO_GHOUL2
-    vk.shaders.fog_vs[1] = SHADER_MODULE(fog_ghoul2_vert_spv);
     VK_SET_OBJECT_NAME(vk.shaders.fog_vs[1], "fog-only ghoul2 vbo vertex module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
-#endif
+    VK_SET_OBJECT_NAME(vk.shaders.fog_fs, "fog-only fragment module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
+    
+
 
     vk.shaders.dot_vs = SHADER_MODULE(dot_vert_spv);
     vk.shaders.dot_fs = SHADER_MODULE(dot_frag_spv);
@@ -226,13 +229,12 @@ void vk_destroy_shader_modules( void )
     qvkDestroyShaderModule(vk.device, vk.shaders.frag.gen0_df, NULL);
 
     qvkDestroyShaderModule(vk.device, vk.shaders.color_fs, NULL);
-    qvkDestroyShaderModule(vk.device, vk.shaders.color_vs, NULL);
+    qvkDestroyShaderModule(vk.device, vk.shaders.color_vs[0], NULL);
+    qvkDestroyShaderModule(vk.device, vk.shaders.color_vs[1], NULL);
 
     qvkDestroyShaderModule(vk.device, vk.shaders.fog_vs[0], NULL);
     qvkDestroyShaderModule(vk.device, vk.shaders.fog_fs, NULL);
-#ifdef USE_VBO_GHOUL2
     qvkDestroyShaderModule(vk.device, vk.shaders.fog_vs[1], NULL);
-#endif
 
     qvkDestroyShaderModule(vk.device, vk.shaders.dot_vs, NULL);
     qvkDestroyShaderModule(vk.device, vk.shaders.dot_fs, NULL);

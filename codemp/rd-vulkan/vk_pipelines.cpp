@@ -278,6 +278,7 @@ static void vk_push_vertex_input_binding_attribute( const Vk_Pipeline_Def *def )
         case TYPE_COLOR_WHITE:
         case TYPE_COLOR_GREEN:
         case TYPE_COLOR_RED:
+        case TYPE_COLOR_ORANGE:
             vk_push_bind( 0, sizeof( vec4_t ) );					// xyz array
             vk_push_attr( 0, 0, VK_FORMAT_R32G32B32A32_SFLOAT );
             break;
@@ -490,11 +491,16 @@ static void vk_push_vertex_input_binding_attribute( const Vk_Pipeline_Def *def )
     if ( is_ghoul2_vbo || is_mdv_vbo ) 
     {
         if ( def->shader_type == TYPE_FOG_ONLY || 
-             def->shader_type >= TYPE_GENERIC_BEGIN && def->shader_type <= TYPE_GENERIC_END )
+             ( def->shader_type >= TYPE_COLOR_WHITE && def->shader_type <= TYPE_COLOR_ORANGE ) ||
+             ( def->shader_type >= TYPE_GENERIC_BEGIN && def->shader_type <= TYPE_GENERIC_END ) )
         {
             // bind attributes for fog and generic gpu shading shaders
             switch ( def->shader_type ) {
                 case TYPE_FOG_ONLY:
+                case TYPE_COLOR_WHITE:
+                case TYPE_COLOR_GREEN:
+                case TYPE_COLOR_RED:
+                case TYPE_COLOR_ORANGE:
                 case TYPE_SINGLE_TEXTURE_ENV:
                 case TYPE_MULTI_TEXTURE_MUL2_ENV:
                 case TYPE_MULTI_TEXTURE_ADD2_IDENTITY_ENV:
@@ -779,7 +785,8 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
         case TYPE_COLOR_WHITE:
         case TYPE_COLOR_GREEN:
         case TYPE_COLOR_RED:
-            vs_module = &vk.shaders.color_vs;
+        case TYPE_COLOR_ORANGE:
+            vs_module = &vk.shaders.color_vs[vbo_g2_fog];
             fs_module = &vk.shaders.color_fs;
             break;
 
@@ -808,6 +815,7 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
             case TYPE_COLOR_WHITE:
             case TYPE_COLOR_GREEN:
             case TYPE_COLOR_RED:
+            case TYPE_COLOR_ORANGE:
                 break;
             default:
                 // switch to fogged modules
@@ -864,6 +872,7 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
         default: frag_spec_data.color_mode = 0; break;
         case TYPE_COLOR_GREEN: frag_spec_data.color_mode = 1; break;
         case TYPE_COLOR_RED:   frag_spec_data.color_mode = 2; break;
+        case TYPE_COLOR_ORANGE:   frag_spec_data.color_mode = 3; break;
     }
 
     // abs lighting
@@ -2104,9 +2113,12 @@ void vk_alloc_persistent_pipelines( void )
     {
         Com_Memset(&def, 0, sizeof(def));
         def.state_bits = state_bits;
-        def.shader_type = TYPE_COLOR_RED;
+        def.shader_type = TYPE_COLOR_ORANGE;
         def.face_culling = CT_TWO_SIDED;
-        vk.std_pipeline.inspector_object_debug_pipeline = vk_find_pipeline_ext(0, &def, qfalse);
+        vk.std_pipeline.inspector_object_debug_pipeline[0] = vk_find_pipeline_ext(0, &def, qfalse);
+        
+        def.vbo_ghoul2 = qtrue;
+        vk.std_pipeline.inspector_object_debug_pipeline[1] = vk_find_pipeline_ext(0, &def, qfalse);
     }
 #endif
 }

@@ -2139,7 +2139,7 @@ static void vk_imgui_draw_viewport( void ) {
 	ImGui::SetCursorScreenPos( ImVec2( pos.x + 5.0f, pos.y + 6.0f ) );
 	
 	ImGui::PushStyleVar( ImGuiStyleVar_FramePadding, ImVec2( 1.0f, 1.0f ) );
-	ImGui::Checkbox("selection outline", &inspector.outline_selected );
+	ImGui::Checkbox("selection wireframe", &inspector.outline_selected );
 	ImGui::PopStyleVar();
 
 	ImGui::SetCursorScreenPos( ImVec2( pos.x + region.x - 205.0f, pos.y + 4.0f ) );
