@@ -549,8 +549,8 @@ void main() {
 				case 2 : out_color.rgb = specular.rgb; break;		
 				case 3 : out_color.rgb = vec3(roughness); break;
 				case 4 : out_color.rgb = vec3(AO); break;			// Ambient Occlusion		
-				case 5 : out_color.rgb = var_Normal.rgb; break;		// Normals
-				case 6 : out_color.rgb = N; break;					// Normals + Normalmap
+				case 5 : out_color.rgb = ( var_Normal.rgb * 0.5 + 0.5 ); break;		// Normals
+				case 6 : out_color.rgb = ( N * 0.5 + 0.5 ); break;					// Normals + Normalmap
 				case 7 : out_color.rgb = L; break;					// Lightdir
 				case 8 : out_color.rgb = E; break;					// ViewDir
 				case 9 : out_color.rgb = in_ntb.tangent; break;		// Tagnent
