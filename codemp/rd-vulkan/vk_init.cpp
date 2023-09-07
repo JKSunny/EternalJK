@@ -394,7 +394,7 @@ void vk_initialize( void )
 	vk.uniform_item_size = PAD( sizeof(vkUniform_t), vk.uniform_alignment );
 #ifdef USE_VBO_GHOUL2
 	vk.uniform_data_item_size = PAD( sizeof(vkUniformData_t), vk.uniform_alignment );
-	vk.uniform_ghoul_item_size = PAD( sizeof(vkUniformGhoul_t), vk.uniform_alignment );
+	vk.uniform_bones_item_size = PAD( sizeof(vkUniformBones_t), vk.uniform_alignment );
 #endif
 	vk.storage_alignment = MAX( props.limits.minStorageBufferOffsetAlignment, sizeof(uint32_t) ); //for flare visibility tests
 
@@ -440,10 +440,10 @@ void vk_initialize( void )
 	if ( r_vbo->integer && r_vbo->integer <= 2 )
 		vk.vboWorldActive = qtrue;
 
-#ifdef USE_VBO_GHOUL2
-	if ( r_vbo->integer >= 2 )
+	if ( r_vbo->integer >= 2 ) {
 		vk.vboGhoul2Active = qtrue;
-#endif
+		vk.vboMdvActive = qtrue;
+	}
 #endif
 
 	//if (r_ext_multisample->integer && !r_ext_supersample->integer)
@@ -494,7 +494,9 @@ void vk_initialize( void )
 	vk_create_pipeline_layout();
 
 	vk.geometry_buffer_size_new = VERTEX_BUFFER_SIZE;
+	vk.indirect_buffer_size_new = sizeof(VkDrawIndexedIndirectCommand) * 1024 * 1024;
 	vk_create_vertex_buffer( vk.geometry_buffer_size_new );
+	vk_create_indirect_buffer( vk.indirect_buffer_size_new );
 	vk_create_storage_buffer( MAX_FLARES * vk.storage_alignment );
 	vk_create_shader_modules();
 
@@ -551,7 +553,8 @@ void vk_shutdown( void )
 	qvkDestroyPipelineLayout(vk.device, vk.pipeline_layout_blend, NULL);
 
 #ifdef USE_VBO	
-	vk_clear_vbo();
+	vk_release_world_vbo();
+	vk_release_model_vbo();
 #endif
 
 	vk_release_geometry_buffers();

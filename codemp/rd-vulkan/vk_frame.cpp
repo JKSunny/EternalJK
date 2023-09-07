@@ -1025,6 +1025,7 @@ void vk_begin_frame( void )
 
     vk.cmd->uniform_read_offset = 0;
     vk.cmd->vertex_buffer_offset = 0;
+    vk.cmd->indirect_buffer_offset = 0;
     Com_Memset(vk.cmd->buf_offset, 0, sizeof(vk.cmd->buf_offset));
     vk.cmd->curr_index_buffer = VK_NULL_HANDLE;
     vk.cmd->curr_index_offset = 0;
@@ -1141,6 +1142,7 @@ void vk_release_resources( void ) {
     for (i = 0; i < NUM_COMMAND_BUFFERS; i++) {
         vk.tess[i].uniform_read_offset = 0;
         vk.tess[i].vertex_buffer_offset = 0;
+        vk.tess[i].indirect_buffer_offset = 0;
     }
 
     Com_Memset(vk.cmd->buf_offset, 0, sizeof(vk.cmd->buf_offset));

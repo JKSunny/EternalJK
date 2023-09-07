@@ -166,9 +166,24 @@ void vk_bind_index_buffer( VkBuffer buffer, uint32_t offset )
 void vk_bind_index( void )
 {
 #ifdef USE_VBO
-	if (tess.vboIndex) {
+	if ( tess.vbo_world_index ) {
 		vk.cmd->num_indexes = 0;
 		//qvkCmdBindIndexBuffer( vk.cmd->command_buffer, vk.vbo.index_buffer, tess.shader->iboOffset, VK_INDEX_TYPE_UINT32 );
+		return;
+	}
+
+	else if ( tess.vbo_model_index  ) {
+		uint32_t offset = 0;
+		vk.cmd->num_indexes = 0;
+
+		if ( tess.multiDrawPrimitives && tess.multiDrawPrimitives <= 1 ) 
+		{
+			offset = (glIndex_t)(size_t)(tess.multiDrawFirstIndex[0]) * sizeof(uint32_t);
+			vk.cmd->num_indexes = tess.multiDrawNumIndexes[0];
+		}
+
+		vk_bind_index_buffer( tr.ibos[ tess.vbo_model_index - 1 ]->buffer, offset );
+		
 		return;
 	}
 #endif
@@ -189,63 +204,64 @@ void vk_bind_index_ext( const int numIndexes, const uint32_t *indexes )
 	}
 }
 
-#ifdef USE_VBO_GHOUL2
-#if 0
-static void vk_bind_attr_ghoul2_vbo( int index, unsigned int item_size, const void *src ) {
-	const uint32_t offset = PAD(vk.cmd->vertex_buffer_offset, 32);
-	const uint32_t size = tess.mesh_ptr->numVertexes * item_size;
+#ifdef USE_VBO_MDV
+static void vk_vbo_bind_geometry_mdv( int32_t flags )
+{
+	VBO_t *vbo = tr.vbos[tess.vbo_model_index-1];
 
-	if (offset + size > vk.geometry_buffer_size) {
-		// schedule geometry buffer resize
-		vk.geometry_buffer_size_new = log2pad(offset + size, 1);
-	}
-	else {
-		vk.cmd->buf_offset[index] = offset;
-		Com_Memcpy(vk.cmd->vertex_buffer_ptr + offset, src, size);
-		vk.cmd->vertex_buffer_offset = (VkDeviceSize)offset + size;
-	}
+	shade_bufs[0] = shade_bufs[1] = shade_bufs[2] = shade_bufs[3] = shade_bufs[4] = shade_bufs[5] = shade_bufs[6] = shade_bufs[7] = shade_bufs[8] = shade_bufs[9] = vbo->buffer;
+	
+	Com_Memset( vk.cmd->vbo_offset, 0, sizeof(vk.cmd->vbo_offset) );
 
-	vk_bind_index_attr(index);
+	vk.cmd->vbo_offset[0] = vbo->offsets[0];	// xyz
+	vk.cmd->vbo_offset[2] = vbo->offsets[2];	// texture coords
+	vk.cmd->vbo_offset[5] = vbo->offsets[5];	// normals
+
+	if (flags & TESS_ST1)
+		vk.cmd->vbo_offset[3] = vbo->offsets[2];
+
+	if (flags & TESS_ST2)
+		vk.cmd->vbo_offset[4] = vbo->offsets[2];
+
+	/*if (flags & TESS_QTANGENT)
+		vk.cmd->vbo_offset[8] = vbo->offsets[8];*/
+
+	bind_base = 0;
+	bind_count = 10;
+
+	qvkCmdBindVertexBuffers(vk.cmd->command_buffer, bind_base, bind_count, shade_bufs, vk.cmd->vbo_offset + bind_base);
+
 }
 #endif
 
+#ifdef USE_VBO_GHOUL2
 static void vk_vbo_bind_geometry_ghoul2( uint32_t flags )
 {
-	shade_bufs[8] = shade_bufs[9] = vk.vbo[vk.vbo_index].vertex_buffer;
+	VBO_t *vbo = tr.vbos[tess.vbo_model_index-1];
 
-	vk.cmd->vbo_offset[0] = tess.mesh_ptr->vboOffset + 0;
-	vk.cmd->vbo_offset[2] = tess.mesh_ptr->texOffset;
-	vk.cmd->vbo_offset[5] = tess.mesh_ptr->normalOffset;
-	vk.cmd->vbo_offset[8] = tess.mesh_ptr->boneOffset;
-	vk.cmd->vbo_offset[9] = tess.mesh_ptr->weightOffset;
+	shade_bufs[0] = shade_bufs[1] = shade_bufs[2] = shade_bufs[3] = shade_bufs[4] = shade_bufs[5] = shade_bufs[6] = shade_bufs[7] = shade_bufs[8] = shade_bufs[9] = vbo->buffer;
+
+	vk.cmd->vbo_offset[0] = vbo->offsets[0];	// xyz
+	vk.cmd->vbo_offset[2] = vbo->offsets[2];	// texture coords
+	vk.cmd->vbo_offset[5] = vbo->offsets[5];	// normals
+
+	// use flag for this?
+	vk.cmd->vbo_offset[8] = vbo->offsets[8];	// bones
+	vk.cmd->vbo_offset[9] = vbo->offsets[9];	// weight
 
 	if (flags & TESS_ST1)
-		vk.cmd->vbo_offset[3] = tess.mesh_ptr->texOffset;
+		vk.cmd->vbo_offset[3] = vbo->offsets[2];
 
 	if (flags & TESS_ST2)
-		vk.cmd->vbo_offset[4] = tess.mesh_ptr->texOffset;
+		vk.cmd->vbo_offset[4] = vbo->offsets[2];
 
-	qvkCmdBindVertexBuffers( vk.cmd->command_buffer, 0, 10, shade_bufs, vk.cmd->vbo_offset + 0 );
+	/*if (flags & TESS_QTANGENT)
+		vk.cmd->vbo_offset[8] = vbo->offsets[8];*/
 
-#if 0
-	// use the vertex buffer for rgba ..
-	// or would ( #else const vec4 in_color0 = vec4(0.0); ) in glsl suffice
-	// if vertex is not used. rather, is it ever used for ghoul2?
-	if ( flags & TESS_RGBA0 ) { 
-		vk_bind_attr_ghoul2_vbo( 1, sizeof(color4ub_t), tess.svars.colors[0] );
-		qvkCmdBindVertexBuffers( vk.cmd->command_buffer, 1, 1, &vk.cmd->vertex_buffer, vk.cmd->buf_offset + 1 );
-	}
+	bind_base = 0;
+	bind_count = 10;
 
-	if ( flags & TESS_RGBA1 ) {
-		vk_bind_attr_ghoul2_vbo( 6, sizeof(color4ub_t), tess.svars.colors[1] );
-		qvkCmdBindVertexBuffers( vk.cmd->command_buffer, 6, 1, &vk.cmd->vertex_buffer, vk.cmd->buf_offset + 6 );
-	}
-
-	if ( flags & TESS_RGBA2 ) {
-		vk_bind_attr_ghoul2_vbo( 7, sizeof(color4ub_t), tess.svars.colors[2] );
-		qvkCmdBindVertexBuffers( vk.cmd->command_buffer, 7, 1, &vk.cmd->vertex_buffer, vk.cmd->buf_offset + 7 );
-	}
-#endif
+	qvkCmdBindVertexBuffers(vk.cmd->command_buffer, bind_base, bind_count, shade_bufs, vk.cmd->vbo_offset + bind_base);
 }
 #endif
 
@@ -258,19 +274,22 @@ void vk_bind_geometry( uint32_t flags )
 		return;
 
 #ifdef USE_VBO
-	if (tess.vboIndex) {
-
-		shade_bufs[0] = shade_bufs[1] = shade_bufs[2] = shade_bufs[3] = shade_bufs[4] = shade_bufs[5] = shade_bufs[6] = shade_bufs[7] = vk.vbo[vk.vbo_index].vertex_buffer;
-
 #if defined(USE_VBO_GHOUL2)
-		// clear, because vbo buffers don't share sizes
-		// previously set offsets might be out of scope
-		if ( vk.vboGhoul2Active )
-			Com_Memset( vk.cmd->vbo_offset, 0, sizeof(vk.cmd->vbo_offset) );
+	if ( tess.vbo_model_index ) {
+		Com_Memset( vk.cmd->vbo_offset, 0, sizeof(vk.cmd->vbo_offset) );
 
 		if ( tess.surfType == SF_MDX )
 			return vk_vbo_bind_geometry_ghoul2( flags );
+
+		if ( tess.surfType == SF_VBO_MDVMESH )
+			return vk_vbo_bind_geometry_mdv( flags );
+	}
 #endif
+
+	if (tess.vbo_world_index) {
+
+		shade_bufs[0] = shade_bufs[1] = shade_bufs[2] = shade_bufs[3] = shade_bufs[4] = shade_bufs[5] = shade_bufs[6] = shade_bufs[7] = vk.vbo.vertex_buffer;
+
 
 		if (flags & TESS_XYZ) {  // 0
 			vk.cmd->vbo_offset[0] = tess.shader->vboOffset + 0;
@@ -352,9 +371,9 @@ void vk_bind_lighting( int stage, int bundle )
 	bind_count = 0;
 
 #ifdef USE_VBO
-	if (tess.vboIndex) {
+	if (tess.vbo_world_index) {
 
-		shade_bufs[0] = shade_bufs[1] = shade_bufs[2] = vk.vbo[vk.vbo_index].vertex_buffer;
+		shade_bufs[0] = shade_bufs[1] = shade_bufs[2] = vk.vbo.vertex_buffer;
 
 		vk.cmd->vbo_offset[0] = tess.shader->vboOffset + 0;
 		vk.cmd->vbo_offset[1] = tess.shader->stages[stage]->tex_offset[bundle];
@@ -416,7 +435,7 @@ void vk_update_uniform_descriptor( VkDescriptorSet descriptor, VkBuffer buffer )
 		// bones
 		info[count].buffer = buffer;
 		info[count].offset = 0;
-		info[count].range = sizeof(vkUniformGhoul_t);
+		info[count].range = sizeof(vkUniformBones_t);
 
 		vk_write_uniform_descriptor( desc + 2, info + 2, descriptor, 2 );
 		count++;
@@ -609,6 +628,67 @@ void vk_init_descriptors( void ) {
 	}
 }
 
+void vk_create_indirect_buffer( VkDeviceSize size )
+{
+	VkMemoryRequirements vb_memory_requirements;
+	VkDeviceSize indirect_buffer_offset;
+	VkMemoryAllocateInfo alloc_info;
+	VkBufferCreateInfo desc;
+	uint32_t memory_type_bits;
+	void *data;
+	int i;
+
+	vk_debug("Create indirect buffer: vk.cmd->indirect_buffer \n");
+	
+	desc.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	desc.pNext = NULL;
+	desc.flags = 0;
+	desc.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	desc.queueFamilyIndexCount = 0;
+	desc.pQueueFamilyIndices = NULL;
+	
+	Com_Memset(&vb_memory_requirements, 0, sizeof(vb_memory_requirements));
+
+	for (i = 0; i < NUM_COMMAND_BUFFERS; i++) {
+		desc.size = size;
+		desc.usage = VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
+		VK_CHECK(qvkCreateBuffer(vk.device, &desc, NULL, &vk.tess[i].indirect_buffer));
+
+		qvkGetBufferMemoryRequirements(vk.device, vk.tess[i].indirect_buffer, &vb_memory_requirements);
+	}
+
+	memory_type_bits = vb_memory_requirements.memoryTypeBits;
+
+	alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	alloc_info.pNext = NULL;
+	alloc_info.allocationSize = vb_memory_requirements.size * NUM_COMMAND_BUFFERS;
+	alloc_info.memoryTypeIndex = vk_find_memory_type(memory_type_bits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+	vk_debug("Allocate device memory for Indirect Buffer: %ld bytes. \n", alloc_info.allocationSize);
+
+	VK_CHECK(qvkAllocateMemory(vk.device, &alloc_info, NULL, &vk.indirect_buffer_memory));
+	VK_CHECK(qvkMapMemory(vk.device, vk.indirect_buffer_memory, 0, VK_WHOLE_SIZE, 0, &data));
+
+	indirect_buffer_offset = 0;
+
+	for (i = 0; i < NUM_COMMAND_BUFFERS; i++) {
+		qvkBindBufferMemory(vk.device, vk.tess[i].indirect_buffer, vk.indirect_buffer_memory, indirect_buffer_offset);
+		vk.tess[i].indirect_buffer_ptr = (byte*)data + indirect_buffer_offset;
+		vk.tess[i].indirect_buffer_offset = 0;
+		indirect_buffer_offset += vb_memory_requirements.size;
+
+		VK_SET_OBJECT_NAME(vk.tess[i].indirect_buffer, "indirect_buffer", VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT);
+	}
+
+	VK_SET_OBJECT_NAME(vk.indirect_buffer_memory, "indirect buffer memory", VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT);
+
+	vk.indirect_buffer_size = vb_memory_requirements.size;
+	vk.indirect_buffer_size_new = 0;
+
+	//Com_Memset(&vk.stats, 0, sizeof(vk.stats));
+
+}
+
 void vk_create_vertex_buffer( VkDeviceSize size )
 {
 	VkMemoryRequirements vb_memory_requirements;
@@ -735,6 +815,8 @@ void vk_bind_pipeline( uint32_t pipeline ) {
 	vk_world.dirty_depth_attachment |= (vk.pipelines[pipeline].def.state_bits & GLS_DEPTHMASK_TRUE);
 }
 
+uint32_t vk_push_indirect( int count, const void *data );
+
 void vk_draw_geometry( Vk_Depth_Range depRg, qboolean indexed )
 {
 	VkViewport viewport;
@@ -767,12 +849,43 @@ void vk_draw_geometry( Vk_Depth_Range depRg, qboolean indexed )
 
 	// issue draw call(s)
 #ifdef USE_VBO
-	if (tess.vboIndex)
+	if (tess.vbo_world_index)
 		VBO_RenderIBOItems();
 	else
 #endif
 	{
-		if (indexed)
+		if ( tess.multiDrawPrimitives && tess.multiDrawPrimitives > 1 ) 
+		{
+			uint32_t j, firstOffset, offset, *index;
+
+			for ( j = 0; j < tess.multiDrawPrimitives; j++ ) 
+			{
+				VkDrawIndexedIndirectCommand indirectCmd = {};
+
+				index = ((uint32_t*)tess.multiDrawFirstIndex) + j;
+
+				indirectCmd.indexCount = tess.multiDrawNumIndexes[j];
+				indirectCmd.instanceCount = 1;
+				indirectCmd.firstIndex = *index;
+				indirectCmd.vertexOffset = 0;
+				indirectCmd.firstInstance = 0;
+
+				offset = vk_push_indirect( 1, &indirectCmd );
+
+				if ( j  == 0 )
+					firstOffset = offset;
+			}
+
+			qvkCmdDrawIndexedIndirect( 
+				vk.cmd->command_buffer, 
+				vk.cmd->indirect_buffer,
+				firstOffset,
+				tess.multiDrawPrimitives,
+				sizeof(VkDrawIndexedIndirectCommand)
+				);
+		}
+
+		else if (indexed)
 			qvkCmdDrawIndexed(vk.cmd->command_buffer, vk.cmd->num_indexes, 1, 0, 0, 0);
 		else
 			qvkCmdDraw(vk.cmd->command_buffer, tess.numVertexes, 1, 0, 0);
@@ -1050,6 +1163,18 @@ avoidGen:
 	}
 }
 
+uint32_t vk_append_uniform( void *uniform, size_t size, uint32_t min_offset ) {
+	const uint32_t offset = PAD(vk.cmd->vertex_buffer_offset, vk.uniform_alignment);
+
+	if ( offset + min_offset > vk.geometry_buffer_size )
+		return ~0U;
+
+	Com_Memcpy( vk.cmd->vertex_buffer_ptr + offset, uniform, size );
+	vk.cmd->vertex_buffer_offset = offset + min_offset;
+
+	return offset;
+}
+
 static uint32_t vk_push_uniform( const vkUniform_t *uniform ) {
 	const uint32_t offset = vk.cmd->uniform_read_offset = PAD(vk.cmd->vertex_buffer_offset, vk.uniform_alignment);
 
@@ -1066,6 +1191,24 @@ static uint32_t vk_push_uniform( const vkUniform_t *uniform ) {
 
 	return offset;
 }
+
+uint32_t vk_push_indirect( int count, const void *data ) {
+	const uint32_t offset = vk.cmd->indirect_buffer_offset;	// no alignment for indirect buffer?
+	const uint32_t size = count * sizeof(VkDrawIndexedIndirectCommand);
+
+	if (offset + size > vk.indirect_buffer_size) {
+		// schedule geometry buffer resize
+		vk.indirect_buffer_size_new = log2pad(offset + size, 1);
+		Com_Printf("resize");
+	}
+	else {
+		Com_Memcpy(vk.cmd->indirect_buffer_ptr + offset, data, size);
+		vk.cmd->indirect_buffer_offset = (VkDeviceSize)offset + size;
+	}
+
+	return offset;
+}
+
 #ifdef USE_VBO_GHOUL2
 static uint32_t vk_push_uniform_data( const vkUniformData_t *uniform ) {	
 	const uint32_t offset = vk.cmd->uniform_read_offset = PAD(vk.cmd->vertex_buffer_offset, vk.uniform_alignment);
@@ -1080,23 +1223,6 @@ static uint32_t vk_push_uniform_data( const vkUniformData_t *uniform ) {
 	vk_update_descriptor( 1, vk.cmd->uniform_descriptor );
 	vk_update_descriptor_offset( 1, 0 );
 	vk_update_descriptor_offset( 2, vk.cmd->uniform_read_offset );
-
-	return offset;
-}
-
-static uint32_t vk_push_uniform_ghoul2( const vkUniformGhoul_t *uniform ) {	
-	const uint32_t offset = vk.cmd->uniform_read_offset = PAD( vk.cmd->vertex_buffer_offset, vk.uniform_alignment );
-
-	if ( offset + vk.uniform_ghoul_item_size > vk.geometry_buffer_size )
-		return ~0U;
-
-	Com_Memcpy( vk.cmd->vertex_buffer_ptr + offset, uniform, sizeof(*uniform) );
-	vk.cmd->vertex_buffer_offset = offset + vk.uniform_ghoul_item_size;
-
-	vk_reset_descriptor( 1 );
-	vk_update_descriptor( 1, vk.cmd->uniform_descriptor );
-	vk_update_descriptor_offset( 1, 0 );
-	vk_update_descriptor_offset( 3, vk.cmd->uniform_read_offset );
 
 	return offset;
 }
@@ -1222,18 +1348,11 @@ Blends a fog texture on top of everything else
 ===================
 */
 static vkUniform_t		uniform;
-#ifdef USE_VBO_GHOUL2
 static vkUniformData_t	uniform_data;
-static vkUniformGhoul_t	uniform_ghoul;
-
-mat3x4_t *vk_get_uniform_ghoul_bones( void ) {
-	return uniform_ghoul.boneMatrices;
-}
-#endif
 
 static void RB_FogPass( void ) {
 #ifdef USE_VBO_GHOUL2
-	const int sh = ( tess.vboIndex && tess.surfType == SF_MDX ) ? 1 : 0;
+	const int sh = ( tess.vbo_model_index && tess.surfType == SF_MDX ) ? 1 : 0;
 #else
 	const int sh = 0;
 #endif
@@ -1464,7 +1583,7 @@ static void vk_set_attr_color( color4ub_t *dest, const qboolean skip ){
 	uint32_t i;
 	int numVerts;
 
-	numVerts = ( tess.vboIndex && tess.surfType == SF_MDX ) ? 
+	numVerts = ( tess.vbo_model_index && tess.surfType == SF_MDX ) ? 
 		tess.mesh_ptr->numVertexes : tess.numVertexes;
 
 	if ( skip ) {
@@ -1486,9 +1605,7 @@ static void vk_compute_colors( const int b, const shaderStage_t *pStage, int for
 		return;
 
 	float *baseColor, *vertColor;
-#ifdef USE_VBO_GHOUL2_RGBAGEN_CONSTS
-	qboolean skipInColor = qtrue;
-#endif
+
 	int rgbGen = forceRGBGen;
 	int alphaGen = pStage->bundle[b].alphaGen;
 
@@ -1614,23 +1731,6 @@ static void vk_compute_colors( const int b, const shaderStage_t *pStage, int for
 		default:
 			break;
 	}
-
-#ifdef USE_VBO_GHOUL2_RGBAGEN_CONSTS
-	switch ( rgbGen) {
-		case CGEN_EXACT_VERTEX:
-		case CGEN_VERTEX:
-		case CGEN_ONE_MINUS_VERTEX:
-			skipInColor = qfalse; break;
-	}
-	switch ( alphaGen) {
-		case AGEN_VERTEX:
-		case AGEN_ONE_MINUS_VERTEX:
-			skipInColor = qfalse; break;
-	}
-
-	// skip ghoul2 vbo glsl in_colors for now
-	vk_set_attr_color( tess.svars.colors[b], skipInColor );
-#endif
 
 	if ( backEnd.currentEntity && backEnd.currentEntity->e.renderfx & RF_FORCE_ENT_ALPHA ) {
 		baseColor[3] = backEnd.currentEntity->e.shaderRGBA[3] / 255.0f; 
@@ -1827,7 +1927,7 @@ void vk_lighting_pass( void )
 	R_BindAnimatedImage(&pStage->bundle[tess.shader->lightingBundle]);
 
 #ifdef USE_VBO
-	if (tess.vboIndex == 0)
+	if (tess.vbo_world_index == 0)
 #endif
 	{
 		ComputeTexCoords(tess.shader->lightingBundle, &pStage->bundle[tess.shader->lightingBundle]);
@@ -1862,11 +1962,11 @@ void RB_StageIteratorGeneric( void )
 	int						tess_flags, i;
 	int						fog_stage = 0;
 	qboolean				fogCollapse;
-
-	qboolean				is_ghoul2_vbo = qfalse;
+	qboolean				is_ghoul2_vbo;
+	qboolean				is_mdv_vbo;
 
 #ifdef USE_VBO
-	if (tess.vboIndex != 0) {
+	if (tess.vbo_world_index != 0) {
 		VBO_PrepareQueues();
 		tess.vboStage = 0;
 	} 
@@ -1883,12 +1983,11 @@ void RB_StageIteratorGeneric( void )
 	}
 #endif
 
-	vk_bind_index();
-
 	tess_flags = tess.shader->tessFlags;
 
 	fogCollapse = qfalse;
 	is_ghoul2_vbo = qfalse;
+	is_mdv_vbo = qfalse;
 
 #ifdef USE_FOG_COLLAPSE
 	if ( tess.fogNum && tess.shader->fogPass && tess.shader->fogCollapse && r_drawfog->value == 2 ) {
@@ -1896,27 +1995,24 @@ void RB_StageIteratorGeneric( void )
 	}
 #endif
 
-#if defined(USE_VBO_GHOUL2)
-	if ( tess.vboIndex ) {
+	vk_bind_index();
+
+#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
+	if ( tess.vbo_model_index ) 
+	{
 		is_ghoul2_vbo = (qboolean)( tess.surfType == SF_MDX );
-	}
+		is_mdv_vbo = (qboolean)( tess.surfType == SF_VBO_MDVMESH );
 
-	if ( is_ghoul2_vbo ) {
 		trRefEntity_t *refEntity = backEnd.currentEntity;
-		orientationr_t ori;
-		vec4_t tmp;	
 
-		Com_Memset( &uniform_data, 0, sizeof(uniform_data) );
+		static const float normalizeFactor = 1.0f / 255.0f;
+
+		VectorScale( refEntity->ambientLight, normalizeFactor, uniform_data.ambientLight );
+		VectorScale( refEntity->directedLight, normalizeFactor, uniform_data.directedLight );
+		VectorCopy( refEntity->lightDir, uniform_data.lightDir );
+		uniform_data.lightDir[3] = 0.0f;
 		
-		VectorScale( refEntity->ambientLight, 1.0f / 255.0, tmp );
-		Com_Memcpy( &uniform_data.ambientLight, tmp, sizeof(vec4_t) );
-				
-		VectorScale( refEntity->directedLight, 1.0f / 255.0, tmp );
-		Com_Memcpy( &uniform_data.directedLight, tmp, sizeof(vec4_t) );
-				
-		VectorCopy( refEntity->lightDir, tmp ); tmp[3] = 0.0f;
-		Com_Memcpy( &uniform_data.lightDir, tmp, sizeof(vec4_t) );
-
+		orientationr_t ori;
 		if ( refEntity == &tr.worldEntity ) {
 			ori = backEnd.viewParms.world;
 			Matrix16Identity( uniform_data.modelMatrix );
@@ -1927,8 +2023,6 @@ void RB_StageIteratorGeneric( void )
 
 		Com_Memcpy( &uniform_data.eyePos, ori.viewOrigin, sizeof( vec3_t) );
 		uniform_data.eyePos[3] = 0.0;
-
-		vk_push_uniform_ghoul2( &uniform_ghoul );
 
 		vk_compute_deform();	
 	}
@@ -1992,7 +2086,7 @@ void RB_StageIteratorGeneric( void )
 				vk_select_texture(i);
 				R_BindAnimatedImage(&pStage->bundle[i]);
 #if defined(USE_VBO_GHOUL2)
-				if ( tess_flags & (TESS_RGBA0 << i) && is_ghoul2_vbo ) {
+				if ( tess_flags & (TESS_RGBA0 << i) && tess.vbo_model_index ) {
 					vk_compute_colors( i, pStage, forceRGBGen );
 					continue;
 				}
@@ -2045,23 +2139,10 @@ void RB_StageIteratorGeneric( void )
 					def.state_bits |= GLS_DEPTHMASK_TRUE;
 
 			}
-#if defined(USE_VBO_GHOUL2)
-			if ( is_ghoul2_vbo ){
-				def.vbo_ghoul2 = qtrue;
 
-#ifdef USE_VBO_GHOUL2_RGBAGEN_CONSTS
-				for ( i = 0; i < pStage->numTexBundles; i++ ) {
-					if ( backEnd.currentEntity->e.renderfx & ( RF_DISINTEGRATE1 | RF_DISINTEGRATE2 ) ||
-						 (int)uniform_data.rgbGen[i] ==		CGEN_LIGHTING_DIFFUSE || 
-						 (int)uniform_data.alphaGen[i] ==	AGEN_LIGHTING_SPECULAR ||
-						 (int)uniform_data.alphaGen[i] ==	AGEN_PORTAL )
-					{
-						def.rgbaGen[i] = 1;
-					}
-				}
-#endif
-			}
-#endif
+			def.vbo_ghoul2 = is_ghoul2_vbo;
+			def.vbo_mdv = is_mdv_vbo;
+
 			pipeline = vk_find_pipeline_ext( 0, &def, qfalse );
 		}
 		else {
@@ -2080,10 +2161,10 @@ void RB_StageIteratorGeneric( void )
 		// does not work with multitextured dglow yet.
 		if ( backEnd.isGlowPass && pStage->glow ){
 			vk_get_pipeline_def( pStage->vk_pipeline[fog_stage], &def );
-#if defined(USE_VBO_GHOUL2)		
-			if ( is_ghoul2_vbo )
-				def.vbo_ghoul2 = qtrue;		
-#endif			
+
+			def.vbo_ghoul2 = is_ghoul2_vbo;
+			def.vbo_mdv = is_mdv_vbo;
+
 			def.shader_type = TYPE_SINGLE_TEXTURE;
 			pipeline = vk_find_pipeline_ext( 0, &def, qfalse );
 
@@ -2091,10 +2172,16 @@ void RB_StageIteratorGeneric( void )
 			vk_bind( pStage->bundle[ ( pStage->numTexBundles - 1 ) ].image[0] );
 			Com_Memcpy( tess.svars.colors[0], tess.svars.colors[( pStage->numTexBundles - 1 )], sizeof(tess.svars.colors[0]) );
 		}
-#if defined(USE_VBO_GHOUL2)
-		if ( is_ghoul2_vbo )
+
+#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
+		if ( tess.vbo_model_index  ) {
 			vk_push_uniform_data( &uniform_data );
+
+			if ( is_ghoul2_vbo )
+				vk_update_descriptor_offset( 3, vk.cmd->bones_ubo_offset );
+		}
 #endif
+
 		vk_bind_pipeline( pipeline );
 		vk_bind_geometry( tess_flags );
 		vk_draw_geometry( tess.depthRange, qtrue );

@@ -141,7 +141,7 @@ void DrawTris( const shaderCommands_t *pInput){
 	//memset(pInput->svars.colors, 255, pInput->numVertexes * 4);
 
 #ifdef USE_VBO
-	if (tess.vboIndex) {
+	if (tess.vbo_world_index) {
 #ifdef USE_PMLIGHT
 		if (tess.dlightPass)
 			pipeline = backEnd.viewParms.portalView == PV_MIRROR ? vk.std_pipeline.tris_mirror_debug_red_pipeline : vk.std_pipeline.tris_debug_red_pipeline;
@@ -174,7 +174,7 @@ void DrawNormals( const shaderCommands_t *input)
 	int		i;
 
 #ifdef USE_VBO	
-	if (tess.vboIndex)
+	if (tess.vbo_world_index)
 		return; // must be handled specially
 #endif
 

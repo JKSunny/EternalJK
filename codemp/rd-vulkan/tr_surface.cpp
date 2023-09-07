@@ -393,7 +393,7 @@ void RB_SurfaceTriangles( const srfTriangles_t *srf ) {
 	if (tess.allowVBO && srf->vboItemIndex) {
 
 		// transition to vbo render list
-		if (tess.vboIndex == 0) {
+		if (tess.vbo_world_index == 0) {
 			RB_EndSurface();
 			RB_BeginSurface(tess.shader, tess.fogNum);
 			// set some dummy parameters for RB_EndSurface
@@ -402,8 +402,8 @@ void RB_SurfaceTriangles( const srfTriangles_t *srf ) {
 			VBO_ClearQueue();
 		}
 		tess.surfType = SF_TRIANGLES;
-		tess.vboIndex = srf->vboItemIndex;
-		vk_bind_vbo_index( vk.vbo_world_index );
+		tess.vbo_world_index = srf->vboItemIndex;
+
 		VBO_QueueItem(srf->vboItemIndex);
 		return; // no need to tesselate anything
 	}
@@ -1594,7 +1594,7 @@ void RB_SurfaceFace( srfSurfaceFace_t *surf ) {
 #ifdef USE_VBO
 	if (tess.allowVBO && surf->vboItemIndex) {
 		// transition to vbo render list
-		if (tess.vboIndex == 0) {
+		if (tess.vbo_world_index == 0) {
 			RB_EndSurface();
 			RB_BeginSurface(tess.shader, tess.fogNum);
 			// set some dummy parameters for RB_EndSurface
@@ -1603,8 +1603,8 @@ void RB_SurfaceFace( srfSurfaceFace_t *surf ) {
 			VBO_ClearQueue();
 		}
 		tess.surfType = SF_FACE;
-		tess.vboIndex = surf->vboItemIndex;
-		vk_bind_vbo_index( vk.vbo_world_index );
+		tess.vbo_world_index = surf->vboItemIndex;
+
 		VBO_QueueItem(surf->vboItemIndex);
 		return; // no need to tesselate anything
 	}
@@ -1794,7 +1794,7 @@ void RB_SurfaceGrid( srfGridMesh_t *cv ) {
 #ifdef USE_VBO
 	if (tess.allowVBO && cv->vboItemIndex) {
 		// transition to vbo render list
-		if (tess.vboIndex == 0) {
+		if (tess.vbo_world_index == 0) {
 			RB_EndSurface();
 			RB_BeginSurface(tess.shader, tess.fogNum);
 			// set some dummy parameters for RB_EndSurface
@@ -1803,8 +1803,8 @@ void RB_SurfaceGrid( srfGridMesh_t *cv ) {
 			VBO_ClearQueue();
 		}
 		tess.surfType = SF_GRID;
-		tess.vboIndex = cv->vboItemIndex;
-		vk_bind_vbo_index( vk.vbo_world_index );
+		tess.vbo_world_index = cv->vboItemIndex;
+
 		VBO_QueueItem(cv->vboItemIndex);
 		return; // no need to tesselate anything
 	}
@@ -1869,7 +1869,7 @@ void RB_SurfaceGrid( srfGridMesh_t *cv ) {
 					// estimate and flush
 #ifdef USE_VBO
 					if (cv->vboItemIndex) {
-						VBO_PushData( vk.vbo_world_index, cv->vboItemIndex, &tess );
+						VBO_PushData( cv->vboItemIndex, &tess );
 						tess.numIndexes = 0;
 						tess.numVertexes = 0;
 					}
@@ -2243,6 +2243,98 @@ void RB_SurfaceDisplayList( srfDisplayList_t *surf ) {
 void RB_SurfaceSkip( void *surf ) {
 }
 
+#ifdef USE_VBO_MDV
+void RB_SurfaceVBOMDVMesh( srfVBOMDVMesh_t *surf )
+{
+	if ( !surf->vbo || !surf->ibo )
+		return;
+
+	tess.surfType = surf->surfaceType;
+	tess.vbo_model_index = surf->vbo->index;
+
+	int i, mergeForward, mergeBack;
+	GLvoid *firstIndexOffset, *lastIndexOffset;
+
+	// merge this into any existing multidraw primitives
+	mergeForward = -1;
+	mergeBack = -1;
+	firstIndexOffset = BUFFER_OFFSET( surf->indexOffset );
+	lastIndexOffset = BUFFER_OFFSET( surf->numIndexes );
+
+	//if (r_mergeMultidraws->integer)
+	{
+		i = 0;
+
+		//if (r_mergeMultidraws->integer == 1)
+		{
+			// lazy merge, only check the last primitive
+			if (tess.multiDrawPrimitives)
+			{
+				i = tess.multiDrawPrimitives - 1;
+			}
+		}
+
+		for (; i < tess.multiDrawPrimitives; i++)
+		{
+			if (tess.multiDrawLastIndex[i] == firstIndexOffset)
+			{
+				mergeBack = i;
+			}
+
+			if (lastIndexOffset == tess.multiDrawFirstIndex[i])
+			{
+				mergeForward = i;
+			}
+		}
+	}
+
+	if (mergeBack != -1 && mergeForward == -1)
+	{
+		tess.multiDrawNumIndexes[mergeBack] += surf->numIndexes;
+		tess.multiDrawLastIndex[mergeBack] = tess.multiDrawFirstIndex[mergeBack] + tess.multiDrawNumIndexes[mergeBack];
+		tess.multiDrawMinIndex[mergeBack] = MIN(tess.multiDrawMinIndex[mergeBack], surf->minIndex);
+		tess.multiDrawMaxIndex[mergeBack] = MAX(tess.multiDrawMaxIndex[mergeBack], surf->maxIndex);
+		//backEnd.pc.c_multidrawsMerged++;
+	}
+	else if (mergeBack == -1 && mergeForward != -1)
+	{
+		tess.multiDrawNumIndexes[mergeForward] += surf->numIndexes;
+		tess.multiDrawFirstIndex[mergeForward] = (glIndex_t *)firstIndexOffset;
+		tess.multiDrawLastIndex[mergeForward] = tess.multiDrawFirstIndex[mergeForward] + tess.multiDrawNumIndexes[mergeForward];
+		tess.multiDrawMinIndex[mergeForward] = MIN(tess.multiDrawMinIndex[mergeForward], surf->minIndex);
+		tess.multiDrawMaxIndex[mergeForward] = MAX(tess.multiDrawMaxIndex[mergeForward], surf->maxIndex);
+		//backEnd.pc.c_multidrawsMerged++;
+	}
+	else if (mergeBack != -1 && mergeForward != -1)
+	{
+		tess.multiDrawNumIndexes[mergeBack] += surf->numIndexes + tess.multiDrawNumIndexes[mergeForward];
+		tess.multiDrawLastIndex[mergeBack] = tess.multiDrawFirstIndex[mergeBack] + tess.multiDrawNumIndexes[mergeBack];
+		tess.multiDrawMinIndex[mergeBack] = MIN(tess.multiDrawMinIndex[mergeBack], MIN(tess.multiDrawMinIndex[mergeForward], surf->minIndex));
+		tess.multiDrawMaxIndex[mergeBack] = MAX(tess.multiDrawMaxIndex[mergeBack], MAX(tess.multiDrawMaxIndex[mergeForward], surf->maxIndex));
+		tess.multiDrawPrimitives--;
+
+		if (mergeForward != tess.multiDrawPrimitives)
+		{
+			tess.multiDrawNumIndexes[mergeForward] = tess.multiDrawNumIndexes[tess.multiDrawPrimitives];
+			tess.multiDrawFirstIndex[mergeForward] = tess.multiDrawFirstIndex[tess.multiDrawPrimitives];
+		}
+		//backEnd.pc.c_multidrawsMerged += 2;
+	}
+	else if (mergeBack == -1 && mergeForward == -1)
+	{
+		tess.multiDrawNumIndexes[tess.multiDrawPrimitives] = surf->numIndexes;
+		tess.multiDrawFirstIndex[tess.multiDrawPrimitives] = (glIndex_t *)firstIndexOffset;
+		tess.multiDrawLastIndex[tess.multiDrawPrimitives] = (glIndex_t *)lastIndexOffset;
+		tess.multiDrawMinIndex[tess.multiDrawPrimitives] = surf->minIndex;
+		tess.multiDrawMaxIndex[tess.multiDrawPrimitives] = surf->maxIndex;
+		tess.multiDrawPrimitives++;
+	}
+
+	tess.numIndexes = surf->numIndexes;
+	tess.numVertexes = surf->numVerts;
+}
+#endif
+
 void (*rb_surfaceTable[SF_NUM_SURFACE_TYPES])( void *) = {
 	(void(*)(void*))RB_SurfaceBad,			// SF_BAD,
 	(void(*)(void*))RB_SurfaceSkip,			// SF_SKIP,
@@ -2254,4 +2346,7 @@ void (*rb_surfaceTable[SF_NUM_SURFACE_TYPES])( void *) = {
 	(void(*)(void*))RB_SurfaceGhoul,		// SF_MDX,
 	(void(*)(void*))RB_SurfaceFlare,		// SF_FLARE,
 	(void(*)(void*))RB_SurfaceEntity,		// SF_ENTITY
+#ifdef USE_VBO_MDV
+	(void(*)(void*))RB_SurfaceVBOMDVMesh	// SF_VBO_MDVMESH
+#endif
 };

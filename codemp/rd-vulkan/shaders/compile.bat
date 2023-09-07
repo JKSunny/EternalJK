@@ -13,7 +13,7 @@ if not exist %bh% (
 set PATH=%tools_dir%;%PATH%
 
 set glsl=glsl\
-set cl=%VULKAN_SDK%\glslangValidator.exe
+set cl=%VULKAN_SDK%\Bin\glslangValidator.exe
 set tmpf=spirv\data.spv
 set outf=+spirv\shader_data.c
 
@@ -70,8 +70,10 @@ for %%f in (%glsl%*.frag) do (
 @rem template shader identifiers and flags
 set "vbo[0]="
 set "vbo[1]=-DUSE_VBO_GHOUL2"
+set "vbo[2]=-DUSE_VBO_MDV"
 set "vbo_id[0]=cpu_"
 set "vbo_id[1]=gpu_ghoul2_"
+set "vbo_id[2]=gpu_mdv_"
 
 set "tx[0]="
 set "tx[1]=-DUSE_TX1"
@@ -99,7 +101,7 @@ SETLOCAL EnableDelayedExpansion
 
 @rem compile generic shader variations from templates
 @rem vertex shader
-for /L %%i in ( 0,1,1 ) do (                @rem shading mode 
+for /L %%i in ( 0,1,2 ) do (                @rem shading mode 
     for /L %%j in ( 0,1,2 ) do (            @rem tx   
         for /L %%k in ( 0,1,1 ) do (        @rem +env
             for /L %%m in ( 0,1,1 ) do (    @rem +fog
@@ -110,7 +112,7 @@ for /L %%i in ( 0,1,1 ) do (                @rem shading mode
 )
 
 @rem fragment shader
-for /L %%i in ( 0,1,1 ) do (                @rem shading mode
+for /L %%i in ( 0,1,2 ) do (                @rem shading mode
     for /L %%j in ( 0,1,2 ) do (            @rem tx 
         for /L %%k in ( 0,1,1 ) do (        @rem +fog
             call :compile_fragment_shader %%i, %%j, %%k

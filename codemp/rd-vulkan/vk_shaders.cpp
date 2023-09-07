@@ -57,13 +57,16 @@ void vk_create_shader_modules( void )
     sh_count = 1;
 #ifdef USE_VBO_GHOUL2
     sh_count++; // hmmm
+#endif
+#ifdef USE_VBO_MDV
+    sh_count++; // hmmm
+#endif
 
-    const char *vbo[] = { "cpu", "gpu ghoul2" };
+    const char *vbo[] = { "cpu", "gpu ghoul2", "gpu mdv" };
     const char *tx[] = { "single", "double", "triple" };
     const char *cl[] = { "", "+cl" };
     const char *env[] = { "", "+env" };
     const char *fog[] = { "", "+fog" };
-#endif
 
     vk.shaders.vert.gen[0][0][0][0][0] = SHADER_MODULE(vert_cpu_tx0);
     vk.shaders.vert.gen[0][0][0][0][1] = SHADER_MODULE(vert_cpu_tx0_fog);
@@ -118,6 +121,34 @@ void vk_create_shader_modules( void )
     vk.shaders.vert.gen[1][2][1][1][1] = SHADER_MODULE(vert_gpu_ghoul2_tx2_cl_env_fog);
 #endif
 
+#ifdef USE_VBO_MDV
+    // GPU MDV/MD3
+    vk.shaders.vert.gen[2][0][0][0][0] = SHADER_MODULE(vert_gpu_mdv_tx0);
+    vk.shaders.vert.gen[2][0][0][0][1] = SHADER_MODULE(vert_gpu_mdv_tx0_fog);
+    vk.shaders.vert.gen[2][0][0][1][0] = SHADER_MODULE(vert_gpu_mdv_tx0_env);
+    vk.shaders.vert.gen[2][0][0][1][1] = SHADER_MODULE(vert_gpu_mdv_tx0_env_fog);
+
+    vk.shaders.vert.gen[2][1][0][0][0] = SHADER_MODULE(vert_gpu_mdv_tx1);
+    vk.shaders.vert.gen[2][1][0][0][1] = SHADER_MODULE(vert_gpu_mdv_tx1_fog);
+    vk.shaders.vert.gen[2][1][0][1][0] = SHADER_MODULE(vert_gpu_mdv_tx1_env);
+    vk.shaders.vert.gen[2][1][0][1][1] = SHADER_MODULE(vert_gpu_mdv_tx1_env_fog);
+
+    vk.shaders.vert.gen[2][1][1][0][0] = SHADER_MODULE(vert_gpu_mdv_tx1_cl);
+    vk.shaders.vert.gen[2][1][1][0][1] = SHADER_MODULE(vert_gpu_mdv_tx1_cl_fog);
+    vk.shaders.vert.gen[2][1][1][1][0] = SHADER_MODULE(vert_gpu_mdv_tx1_cl_env);
+    vk.shaders.vert.gen[2][1][1][1][1] = SHADER_MODULE(vert_gpu_mdv_tx1_cl_env_fog);
+
+    vk.shaders.vert.gen[2][2][0][0][0] = SHADER_MODULE(vert_gpu_mdv_tx2);
+    vk.shaders.vert.gen[2][2][0][0][1] = SHADER_MODULE(vert_gpu_mdv_tx2_fog);
+    vk.shaders.vert.gen[2][2][0][1][0] = SHADER_MODULE(vert_gpu_mdv_tx2_env);
+    vk.shaders.vert.gen[2][2][0][1][1] = SHADER_MODULE(vert_gpu_mdv_tx2_env_fog);
+
+    vk.shaders.vert.gen[2][2][1][0][0] = SHADER_MODULE(vert_gpu_mdv_tx2_cl);
+    vk.shaders.vert.gen[2][2][1][0][1] = SHADER_MODULE(vert_gpu_mdv_tx2_cl_fog);
+    vk.shaders.vert.gen[2][2][1][1][0] = SHADER_MODULE(vert_gpu_mdv_tx2_cl_env);
+    vk.shaders.vert.gen[2][2][1][1][1] = SHADER_MODULE(vert_gpu_mdv_tx2_cl_env_fog);
+#endif
+
     for (i = 0; i < sh_count; i++) {
         for (j = 0; j < 3; j++) {
             for (k = 0; k < 2; k++) {
@@ -154,8 +185,8 @@ void vk_create_shader_modules( void )
     vk.shaders.frag.gen[0][2][1][0] = SHADER_MODULE(frag_cpu_tx2_cl);
     vk.shaders.frag.gen[0][2][1][1] = SHADER_MODULE(frag_cpu_tx2_cl_fog);
 
-    // GPU Ghoul2
 #ifdef USE_VBO_GHOUL2
+    // GPU Ghoul2
     vk.shaders.frag.gen[1][0][0][0] = SHADER_MODULE(frag_gpu_ghoul2_tx0);
     vk.shaders.frag.gen[1][0][0][1] = SHADER_MODULE(frag_gpu_ghoul2_tx0_fog);
 
@@ -172,11 +203,25 @@ void vk_create_shader_modules( void )
     vk.shaders.frag.gen[1][2][1][1] = SHADER_MODULE(frag_gpu_ghoul2_tx2_cl_fog);
 #endif
 
+#ifdef USE_VBO_MDV
+    // GPU MDV/MD3
+    vk.shaders.frag.gen[2][0][0][0] = SHADER_MODULE(frag_gpu_mdv_tx0);
+    vk.shaders.frag.gen[2][0][0][1] = SHADER_MODULE(frag_gpu_mdv_tx0_fog);
+
+    vk.shaders.frag.gen[2][1][0][0] = SHADER_MODULE(frag_gpu_mdv_tx1);
+    vk.shaders.frag.gen[2][1][0][1] = SHADER_MODULE(frag_gpu_mdv_tx1_fog);
+
+    vk.shaders.frag.gen[2][1][1][0] = SHADER_MODULE(frag_gpu_mdv_tx1_cl);
+    vk.shaders.frag.gen[2][1][1][1] = SHADER_MODULE(frag_gpu_mdv_tx1_cl_fog);
+
+    vk.shaders.frag.gen[2][2][0][0] = SHADER_MODULE(frag_gpu_mdv_tx2);
+    vk.shaders.frag.gen[2][2][0][1] = SHADER_MODULE(frag_gpu_mdv_tx2_fog);
+
+    vk.shaders.frag.gen[2][2][1][0] = SHADER_MODULE(frag_gpu_mdv_tx2_cl);
+    vk.shaders.frag.gen[2][2][1][1] = SHADER_MODULE(frag_gpu_mdv_tx2_cl_fog);
+#endif
+
     for (i = 0; i < sh_count; i++) {
-        const char *sh[] = { "cpu", "gpu ghoul2" };
-        const char *tx[] = { "single", "double", "triple" };
-        const char *cl[] = { "", "+cl" };
-        const char *fog[] = { "", "+fog" };
         for (j = 0; j < 3; j++) {
             for (k = 0; k < 2; k++) {
                 for (l = 0; l < 2; l++) {
@@ -239,6 +284,9 @@ void vk_destroy_shader_modules( void )
 
     sh_count = 1;
 #ifdef USE_VBO_GHOUL2
+    sh_count++;
+#endif
+#ifdef USE_VBO_MDV
     sh_count++;
 #endif
 

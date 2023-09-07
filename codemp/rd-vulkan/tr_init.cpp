@@ -947,7 +947,7 @@ void R_Register( void )
 	r_nomip								= ri.Cvar_Get("r_nomip",							"0",						CVAR_ARCHIVE | CVAR_LATCH, "Apply picmip only on worldspawn textures");
 	ri.Cvar_CheckRange(r_nomip, 0, 1, qtrue);
 #ifdef USE_VBO
-	r_vbo								= ri.Cvar_Get("r_vbo",								"0",						CVAR_ARCHIVE | CVAR_LATCH, "Cache static surfaces:\n 0 - off\n 1 - world\n 2 - world + models\n 3 - models");
+	r_vbo								= ri.Cvar_Get("r_vbo",								"0",						CVAR_ARCHIVE | CVAR_LATCH, "Cache static surfaces:\n 0 - off\n 1 - world\n 2 - world + models");
 #endif
 	r_renderWidth						= ri.Cvar_Get("r_renderWidth",						"800",						CVAR_ARCHIVE_ND | CVAR_LATCH, "");
 	r_renderHeight						= ri.Cvar_Get("r_renderHeight",						"600",						CVAR_ARCHIVE_ND | CVAR_LATCH, "");
@@ -1085,7 +1085,8 @@ void R_Init( void ) {
 	vk_create_window();		// Vulkan
 
 #ifdef USE_VBO
-	vk_clear_vbo();
+	vk_release_world_vbo();
+	vk_release_model_vbo();
 #endif
 
 	R_Set2DRatio();

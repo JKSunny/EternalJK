@@ -361,9 +361,13 @@ extern PFN_vkGetImageMemoryRequirements2KHR				qvkGetImageMemoryRequirements2KHR
 
 extern PFN_vkDebugMarkerSetObjectNameEXT				qvkDebugMarkerSetObjectNameEXT;
 
+extern PFN_vkCmdDrawIndexedIndirect						qvkCmdDrawIndexedIndirect;
+
 typedef float mat4_t[16];
 typedef float mat3x4_t[12];
 typedef unsigned int uvec4_t[4];
+
+#define BUFFER_OFFSET(i) ((char *)NULL + (i))
 
 void Matrix16Identity( mat4_t out );
 void Matrix16Copy( const mat4_t in, mat4_t out );
@@ -399,6 +403,7 @@ typedef struct {
 	qboolean				polygon_offset;
 	qboolean				mirror;
 	qboolean				vbo_ghoul2;
+	qboolean				vbo_mdv;
 
 	Vk_Shader_Type			shader_type;	
 	Vk_Shadow_Phase			shadow_phase;
@@ -408,9 +413,6 @@ typedef struct {
 	int line_width;
 	int abs_light;
 	int allow_discard;
-#ifdef USE_VBO_GHOUL2_RGBAGEN_CONSTS
-	int rgbaGen[3];
-#endif
 } Vk_Pipeline_Def;
 
 typedef struct VK_Pipeline {
@@ -454,7 +456,7 @@ typedef struct vkUniformData_s {
 
 typedef struct vkUniformGhoul_s {
 	mat3x4_t boneMatrices[72];
-} vkUniformGhoul_t;
+} vkUniformBones_t;
 #endif
 
 typedef struct {
@@ -526,6 +528,10 @@ typedef struct vk_tess_s {
 	byte				*vertex_buffer_ptr; // pointer to mapped vertex buffer
 	VkDeviceSize		vertex_buffer_offset;
 
+	VkBuffer			indirect_buffer;
+	byte				*indirect_buffer_ptr; // pointer to mapped indirect buffer
+	VkDeviceSize		indirect_buffer_offset;
+
 	VkDescriptorSet		uniform_descriptor;
 	uint32_t			uniform_read_offset;
 	VkDeviceSize		buf_offset[8];
@@ -537,13 +543,15 @@ typedef struct vk_tess_s {
 	struct {
 		uint32_t		start, end;
 		VkDescriptorSet	current[7];	// 0:storage, 1:uniform, 2:color0, 3:color1, 4:color2, 5:fog
-		uint32_t		offset[4];	// 0:storage, 1:uniform, 2:data uniform, 3:ghoul2 uniform
+		uint32_t		offset[4];	// 0:storage, 1:uniform, 2:data uniform, 3:bones uniform
 	} descriptor_set;
 	
 	uint32_t			num_indexes; // value from most recent vk_bind_index() call
 	VkPipeline			last_pipeline;
 	Vk_Depth_Range		depth_range;
 	VkRect2D			scissor_rect;
+
+	uint32_t			bones_ubo_offset;
 } vk_tess_t;
 
 // Vk_Instance contains engine-specific vulkan resources that persist entire renderer lifetime.
@@ -666,7 +674,7 @@ typedef struct {
 	struct {
 		VkBuffer		vertex_buffer;
 		VkDeviceMemory	buffer_memory;
-	} vbo[MAX_VBOS];
+	} vbo;
 
 	int vbo_index;
 	int vbo_world_index;
@@ -683,6 +691,11 @@ typedef struct {
 	VkDeviceMemory		geometry_buffer_memory;
 	VkDeviceSize		geometry_buffer_size;
 	VkDeviceSize		geometry_buffer_size_new;
+
+	// host visible memory that holds indirect drawdata
+	VkDeviceMemory		indirect_buffer_memory;
+	VkDeviceSize		indirect_buffer_size;
+	VkDeviceSize		indirect_buffer_size_new;
 
 	VkDescriptorPool		descriptor_pool;
 	VkDescriptorSetLayout	set_layout_sampler;
@@ -758,16 +771,20 @@ typedef struct {
 
 	uint32_t storage_alignment;
 	uint32_t uniform_item_size;
+
 #ifdef USE_VBO_GHOUL2
 	uint32_t uniform_data_item_size;
-	uint32_t uniform_ghoul_item_size;
+	uint32_t uniform_bones_item_size;
+
+	uint32_t ghoul2_vbo_stride;
+	uint32_t mdv_vbo_stride;
 #endif
 	uint32_t uniform_alignment;
 
 	// shader modules.
 	struct {
 		struct {
-			VkShaderModule gen[2][3][2][2][2]; // sh[0,1], tx[0,1,2], cl[0,1] env0[0,1] fog[0,1]
+			VkShaderModule gen[3][3][2][2][2]; // sh[0,1,2], tx[0,1,2], cl[0,1] env0[0,1] fog[0,1]
 			VkShaderModule light[2]; // fog[0,1]
 			VkShaderModule gen0_ident;
 		}	vert;
@@ -775,7 +792,7 @@ typedef struct {
 		struct {
 			VkShaderModule gen0_ident;
 			VkShaderModule gen0_df;
-			VkShaderModule gen[2][3][2][2]; // sh[0,1], tx[0,1,2] cl[0,1] fog[0,1]
+			VkShaderModule gen[3][3][2][2]; // sh[0,1,2], tx[0,1,2] cl[0,1] fog[0,1]
 			VkShaderModule light[2][2]; // linear[0,1] fog[0,1]
 		}	frag;
 
@@ -809,6 +826,7 @@ typedef struct {
 
 	qboolean vboWorldActive;
 	qboolean vboGhoul2Active;
+	qboolean vboMdvActive;
 
 	float maxAnisotropy;
 	float maxLod;
@@ -905,12 +923,15 @@ void		vk_release_resources( void );
 void		vk_read_pixels( byte *buffer, uint32_t width, uint32_t height );
 
 // vbo
-void		vk_clear_vbo( void );
-void		vk_bind_vbo_index( uint32_t index );
+void		vk_release_world_vbo( void );
+void		vk_release_model_vbo( void );
 qboolean	vk_alloc_vbo( const char *name, const byte *vbo_data, int vbo_size );
 void		VBO_PrepareQueues( void );
 void		VBO_RenderIBOItems( void );
 void		VBO_ClearQueue( void );
+
+int			get_mdv_stride( void );
+int			get_mdxm_stride( void );
 
 // shader
 void		vk_create_shader_modules( void );
@@ -960,6 +981,7 @@ void		vk_create_storage_buffer( uint32_t size );
 void		vk_update_descriptor_offset( int index, uint32_t offset );
 void		vk_init_descriptors( void );
 void		vk_create_vertex_buffer( VkDeviceSize size );
+void		vk_create_indirect_buffer( VkDeviceSize size );
 VkBuffer	vk_get_vertex_buffer( void );
 void		vk_update_descriptor( int tmu, VkDescriptorSet curDesSet );
 uint32_t	vk_find_pipeline_ext( uint32_t base, const Vk_Pipeline_Def *def, qboolean use );
@@ -967,9 +989,7 @@ VkPipeline	vk_gen_pipeline( uint32_t index );
 void		vk_end_render_pass( void );
 void		vk_begin_main_render_pass( void );
 void		vk_get_pipeline_def( uint32_t pipeline, Vk_Pipeline_Def *def );
-#ifdef USE_VBO_GHOUL2
-mat3x4_t		*vk_get_uniform_ghoul_bones( void );
-#endif
+uint32_t	vk_append_uniform( void *uniform, size_t size, uint32_t min_offset );
 
 // image process
 void		GetScaledDimension( const unsigned int width, const unsigned int height, 

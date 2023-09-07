@@ -198,6 +198,7 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 	drawSurf_t		*drawSurf;
 	unsigned int	oldSort;
 	float			oldShaderSort, originalTime;
+	CBoneCache		*oldBoneCache = nullptr;
 
 #ifdef USE_VANILLA_SHADOWFINISH
 	qboolean		didShadowPass;
@@ -262,6 +263,17 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 		// entities merged into a single batch, like smoke and blood puff sprites
 
 		push_constant = qfalse;
+
+		if ( *drawSurf->surface == SF_MDX )
+		{
+			if ( ((CRenderableSurface*)drawSurf->surface)->boneCache != oldBoneCache )
+			{
+				RB_EndSurface();
+				RB_BeginSurface( shader, fogNum );
+				oldBoneCache = ((CRenderableSurface*)drawSurf->surface)->boneCache;
+				vk.cmd->bones_ubo_offset = RB_GetBoneUboOffset((CRenderableSurface*)drawSurf->surface);
+			}
+		}
 
 		//if (((oldSort ^ drawSurfs->sort) & ~QSORT_REFENTITYNUM_MASK) || !shader->entityMergable) {
 		if ( shader != oldShader || fogNum != oldFogNum || dlighted != oldDlighted
@@ -336,7 +348,7 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 			vk_set_depthrange( depthRange );
 
 			if ( push_constant ) {
-				Com_Memcpy(vk_world.modelview_transform, backEnd.ori.modelMatrix, 64);
+				Com_Memcpy(vk_world.modelview_transform, backEnd.ori.modelViewMatrix, 64);
 				vk_update_mvp(NULL);
 			}
 
@@ -840,6 +852,43 @@ static void RB_LightingPass( void )
 }
 #endif
 
+static void vk_update_ghoul2_constants( const trRefdef_t *refdef ) {
+	uint32_t i;
+
+	if ( !vk.vboGhoul2Active )
+		return;
+
+	for ( i = 0; i < refdef->num_entities; i++ )
+	{
+		const trRefEntity_t *ent = &refdef->entities[i];
+		if (ent->e.reType != RT_MODEL)
+			continue;
+
+		model_t *model = R_GetModelByHandle(ent->e.hModel);
+		if (!model)
+			continue;
+
+		switch (model->type)
+		{
+		case MOD_MDXM:
+		case MOD_BAD:
+		{
+			// Transform Bones and upload them
+			RB_TransformBones( ent, refdef );
+		}
+		break;
+
+		default:
+			break;
+		}
+	}
+
+}
+static void RB_UpdateUniformConstants( const trRefdef_t *refdef, const viewParms_t *viewParms ) 
+{
+	vk_update_ghoul2_constants( refdef );
+}
+
 /*
 =============
 RB_DrawSurfs
@@ -862,6 +911,8 @@ const void	*RB_DrawSurfs( const void *data ) {
 #ifdef USE_VBO
 	VBO_UnBind();
 #endif
+
+	RB_UpdateUniformConstants( &backEnd.refdef, &backEnd.viewParms );
 
 	// clear the z buffer, set the modelview, etc
 	RB_BeginDrawingView();

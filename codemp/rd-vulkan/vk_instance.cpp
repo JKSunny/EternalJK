@@ -146,6 +146,8 @@ PFN_vkGetImageMemoryRequirements2KHR			qvkGetImageMemoryRequirements2KHR;
 
 PFN_vkDebugMarkerSetObjectNameEXT				qvkDebugMarkerSetObjectNameEXT;
 
+PFN_vkCmdDrawIndexedIndirect					qvkCmdDrawIndexedIndirect;
+
 static char *Q_stradd( char *dst, const char *src )
 {
     char c;
@@ -666,6 +668,10 @@ static qboolean vk_create_device( VkPhysicalDevice physical_device, int device_i
 			vk.fragmentStores = qtrue;
 		}
 
+		if(device_features.multiDrawIndirect) {
+			features.multiDrawIndirect = VK_TRUE;
+		}
+
 		if (r_ext_texture_filter_anisotropic->integer && device_features.samplerAnisotropy) {
 			features.samplerAnisotropy = VK_TRUE;
 			vk.samplerAnisotropy = qtrue;
@@ -931,6 +937,8 @@ __initStart:
 	if (vk.debugMarkers) {
 		INIT_DEVICE_FUNCTION_EXT(vkDebugMarkerSetObjectNameEXT)
 	}
+
+	INIT_DEVICE_FUNCTION(vkCmdDrawIndexedIndirect)
 }
 
 #undef INIT_INSTANCE_FUNCTION
@@ -1048,6 +1056,8 @@ void vk_deinit_library( void )
 	qvkGetImageMemoryRequirements2KHR = NULL;
 
 	qvkDebugMarkerSetObjectNameEXT = NULL;
+
+	qvkCmdDrawIndexedIndirect = NULL;
 }
 
 #define FORMAT_DEPTH(format, r_bits, g_bits, b_bits) case(VK_FORMAT_##format): *r = r_bits; *b = b_bits; *g = g_bits; return qtrue;

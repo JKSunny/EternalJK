@@ -25,7 +25,7 @@ layout(set = 1, binding = 0) uniform UBO {
 };
 #endif
 
-#if defined(USE_VBO_GHOUL2)
+#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
 layout(set = 1, binding = 1) uniform UBOG2 {
 	vec4 eyePos2;
 	vec4 ambientLight;
@@ -37,7 +37,6 @@ layout(set = 1, binding = 1) uniform UBOG2 {
 	vec4 vertColor[3];
 	vec4 disintegrationInfo;
 	vec4 deformInfo[3];
-
 };	
 
 layout(location = 7) in vec4 var_Normal;
@@ -356,7 +355,7 @@ void main() {
 	gl_FragDepth = gl_FragCoord.z;
 #else
 
-#if defined(USE_VBO_GHOUL2)
+#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
 	L = var_LightDir.xyz;
 	float sqrLightDist = dot(L, L);
 	L /= sqrt(sqrLightDist);
