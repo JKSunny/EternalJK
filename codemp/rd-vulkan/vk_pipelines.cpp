@@ -46,7 +46,7 @@ static void vk_create_layout_binding( int binding, VkDescriptorType type,
     bind[count].pImmutableSamplers = NULL;
     count++;
 #if defined(USE_VBO_GHOUL2)
-    if ( is_uniform ) {
+    if ( is_uniform && vk.vboGhoul2Active ) {
         bind[count].binding = binding + 1; // binding 1 
         bind[count].descriptorType = type;
         bind[count].descriptorCount = 1;

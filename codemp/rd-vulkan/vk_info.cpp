@@ -424,14 +424,15 @@ void vk_info_f( void ) {
     ri.Printf(PRINT_ALL, "image chunks: %i\n", vk_world.num_image_chunks);
 
 #ifdef USE_VBO
-    const int vbo_mode = MIN( r_vbo->integer, 3 );
-    const char *vbo_mode_string[4] = { "off", "world", "world + models", "models" };
+    const int vbo_mode = MIN( r_vbo->integer, 2 );
+    const char *vbo_mode_string[4] = { "off", "world only", "world + models" };
+    const char *yesno[] = {"no ", "yes"};
 
     ri.Printf( PRINT_ALL, "VBO mode: %s\n", vbo_mode_string[vbo_mode] );
 
-    if ( r_vbo->integer ) {
-        ri.Printf( PRINT_ALL, "VBO buffers: %i, world index: %i\n", vk.vbo_count, vk.vbo_world_index );
-    }
+    if( vbo_mode == 2 )
+        ri.Printf( PRINT_ALL, "VBO model buffers: %i", tr.numVBOs );
+
 #endif
 #else
     ri.Printf(PRINT_ALL, "vk_info statistics are not enabled in this build.\n");

@@ -264,7 +264,7 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 
 		push_constant = qfalse;
 
-		if ( *drawSurf->surface == SF_MDX )
+		if ( vk.vboGhoul2Active && *drawSurf->surface == SF_MDX )
 		{
 			if ( ((CRenderableSurface*)drawSurf->surface)->boneCache != oldBoneCache )
 			{

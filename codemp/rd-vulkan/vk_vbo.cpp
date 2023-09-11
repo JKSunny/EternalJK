@@ -1735,8 +1735,6 @@ qboolean vk_alloc_vbo( const char *name, const byte *vbo_data, int vbo_size )
 	VK_SET_OBJECT_NAME( vk.vbo.vertex_buffer, va( "static VBO %s", name ), VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT );
 	VK_SET_OBJECT_NAME( vk.vbo.buffer_memory, va( "static VBO memory %s", name ), VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT );
 
-	vk.vbo_count++;
-
 	return qtrue;
 }
 #endif

@@ -678,7 +678,6 @@ typedef struct {
 
 	int vbo_index;
 	int vbo_world_index;
-	int vbo_count;
 
 	// statistics
 	struct {
