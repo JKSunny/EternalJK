@@ -172,6 +172,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #endif
 
 typedef enum {
+	TYPE_COLOR_BLACK,
 	TYPE_COLOR_WHITE,
 	TYPE_COLOR_GREEN,
 	TYPE_COLOR_RED,
@@ -182,23 +183,39 @@ typedef enum {
 	TYPE_SINGLE_TEXTURE_LIGHTING_LINEAR,
 
 	TYPE_SINGLE_TEXTURE_DF,
-	TYPE_SINGLE_TEXTURE_IDENTITY,
 
-	TYPE_GENERIC_BEGIN,
+	TYPE_GENERIC_BEGIN, // start of non-env/env shader pairs
 	TYPE_SINGLE_TEXTURE = TYPE_GENERIC_BEGIN,
 	TYPE_SINGLE_TEXTURE_ENV,
 
+	TYPE_SINGLE_TEXTURE_IDENTITY,
+	TYPE_SINGLE_TEXTURE_IDENTITY_ENV,
+
+	TYPE_SINGLE_TEXTURE_FIXED_COLOR,
+	TYPE_SINGLE_TEXTURE_FIXED_COLOR_ENV,
+
+	TYPE_MULTI_BEGIN, // start of multi-textured stages
+	TYPE_MULTI_TEXTURE_ADD2_IDENTITY = TYPE_MULTI_BEGIN,
+	TYPE_MULTI_TEXTURE_ADD2_IDENTITY_ENV,
+	TYPE_MULTI_TEXTURE_MUL2_IDENTITY,
+	TYPE_MULTI_TEXTURE_MUL2_IDENTITY_ENV,
+
+	TYPE_MULTI_TEXTURE_ADD2_FIXED_COLOR,
+	TYPE_MULTI_TEXTURE_ADD2_FIXED_COLOR_ENV,
+	TYPE_MULTI_TEXTURE_MUL2_FIXED_COLOR,
+	TYPE_MULTI_TEXTURE_MUL2_FIXED_COLOR_ENV,
+
 	TYPE_MULTI_TEXTURE_MUL2,
 	TYPE_MULTI_TEXTURE_MUL2_ENV,
-	TYPE_MULTI_TEXTURE_ADD2_IDENTITY,
-	TYPE_MULTI_TEXTURE_ADD2_IDENTITY_ENV,
+	TYPE_MULTI_TEXTURE_ADD2_1_1,
+	TYPE_MULTI_TEXTURE_ADD2_1_1_ENV,
 	TYPE_MULTI_TEXTURE_ADD2,
 	TYPE_MULTI_TEXTURE_ADD2_ENV,
 
 	TYPE_MULTI_TEXTURE_MUL3,
 	TYPE_MULTI_TEXTURE_MUL3_ENV,
-	TYPE_MULTI_TEXTURE_ADD3_IDENTITY,
-	TYPE_MULTI_TEXTURE_ADD3_IDENTITY_ENV,
+	TYPE_MULTI_TEXTURE_ADD3_1_1,
+	TYPE_MULTI_TEXTURE_ADD3_1_1_ENV,
 	TYPE_MULTI_TEXTURE_ADD3,
 	TYPE_MULTI_TEXTURE_ADD3_ENV,
 
@@ -409,10 +426,15 @@ typedef struct {
 	Vk_Shadow_Phase			shadow_phase;
 	Vk_Primitive_Topology	primitives;
 
-	int fog_stage; // off, fog-in / fog-out
 	int line_width;
+	int fog_stage; // off, fog-in / fog-out
 	int abs_light;
 	int allow_discard;
+	int acff; // none, rgb, rgba, alpha
+	struct {
+		byte rgb;
+		byte alpha;
+	} color;
 } Vk_Pipeline_Def;
 
 typedef struct VK_Pipeline {
@@ -729,7 +751,7 @@ typedef struct {
 		// dim 0 is based on fogPass_t: 0 - corresponds to FP_EQUAL, 1 - corresponds to FP_LE.
 		// dim 1 is directly a cullType_t enum value.
 		// dim 2 is a polygon offset value (0 - off, 1 - on).
-		uint32_t fog_pipelines[2][2][3][2];
+		uint32_t fog_pipelines[3][2][3][2];
 
 #ifdef USE_PMLIGHT
 		// cullType[3], polygonOffset[2], fogStage[2], absLight[2]
@@ -784,14 +806,16 @@ typedef struct {
 	struct {
 		struct {
 			VkShaderModule gen[3][3][2][2][2]; // sh[0,1,2], tx[0,1,2], cl[0,1] env0[0,1] fog[0,1]
+			VkShaderModule ident1[3][2][2][2];
+			VkShaderModule fixed[3][2][2][2];
 			VkShaderModule light[2]; // fog[0,1]
-			VkShaderModule gen0_ident;
 		}	vert;
 
 		struct {
-			VkShaderModule gen0_ident;
 			VkShaderModule gen0_df;
 			VkShaderModule gen[3][3][2][2]; // sh[0,1,2], tx[0,1,2] cl[0,1] fog[0,1]
+			VkShaderModule ident1[3][2][2]; // tx[0,1], fog[0,1]
+			VkShaderModule fixed[3][2][2];  // tx[0,1], fog[0,1]
 			VkShaderModule light[2][2]; // linear[0,1] fog[0,1]
 		}	frag;
 

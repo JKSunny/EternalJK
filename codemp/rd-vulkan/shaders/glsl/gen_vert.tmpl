@@ -59,12 +59,6 @@ layout(location = 8) out vec4 var_LightDir;
 
 layout(location = 0) in vec3 in_position;
 
-#if defined(USE_CL0_IDENT) || defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
-// use fixed color from frag.spec.constant.8
-#else
-layout(location = 1) in vec4 in_color0;
-#endif
-
 #ifndef USE_ENV
 layout(location = 2) in vec2 in_tex_coord0;
 #endif
@@ -80,29 +74,27 @@ layout(location = 4) in vec2 in_tex_coord2;
 layout(location = 5) in vec3 in_normal;
 #endif
 
-#if defined(USE_CL1) && !defined(USE_VBO_GHOUL2) && !defined(USE_VBO_MDV)
-layout(location = 6) in vec4 in_color1;
-#endif
-#if defined(USE_CL2) && !defined(USE_VBO_GHOUL2) && !defined(USE_VBO_MDV)
-layout(location = 7) in vec4 in_color2;
-#endif
-
-#if defined(USE_VBO_GHOUL2)
-layout(location = 8) in uvec4 in_bones;
-layout(location = 9) in vec4 in_weights;
-#endif
-
-#ifdef USE_CL0_IDENT
-// use fixed color from frag.spec.constant.8
+#if defined (USE_CLX_IDENT) || defined (USE_FIXED_COLOR)
+// use either 1.0 or fixed (rgb+a) color from spec.constants
 #else
-layout(location = 0) out vec4 frag_color0;
-#endif
+	#if !defined(USE_VBO_GHOUL2) && !defined(USE_VBO_MDV)
+		layout(location = 1) in vec4 in_color0;
+	#endif
 
-#ifdef USE_CL1
-layout(location = 5) out vec4 frag_color1;
-#endif
-#ifdef USE_CL2
-layout(location = 6) out vec4 frag_color2;
+	#if defined(USE_CL1) && !defined(USE_VBO_GHOUL2) && !defined(USE_VBO_MDV)
+	layout(location = 6) in vec4 in_color1;
+	#endif
+	#if defined(USE_CL2) && !defined(USE_VBO_GHOUL2) && !defined(USE_VBO_MDV)
+	layout(location = 7) in vec4 in_color2;
+	#endif
+
+	layout(location = 0) out vec4 frag_color0;
+	#ifdef USE_CL1
+	layout(location = 5) out vec4 frag_color1;
+	#endif
+	#ifdef USE_CL2
+	layout(location = 6) out vec4 frag_color2;
+	#endif
 #endif
 
 layout(location = 1) out vec2 frag_tex_coord0;
@@ -115,6 +107,11 @@ layout(location = 3) out vec2 frag_tex_coord2;
 
 #ifdef USE_FOG
 layout(location = 4) out vec2 fog_tex_coord;
+#endif
+
+#if defined(USE_VBO_GHOUL2)
+layout(location = 8) in uvec4 in_bones;
+layout(location = 9) in vec4 in_weights;
 #endif
 
 out gl_PerVertex {
@@ -374,11 +371,6 @@ void main() {
 	vec3 position = skin_matrix * vec4(in_position, 1.0);
 	vec3 normal = normalize(skin_matrix * vec4(in_normal, 0.0));
 
-	#ifdef USE_VK_PBR
-		out_ntb.tangent = normalize(skin_matrix * vec4(out_ntb.tangent, 0.0));	
-		out_ntb.tangent	= normalize(mat3(u_ModelMatrix) * out_ntb.tangent);
-	#endif
-	
 	if( int( deformInfo[2][0] ) != 0 ){ // !DEFORM_NONE
 		position	= DeformPosition( position, normal, frag_tex_coord0 );
 		normal		= DeformNormal( position, normal );
@@ -390,32 +382,39 @@ void main() {
 	#endif
 #endif
 
-#ifndef USE_CL0_IDENT
+#if defined (USE_CLX_IDENT) || defined (USE_FIXED_COLOR)
+	// use either 1.0 or fixed (rgb+a) color from spec.constants
+#else
 	#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
 		frag_color0 = CalcColor( 0, position, normal );
 	#else
 		frag_color0 = in_color0;
 	#endif
-#endif
-#ifdef USE_CL1
-	#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
-		frag_color1 = CalcColor( 1, position, normal );
-	#else
-		frag_color1 = in_color1;
+
+	#ifdef USE_CL1
+		#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
+			frag_color1 = CalcColor( 1, position, normal );
+		#else
+			frag_color1 = in_color1;
+		#endif
 	#endif
-#endif
-#ifdef USE_CL2
-	#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
-		frag_color2 = CalcColor( 2, position, normal );
-	#else
-		frag_color2 = in_color2;
+	#ifdef USE_CL2
+		#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
+			frag_color2 = CalcColor( 2, position, normal );
+		#else
+			frag_color2 = in_color2;
+		#endif
 	#endif
 #endif
 
 	gl_Position = mvp * vec4(position, 1.0);
 
 #ifdef USE_ENV
+	#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
+	vec3 viewer = normalize(u_localViewOrigin.xyz - position);
+	#else
 	vec3 viewer = normalize(eyePos.xyz - position);
+	#endif
 	float d = dot(normal, viewer); 
 	vec2 reflected = normal.yz * 2 * d - viewer.yz;
 
@@ -451,9 +450,9 @@ void main() {
 	}
 
 	fog_tex_coord = vec2(s, t);
-#endif
+#endif // USE_FOG
 
-#if defined(USE_VBO_GHOUL2)
+#if !defined(USE_CLX_IDENT) && (defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV))
 	position		= (u_ModelMatrix * vec4(position, 1.0)).xyz;
 	normal			= normalize(mat3(u_ModelMatrix) * normal);
 

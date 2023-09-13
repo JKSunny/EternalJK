@@ -519,6 +519,7 @@ typedef struct textureBundle_s {
 	qboolean		isScreenMap;
 
 	int				videoMapHandle;
+	bool glow;
 } textureBundle_t;
 
 
@@ -1556,6 +1557,7 @@ typedef struct trGlobals_s {
 	int						numDrawSurfCmds;
 	drawSurfsCommand_t		*drawSurfCmd;
 	int						lastRenderCommand;
+	int						numFogs; // read before parsing shaders
 
 	vec4_t					*fastskyColor;
 } trGlobals_t;
@@ -1679,6 +1681,7 @@ extern cvar_t	*r_ext_texture_filter_anisotropic;
 extern cvar_t	*r_environmentMapping;
 
 extern cvar_t	*r_DynamicGlow;
+extern cvar_t	*r_DynamicGlowAllStages;
 extern cvar_t	*r_DynamicGlowPasses;
 extern cvar_t	*r_DynamicGlowDelta;
 extern cvar_t	*r_DynamicGlowIntensity;

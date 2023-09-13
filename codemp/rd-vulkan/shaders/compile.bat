@@ -46,13 +46,9 @@ for %%f in (%glsl%*.frag) do (
     del /Q "%tmpf%"
 )
 
-"%cl%" -S vert -V -o "%tmpf%" %glsl%gen_vert.tmpl -DUSE_CL0_IDENT
-"%bh%" "%tmpf%" %outf% vert_tx0_ident
+@rem single-texture fragment, depth-fragment
 
-"%cl%" -S frag -V -o "%tmpf%" %glsl%gen_frag.tmpl -DUSE_CL0_IDENT
-"%bh%" "%tmpf%" %outf% frag_tx0_ident
-
-"%cl%" -S frag -V -o "%tmpf%" %glsl%gen_frag.tmpl -DUSE_ATEST -DUSE_DF
+"%cl%" -S frag -V -o "%tmpf%" %glsl%gen_frag.tmpl -DUSE_CLX_IDENT -DUSE_ATEST -DUSE_DF
 "%bh%" "%tmpf%" %outf% frag_tx0_df
 
 @rem compile lighting shader variations from templates
@@ -115,23 +111,33 @@ SETLOCAL EnableDelayedExpansion
 
 "%bs%" %outfb% "void vk_bind_generated_shaders( void ){"
 
-@rem compile generic shader variations from templates
-@rem generic vertex shader
-for /L %%i in ( 0,1,2 ) do (                @rem shading mode 
+@rem compile shader variations from templates
+@rem vertex shader
+for /L %%i in ( 0,1,2 ) do (                @rem vbo ( 0:none 1:ghoul2 2:mdv/md3 )
     for /L %%j in ( 0,1,2 ) do (            @rem tx   
         for /L %%k in ( 0,1,1 ) do (        @rem +env
             for /L %%m in ( 0,1,1 ) do (    @rem +fog
                 call :compile_generic_vertex_shader %%i, %%j, %%k, %%m
+
+                if %%j lss 2 (  @rem skip tx2 for ident and fixed
+                   call :compile_ident1_vertex_shader %%i, %%j, %%k, %%m
+                   call :compile_fixed_vertex_shader %%i, %%j, %%k, %%m
+                )
             )
         )
     )
 )
 
-@rem generic fragment shader
-for /L %%i in ( 0,1,2 ) do (                @rem shading mode
+@rem fragment shader
+for /L %%i in ( 0,1,2 ) do (                @rem vbo ( 0:none 1:ghoul2 2:mdv/md3 )
     for /L %%j in ( 0,1,2 ) do (            @rem tx 
         for /L %%k in ( 0,1,1 ) do (        @rem +fog
             call :compile_generic_fragment_shader %%i, %%j, %%k
+
+            if %%j lss 2 (  @rem skip tx2 for ident and fixed
+                call :compile_ident1_fragment_shader %%i, %%j, %%k
+                call :compile_fixed_fragment_shader %%i, %%j, %%k
+            )
         )
     )
 )
@@ -142,6 +148,52 @@ del /Q "%tmpf%"
 
 pause
 
+
+
+@rem identity shaders
+:compile_ident1_vertex_shader
+    "%cl%" -S vert -V -o "%tmpf%" %glsl%gen_vert.tmpl -DUSE_CLX_IDENT !vbo[%1]! !tx[%2]! !env[%3]! !fog[%4]!
+    "%bh%" "%tmpf%" %outf% vert_!vbo_id[%1]!!tx_id[%2]!_ident1!env_id[%3]!!fog_id[%4]!
+    "%bs%" %outfb% "    vk.shaders.vert.ident1[%1][%2][%3][%4] = SHADER_MODULE( vert_!vbo_id[%1]!!tx_id[%2]!_ident1!env_id[%3]!!fog_id[%4]! );"
+	"%bs%" %outfb% "    vk_set_shader_name( vk.shaders.vert.ident1[%1][%2][%3][%4], ""vert_!vbo_id[%1]!!tx_id[%2]!_ident1!env_id[%3]!!fog_id[%4]!"" );"
+exit /B
+
+:compile_ident1_fragment_shader
+    set "flags=!vbo[%1]! !tx[%2]! !fog[%3]!"
+    set "name=!vbo_id[%1]!!tx_id[%2]!_ident1!fog_id[%3]!"
+    if %2 equ 0 ( set "flags=%flags% -DUSE_ATEST" )
+
+    "%cl%" -S frag -V -o "%tmpf%" %glsl%gen_frag.tmpl -DUSE_CLX_IDENT %flags%
+    "%bh%" "%tmpf%" %outf% frag_%name%
+	"%bs%" %outfb% "    vk.shaders.frag.ident1[%1][%2][%3] = SHADER_MODULE( frag_%name% );"
+	"%bs%" %outfb% "    vk_set_shader_name( vk.shaders.frag.ident1[%1][%2][%3], ""frag_%name%"" );"
+exit /B
+
+
+
+@rem fixed shaders
+:compile_fixed_vertex_shader
+    "%cl%" -S vert -V -o "%tmpf%" %glsl%gen_vert.tmpl -DUSE_FIXED_COLOR !vbo[%1]! !tx[%2]! !env[%3]! !fog[%4]!
+    "%bh%" "%tmpf%" %outf% vert_!vbo_id[%1]!!tx_id[%2]!_fixed!env_id[%3]!!fog_id[%4]!
+	
+    "%bs%" %outfb% "    vk.shaders.vert.fixed[%1][%2][%3][%4] = SHADER_MODULE( vert_!vbo_id[%1]!!tx_id[%2]!_fixed!env_id[%3]!!fog_id[%4]! );"
+	"%bs%" %outfb% "    vk_set_shader_name( vk.shaders.vert.fixed[%1][%2][%3][%4], ""vert_!vbo_id[%1]!!tx_id[%2]!_fixed!env_id[%3]!!fog_id[%4]!"" );"
+exit /B
+
+:compile_fixed_fragment_shader
+    set "flags=!vbo[%1]! !tx[%2]! !fog[%3]!"
+    set "name=!vbo_id[%1]!!tx_id[%2]!_fixed!fog_id[%3]!"
+    if %2 equ 0 ( set "flags=%flags% -DUSE_ATEST" )
+
+    "%cl%" -S frag -V -o "%tmpf%" %glsl%gen_frag.tmpl -DUSE_FIXED_COLOR %flags%
+    "%bh%" "%tmpf%" %outf% frag_%name%
+	"%bs%" %outfb% "    vk.shaders.frag.fixed[%1][%2][%3] = SHADER_MODULE( frag_%name% );"
+	"%bs%" %outfb% "    vk_set_shader_name( vk.shaders.frag.fixed[%1][%2][%3], ""frag_%name%"" );"
+exit /B
+
+
+
+@rem generic shaders
 :compile_generic_vertex_shader
     "%cl%" -S vert -V -o "%tmpf%" %glsl%gen_vert.tmpl !vbo[%1]! !tx[%2]! !env[%3]! !fog[%4]!
     "%bh%" "%tmpf%" %outf% vert_!vbo_id[%1]!!tx_id[%2]!!env_id[%3]!!fog_id[%4]!

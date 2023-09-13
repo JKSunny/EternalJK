@@ -1221,7 +1221,7 @@ static uint32_t vk_push_uniform_data( const vkUniformData_t *uniform ) {
 
 	vk_reset_descriptor( 1 );
 	vk_update_descriptor( 1, vk.cmd->uniform_descriptor );
-	vk_update_descriptor_offset( 1, 0 );
+	//vk_update_descriptor_offset( 1, 0 );
 	vk_update_descriptor_offset( 2, vk.cmd->uniform_read_offset );
 
 	return offset;
@@ -1352,7 +1352,7 @@ static vkUniformData_t	uniform_data;
 
 static void RB_FogPass( void ) {
 #ifdef USE_VBO_GHOUL2
-	const int sh = ( tess.vbo_model_index && tess.surfType == SF_MDX ) ? 1 : 0;
+	const int sh = ( tess.vbo_model_index ) ? ( tess.surfType == SF_MDX ? 1 : 2 ) : 0;
 #else
 	const int sh = 0;
 #endif
@@ -1964,6 +1964,7 @@ void RB_StageIteratorGeneric( void )
 	qboolean				fogCollapse;
 	qboolean				is_ghoul2_vbo;
 	qboolean				is_mdv_vbo;
+	qboolean				push_uniform;
 
 #ifdef USE_VBO
 	if (tess.vbo_world_index != 0) {
@@ -2084,9 +2085,18 @@ void RB_StageIteratorGeneric( void )
 		for (i = 0; i < pStage->numTexBundles; i++) {
 			if (pStage->bundle[i].image[0] != NULL) {
 				vk_select_texture(i);
+
+				// use blackimage for non glow stages during a glowPass
+				if ( backEnd.isGlowPass && !pStage->bundle[i].glow ) {
+					vk_bind( tr.blackImage );
+					Com_Memset( tess.svars.colors[i], 0xff, tess.numVertexes * 4 );
+					continue;
+				}
+
+
 				R_BindAnimatedImage(&pStage->bundle[i]);
 #if defined(USE_VBO_GHOUL2)
-				if ( tess_flags & (TESS_RGBA0 << i) && tess.vbo_model_index ) {
+				if ( tess.vbo_model_index ) {
 					vk_compute_colors( i, pStage, forceRGBGen );
 					continue;
 				}
@@ -2155,22 +2165,6 @@ void RB_StageIteratorGeneric( void )
 		if ( r_lightmap->integer && pStage->bundle[1].isLightmap ) {
 			//vk_select_texture(0);
 			vk_bind( tr.whiteImage ); // replace diffuse texture with a white one thus effectively render only lightmap
-		}
-
-		// move glow bundle to texture 0
-		// does not work with multitextured dglow yet.
-		if ( backEnd.isGlowPass && pStage->glow ){
-			vk_get_pipeline_def( pStage->vk_pipeline[fog_stage], &def );
-
-			def.vbo_ghoul2 = is_ghoul2_vbo;
-			def.vbo_mdv = is_mdv_vbo;
-
-			def.shader_type = TYPE_SINGLE_TEXTURE;
-			pipeline = vk_find_pipeline_ext( 0, &def, qfalse );
-
-			vk_select_texture( 0 );
-			vk_bind( pStage->bundle[ ( pStage->numTexBundles - 1 ) ].image[0] );
-			Com_Memcpy( tess.svars.colors[0], tess.svars.colors[( pStage->numTexBundles - 1 )], sizeof(tess.svars.colors[0]) );
 		}
 
 #if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
