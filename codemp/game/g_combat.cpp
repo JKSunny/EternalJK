@@ -1906,7 +1906,7 @@ void player_die( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, int
 
 		
 		//award bonus credits to teammates:
-		if(jkg_teamKillBonus.integer > 0 && !g_dontPenalizeTeam)
+		if(jkg_teamKillBonus.integer > 0 && !g_dontPenalizeTeam && level.gametype >= GT_TEAM)
 		{
 			gentity_t* player; int reward;
 
