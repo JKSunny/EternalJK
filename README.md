@@ -12,7 +12,7 @@
 
 
 ### Downloads ###
-The most update links are available on the download page on the website, under the [test releases section](https://www.jkgalaxies.net/download.html#testdiv), but you can also use the following links which are occasionally updated:
+The most update links are available on the download page on the website, under the [test releases section](https://www.jkgalaxies.net/download.html#testdiv), but you can also use the following direct links (not frequently updated - may be out of date):
 
 [Binaries](https://github.com/JKGDevs/JediKnightGalaxies/releases/) , [Assets](https://uvu.box.com/shared/static/geejtm8xcovvcyt9jra4e6f585beatx1.zip) , 
 [Map Bundle #1](http://jkhub.org/files/file/2652-jedi-knight-galaxies-map-bundle-1/) , [Map Bundle #2](https://jkhub.org/files/file/3778-jedi-knight-galaxies-map-bundle-2/)
@@ -51,8 +51,8 @@ If you're stuck, you can also watch [this video](https://www.youtube.com/watch?v
 
 ## Dependencies ##
 
-* CMake (3.0.0+) (for build system)
-* Git (2.22.0+) (for build system)
+* [CMake (3.0.0+)](https://cmake.org/download/) (for build system)
+* [Git (2.22.0+)](https://git-scm.com/download/) (for build system)
 * SDL2 (2.0.14+) (included on Windows)
 * OpenGL
 * OpenAL (included on Windows)
@@ -246,8 +246,10 @@ Thank you to the following for your support of JKG and your efforts in contribut
 * Tommy
 * WizardMKBK (help with icons)
 * Xel
-* [And many more!](https://www.jkgalaxies.net/contributors.html)
+* [And many more!](https://www.jkgalaxies.net/contributors.html)  
  
  
+This project is based on [OpenJK](https://github.com/JACoders/OpenJK) , which in turn is based on the source release of Raven's Jedi Academy.  Thank you all who have contributed to either project!   
 
-This project is based on [OpenJK](https://github.com/JACoders/OpenJK) , which in turn is based on the source release of Raven's Jedi Academy.  Thank you all who have contributed to either project!   JEDI KNIGHT GALAXIES IS NOT MADE, DISTRIBUTED, OR SUPPORTED BY ACTIVISION, RAVEN, DISNEY, OR LUCASARTS, A DIVISION OF LUCASFILM ENTERTAINMENT COMPANY LTD. ELEMENTS™ & (©) LUCASARTS, A DIVISION OF LUCASFILM ENTERTAINMENT COMPANY LTD.
+JEDI KNIGHT GALAXIES AND ITS CONTENTS ARE NOT MADE, DISTRIBUTED, OR SUPPORTED BY ACTIVISION PUBLISHING, INC., RAVEN SOFTWARE, OR LUCASARTS ENTERTAINMENT COMPANY, LLC. ELEMENTS™ & © LUCASFILM LTD.™ & DISNEY, INC.™ AND/OR ITS LICENSORS. STAR WARS®, JEDI®, & JEDI KNIGHT® ARE REGISTERED TRADEMARKS OF LUCASFILM LTD™ AND WALT DISNEY, INC.™ STAR WARS®, JEDI®, & JEDI KNIGHT® ARE REGISTERED TRADEMARKS OF LUCASFILM LTD™ & DISNEY, INC.™  ALL LOGOS, IMAGES AND ANY OTHER TYPES OF MATERIALS ARE THE PROPERTY OF THEIR RESPECTFUL OWNERS.
+  

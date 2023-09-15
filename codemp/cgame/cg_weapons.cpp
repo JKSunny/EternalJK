@@ -2619,9 +2619,10 @@ void JKG_RenderGenericWeaponWorld ( centity_t *cent, const weaponDrawData_t *wea
 
 		//--futuza: add red hot barrel tips here, eg:
 		//if (cg.snap->ps.heat > cg.snap->ps.heatThreshold)
-
-		//draw steam efx on barrel end if heat is critical  && only draw on own barrel
-		if (cg.snap->ps.heat > cg.snap->ps.heatThreshold && isLocalPlayer)
+			//cg.predictedPlayerState.heat > cg.predictedPlayerState.heatThreshold
+		
+		//draw steam efx on barrel end if heat is critical
+		if (isLocalPlayer && cg.snap->ps.heat > cg.snap->ps.heatThreshold)		//check isLocalPlayer so we only draw on our weapon, todo: check on serverside for each player so we can see other players overheating
 		{
 			hasMuzzleLocation = qtrue;
 			JKG_GetMuzzleLocation(cent, angles, flashOrigin, flashDirection);

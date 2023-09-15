@@ -738,7 +738,7 @@ public:
 
 #include <unordered_map>
 #include <string>
-static std::unordered_map<std::string, std::string, CaseInsensitiveHash> masterServers{ { "masterjk3.ravensoft.com", "Raven Software"}, { "master.jkhub.org", "JKHub.org"} };
+static std::unordered_map<std::string, std::string, CaseInsensitiveHash> masterServers{ { "masterjk3.ravensoft.com", "Ravensoft"}, { "master.jkhub.org", "JKHub.org"} };
 //static std::unordered_map<const char *, const char *, CaseInsensitiveHash> masterServers{ { "masterjk3.ravensoft.com", "Raven Software"}, { "master.jkhub.org", "JKHub.org"} };
 
 static const char *GetNetSourceString(int iSource)
@@ -748,16 +748,24 @@ static const char *GetNetSourceString(int iSource)
 
 	Q_strncpyz( result, GetCRDelineatedString( "MP_INGAME", "NET_SOURCES", UI_SourceForLAN() ), sizeof(result) );
 
+	//LAN is iSource == 0
+
+	if (iSource == UIAS_GLOBAL1)
+	{
+		Q_strncpyz(result, "All Internet", sizeof("All Internet")); //the first source, just combines all masterservers into one list
+		return result;
+	}
+
 	if ( iSource >= UIAS_GLOBAL1 && iSource <= UIAS_GLOBAL5 ) 
 	{
-		if(iSource > 1)
-			iSource--; //offset by one, sv_master0 == all servers  --Futuza: fixme, need to redo the whole ui_server source ordering, this also makes internet sources offset by one, but better than completely broke i guess
+		int adj_index = (iSource-1);	//offset by one, sv_master1 == all servers  --Futuza: rewrite this whoe section, this is so messy
 
 		char masterstr[MAX_CVAR_VALUE_STRING], cvarname[sizeof("sv_master1")];
 
-		Com_sprintf(cvarname, sizeof(cvarname), "sv_master%d", iSource);
+		Com_sprintf(cvarname, sizeof(cvarname), "sv_master%d", adj_index);
 		trap->Cvar_VariableStringBuffer(cvarname, masterstr, sizeof(masterstr));
-		
+
+		//find the nickname of special masters
 		if(*masterstr)
 		{
 			auto search = masterServers.find(masterstr);
@@ -767,10 +775,8 @@ static const char *GetNetSourceString(int iSource)
 				return result;
 			}
 		}
-		//Q_strcat( result, sizeof(result), va( " %d", iSource ) );
+		Q_strcat( result, sizeof(result), va( " %d", iSource ) );	//add which number this is
 
-		if (iSource == 0)
-			Q_strncpyz(result, "All Masters", sizeof("All Masters")); //the first source, just combines all masterservers into one list
 	}
 	return result;
 }
