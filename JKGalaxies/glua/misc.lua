@@ -70,13 +70,15 @@ local function PzkTestCmd(ply, argc, argv)
 	local cards = JKG.Pazaak.Cards
 	local opp = ply:GetEyeTrace().Entity
 	local cardsel = true
+	
 	if opp and not opp:IsPlayer() then
 		opp = nil
 	else
 		opp = opp:ToPlayer()
 		if opp.Busy then
 			ply:SendPrint(opp.Name .. "^7 is busy and cannot respond.  Try later.")
-			opp:SendPrint(ply.Name .. "^7 tried to challenge you to Pazaak.")
+			ply:SendNotify(sys.StripColorcodes(opp.Name) .. " is busy and cannot respond.  Try later.")
+			opp:SendChat("^7System: " .. ply.Name .. "^7 tried to challenge you to Pazaak.")
 			return
 		end
 	end

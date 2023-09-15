@@ -261,7 +261,7 @@ Each .arm file contains data for one piece of armor. They have the following fie
  - slot (special): Which "slot" this armor belongs to. Can be: head, neck, torso, robe, legs, gloves, boots, shoulder, implant
  - ehp (integer): "Effective Hit Points" for this piece of armor. Example, if the player's base health pool is 100 hit points, and this piece of armor provides 100 ehp, it is equivalent to a 50% reduction in damage. If EHP is 200, it's equivalent to a 66% reduction in damage.
  - hp (integer): How much to increase the player's total health pool by when this piece of armor is equipped.
- - stamina (interger): How much to increase the player's total stamina/forcePower pool by when this piece of armor is equipped (note this feature is incomplete).
+ - stamina (interger): How much to increase the player's total stamina/forcePower pool by when this piece of armor is equipped.
  - filter (boolean): If true, the armor has a filter that protects the wearer from toxins.
  - movemodifier (float): How much to modify a player's movement speed by with their equipped armor. This is subject to movement modifiers (see constants.json, above)
  - visuals (object): Contains the following fields:

@@ -1302,7 +1302,7 @@ static bool BG_LoadItem(const char *itemFilePath, itemData_t *itemData)
 	itemData->droppable = cJSON_ToBooleanOpt(jsonNode, true);
 
 	jsonNode = cJSON_GetObjectItem(json, "maxDurability");
-	item = cJSON_ToIntegerOpt(jsonNode, 15);
+	item = cJSON_ToIntegerOpt(jsonNode, 50);	//default durability is 50, but items can individually specify this (and probably should)
 	itemData->maxDurability = item;
 
 	jsonNode = cJSON_GetObjectItem(json, "itemDescription");

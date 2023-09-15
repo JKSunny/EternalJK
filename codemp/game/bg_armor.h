@@ -29,6 +29,7 @@ typedef struct {
 	int hp;					// Health to add by equipping this piece of armor
 	int stamina;			// Stamina/fp to add by equipping this piece of armor
 	qboolean filter;		// If true, the armor has a filter that protects from toxins
+	int durability_rating;	// 0 == broken, will not reduce damage; > 1 still works
 
 	float movemodifier;		// Affects how fast you can move with this piece of equipment
 	// More movement modifiers? (jump height? stamina usage?)

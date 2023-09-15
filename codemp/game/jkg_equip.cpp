@@ -198,20 +198,33 @@ Our armor has been changed. Recalculate stats.
 */
 void JKG_ArmorChanged(gentity_t* ent) {
 	
-	bool haveFullHP = false;
+	bool haveFullHP, haveFullStamina = false;
+
 	if (ent->client->ps.stats[STAT_HEALTH] >= ent->client->ps.stats[STAT_MAX_HEALTH]) //check if we have full health already
 		haveFullHP = true;
 
+	if (ent->playerState->forcePower >= ent->client->ps.stats[STAT_MAX_STAMINA])	//check if forcepower is full
+		haveFullStamina = true;
+
+	//increase maxhealth/stamina
 	ent->client->ps.stats[STAT_MAX_HEALTH] = ent->client->pers.maxHealth;
 	for (auto it = ent->inventory->begin(); it != ent->inventory->end(); ++it) {
 		if (it->equipped && it->id->itemType == ITEM_ARMOR) {
 			ent->client->ps.stats[STAT_MAX_HEALTH] += it->id->armorData.pArm->hp;
+			ent->client->ps.stats[STAT_MAX_STAMINA] += it->id->armorData.pArm->stamina;
 		}
 	}
+
+	//set current health/stamina to same as maximum
 	if (haveFullHP)
 	{
 		if(ent->client->ps.stats[STAT_HEALTH] < ent->client->ps.stats[STAT_MAX_HEALTH])
-			ent->health = ent->client->ps.stats[STAT_HEALTH] = ent->client->ps.stats[STAT_MAX_HEALTH]; //set current health to same as maximum
+			ent->health = ent->client->ps.stats[STAT_HEALTH] = ent->client->ps.stats[STAT_MAX_HEALTH]; 
+	}
+	if (haveFullStamina)
+	{
+		if (ent->playerState->forcePower < ent->client->ps.stats[STAT_MAX_STAMINA])
+			ent->playerState->forcePower = ent->client->ps.stats[STAT_MAX_STAMINA];
 	}
 }
 

@@ -3861,12 +3861,13 @@ G_ArmorDurabilityModifier()
 	Check on if low durability (25% or less) is reducing armor's effectiveness, then adjust damage.
 	Check if durability score of armor/item should be reduced (chance based on item tier)
 	Decrease durability if applicable, adjust armor appearance based on current durability
-	If durability is 0, check if armor should break if so delete the equipped item.
+	If durability is 0, check if armor should break if so delete the equipped item.  EDIT: Instead armor just should do nothing.  
 	
 	Reminder: Legendary items cannot take durability damage/be effected by it.
 */
-void G_ArmorDurabilityModifier(gentity_t* ent, int* damage, const int take, const int armorSlot)
+int G_ArmorDurabilityModifier(gentity_t* ent, int* damage, const int take, const int armorSlot)
 {
+	int playDurabilitySnd = 0; //default: return 0/false if no durability damage, return 1+ if durability damage or the item hit is already at 0 durability
 	for (auto it = ent->inventory->begin(); it != ent->inventory->end(); ++it)
 	{
 		if (it->equipped && (it->id->itemType == ITEM_ARMOR || it->id->itemType == ITEM_CLOTHING /*|| it->id->itemType == ITEM_JETPACK */))	//if we have a piece of armor equipped
@@ -3880,27 +3881,23 @@ void G_ArmorDurabilityModifier(gentity_t* ent, int* damage, const int take, cons
 					if (it->durability > it->id->maxDurability * 0.10f && it->durability <= it->id->maxDurability * 0.25f)
 					{
 						//efx - armor crumble
-						//sound
-						*damage *= 1.25;	//decrease armor's efficiency by 25%
+						*damage = ((*damage + take)* 0.25);	//decrease armor's efficiency by 25%
 					}
 
 					//1-10%
 					else if (it->durability <= it->id->maxDurability * 0.10f)
 					{
 						//efx - armor crumbling more
-						//sound
-						*damage *= 1.375;
+						*damage = ((*damage + take) * 0.5);		//decrease armor's efficiency by 50%
 					}
 				}
 				else //0 durability
 				{
-					//efx - armor crumble severe
-					//sound
-					*damage *= 1.5;
-
-					//warn the player they're wearing something with 0 durability!
-					trap->SendServerCommand(ent - g_entities, va("chat 100 \"^1Warning:^7 %s is severely damaged, repair immediately (^10/%d^7)!\"", it->id->displayName, it->id->maxDurability));
-					trap->SendServerCommand(ent - g_entities, va("notify 1 \"Low durability!\""));
+					//efx+snd for armor crumble is in cg_event.cpp, see: EV_DURABILITY_DMG
+					++playDurabilitySnd;
+					*damage = take; //0 durability makes armor do nothing
+					trap->SendServerCommand(ent - g_entities, va("notify 1 \"Low durability!\"")); //warn the player they're wearing something with 0 durability!
+					break;
 				}
 
 				//decrease durability
@@ -3963,28 +3960,41 @@ void G_ArmorDurabilityModifier(gentity_t* ent, int* damage, const int take, cons
 
 				if (durability_damage)
 				{
+					++playDurabilitySnd;
 					it->durability -= durability_damage;
+					if (it->durability < 0)
+						it->durability = 0;
 
 					//1-25% durability
 					if (it->durability > 0 && it->durability <= it->id->maxDurability * 0.25f)
 					{
 						trap->SendServerCommand(ent - g_entities, va("chat 100 \"^3Warning:^7 %s is damaged, repair soon (^3%d/%d^7)!\"", it->id->displayName, it->durability, it->id->maxDurability));
 
-						if (it->durability == 1 || it->durability < it->id->maxDurability * 0.10f) //1-10%
+						//1-10%
+						if (it->durability == 1 || it->durability < it->id->maxDurability * 0.10f) 
 						{
 							//adjust item appearance to appear heavily damaged
 							//draw crumble/dust efx
 						}
-						else //11-25%
+
+						//11-25%
+						else 
 						{
 							//adjust item appearance to appear damaged
 							//draw crumble/dust efx
 						}
 					}
+					else if (it->durability < 1)
+					{
+						trap->SendServerCommand(ent - g_entities, va("chat 100 \"^1Warning:^7 %s is severely damaged, repair immediately (^10/%d^7)!\"", it->id->displayName, it->id->maxDurability));
+					}
+
+					/* Don't bother with breaking/unequipping at 0 for now, feels bad.
 
 					//we're at 0 durability, risk of breaking!
 					if (it->durability < 1)
 					{
+						
 						//determine break chance
 						switch (it->id->itemTier)
 						{
@@ -4017,18 +4027,20 @@ void G_ArmorDurabilityModifier(gentity_t* ent, int* damage, const int take, cons
 							BG_RemoveItemStack(ent, it - ent->inventory->begin());	//destroy the item
 							break;	//get out of loop
 						}
-
+						
 						//adjust item appearance to appear heavily damaged
 						//draw crumble/dust efx
 						trap->SendServerCommand(ent - g_entities, va("chat 100 \"^1Warning:^7 %s is severely damaged, repair immediately (^10/%d^7)!\"", it->id->displayName, it->id->maxDurability));
 						trap->SendServerCommand(ent - g_entities, va("notify 1 \"Low durability!\""));
-					}
+					}*/
 				}
 				else
 					break;	//terminate loop early, no durability damage
+				
 			}
 		}
 	}
+	return playDurabilitySnd;
 }
 
 
@@ -4153,7 +4165,15 @@ bool G_LocationBasedDamageModifier(gentity_t *ent, vec3_t point, int mod, int df
 			*damage *= modifier;
 		}
 
-		G_ArmorDurabilityModifier(ent, damage, take, armorSlot);	//calculate durability stuff
+		if (G_ArmorDurabilityModifier(ent, damage, take, armorSlot))	//calculate durability stuff
+		{
+			// Play the effect for durability damage
+			gentity_t* durEvent;
+			durEvent = G_TempEntity(point, EV_DURABILITY_DMG);
+			durEvent->s.clientNum = ent->s.clientNum;
+			VectorCopy(ent->s.origin, durEvent->s.origin);
+		}
+
 	}
 
 	if (headshot)

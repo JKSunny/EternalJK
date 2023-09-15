@@ -384,13 +384,20 @@ static void CG_DrawForcePower( menuDef_t *menuHUD )
 {
 
 	// This goes in the lower bar on the hud	
-	const int		maxForcePower = 100;
+	int				stamina, maxStamina = 100;
 	vec4_t			calcColor;
 	float			percent;
 	qboolean	flash=qfalse;
 	itemDef_t	*focusItem;
 	vec4_t	opacity;
 	vec4_t	glowColor;
+	playerState_t* ps;
+
+	ps = &cg.snap->ps;
+
+	// What's the maximum stamina/forcepower?
+	maxStamina = ps->stats[STAT_MAX_STAMINA];
+	stamina = cg.predictedPlayerState.forcePower;
 	
 	MAKERGBA( opacity, 1, 1, 1, 1*cg.jkg_HUDOpacity );
 
@@ -456,7 +463,7 @@ static void CG_DrawForcePower( menuDef_t *menuHUD )
 
 	// Work out the bar now
 
-	percent = (float)cg.predictedPlayerState.forcePower / (float)maxForcePower;
+	percent = (float)stamina / (float)maxStamina;
 	//percent *= 0.75f; // Range of the bar is 0 to 0.75f
 
 	focusItem = Menu_FindItemByName(menuHUD, "staminabar");
@@ -474,7 +481,7 @@ static void CG_DrawForcePower( menuDef_t *menuHUD )
 	}
 
 	{
-		char *Force = va("%i / %i", cg.predictedPlayerState.forcePower, maxForcePower);
+		char *Force = va("%i / %i", stamina, maxStamina);
 		VectorCopy4(colorWhite, glowColor);
 		glowColor[3] *= cg.jkg_HUDOpacity;
 		trap->R_Font_DrawString(focusItem->window.rect.x + (focusItem->window.rect.w / 2) - (trap->R_Font_StrLenPixels(Force, 1, 0.6) / 2),
