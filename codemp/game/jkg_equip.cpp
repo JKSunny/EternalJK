@@ -198,7 +198,7 @@ Our armor has been changed. Recalculate stats.
 */
 void JKG_ArmorChanged(gentity_t* ent) {
 	
-	bool haveFullHP, haveFullStamina = false;
+	bool haveFullHP = false, haveFullStamina = false;
 
 	if (ent->client->ps.stats[STAT_HEALTH] >= ent->client->ps.stats[STAT_MAX_HEALTH]) //check if we have full health already
 		haveFullHP = true;
