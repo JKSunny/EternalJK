@@ -1094,7 +1094,7 @@ int BG_ConsumeItem(gentity_t* ent, int itemStackNum) {
 		return 2;
 	}
 
-	if (ent->client->ps.consumableTime > level.time)
+	if (ent->client->ps.consumableTime > level.time && !item->id->consumableData.bingeable)
 	{
 		//still on cooldown for consumables
 		G_Sound(ent, CHAN_AUTO, G_SoundIndex("sound/interface/ammocon_done.mp3"));
@@ -1380,6 +1380,10 @@ static bool BG_LoadItem(const char *itemFilePath, itemData_t *itemData)
 		// partStaminaReq only allows the item to be consumed if the entity lacks stamina
 		jsonNode = cJSON_GetObjectItem(json, "partStaminaReq");
 		itemData->consumableData.partStaminaReq = (qboolean)cJSON_ToBooleanOpt(jsonNode, false);
+
+		// bingeable allows the item to be consumed rapidly (ignoring the ps.consumableTime)
+		jsonNode = cJSON_GetObjectItem(json, "bingeable");
+		itemData->consumableData.bingeable = (qboolean)cJSON_ToBooleanOpt(jsonNode, false);
 	}
 	else if (itemData->itemType == ITEM_SHIELD) {
 		memset(&itemData->shieldData, 0, sizeof(itemData->shieldData));

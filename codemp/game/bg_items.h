@@ -132,6 +132,7 @@ typedef struct {
 	int consumeAmount;
 	qboolean partHealthReq;  //if set to true, it can only be consumed if hp < maxhealth
 	qboolean partStaminaReq;  //if set to true, it can only be consumed if stamina < maxstamina
+	qboolean bingeable;			//if set to true, this item can ignore ps.consumableTime and be done in rapid succession (default false)
 } itemConsumableData_t;
 
 // Shields

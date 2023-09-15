@@ -238,6 +238,7 @@ The following contains information specific to CONSUMABLE items:
  - consumeAmount (string): The number to consume when consuming.
  - partHealthReq (boolean, default false): if set to true, the item can only be consumed if hp < maxhealth
  - partStaminaReq (boolean, default false): if set to true, the item only be consumed if stamina < maxstamina
+ - bingeable (boolean, default false): if set to true, the item can ignore the cooldown for consumables
 
 The following contains information specific to SHIELD items:
 
