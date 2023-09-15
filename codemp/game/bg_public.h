@@ -631,7 +631,7 @@ typedef enum {
 typedef enum {
 	PERS_SCORE,						// !!! MUST NOT CHANGE, SERVER AND GAME BOTH REFERENCE !!!
 	PERS_HITS,						// total points damage inflicted so damage beeps can sound on change
-	PERS_RANK,						// player rank or team rank
+	PERS_RANK,						// player rank or team rank  (in team games, rank is just the order of the teams, 0=red, 1=blue, 2=tied)
 	PERS_TEAM,						// player team
 	PERS_SPAWN_COUNT,				// incremented every respawn
 	PERS_PLAYEREVENTS,				// 16 bits that can be flipped for events

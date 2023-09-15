@@ -1905,7 +1905,7 @@ void player_die( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, int
 		self->assists->clear();
 
 		
-		//award bonus credits to teammates:
+		//award bonus credits to my teammates when I get a kill:
 		if(jkg_teamKillBonus.integer > 0 && !g_dontPenalizeTeam && level.gametype >= GT_TEAM)
 		{
 			gentity_t* player; int reward;
@@ -1917,8 +1917,8 @@ void player_die( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, int
 				if (!player->inuse || (player - g_entities >= MAX_CLIENTS)  || attacker == nullptr || attacker->client == nullptr || player == attacker)	//don't reward spectators, nonclients or the killer
 					continue;
 
-				//if I have more deaths than the # of kills doubled - I get extra credits
-				if ( player->client->ps.persistant[PERS_RANK] * 2 < player->client->ps.persistant[PERS_KILLED])
+				//if my team is losing - they get extra credits
+				if (IsMyTeamWinning(player) == -1)
 					reward += jkg_teamKillBonus.integer;
 
 				if (!OnSameTeam(self, attacker))	//if the victim and the attacker aren't on the same team

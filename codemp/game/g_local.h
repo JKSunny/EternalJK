@@ -1629,6 +1629,7 @@ void G_RunClient			( gentity_t *ent );
 // g_team.c
 //
 qboolean OnSameTeam( gentity_t *ent1, gentity_t *ent2 );
+int IsMyTeamWinning(gentity_t* ent);	//-2 == team invalid, -1 == team is losing, 0 == teams tied, 1 == team is winning
 void Team_CheckDroppedItem( gentity_t *dropped );
 
 //
