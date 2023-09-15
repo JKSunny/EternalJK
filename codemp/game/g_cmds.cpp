@@ -2220,6 +2220,19 @@ void Cmd_ResendInv_f(gentity_t* ent) {
 	BG_SendItemPacket(IPT_RESET, ent, nullptr, ent->inventory->size(), 0);
 }
 
+void Cmd_SendItemDurability_f(gentity_t* ent)
+{
+	char arg[4];
+	if (trap->Argc() != 2)
+	{
+		trap->SendServerCommand(ent->s.number, "print \"Usage: /sendItemDura <item num>\n\"");
+		return;
+	}
+
+	trap->Argv(1, arg, sizeof(arg));
+	BG_UpdateItemDurability(ent, atoi(arg), (*ent->inventory)[atoi(arg)].durability);
+}
+
 /*
 =================
 JKG_Cmd_ShowInv_f
@@ -5036,7 +5049,8 @@ static const command_t commands[] = {
 	{ "printweaponlist_sv",		Cmd_PrintWeaponList_f,		0 },
 	{ "printbufflist",			Cmd_PrintBuffList_f,		0 },
 	{ "relax",					Cmd_Relax_f,				CMD_NEEDCHEATS | CMD_NOINTERMISSION | CMD_NOSPECTATOR | CMD_ONLYALIVE },
-	{ "resendInv",				Cmd_ResendInv_f,			0 },	
+	{ "resendInv",				Cmd_ResendInv_f,			0 },
+	{ "sendItemDura",			Cmd_SendItemDurability_f,	0 },
 	{ "say",					Cmd_SayLocal_f,				0 },
 	{ "sayact",					Cmd_SayAct_f,				0 },
 	{ "sayglobal",				Cmd_SayGlobal_f,			0 },

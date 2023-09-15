@@ -18,6 +18,7 @@ const stringID_table_s itemPacketNames[] = {
 	ENUM2STRING(IPT_CLEAR),
 	ENUM2STRING(IPT_OPEN),
 	ENUM2STRING(IPT_QUANT),
+	ENUM2STRING(IPT_DURA),
 	ENUM2STRING(IPT_RESET),
 	ENUM2STRING(IPT_EQUIP),
 	ENUM2STRING(IPT_UNEQUIP),
@@ -250,6 +251,9 @@ void BG_SendItemPacket(itemPacketType_t packetType, gentity_t* ent, void* memDat
 			Com_sprintf(packet, sizeof(packet), "pInv %s", packetName);
 			break;
 		case IPT_QUANT:
+			Com_sprintf(packet, sizeof(packet), "pInv %s %i %i", packetName, intData, intData2);
+			break;
+		case IPT_DURA:
 			Com_sprintf(packet, sizeof(packet), "pInv %s %i %i", packetName, intData, intData2);
 			break;
 		case IPT_RESET:
@@ -986,6 +990,29 @@ void BG_AdjustItemStackQuantity(gentity_t* ent, int itemStack, int adjustment) {
 #else
 void BG_AdjustItemStackQuantity(int itemStack, int adjustment) {
 	BG_ChangeItemStackQuantity(itemStack, (*cg.playerInventory)[itemStack].quantity + adjustment);
+}
+#endif
+
+
+
+
+/*
+====================
+BG_UpdateItemDurability
+
+Server tells client what the current durability value is as well.
+====================
+*/
+#ifdef _GAME
+void BG_UpdateItemDurability(gentity_t* ent, int itemStackNum, int newValue) 
+{
+	(*ent->inventory)[itemStackNum].durability = newValue;
+	BG_SendItemPacket(IPT_DURA, ent, nullptr, itemStackNum, (*ent->inventory)[itemStackNum].durability);
+}
+#else
+void BG_UpdateItemDurability(int itemStackNum, int newValue)
+{
+	(*cg.playerInventory)[itemStackNum].durability = newValue;
 }
 #endif
 

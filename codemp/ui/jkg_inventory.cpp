@@ -60,7 +60,7 @@ void JKG_ConstructInventoryList() {
 	}
 
 	if (nSelected < pItems.size() && nSelected >= 0) {
-		JKG_ConstructItemDescription(pItems[nSelected].second, vItemDescLines);
+		JKG_ConstructItemDescription(pItems[nSelected].second, vItemDescLines, nSelected);
 	}
 }
 
@@ -136,22 +136,29 @@ static QINLINE void JKG_ConstructItemTierDescription(itemTier_t tier, std::vecto
 }
 
 
-void JKG_ConstructItemDurabilityDescription(itemInstance_t* pItem, std::vector<std::string>& vDescLines)
+void JKG_ConstructItemDurabilityDescription(itemInstance_t* pItem, std::vector<std::string>& vDescLines, int ownerDrawID)
 {
-	//draw durability
+	int nItemNum = ownerDrawID + nPosition;
+	if (nItemNum >= pItems.size()) {
+		return;
+	}
+
+	int durability = *(int*)cgImports->InventoryDataRequest(INVENTORYREQUEST_DURABILITY, nItemNum);
+	//draw durability --futuza: todo this isn't updating, make it check the current durability
 	if (pItem->id->itemType != ITEM_AMMO && pItem->id->itemTier != TIER_LEGENDARY)
 	{
+		float percent = static_cast<float>(durability / pItem->id->maxDurability)*100.0f;
 		if (pItem->durability < 1)
 		{
-			vDescLines.push_back(va(UI_GetStringEdString2("^1@JKG_INVENTORY_DURABILITY"), pItem->durability, pItem->id->maxDurability));
+			vDescLines.push_back(va("^1", UI_GetStringEdString2("@JKG_INVENTORY_DURABILITY"), durability, pItem->id->maxDurability, 0.0f));
 		}
-		else if (pItem->durability <= pItem->id->maxDurability * 0.2f)
+		else if (pItem->durability <= pItem->id->maxDurability * 0.25f)
 		{
-			vDescLines.push_back(va(UI_GetStringEdString2("^3@JKG_INVENTORY_DURABILITY"), pItem->durability, pItem->id->maxDurability));
+			vDescLines.push_back(va("^3", UI_GetStringEdString2("@JKG_INVENTORY_DURABILITY"), durability, pItem->id->maxDurability, percent));
 		}
 		else
 		{
-			vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_DURABILITY"), pItem->durability, pItem->id->maxDurability));
+			vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_DURABILITY"), durability, pItem->id->maxDurability, percent ));
 		}
 	}
 }
@@ -279,7 +286,6 @@ static void JKG_ConstructJetpackDescription(itemInstance_t* pItem, std::vector<s
 	// Hover Gravity: ###
 	vDescLines.push_back(UI_GetStringEdString2("@JKG_INVENTORY_ITYPE_JETPACK"));
 	JKG_ConstructItemTierDescription(pItem->id->itemTier, vDescLines);
-	JKG_ConstructItemDurabilityDescription(pItem, vDescLines);
 	if (pItem->id->weight > 0.0f)
 	{
 		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_WEIGHT"), pItem->id->weight));
@@ -299,7 +305,6 @@ static void JKG_ConstructShieldDescription(itemInstance_t* pItem, std::vector<st
 	// Regeneration: # shields per second
 	vDescLines.push_back(UI_GetStringEdString2("@JKG_INVENTORY_ITYPE_SHIELD"));
 	JKG_ConstructItemTierDescription(pItem->id->itemTier, vDescLines);
-	JKG_ConstructItemDurabilityDescription(pItem, vDescLines);
 	if (pItem->id->weight > 0.0f)
 	{
 		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_WEIGHT"), pItem->id->weight));
@@ -320,7 +325,6 @@ static void JKG_ConstructArmorDescription(itemInstance_t* pItem, std::vector<std
 
 	vDescLines.push_back(UI_GetStringEdString2("@JKG_INVENTORY_ITYPE_ARMOR"));
 	JKG_ConstructItemTierDescription(pItem->id->itemTier, vDescLines);
-	JKG_ConstructItemDurabilityDescription(pItem, vDescLines);
 	if (pItem->id->weight > 0.0f)
 	{
 		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_WEIGHT"), pItem->id->weight));
@@ -516,7 +520,6 @@ static void JKG_ConstructWeaponDescription(itemInstance_t* pItem, std::vector<st
 
 	vDescLines.push_back(UI_GetStringEdString2("@JKG_INVENTORY_ITYPE_WEAPON"));
 	JKG_ConstructItemTierDescription(pItem->id->itemTier, vDescLines);
-	JKG_ConstructItemDurabilityDescription(pItem, vDescLines);
 	if (pItem->id->weight > 0.0f)
 	{
 		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_WEIGHT"), pItem->id->weight));
@@ -582,7 +585,6 @@ static void JKG_ConstructAmmoDescription(itemInstance_t* pItem, std::vector<std:
 static void JKG_ConstructToolDescription(itemInstance_t* pItem, std::vector<std::string>& vDescLines) {
 	vDescLines.push_back(UI_GetStringEdString2("@JKG_INVENTORY_ITYPE_TOOL"));
 	JKG_ConstructItemTierDescription(pItem->id->itemTier, vDescLines);
-	JKG_ConstructItemDurabilityDescription(pItem, vDescLines);
 	if (pItem->id->weight > 0.0f)
 	{
 		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_WEIGHT"), pItem->id->weight));
@@ -648,7 +650,7 @@ void JKG_SplitDescriptionLines(const std::string& s, std::vector<std::string>& v
 }
 
 // Construct each type of item description
-void JKG_ConstructItemDescription(itemInstance_t* pItem, std::vector<std::string>& vDescLines) {
+void JKG_ConstructItemDescription(itemInstance_t* pItem, std::vector<std::string>& vDescLines, int invNum) {
 	vDescLines.clear();
 
 	if (pItem == nullptr) {
@@ -657,21 +659,26 @@ void JKG_ConstructItemDescription(itemInstance_t* pItem, std::vector<std::string
 
 	switch (pItem->id->itemType) {
 		case ITEM_JETPACK:
+			JKG_ConstructItemDurabilityDescription(pItem, vDescLines, invNum);
 			JKG_ConstructJetpackDescription(pItem, vDescLines);
 			break;
 		case ITEM_SHIELD:
+			JKG_ConstructItemDurabilityDescription(pItem, vDescLines, invNum);
 			JKG_ConstructShieldDescription(pItem, vDescLines);
 			break;
 		case ITEM_ARMOR:
+			JKG_ConstructItemDurabilityDescription(pItem, vDescLines, invNum);
 			JKG_ConstructArmorDescription(pItem, vDescLines);
 			break;
 		case ITEM_WEAPON:
+			JKG_ConstructItemDurabilityDescription(pItem, vDescLines, invNum);
 			JKG_ConstructWeaponDescription(pItem, vDescLines);
 			break;
 		case ITEM_AMMO:
 			JKG_ConstructAmmoDescription(pItem, vDescLines);
 			break;
 		case ITEM_TOOL:
+			JKG_ConstructItemDurabilityDescription(pItem, vDescLines, invNum);
 			JKG_ConstructToolDescription(pItem, vDescLines);
 			break;
 		case ITEM_CONSUMABLE:
@@ -679,7 +686,7 @@ void JKG_ConstructItemDescription(itemInstance_t* pItem, std::vector<std::string
 			break;
 		default:
 			JKG_ConstructItemTierDescription(pItem->id->itemTier, vDescLines);
-			JKG_ConstructItemDurabilityDescription(pItem, vDescLines);
+			JKG_ConstructItemDurabilityDescription(pItem, vDescLines, invNum);
 			if (pItem->id->weight > 0.0f)
 			{
 				vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_WEIGHT"), pItem->id->weight));
@@ -976,12 +983,12 @@ void JKG_Inventory_SelectItem(char** args) {
 		nSelected = -1;
 		Menu_ShowItemByName(Menus_FindByName("jkg_inventory"), "shop_preview", qfalse);
 		
-		JKG_ConstructItemDescription(nullptr, vItemDescLines);
+		JKG_ConstructItemDescription(nullptr, vItemDescLines, nPosition+nWhich);
 	} else {
 		nSelected = nPosition + nWhich;
 		Menu_ShowItemByName(Menus_FindByName("jkg_inventory"), "shop_preview", qtrue);
 
-		JKG_ConstructItemDescription(pItems[nSelected].second, vItemDescLines);
+		JKG_ConstructItemDescription(pItems[nSelected].second, vItemDescLines, nSelected);
 	}
 }
 

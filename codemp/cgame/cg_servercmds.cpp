@@ -1929,6 +1929,12 @@ static void CG_ServerCommand( void ) {
 		return;
 	}
 
+	if (!strcmp(cmd, "sendItemDura"))
+	{
+		BG_UpdateItemDurability(atoi(CG_Argv(1)), atoi(CG_Argv(2)));
+		return;
+	}
+
 	// UQ1: Use an event!!!!
 	// eez: Again, this is only getting sent to one client, so no go
 	if( !strcmp( cmd, "hitmarker") )

@@ -217,7 +217,7 @@ void JKG_ConstructShopLists() {
 	}
 	else if (!bLeftSelected)
 	{
-		JKG_ConstructItemDescription(vShopItems[nSelected].second, vShopItemDesc);
+		JKG_ConstructItemDescription(vShopItems[nSelected].second, vShopItemDesc, nSelected);
 	}
 
 	if (nInventoryScroll >= nNumberInventoryItems) {
@@ -627,7 +627,7 @@ void JKG_Shop_SelectRight(char** args) {
 
 	if (nSelected >= 0 && nSelected < vShopItems.size())
 	{
-		JKG_ConstructItemDescription(vShopItems[nSelected].second, vShopItemDesc);
+		JKG_ConstructItemDescription(vShopItems[nSelected].second, vShopItemDesc, nSelected);
 	}
 }
 

@@ -4920,7 +4920,7 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 	if (take > 0 && !(dflags&DAMAGE_NO_HIT_LOC))
 	{
 		if (targ->client &&
-			attacker->inuse && attacker->client)
+			attacker->inuse)
 		{ //check for location based damage stuff.
 			isHeadShot = G_LocationBasedDamageModifier(targ, point, mod, dflags, &take, means);	//check for headshot, location based modifiers, and armor
 			if (targ->health < 0)
@@ -5103,7 +5103,12 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 
 					else
 					{
-						trap->SendServerCommand(targ - g_entities, va("chat 100 \"Killed by %s^7's head blow!\"", attacker->client->pers.netname));
+						if(attacker->client) //make sure a nonclient didn't kill them
+							trap->SendServerCommand(targ - g_entities, va("chat 100 \"Killed by %s^7's head blow!\"", attacker->client->pers.netname));
+						else
+							trap->SendServerCommand(targ - g_entities, va("chat 100 \"Killed by a head blow!\""));
+
+						//tell the attacker they got a headshot
 						trap->SendServerCommand(attacker - g_entities, va("notify 1 \"Head blow!\""));
 					}
 				}

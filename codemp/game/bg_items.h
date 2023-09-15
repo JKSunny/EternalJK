@@ -70,6 +70,7 @@ typedef enum
 	IPT_CLEAR,		// Clears the client inventory
 	IPT_OPEN,		// Tells the client to open their inventory
 	IPT_QUANT,		// An item's quantity has been changed
+	IPT_DURA,		// Tells client the item's current durability
 	IPT_RESET,		// Reset the player's inventory (usually only done after a vid_restart)
 	IPT_EQUIP,		// Equipped an item
 	IPT_UNEQUIP,	// Unequipped an item
@@ -245,6 +246,7 @@ void BG_ReceivedItemPacket(itemPacketType_t packet);
 void BG_RemoveItemStack(int itemStackNum);
 void BG_RemoveItemNonNetworked(itemInstance_t item);
 void BG_ChangeItemStackQuantity(int itemStackNum, int newQuantity);
+void BG_UpdateItemDurability(int itemStackNum, int newValue);
 void BG_AddItemToACI(int itemStackNum, int aciSlot);
 void BG_ReceivedTradePacket(itemTradePacketType_t packet);
 void BG_AdjustItemStackQuantity(int itemStack, int adjustment);
@@ -254,6 +256,7 @@ void BG_GiveItemNonNetworked(gentity_t* ent, itemInstance_t item);
 void BG_RemoveItemStack(gentity_t* ent, int itemStackNum);
 void BG_SendItemPacket(itemPacketType_t packetType, gentity_t* ent, void* memData, int intData, int intData2);
 void BG_ChangeItemStackQuantity(gentity_t* ent, int itemStackNum, int newQuantity);
+void BG_UpdateItemDurability(gentity_t* ent, int itemStackNum, int newValue);
 int BG_ConsumeItem(gentity_t* ent, int itemStackNum);
 void BG_SendTradePacket(itemTradePacketType_t packetType, gentity_t* ent, gentity_t* other, void* memData, int intData, int intData2);
 void BG_RemoveItemNonNetworked(gentity_t* ent, itemInstance_t item);
