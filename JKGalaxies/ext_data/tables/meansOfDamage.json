@@ -301,8 +301,8 @@
 		"modifiers": {
 			"dodgeable": true,
 			"armor": 1.0,
-			"organic": 1.3,
-			"shield": 0.8,
+			"organic": 1.2,
+			"shield": 0.9,
 			"droid": 1.0
 		},
 
@@ -460,7 +460,7 @@
 		"modifiers": {
 			"isEMP": true,
 			"armor": 0.8,
-			"organic": 1.0,
+			"organic": 1.15,
 			"shield": 1.8,
 			"droid": 2.0
 		},
@@ -559,10 +559,10 @@
 		"modifiers": {
 			"ignoreArmor": false,
 			"dodgeable": true,
-			"armor": 1.2,
-			"organic": 1.0,
-			"shield": 0.9,
-			"droid": 1.0
+			"armor": 0.8,
+			"organic": 1.1,
+			"shield": 1.0,
+			"droid": 0.9
 		},
 
 		"dismemberment": {
@@ -637,8 +637,13 @@
 	},
 
 	"MOD_CARBONITE": {
-		// Encased in carbonite
+		// Encased in carbonite - Captain Solo should be quite well protected!
 		"inventoryName": "@JKG_INVENTORY_MOD_CARBONITE",
+
+		"modifiers": {
+			"organic": 0.5,
+			"droid": 0.3
+		},
 
 		"killFeed": {
 			"killMessage": "@JKG_INGAME_KILLED_CARBONITE",
@@ -661,7 +666,7 @@
 
 		"modifiers": {
 			"isEMP": true,
-			"armor": 0.7,
+			"armor": 0.8,
 			"organic": 1.0,
 			"shield": 1.7,
 			"droid": 1.8
