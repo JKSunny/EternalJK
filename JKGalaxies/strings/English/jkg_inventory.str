@@ -175,6 +175,15 @@ LANG_ENGLISH		"Info: %s"
 REFERENCE		ITEM_TYPE
 LANG_ENGLISH		"Item Type: "
 
+REFERENCE       ITEM_TYPE_GUN
+LANG_ENGLISH    "Gun"
+
+REFERENCE       ITEM_TYPE_EXPLOSIVE
+LANG_ENGLISH    "Explosive"
+
+REFERENCE       ITEM_TYPE_MELEE
+LANG_ENGLISH    "Melee"
+
 REFERENCE		ITYPE_WEAPON
 LANG_ENGLISH		"Weapon"
 
@@ -423,6 +432,19 @@ LANG_ENGLISH		"Semi-automatic"
 
 REFERENCE		WEP_TAG_BURST
 LANG_ENGLISH		"Burst fire"
+
+REFERENCE       WEP_RANGE
+NOTES           Maximum effective range in meters (1m == 36.5 units).
+LANG_ENGLISH    "Range: %i meters "
+
+REFERENCE       WEP_RANGE_SHORT
+LANG_ENGLISH    "(short)"
+
+REFERENCE       WEP_RANGE_MEDIUM
+LANG_ENGLISH    "(medium)"
+
+REFERENCE       WEP_RANGE_LONG
+LANG_ENGLISH    "(long)"
 
 REFERENCE		WEP_FIRETIME
 LANG_ENGLISH		"Fires %i Rounds per Minute"

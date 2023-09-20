@@ -290,7 +290,11 @@ static void JKG_ConstructJetpackDescription(itemInstance_t* pItem, std::vector<s
 	// Thrusting Fuel Consumption: ###
 	// Fuel Regeneration: ###
 	// Hover Gravity: ###
-	vDescLines.push_back(UI_GetStringEdString2("@JKG_INVENTORY_ITYPE_JETPACK"));
+	std::string typeDescription = "";
+	typeDescription = UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TYPE");
+	typeDescription = typeDescription + UI_GetStringEdString2("@JKG_INVENTORY_ITYPE_JETPACK");
+
+	vDescLines.push_back(typeDescription);
 	JKG_ConstructItemTierDescription(pItem->id->itemTier, vDescLines);
 	if (pItem->id->weight > 0.0f)
 	{
@@ -309,7 +313,11 @@ static void JKG_ConstructShieldDescription(itemInstance_t* pItem, std::vector<st
 	// Capacity: ###
 	// Recharge Time: ### seconds
 	// Regeneration: # shields per second
-	vDescLines.push_back(UI_GetStringEdString2("@JKG_INVENTORY_ITYPE_SHIELD"));
+	std::string typeDescription = "";
+	typeDescription = UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TYPE");
+	typeDescription = typeDescription + UI_GetStringEdString2("@JKG_INVENTORY_ITYPE_SHIELD");
+
+	vDescLines.push_back(typeDescription);
 	JKG_ConstructItemTierDescription(pItem->id->itemTier, vDescLines);
 	if (pItem->id->weight > 0.0f)
 	{
@@ -329,7 +337,11 @@ static void JKG_ConstructArmorDescription(itemInstance_t* pItem, std::vector<std
 	// Maximum Health: (+)%i
 	armorData_t* pArmorData = pItem->id->armorData.pArm;
 
-	vDescLines.push_back(UI_GetStringEdString2("@JKG_INVENTORY_ITYPE_ARMOR"));
+	std::string typeDescription = "";
+	typeDescription = UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TYPE");
+	typeDescription = typeDescription + UI_GetStringEdString2("@JKG_INVENTORY_ITYPE_ARMOR");
+
+	vDescLines.push_back(typeDescription);
 	JKG_ConstructItemTierDescription(pItem->id->itemTier, vDescLines);
 	if (pItem->id->weight > 0.0f)
 	{
@@ -504,6 +516,29 @@ static void JKG_ConstructFiringModeDescription(weaponData_t* pWP, int firemode, 
 				vDescLines.push_back(UI_GetStringEdString2("@JKG_INVENTORY_WEP_TAG_BURST"));
 				break;
 		}
+
+		// Range
+		if (pFM->range > 0)
+		{
+			std::string rangeDescription = "";
+			int rangeMeters = static_cast<int>(roundf(static_cast<float>(pFM->range) / 36.5f));	//round to nearest int, 1m == 36.5 units in game
+
+			rangeDescription = va(UI_GetStringEdString2("@JKG_INVENTORY_WEP_RANGE"), rangeMeters);
+
+			if (rangeMeters < 40)
+			{
+				rangeDescription += UI_GetStringEdString2("@JKG_INVENTORY_WEP_RANGE_SHORT");
+			}
+			else if (rangeMeters >= 40 && rangeMeters < 220)
+			{
+				rangeDescription += UI_GetStringEdString2("@JKG_INVENTORY_WEP_RANGE_MEDIUM");
+			}
+			else
+			{
+				rangeDescription += UI_GetStringEdString2("@JKG_INVENTORY_WEP_RANGE_LONG");
+			}
+			vDescLines.push_back(rangeDescription);
+		}
 	}
 	else if (pFM->baseDamage > 0) {
 		char* szDamageTag = JKG_GetDamageTag(pWP, firemode);
@@ -524,7 +559,43 @@ static void JKG_ConstructWeaponDescription(itemInstance_t* pItem, std::vector<st
 	// Fire mode
 	weaponData_t* wp = cgImports->GetWeaponDatas(pItem->id->weaponData.weapon, pItem->id->weaponData.variation);
 
-	vDescLines.push_back(UI_GetStringEdString2("@JKG_INVENTORY_ITYPE_WEAPON"));
+	//determine specific type of weapon
+	std::string weaponType = " - ";
+	switch(wp->weaponBaseIndex)
+	{
+		case WP_SABER:
+			weaponType += UI_GetStringEdString2("@JKG_INVENTORY_MOD_SABER");
+			break;
+		case WP_BRYAR_PISTOL:
+		case WP_BLASTER:
+		case WP_DISRUPTOR:
+		case WP_BOWCASTER:
+		case WP_REPEATER:
+		case WP_DEMP2:
+		case WP_FLECHETTE:
+		case WP_CONCUSSION:
+		case WP_ROCKET_LAUNCHER:
+		case WP_BRYAR_OLD:
+			weaponType += UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TYPE_GUN");
+			break;
+		case WP_STUN_BATON:
+			weaponType += UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TYPE_MELEE");
+			break;
+		case WP_THERMAL:
+		case WP_TRIP_MINE:
+		case WP_DET_PACK:
+			weaponType += UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TYPE_EXPLOSIVE");
+			break;
+
+		default:
+			weaponType = "";	//unknown type, no comment necessary
+	}
+	std::string typeDescription = "";
+	typeDescription = UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TYPE");
+	typeDescription = typeDescription + UI_GetStringEdString2("@JKG_INVENTORY_ITYPE_WEAPON");
+	typeDescription = typeDescription + weaponType;
+
+	vDescLines.push_back(typeDescription);
 	JKG_ConstructItemTierDescription(pItem->id->itemTier, vDescLines);
 	if (pItem->id->weight > 0.0f)
 	{
@@ -579,7 +650,11 @@ static void JKG_ConstructWeaponDescription(itemInstance_t* pItem, std::vector<st
 
 //create an ammo item's description
 static void JKG_ConstructAmmoDescription(itemInstance_t* pItem, std::vector<std::string>& vDescLines) {
-	vDescLines.push_back(UI_GetStringEdString2("@JKG_INVENTORY_ITYPE_AMMO"));
+	std::string typeDescription = "";
+	typeDescription = UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TYPE");
+	typeDescription = typeDescription + UI_GetStringEdString2("@JKG_INVENTORY_ITYPE_AMMO");
+
+	vDescLines.push_back(typeDescription);
 	JKG_ConstructItemTierDescription(pItem->id->itemTier, vDescLines);
 	if (pItem->id->weight > 0.0f)
 	{
@@ -589,7 +664,11 @@ static void JKG_ConstructAmmoDescription(itemInstance_t* pItem, std::vector<std:
 
 // Create a tool item's description
 static void JKG_ConstructToolDescription(itemInstance_t* pItem, std::vector<std::string>& vDescLines) {
-	vDescLines.push_back(UI_GetStringEdString2("@JKG_INVENTORY_ITYPE_TOOL"));
+	std::string typeDescription = "";
+	typeDescription = UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TYPE");
+	typeDescription = typeDescription + UI_GetStringEdString2("@JKG_INVENTORY_ITYPE_TOOL");
+
+	vDescLines.push_back(typeDescription);
 	JKG_ConstructItemTierDescription(pItem->id->itemTier, vDescLines);
 	if (pItem->id->weight > 0.0f)
 	{
@@ -599,7 +678,11 @@ static void JKG_ConstructToolDescription(itemInstance_t* pItem, std::vector<std:
 
 // Create a consumable item's description
 static void JKG_ConstructConsumableDescription(itemInstance_t* pItem, std::vector<std::string>& vDescLines) {
-	vDescLines.push_back(UI_GetStringEdString2("@JKG_INVENTORY_ITYPE_CONSUMABLE"));
+	std::string typeDescription = "";
+	typeDescription = UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TYPE");
+	typeDescription = typeDescription + UI_GetStringEdString2("@JKG_INVENTORY_ITYPE_CONSUMABLE");
+
+	vDescLines.push_back(typeDescription);
 	JKG_ConstructItemTierDescription(pItem->id->itemTier, vDescLines);
 	if (pItem->id->weight > 0.0f)
 	{

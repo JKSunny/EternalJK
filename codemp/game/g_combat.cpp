@@ -1912,7 +1912,7 @@ void player_die( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, int
 
 			for (int j = 0; j < sv_maxclients.integer; j++)
 			{
-				reward = 0;
+				reward = 0;	//since we're looping through each player, reset to 0 each time
 				player = &g_entities[j];
 				if (!player->inuse || (player - g_entities >= MAX_CLIENTS)  || attacker == nullptr || attacker->client == nullptr || player == attacker)	//don't reward spectators, nonclients or the killer
 					continue;
