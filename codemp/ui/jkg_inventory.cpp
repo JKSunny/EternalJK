@@ -525,11 +525,11 @@ static void JKG_ConstructFiringModeDescription(weaponData_t* pWP, int firemode, 
 
 			rangeDescription = va(UI_GetStringEdString2("@JKG_INVENTORY_WEP_RANGE"), rangeMeters);
 
-			if (rangeMeters < 40)
+			if (rangeMeters < 80)
 			{
 				rangeDescription += UI_GetStringEdString2("@JKG_INVENTORY_WEP_RANGE_SHORT");
 			}
-			else if (rangeMeters >= 40 && rangeMeters < 220)
+			else if (rangeMeters >= 80 && rangeMeters < 220)
 			{
 				rangeDescription += UI_GetStringEdString2("@JKG_INVENTORY_WEP_RANGE_MEDIUM");
 			}
