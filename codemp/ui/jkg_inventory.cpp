@@ -412,7 +412,7 @@ static QINLINE float JKG_UnitsToFeet(float units) {
 
 // Convert units into meters (metres if you're bad at spelling)
 static QINLINE float JKG_UnitsToMeters(float units) {
-	return units * 0.305f; // according to ensiform
+	return units * 0.305f; // according to ensiform, note that there are strings\English\jkg_inventory.str that document it as 36.5f, so maybe slightly off?
 }
 
 // Add information about a weapon's firing mode
@@ -470,25 +470,38 @@ static void JKG_ConstructFiringModeDescription(weaponData_t* pWP, int firemode, 
 		}
 	}
 
-	if (pWP->weaponBaseIndex != WP_TRIP_MINE && pWP->weaponBaseIndex != WP_DET_PACK && pWP->weaponBaseIndex != WP_THERMAL && pFM->baseDamage > 0) {
-		// Damage
-		char* szDamageTag = JKG_GetDamageTag(pWP, firemode);
+	if (pWP->weaponBaseIndex != WP_TRIP_MINE && pWP->weaponBaseIndex != WP_DET_PACK && pWP->weaponBaseIndex != WP_THERMAL && (pFM->baseDamage > 0 || pFM->primary.damage > 0))
+	{
+		//	basic damage
+		if (pFM->baseDamage > 0)
+		{
 
-		if (pFM->rangeSplash) {
-			if (pFM->shotCount > 1) {
-				vDescLines.push_back(va(UI_GetStringEdString3("@JKG_INVENTORY_WEP_BDAMAGE_SCATTERGUN"), pFM->baseDamage, pFM->shotCount, szDamageTag));
+			char* szDamageTag = JKG_GetDamageTag(pWP, firemode);
+
+			if (pFM->rangeSplash) {
+				if (pFM->shotCount > 1) {
+					vDescLines.push_back(va(UI_GetStringEdString3("@JKG_INVENTORY_WEP_BDAMAGE_SCATTERGUN"), pFM->baseDamage, pFM->shotCount, szDamageTag));
+				}
+				else {
+					vDescLines.push_back(va(UI_GetStringEdString3("@JKG_INVENTORY_WEP_BDAMAGE"), pFM->baseDamage, szDamageTag));
+				}
+				vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_WEP_BRADIUS"),
+					(int)pFM->rangeSplash, JKG_UnitsToFeet(pFM->rangeSplash), JKG_UnitsToMeters(pFM->rangeSplash)));
+			}
+			else if (pFM->shotCount > 1) {
+				vDescLines.push_back(va(UI_GetStringEdString3("@JKG_INVENTORY_WEP_DAMAGE_SCATTERGUN"), pFM->baseDamage, pFM->shotCount, szDamageTag));
 			}
 			else {
-				vDescLines.push_back(va(UI_GetStringEdString3("@JKG_INVENTORY_WEP_BDAMAGE"), pFM->baseDamage, szDamageTag));
+				vDescLines.push_back(va(UI_GetStringEdString3("@JKG_INVENTORY_WEP_DAMAGE"), pFM->baseDamage, szDamageTag));
 			}
-			vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_WEP_BRADIUS"), 
-				(int)pFM->rangeSplash, JKG_UnitsToFeet(pFM->rangeSplash), JKG_UnitsToMeters(pFM->rangeSplash)));
 		}
-		else if (pFM->shotCount > 1) {
-			vDescLines.push_back(va(UI_GetStringEdString3("@JKG_INVENTORY_WEP_DAMAGE_SCATTERGUN"), pFM->baseDamage, pFM->shotCount, szDamageTag));
-		}
-		else {
-			vDescLines.push_back(va(UI_GetStringEdString3("@JKG_INVENTORY_WEP_DAMAGE"), pFM->baseDamage, szDamageTag));
+		
+		if (pFM->primary.damage > 0)
+		{
+			char* szDamageTag = JKG_GetDamageTag(pWP, firemode);
+			vDescLines.push_back(va(UI_GetStringEdString3("@JKG_INVENTORY_WEP_DAMAGE"), pFM->primary.damage, szDamageTag));
+
+			//todo other complex damage checking, including debuffs, radius damage etc.
 		}
 
 		// Accuracy rating
@@ -521,7 +534,7 @@ static void JKG_ConstructFiringModeDescription(weaponData_t* pWP, int firemode, 
 		if (pFM->range > 0)
 		{
 			std::string rangeDescription = "";
-			int rangeMeters = static_cast<int>(roundf(static_cast<float>(pFM->range) / 36.5f));	//round to nearest int, 1m == 36.5 units in game
+			int rangeMeters = static_cast<int>(JKG_UnitsToMeters(pFM->range));
 
 			rangeDescription = va(UI_GetStringEdString2("@JKG_INVENTORY_WEP_RANGE"), rangeMeters);
 
