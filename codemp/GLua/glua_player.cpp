@@ -1793,7 +1793,7 @@ static int GLua_Player_ModifyCreditCount(lua_State *L) {
 		msg = ("+ " + std::to_string(modify) + " Credits");
 	else
 		msg = ("- " + std::to_string(modify) + " Credits");
-	trap->SendServerCommand(ply->clientNum, va("notify 1 \"%s\"", msg));
+	trap->SendServerCommand(ply->clientNum, va("notify 1 \"%s\"", msg.c_str()));
 	return 1;
 }
 
