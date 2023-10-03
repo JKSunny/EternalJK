@@ -41,6 +41,7 @@ option(BuildMPDed "Whether to create projects for the MP dedicated server (jkgal
 option(BuildMPGame "Whether to create projects for the MP server-side gamecode (jampgamex86.dll)" ON)
 option(BuildMPCGame "Whether to create projects for the MP clientside gamecode (cgamex86.dll)" ON)
 option(BuildMPUI "Whether to create projects for the MP UI code (uix86.dll)" ON)
+option(BuildMPRend2 "Whether to create projects for the EXPERIMENTAL MP rend2 renderer (rd-rend2_x86.dll)" ON)
 
 # Configure the use of bundled libraries.  By default, we assume the user is on
 # a platform that does not require any bundling.
@@ -136,6 +137,8 @@ set(MPDed "jkgalaxiesded.${Architecture}")
 set(MPGame "game${Architecture}")
 set(MPCGame "cgame${Architecture}")
 set(MPUI "ui${Architecture}")
+set(MPRend2 "rd-rend2_${Architecture}")
+
 # Library names
 set(MPBotLib "botlib")
 set(SharedLib "shared")
