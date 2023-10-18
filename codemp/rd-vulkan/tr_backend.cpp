@@ -229,12 +229,6 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 
 	for (i = 0, drawSurf = drawSurfs; i < numDrawSurfs; i++, drawSurf++)
 	{
-		if (drawSurf->sort == oldSort) {
-			// fast path, same as previous sort
-			rb_surfaceTable[*drawSurf->surface](drawSurf->surface);
-			continue;
-		}
-
 		R_DecomposeSort(drawSurf->sort, &entityNum, &shader, &fogNum, &dlighted);
 
 		if (vk.renderPassIndex == RENDER_PASS_SCREENMAP && entityNum != REFENTITYNUM_WORLD && backEnd.refdef.entities[entityNum].e.renderfx & RF_DEPTHHACK) {
@@ -255,15 +249,6 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 			continue;
 		}
 
-		//oldSort = drawSurf->sort;
-
-		//
-		// change the tess parameters if needed
-		// a "entityMergable" shader is a shader that can have surfaces from seperate
-		// entities merged into a single batch, like smoke and blood puff sprites
-
-		push_constant = qfalse;
-
 		if ( vk.vboGhoul2Active && *drawSurf->surface == SF_MDX )
 		{
 			if ( ((CRenderableSurface*)drawSurf->surface)->boneCache != oldBoneCache )
@@ -274,6 +259,21 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 				vk.cmd->bones_ubo_offset = RB_GetBoneUboOffset((CRenderableSurface*)drawSurf->surface);
 			}
 		}
+
+		if (drawSurf->sort == oldSort && backEnd.refractionFill == shader->useDistortion ) {
+			// fast path, same as previous sort
+			rb_surfaceTable[*drawSurf->surface](drawSurf->surface);
+			continue;
+		}
+
+		//oldSort = drawSurf->sort;
+
+		//
+		// change the tess parameters if needed
+		// a "entityMergable" shader is a shader that can have surfaces from seperate
+		// entities merged into a single batch, like smoke and blood puff sprites
+
+		push_constant = qfalse;
 
 		//if (((oldSort ^ drawSurfs->sort) & ~QSORT_REFENTITYNUM_MASK) || !shader->entityMergable) {
 		if ( shader != oldShader || fogNum != oldFogNum || dlighted != oldDlighted
@@ -353,6 +353,18 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 			}
 
 			oldEntityNum = entityNum;
+		}
+
+		qboolean isDistortionShader = (qboolean)
+			((shader->useDistortion == qtrue) || (backEnd.currentEntity && backEnd.currentEntity->e.renderfx & RF_DISTORTION));
+
+		if ( backEnd.refractionFill != isDistortionShader ) {
+			if ( vk.refractionActive && vk.renderPassIndex != RENDER_PASS_REFRACTION && !backEnd.hasRefractionSurfaces )
+				backEnd.hasRefractionSurfaces = qtrue;
+
+			// skip refracted surfaces in main pass, 
+			// and non-refracted surfaces in refraction pass 
+			continue;	
 		}
 
 		// add the triangles for this surface
@@ -908,6 +920,8 @@ const void	*RB_DrawSurfs( const void *data ) {
 	backEnd.hasGlowSurfaces = qfalse;
 	backEnd.isGlowPass = qfalse;
 
+	backEnd.hasRefractionSurfaces = qfalse;
+
 #ifdef USE_VBO
 	VBO_UnBind();
 #endif
@@ -947,6 +961,20 @@ const void	*RB_DrawSurfs( const void *data ) {
 		vk_end_render_pass();
 		vk_begin_main_render_pass();
 		backEnd.screenMapDone = qtrue;
+	}
+
+	// refraction / distortion pass
+	if ( backEnd.hasRefractionSurfaces ) {
+		vk_end_render_pass();
+	
+		// extract/copy offscreen color attachment to make it usable as input
+		vk_refraction_extract();
+
+		backEnd.refractionFill = qtrue;	
+		vk_begin_post_refraction_extract_render_pass();
+
+		RB_RenderDrawSurfList( cmd->drawSurfs, cmd->numDrawSurfs );
+		backEnd.refractionFill = qfalse;
 	}
 
 	// checked in previous RB_RenderDrawSurfList() if there is at least one glowing surface

@@ -377,7 +377,7 @@ void R_RotateForEntity( const trRefEntity_t *ent, const viewParms_t *viewParms,
 	vec3_t	delta;
 	float	axisLength;
 
-	if (ent->e.reType != RT_MODEL) {
+	if ( ent->e.reType != RT_MODEL || ent == &tr.worldEntity ) {
 		*ori = viewParms->world;
 		return;
 	}
@@ -621,7 +621,7 @@ R_SetupProjectionZ
 */
 static void R_SetupProjectionZ( viewParms_t *dest ) {
 
-	const float zNear = r_znear->value;
+	const float zNear = dest->zNear;
 	const float zFar = dest->zFar;
 	const float depth = zFar - zNear;
 

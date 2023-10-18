@@ -646,6 +646,7 @@ typedef struct shader_s {
 	float		timeOffset;                         // current time offset for this shader
 
 	
+	qboolean	useDistortion;
 	qboolean	hasGlow;							// True if this shader has a stage with glow in it (just an optimization).
 
 	int			hasScreenMap;
@@ -784,6 +785,7 @@ typedef struct viewParms_s {
 	cplane_t		frustum[5];
 	vec3_t			visBounds[2];
 	float			zFar;
+	float			zNear;
 #ifdef USE_PMLIGHT
 	// each view will have its own dlight set
 	unsigned int	num_dlights;
@@ -1415,6 +1417,9 @@ typedef struct backEndState_s {
 
 	qboolean hasGlowSurfaces;					// renderdoc shows empty dglow pass, or passes with 2 or 3 surfaces. maybe use a min surf count instead?
 	qboolean isGlowPass;
+
+	qboolean hasRefractionSurfaces;
+	qboolean refractionFill;
 } backEndState_t;
 
 typedef struct drawSurfsCommand_s drawSurfsCommand_t;
@@ -2220,6 +2225,12 @@ void	RB_CalcDiffuseColor( unsigned char *colors );
 void	RB_CalcDiffuseEntityColor( unsigned char *colors );
 void	RB_CalcDisintegrateVertDeform( void );
 
+void	RB_CalcScaleTexMatrix( const float scale[2], float *matrix );
+void	RB_CalcScrollTexMatrix( const float scrollSpeed[2], float *matrix );
+void	RB_CalcRotateTexMatrix( float degsPerSecond, float *matrix );
+void	RB_CalcTurbulentFactors( const waveForm_t *wf, float *amplitude, float *now );
+void	RB_CalcTransformTexMatrix( const texModInfo_t *tmi, float *matrix  );
+void	RB_CalcStretchTexMatrix( const waveForm_t *wf, float *matrix );
 /*
 =============================================================
 

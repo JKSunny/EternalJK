@@ -114,6 +114,8 @@ SETLOCAL EnableDelayedExpansion
 @rem compile shader variations from templates
 @rem vertex shader
 for /L %%i in ( 0,1,2 ) do (                @rem vbo ( 0:none 1:ghoul2 2:mdv/md3 )
+    call :compile_refraction_vertex_shader %%i
+
     for /L %%j in ( 0,1,2 ) do (            @rem tx   
         for /L %%k in ( 0,1,1 ) do (        @rem +env
             for /L %%m in ( 0,1,1 ) do (    @rem +fog
@@ -149,6 +151,13 @@ del /Q "%tmpf%"
 pause
 
 
+@rem refraction shaders
+:compile_refraction_vertex_shader
+    "%cl%" -S vert -V -o "%tmpf%" %glsl%refraction.tmpl !vbo[%1]!
+    "%bh%" "%tmpf%" %outf% refraction_!vbo_id[%1]!
+    "%bs%" %outfb% "    vk.shaders.refraction_vs[%1] = SHADER_MODULE( refraction_!vbo_id[%1]! );"
+	"%bs%" %outfb% "    vk_set_shader_name( vk.shaders.refraction_vs[%1], ""refraction_!vbo_id[%1]!"" );"
+exit /B
 
 @rem identity shaders
 :compile_ident1_vertex_shader

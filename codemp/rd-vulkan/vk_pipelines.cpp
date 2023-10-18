@@ -239,7 +239,18 @@ static void vk_push_vertex_input_binding_attribute( const Vk_Pipeline_Def *def )
             vk_push_bind( 0, sizeof( vec4_t ) );					// xyz array
             vk_push_attr( 0, 0, VK_FORMAT_R32G32B32A32_SFLOAT );
             break;
-        
+
+        case TYPE_REFRACTION:
+            vk_push_bind( 0, sizeof( vec4_t ) );					// xyz array
+            vk_push_bind( 1, sizeof( color4ub_t ) );				// color array
+            vk_push_bind( 2, sizeof( vec2_t ) );					// st0 array
+            vk_push_bind( 5, sizeof( vec4_t ) );					// normals
+            vk_push_attr( 0, 0, VK_FORMAT_R32G32B32A32_SFLOAT );
+            vk_push_attr( 1, 1, VK_FORMAT_R8G8B8A8_UNORM );
+            vk_push_attr( 2, 2, VK_FORMAT_R32G32_SFLOAT );
+			vk_push_attr( 5, 5, VK_FORMAT_R32G32B32A32_SFLOAT );
+            break;
+
         case TYPE_SINGLE_TEXTURE_DF:
         case TYPE_SINGLE_TEXTURE_IDENTITY:
         case TYPE_SINGLE_TEXTURE_FIXED_COLOR:
@@ -465,12 +476,13 @@ static void vk_push_vertex_input_binding_attribute( const Vk_Pipeline_Def *def )
     }
 
 #if defined(USE_VBO_GHOUL2)
-    if( is_ghoul2_vbo || is_mdv_vbo ) {
-        if ( def->shader_type == TYPE_FOG_ONLY || 
-             def->shader_type >= TYPE_GENERIC_BEGIN && def->shader_type <= TYPE_GENERIC_END )
+    if ( is_ghoul2_vbo || is_mdv_vbo ) {
+        if ( ( def->shader_type == TYPE_FOG_ONLY || def->shader_type == TYPE_REFRACTION ) || 
+             ( def->shader_type >= TYPE_GENERIC_BEGIN && def->shader_type <= TYPE_GENERIC_END ) )
         {
             // bind attributes for fog and generic gpu shading shaders
             switch ( def->shader_type ) {
+                case TYPE_REFRACTION:
                 case TYPE_FOG_ONLY:
                 case TYPE_SINGLE_TEXTURE_ENV:
 	            case TYPE_SINGLE_TEXTURE_IDENTITY_ENV:
@@ -643,6 +655,10 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
     if ( def->vbo_mdv )     vbo = 2;
 
     switch ( def->shader_type ) {
+        case TYPE_REFRACTION:
+            vs_module = &vk.shaders.refraction_vs[vbo];
+            fs_module = &vk.shaders.refraction_fs;
+        break;
         case TYPE_SINGLE_TEXTURE_LIGHTING:
             vs_module = &vk.shaders.vert.light[0];
             fs_module = &vk.shaders.frag.light[0][0];
@@ -818,6 +834,7 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
             case TYPE_COLOR_WHITE:
             case TYPE_COLOR_GREEN:
             case TYPE_COLOR_RED:
+            case TYPE_REFRACTION:
                 break;
             default:
                 // switch to fogged modules
@@ -1257,6 +1274,8 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
 
     if ( renderPassIndex == RENDER_PASS_SCREENMAP )
         create_info.renderPass = vk.render_pass.screenmap;
+    else if ( renderPassIndex == RENDER_PASS_REFRACTION )
+        create_info.renderPass = vk.render_pass.refraction.extract;
     else
         create_info.renderPass = vk.render_pass.main;
 

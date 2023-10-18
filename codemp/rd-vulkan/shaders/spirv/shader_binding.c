@@ -3,6 +3,8 @@ static void vk_set_shader_name( VkShaderModule shader, const char *name ) {
     VK_SET_OBJECT_NAME( shader, name, VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT );
 }
 void vk_bind_generated_shaders( void ){
+    vk.shaders.refraction_vs[0] = SHADER_MODULE( refraction_cpu_ );
+    vk_set_shader_name( vk.shaders.refraction_vs[0], "refraction_cpu_" );
     vk.shaders.vert.gen[0][0][0][0][0] = SHADER_MODULE( vert_cpu_tx0 );
     vk_set_shader_name( vk.shaders.vert.gen[0][0][0][0][0], "vert_cpu_tx0" );
     vk.shaders.vert.ident1[0][0][0][0] = SHADER_MODULE( vert_cpu_tx0_ident1 );
@@ -75,6 +77,8 @@ void vk_bind_generated_shaders( void ){
     vk_set_shader_name( vk.shaders.vert.gen[0][2][0][1][1], "vert_cpu_tx2_env_fog" );
     vk.shaders.vert.gen[0][2][1][1][1] = SHADER_MODULE( vert_cpu_tx2_cl_env_fog );
     vk_set_shader_name( vk.shaders.vert.gen[0][2][1][1][1], "vert_cpu_tx2_cl_env_fog" );
+    vk.shaders.refraction_vs[1] = SHADER_MODULE( refraction_gpu_ghoul2_ );
+    vk_set_shader_name( vk.shaders.refraction_vs[1], "refraction_gpu_ghoul2_" );
     vk.shaders.vert.gen[1][0][0][0][0] = SHADER_MODULE( vert_gpu_ghoul2_tx0 );
     vk_set_shader_name( vk.shaders.vert.gen[1][0][0][0][0], "vert_gpu_ghoul2_tx0" );
     vk.shaders.vert.ident1[1][0][0][0] = SHADER_MODULE( vert_gpu_ghoul2_tx0_ident1 );
@@ -147,6 +151,8 @@ void vk_bind_generated_shaders( void ){
     vk_set_shader_name( vk.shaders.vert.gen[1][2][0][1][1], "vert_gpu_ghoul2_tx2_env_fog" );
     vk.shaders.vert.gen[1][2][1][1][1] = SHADER_MODULE( vert_gpu_ghoul2_tx2_cl_env_fog );
     vk_set_shader_name( vk.shaders.vert.gen[1][2][1][1][1], "vert_gpu_ghoul2_tx2_cl_env_fog" );
+    vk.shaders.refraction_vs[2] = SHADER_MODULE( refraction_gpu_mdv_ );
+    vk_set_shader_name( vk.shaders.refraction_vs[2], "refraction_gpu_mdv_" );
     vk.shaders.vert.gen[2][0][0][0][0] = SHADER_MODULE( vert_gpu_mdv_tx0 );
     vk_set_shader_name( vk.shaders.vert.gen[2][0][0][0][0], "vert_gpu_mdv_tx0" );
     vk.shaders.vert.ident1[2][0][0][0] = SHADER_MODULE( vert_gpu_mdv_tx0_ident1 );
