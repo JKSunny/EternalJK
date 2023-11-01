@@ -26,17 +26,34 @@ layout(set = 1, binding = 0) uniform UBO {
 #endif
 
 #if !defined(USE_CLX_IDENT) && (defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV))
+struct tcMod_t {
+	vec4	matrix;
+	vec4	offTurb;
+};
+
+struct tcGen_t {
+	vec3	vector0;
+	vec3	vector1;
+	int		type;
+};
+
+struct vkBundle_t {
+	vec4	baseColor;
+	vec4	vertColor;
+	tcMod_t	tcMod;
+	tcGen_t	tcGen;
+	int		rgbGen;
+	int		alphaGen;
+	int		numTexMods;
+};
+
 layout(set = 1, binding = 1) uniform UBOG2 {
 	vec4 u_localViewOrigin;
 	vec4 ambientLight;
 	vec4 directedLight;
 	vec4 lightDir;
-	vec4 rgbGen; 
-	vec4 alphaGen;
-	vec4 baseColor[3];
-	vec4 vertColor[3];
-	vec4 disintegrationInfo;
-	vec4 deformInfo[3];
+
+	vkBundle_t			u_bundle[3];
 };	
 
 layout(location = 7) in vec4 var_Normal;
@@ -499,7 +516,7 @@ void main() {
 	float sqrLightDist = dot(L, L);
 	L /= sqrt(sqrLightDist);
 
-	if ( needsShading( int( rgbGen[0] ) ) ) {
+	if ( needsShading( u_bundle[0].rgbGen ) ) {
 		lightColor = ( directedLight.xyz * 1.2 ) * base.rgb;
 		ambientColor = ( ambientLight.rgb ) * base.rgb;
 

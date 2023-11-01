@@ -25,27 +25,57 @@ layout(set = 1, binding = 0) uniform UBO {
 	vec4 lightColor;
 	vec4 lightVector;
 	
+#if !defined(USE_VBO_GHOUL2) && !defined(USE_VBO_MDV)
 	// refraction parameters:
 	tcMod_t u_tcMod;
 	tcGen_t u_tcGen;
-#if !defined(USE_VBO_GHOUL2) && !defined(USE_VBO_MDV)
+
 	// entity
 	mat4	u_ModelMatrix;
 #endif
 };
 
 #if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
+struct vkBundle_t {
+	vec4	baseColor;
+	vec4	vertColor;
+	tcMod_t	tcMod;
+	tcGen_t	tcGen;
+	int		rgbGen;
+	int		alphaGen;
+	int		numTexMods;
+};
+
+struct vkDisintegration_t {
+	vec3	origin;
+	float	threshold;
+};
+
+struct vkDeform_t {
+	float	base;
+	float	amplitude;
+	float	phase;
+	float	frequency;
+
+	vec3	vector;
+	float	time;
+
+	int		type;
+	int		func;
+};
+
 layout(set = 1, binding = 1) uniform UBOG2 {
 	vec4 u_localViewOrigin;
 	vec4 ambientLight;
 	vec4 directedLight;
 	vec4 lightDir;
-	vec4 rgbGen; 
-	vec4 alphaGen;
-	vec4 baseColor[3];
-	vec4 vertColor[3];
-	vec4 disintegrationInfo;
-	vec4 deformInfo[3];
+
+	vkBundle_t			u_bundle[3];
+	vkDisintegration_t	u_disintegration;
+	vkDeform_t			u_deform;
+
+	float	u_portalRange;
+
 	mat4 u_ModelMatrix;
 };	
 #endif
@@ -92,38 +122,38 @@ const float etaB = 1.0 / 1.05;
 
 #if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
 vec4 CalcColor( int index, in vec3 position, in vec3 normal ) {
-	vec4 color = ( vertColor[index] * vec4( 0.0 ) ) + baseColor[index];		// skip vertColor?
+	vec4 color = ( u_bundle[index].vertColor * vec4( 0.0 ) ) + u_bundle[index].baseColor;		// skip vertColor?
 
-	switch ( int( rgbGen[index] ) ) {
+	switch ( u_bundle[index].rgbGen ) {
 		case 14:// CGEN_DISINTEGRATION_1
 		{
-			vec3 delta = disintegrationInfo.xyz - position;
+			vec3 delta = u_disintegration.origin - position;
 			float sqrDistance = dot( delta, delta );
 
-			if ( sqrDistance < disintegrationInfo.w )
+			if ( sqrDistance < u_disintegration.threshold )
 				color *= 0.0;
-			else if ( sqrDistance < disintegrationInfo.w + 60.0 )
+			else if ( sqrDistance < u_disintegration.threshold + 60.0 )
 				color *= vec4( 0.0, 0.0, 0.0, 1.0 );
-			else if ( sqrDistance < disintegrationInfo.w + 150.0 )
+			else if ( sqrDistance < u_disintegration.threshold + 150.0 )
 				color *= vec4( 0.435295, 0.435295, 0.435295, 1.0 );
-			else if ( sqrDistance < disintegrationInfo.w + 180.0 )
+			else if ( sqrDistance < u_disintegration.threshold + 180.0 )
 				color *= vec4( 0.6862745, 0.6862745, 0.6862745, 1.0 );
 
 			return color;
 		}
 		case 15:// CGEN_DISINTEGRATION_2
 		{
-			vec3 delta = disintegrationInfo.xyz - position;
+			vec3 delta = u_disintegration.origin - position;
 			float sqrDistance = dot( delta, delta );
 
-			if ( sqrDistance < disintegrationInfo.w )
+			if ( sqrDistance < u_disintegration.threshold )
 				return vec4(0.0);
 
 			return color;
 		}
 	}
 
-	switch ( int( alphaGen[index] ) ) {
+	switch ( u_bundle[index].alphaGen ) {
 		case 6: // AGEN_LIGHTING_SPECULAR
 		{
 			vec3 viewer = normalize( u_localViewOrigin.xyz - position );
@@ -137,7 +167,7 @@ vec4 CalcColor( int index, in vec3 position, in vec3 normal ) {
 		case 8: // AGEN_PORTAL
 		{
 			vec3 viewer = normalize( u_localViewOrigin.xyz - position );
-			color.a = clamp( length( viewer ) / alphaGen[3], 0.0, 1.0 );
+			color.a = clamp( length( viewer ) / u_portalRange, 0.0, 1.0 );
 			break;
 		}
 	}
@@ -178,22 +208,22 @@ float CalculateDeformScale( in int func, in float time, in float phase, in float
 vec3 DeformPosition( const vec3 pos, const vec3 normal, const vec2 st )
 {
 	
-	//deformInfo[0];	deformInfo[0][0];
-	//deformInfo[1];	deformInfo[0][1];
-	//deformInfo[2];	deformInfo[0][2];
-	//deformInfo[3];	deformInfo[0][3];
+	//deformInfo[0];	deformInfo[0][0];	// base
+	//deformInfo[1];	deformInfo[0][1];	// amplitude
+	//deformInfo[2];	deformInfo[0][2];	// phase
+	//deformInfo[3];	deformInfo[0][3];	// frequency
 
-	//deformInfo[4];	deformInfo[1][0];
-	//deformInfo[5];	deformInfo[1][1];
-	//deformInfo[6];	deformInfo[1][2];
-	//deformInfo[7];	deformInfo[1][3];
+	//deformInfo[4];	deformInfo[1][0];	// vector 0
+	//deformInfo[5];	deformInfo[1][1];	// vector 1
+	//deformInfo[6];	deformInfo[1][2];	// vector 2
+	//deformInfo[7];	deformInfo[1][3];	// time
 
-	//deformInfo[8];	deformInfo[2][0];
-	//deformInfo[9];	deformInfo[2][1];
-	//deformInfo[10];	deformInfo[2][2];
-	//deformInfo[11];	deformInfo[2][3];
+	//deformInfo[8];	deformInfo[2][0];	// type
+	//deformInfo[9];	deformInfo[2][1];	// func
+	//deformInfo[10];	deformInfo[2][2];	// pad
+	//deformInfo[11];	deformInfo[2][3];	// pad
 
-	switch ( int( deformInfo[2][0] ) ) {
+	switch ( u_deform.type ) {
 		default:
 		{
 			return pos;
@@ -201,45 +231,45 @@ vec3 DeformPosition( const vec3 pos, const vec3 normal, const vec2 st )
 
 		case 3: // DEFORM_BULGE
 		{
-			float bulgeHeight = deformInfo[0][1]; // amplitude
-			float bulgeWidth = deformInfo[0][2]; // phase
-			float bulgeSpeed = deformInfo[0][3]; // frequency
+			float bulgeHeight	= u_deform.amplitude;		// deformInfo[0][1]; // amplitude
+			float bulgeWidth	= u_deform.phase;			// deformInfo[0][2]; // phase
+			float bulgeSpeed	= u_deform.frequency;		// deformInfo[0][3]; // frequency
 
-			float scale = CalculateDeformScale( 1, deformInfo[1][3], bulgeWidth * st.x, bulgeSpeed );
+			float scale = CalculateDeformScale( 1, u_deform.time, bulgeWidth * st.x, bulgeSpeed );	// deformInfo[1][3]; time
 
 			return pos + normal * scale * bulgeHeight;
 		}
 
 		case 4: // DEFORM_BULGE_UNIFORM
 		{
-			float bulgeHeight = deformInfo[0][1]; // amplitude
+			float bulgeHeight = u_deform.amplitude; //deformInfo[0][1]; // amplitude
 
 			return pos + normal * bulgeHeight;
 		}
 
 		case 1: // DEFORM_WAVE
 		{
-			float base = deformInfo[0][0];
-			float amplitude = deformInfo[0][1];
-			float phase = deformInfo[0][2];
-			float frequency = deformInfo[0][3];
-			float spread = deformInfo[1][0];
+			float base		= u_deform.base;		// deformInfo[0][0];
+			float amplitude = u_deform.amplitude;	// deformInfo[0][1];
+			float phase		= u_deform.phase;		// deformInfo[0][2];
+			float frequency = u_deform.frequency;	// deformInfo[0][3];
+			float spread	= u_deform.vector.x;	// deformInfo[1][0];
 
 			float offset = dot( pos.xyz, vec3( spread ) );
-			float scale = CalculateDeformScale( int(deformInfo[2][1]), deformInfo[1][3], phase + offset, frequency );
+			float scale = CalculateDeformScale( u_deform.func, u_deform.time, phase + offset, frequency );
 
 			return pos + normal * (base + scale * amplitude);
 		}
 
 		case 5: // DEFORM_MOVE
 		{
-			float base = deformInfo[0][0];
-			float amplitude = deformInfo[0][1];
-			float phase = deformInfo[0][2];
-			float frequency = deformInfo[0][3];
-			vec3 direction = vec3( deformInfo[1][0], deformInfo[1][1], deformInfo[1][2] );
+			float base		= u_deform.base;		// deformInfo[0][0];
+			float amplitude = u_deform.amplitude;	// deformInfo[0][1];
+			float phase		= u_deform.phase;		// deformInfo[0][2];
+			float frequency = u_deform.frequency;	// deformInfo[0][3];
+			vec3 direction	= u_deform.vector;
 
-			float scale = CalculateDeformScale( int(deformInfo[2][1]), deformInfo[1][3], phase, frequency );
+			float scale = CalculateDeformScale( u_deform.func, u_deform.time, phase, frequency );
 
 			return pos + direction * (base + scale * amplitude);
 		}
@@ -247,14 +277,13 @@ vec3 DeformPosition( const vec3 pos, const vec3 normal, const vec2 st )
 		case 6: // DEFORM_PROJECTION_SHADOW
 		{
 			vec3 ground = vec3(
-				deformInfo[0][0],
-				deformInfo[0][1],
-				deformInfo[0][2]);
-			float groundDist = deformInfo[0][3];
-			vec3 lightDir = vec3(
-				deformInfo[1][0],
-				deformInfo[1][1],
-				deformInfo[1][2]);
+				u_deform.base,		// deformInfo[0][0],
+				u_deform.amplitude, // deformInfo[0][1],
+				u_deform.phase		// deformInfo[0][2]
+			);
+
+			float groundDist	= u_deform.frequency;	// deformInfo[0][3];
+			vec3 lightDir		= u_deform.vector;
 
 			float d = 1.0 / dot( lightDir, ground );
 			vec3 lightPos = lightDir * d;
@@ -263,14 +292,14 @@ vec3 DeformPosition( const vec3 pos, const vec3 normal, const vec2 st )
 
 		case 17: // DEFORM_DISINTEGRATION
 		{
-			vec3 delta = disintegrationInfo.xyz - pos;
+			vec3 delta = u_disintegration.origin - pos;
 			float sqrDistance = dot(delta, delta);
 			vec3 normalScale = vec3(-0.01);
-			if ( sqrDistance < disintegrationInfo.w )
+			if ( sqrDistance < u_disintegration.threshold )
 			{
 				normalScale = vec3(2.0, 2.0, 0.5);
 			}
-			else if ( sqrDistance < disintegrationInfo.w + 50 )
+			else if ( sqrDistance < u_disintegration.threshold + 50 )
 			{
 				normalScale = vec3(1.0, 1.0, 0.0);
 			}
@@ -281,11 +310,19 @@ vec3 DeformPosition( const vec3 pos, const vec3 normal, const vec2 st )
 
 vec3 DeformNormal( const in vec3 position, const in vec3 normal )
 {
-	if ( int( deformInfo[2][0] ) != 2 ) // DEFORM_NORMALS
+	if ( u_deform.type != 2 ) // DEFORM_NORMALS
 		return normal;
 
-	float amplitude = deformInfo[0][1];
-	float frequency = deformInfo[0][3];
+/*
+			float base		= u_deform.base;		// deformInfo[0][0];
+			float amplitude = u_deform.amplitude	// deformInfo[0][1];
+			float phase		= u_deform.phase;		// deformInfo[0][2];
+			float frequency = u_deform.frequency;	// deformInfo[0][3];
+*/
+
+
+	float amplitude = u_deform.amplitude;	// deformInfo[0][1];
+	float frequency = u_deform.frequency;	// deformInfo[0][3];
 
 	vec3 outNormal = normal;
 	const float scale = 0.98;
@@ -294,19 +331,19 @@ vec3 DeformNormal( const in vec3 position, const in vec3 normal )
 		position.x * scale,
 		position.y * scale,
 		position.z * scale,
-		deformInfo[1][3] * frequency );
+		u_deform.time * frequency );
 
 	outNormal.y += amplitude * GetNoiseValue(
 		100.0 * position.x * scale,
 		position.y * scale,
 		position.z * scale,
-		deformInfo[1][3] * frequency );
+		u_deform.time * frequency );
 
 	outNormal.z += amplitude * GetNoiseValue(
 		200.0 * position.x * scale,
 		position.y * scale,
 		position.z * scale,
-		deformInfo[1][3] * frequency );
+		u_deform.time * frequency );
 
 	return outNormal;
 }
@@ -344,7 +381,7 @@ void main() {
 	vec3 normal = normalize(in_normal);
 	//vec3 normal = normalize(in_normal - vec3(0.5));
 
-	if( int( deformInfo[2][0] ) != 0 ){ // !DEFORM_NONE
+	if ( u_deform.type != 0 ){ // !DEFORM_NONE
 		position	= DeformPosition( position, normal, in_tex_coord0 );
 		normal		= DeformNormal( position, normal );
 	}
@@ -359,7 +396,7 @@ void main() {
 	vec3 normal = normalize(skin_matrix * vec4(in_normal, 0.0));
 	//vec3 normal = normalize(skin_matrix * vec4(in_normal - vec3(0.5), 0.0));
 
-	if( int( deformInfo[2][0] ) != 0 ){ // !DEFORM_NONE
+	if ( u_deform.type != 0 ){ // !DEFORM_NONE
 		position	= DeformPosition( position, normal, in_tex_coord0 );
 		normal		= DeformNormal( position, normal );
 	}
@@ -373,15 +410,16 @@ void main() {
 
 	#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
 		frag_color = CalcColor( 0, position, normal );
+
+		vec2 tex			= GenTexCoords( u_bundle[0].tcGen.type, position, normal, u_bundle[0].tcGen.vector0, u_bundle[0].tcGen.vector1 );
+		vec2 var_DiffuseTex = ModTexCoords( tex, position, u_bundle[0].tcMod.matrix, u_bundle[0].tcMod.offTurb );
+
 	#else
 		frag_color = in_color;
-	#endif
-	
-	vec2 tex = GenTexCoords(u_tcGen.type, position, normal, u_tcGen.vector0, u_tcGen.vector1);
-	//vec2 tex = in_tex_coord0.st;
 
-	vec2 var_DiffuseTex = ModTexCoords(tex, position, u_tcMod.matrix, u_tcMod.offTurb);
-	//vec2 var_DiffuseTex = tex;
+		vec2 tex			= GenTexCoords( u_tcGen.type, position, normal, u_tcGen.vector0, u_tcGen.vector1 );
+		vec2 var_DiffuseTex = ModTexCoords( tex, position, u_tcMod.matrix, u_tcMod.offTurb );
+	#endif
 
 	vec3 ws_Position	= mat3(u_ModelMatrix) * position;
 	vec3 ws_Normal		= normalize(mat3(u_ModelMatrix) * normal);

@@ -484,17 +484,49 @@ typedef struct vkUniform_s {
 } vkUniform_t;
 
 #ifdef USE_VBO_GHOUL2
+typedef struct vkBundle_s {
+	vec4_t		baseColor;
+	vec4_t		vertColor;
+	vktcMod_t	tcMod;
+	vktcGen_t	tcGen;
+	int32_t		rgbGen;
+	int32_t		alphaGen;
+	int32_t		numTexMods;	// make this to a specialization constant
+	int32_t		pad0;
+} vkBundle_t;
+
+typedef struct vkDisintegration_s {
+	vec3_t	origin;
+	float	threshold;
+} vkDisintegration_t;
+
+typedef struct vkDeform_s {
+	float	base;
+	float	amplitude;
+	float	phase;
+	float	frequency;
+
+	vec3_t	vector;
+	float	time;
+
+	int32_t	type;
+	int32_t	func;
+	vec2_t	pad0;
+} vkDeform_t;
+
 typedef struct vkUniformData_s {
-	vec4_t eyePos;
-	vec4_t ambientLight;
-	vec4_t directedLight;
-	vec4_t lightDir;
-	vec4_t rgbGen; 
-	vec4_t alphaGen;
-	vec4_t baseColor[3];
-	vec4_t vertColor[3];
-	vec4_t disintegrationInfo;
-	vec4_t deformInfo[3];
+	vec4_t				localViewOrigin;
+	vec4_t				ambientLight;
+	vec4_t				directedLight;
+	vec4_t				lightDir;
+
+	vkBundle_t			bundle[3];
+	vkDisintegration_t	disintegration;
+	vkDeform_t			deform;
+
+	float				portalRange;
+	vec3_t				pad0;
+
 	mat4_t modelMatrix;
 } vkUniformData_t;
 
