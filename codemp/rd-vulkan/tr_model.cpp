@@ -1718,6 +1718,9 @@ void R_ModelInit( void )
 	tr.numModels = 0;
 	memset(mhHashTable, 0, sizeof(mhHashTable));
 
+	if ( CachedModels && vk.vboGhoul2Active )
+		RE_RegisterModels_DeleteAll();
+
 	mod = R_AllocModel();
 	mod->type = MOD_BAD;
 }
