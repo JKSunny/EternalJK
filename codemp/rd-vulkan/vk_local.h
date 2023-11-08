@@ -1074,16 +1074,11 @@ qboolean	R_CanMinimize( void );
 
 // pipeline
 void		vk_create_pipelines(void);
-void		vk_create_bloom_pipelines( void );
-void		vk_create_dglow_pipelines( void );
 void		vk_alloc_persistent_pipelines( void );
 void		vk_create_descriptor_layout( void );
 void		vk_create_pipeline_layout( void );
 void		vk_destroy_pipelines( qboolean reset );
 void		vk_update_post_process_pipelines( void );
-#ifdef VK_PBR_BRDFLUT
-void		vk_create_brdflut_pipeline( void );
-#endif
 
 // swapchain
 void		vk_restart_swapchain( const char *funcname );
