@@ -59,11 +59,6 @@ void vk_restart_swapchain( const char *funcname )
     vk_create_attachments();
     vk_create_render_passes();
     vk_create_framebuffers();
-    vk_create_bloom_pipelines();
-    vk_create_dglow_pipelines();
-#ifdef VK_PBR_BRDFLUT
-    vk_create_brdflut_pipeline();
-#endif
 #ifdef VK_CUBEMAP
     vk_create_cubemap_prefilter();
 #endif
