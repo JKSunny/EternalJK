@@ -73,6 +73,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define VK_LAYOUT_COUNT					7
 #endif
 
+#define	REFRACTION_EXTRACT_SCALE		2
 #define NUM_COMMAND_BUFFERS				2
 #define VK_NUM_BLUR_PASSES				4
 
@@ -235,6 +236,7 @@ typedef enum {
 	TYPE_COLOR_RED,
 	TYPE_FOG_ONLY,
 	TYPE_DOT,
+	TYPE_REFRACTION,
 
 	TYPE_SINGLE_TEXTURE_LIGHTING,
 	TYPE_SINGLE_TEXTURE_LIGHTING_LINEAR,
@@ -457,6 +459,7 @@ typedef enum {
 	RENDER_PASS_POST_BLEND,
 	RENDER_PASS_DGLOW,
 	RENDER_PASS_CUBEMAP,
+	RENDER_PASS_REFRACTION,
 	RENDER_PASS_COUNT
 } renderPass_t;
 
@@ -490,27 +493,44 @@ typedef struct VK_Pipeline {
 	VkPipeline		handle[RENDER_PASS_COUNT];
 } VK_Pipeline_t;
 
+typedef struct vktcMod_s {
+	vec4_t	matrix;
+	vec4_t	offTurb;
+} vktcMod_t;
+
+typedef struct vktcGen_s {
+	vec3_t	vector0;
+	int32_t	pad0;
+	vec3_t	vector1;
+	int32_t	type;
+} vktcGen_t;
+
 // this structure must be in sync with shader uniforms!
 typedef struct {
 	float	mvp[16];
 } pushConst;
 
 typedef struct vkUniform_s {
-	// vertex shader reference
+	// light/env/material parameters:
 	vec4_t eyePos;
 	vec4_t lightPos;
-
-	// vertex - fog parameters
-	vec4_t fogDistanceVector;
-	vec4_t fogDepthVector;
-	vec4_t fogEyeT;
-
-	// fragment shader reference
 	vec4_t lightColor; // rgb + 1/(r*r)
-	vec4_t fogColor;
-
-	// fragment - linear dynamic light
 	vec4_t lightVector;
+
+	// fog parameters:
+	union {
+		struct {
+			vec4_t fogDistanceVector;
+			vec4_t fogDepthVector;
+			vec4_t fogEyeT;
+			vec4_t fogColor;
+		} fog;
+
+		struct {
+			vktcMod_t tcMod;
+			vktcGen_t tcGen;
+		} refraction;
+	};
 } vkUniform_t;
 
 typedef struct vkUniformCamera_s {
@@ -695,6 +715,10 @@ typedef struct {
 	VkImage			color_image;
 	VkImageView		color_image_view;
 	
+	VkImage			refraction_extract_image;
+	VkImageView		refraction_extract_image_view;
+	VkDescriptorSet	refraction_extract_descriptor;
+
 	VkImage			bloom_image[1 + VK_NUM_BLUR_PASSES * 2];
 	VkImageView		bloom_image_view[1 + VK_NUM_BLUR_PASSES * 2];
 
@@ -751,6 +775,10 @@ typedef struct {
 		VkRenderPass cubemap;
 
 		struct {
+			VkRenderPass extract;
+		} refraction;
+
+		struct {
 			VkRenderPass blur[VK_NUM_BLUR_PASSES * 2];
 			VkRenderPass extract;
 			VkRenderPass blend;
@@ -768,6 +796,7 @@ typedef struct {
 		VkImageView image_view;
 	} capture;
 
+
 	// framebuffers
 	struct {
 		VkFramebuffer main[MAX_SWAPCHAIN_IMAGES];
@@ -779,6 +808,10 @@ typedef struct {
 #endif
 
 		VkFramebuffer cubemap[6];
+
+		struct {
+			VkFramebuffer extract;
+		} refraction;
 
 		struct {
 			VkFramebuffer blur[VK_NUM_BLUR_PASSES * 2];
@@ -838,6 +871,8 @@ typedef struct {
 	VkPipeline brdflut_pipeline;
 #endif
 
+	VkPipeline refraction_capture_pipeline;
+
 	// Standard pipeline(s)
 	struct  {
 		uint32_t skybox_pipeline;
@@ -891,14 +926,14 @@ typedef struct {
 	} storage;
 
 	uint32_t storage_alignment;
+	uint32_t uniform_alignment;
+
 	uint32_t uniform_item_size;
 	uint32_t uniform_camera_item_size;
 	uint32_t uniform_global_item_size;
 	uint32_t uniform_light_item_size;
 	uint32_t uniform_entity_item_size;
 	uint32_t uniform_bones_item_size;
-
-	uint32_t uniform_alignment;
 
 	uint32_t ghoul2_vbo_stride;
 	uint32_t mdv_vbo_stride;
@@ -942,8 +977,8 @@ typedef struct {
 		VkShaderModule filtercube_gm;
 		VkShaderModule irradiancecube_fs;
 		VkShaderModule prefilterenvmap_fs;
-		
-
+		VkShaderModule refraction_vs[3];
+		VkShaderModule refraction_fs;
 	} shaders;
 
 	uint32_t frame_count;
@@ -984,6 +1019,7 @@ typedef struct {
 #ifdef VK_CUBEMAP
 	qboolean cubemapActive;
 #endif
+	qboolean refractionActive;
 
 	qboolean	offscreenRender;
 	qboolean	windowAdjusted;
@@ -1138,8 +1174,7 @@ VkPipeline	vk_gen_pipeline( uint32_t index );
 void		vk_end_render_pass( void );
 void		vk_begin_main_render_pass( void );
 void		vk_get_pipeline_def( uint32_t pipeline, Vk_Pipeline_Def *def );
-
-uint32_t	vk_append_uniform( void *uniform, size_t size, uint32_t min_offset );
+uint32_t	vk_append_uniform( const void *uniform, size_t size, uint32_t min_offset );
 
 // image process
 void		GetScaledDimension( const unsigned int width, const unsigned int height, 
@@ -1167,6 +1202,10 @@ void		vk_begin_post_blend_render_pass( VkRenderPass renderpass, qboolean clearVa
 void		vk_begin_bloom_extract_render_pass( void );
 void		vk_begin_bloom_blur_render_pass( uint32_t index );
 qboolean	vk_bloom( void );
+
+// refraction
+void		vk_refraction_extract( void );
+void		vk_begin_post_refraction_extract_render_pass( void );
 
 // dynamic glow
 void		vk_begin_dglow_extract_render_pass( void );

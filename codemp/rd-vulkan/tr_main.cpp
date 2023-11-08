@@ -622,7 +622,7 @@ R_SetupProjectionZ
 */
 static void R_SetupProjectionZ( viewParms_t *dest ) {
 
-	const float zNear = r_znear->value;
+	const float zNear = dest->zNear;
 	const float zFar = dest->zFar;
 	const float depth = zFar - zNear;
 

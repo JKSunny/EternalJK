@@ -3,6 +3,8 @@ static void vk_set_shader_name( VkShaderModule shader, const char *name ) {
     VK_SET_OBJECT_NAME( shader, name, VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT );
 }
 void vk_bind_generated_shaders( void ){
+    vk.shaders.refraction_vs[0] = SHADER_MODULE( refraction_ );
+    vk_set_shader_name( vk.shaders.refraction_vs[0], "refraction_" );
     vk.shaders.vert.gen[0][0][0][0][0][0][0] = SHADER_MODULE( vert_single );
     vk_set_shader_name( vk.shaders.vert.gen[0][0][0][0][0][0][0], "vert_single" );
     vk.shaders.vert.gen[0][0][0][0][0][0][1] = SHADER_MODULE( vert_single_fog );
@@ -323,6 +325,8 @@ void vk_bind_generated_shaders( void ){
     vk_set_shader_name( vk.shaders.vert.gen[0][1][3][2][0][1][1], "vert_fastlight_vertex_triple_env_fog" );
     vk.shaders.vert.gen[0][1][3][2][1][1][1] = SHADER_MODULE( vert_fastlight_vertex_triple_cl_env_fog );
     vk_set_shader_name( vk.shaders.vert.gen[0][1][3][2][1][1][1], "vert_fastlight_vertex_triple_cl_env_fog" );
+    vk.shaders.refraction_vs[1] = SHADER_MODULE( refraction_ghoul2_ );
+    vk_set_shader_name( vk.shaders.refraction_vs[1], "refraction_ghoul2_" );
     vk.shaders.vert.gen[1][0][0][0][0][0][0] = SHADER_MODULE( vert_ghoul2_single );
     vk_set_shader_name( vk.shaders.vert.gen[1][0][0][0][0][0][0], "vert_ghoul2_single" );
     vk.shaders.vert.gen[1][0][0][0][0][0][1] = SHADER_MODULE( vert_ghoul2_single_fog );
@@ -643,6 +647,8 @@ void vk_bind_generated_shaders( void ){
     vk_set_shader_name( vk.shaders.vert.gen[1][1][3][2][0][1][1], "vert_ghoul2_fastlight_vertex_triple_env_fog" );
     vk.shaders.vert.gen[1][1][3][2][1][1][1] = SHADER_MODULE( vert_ghoul2_fastlight_vertex_triple_cl_env_fog );
     vk_set_shader_name( vk.shaders.vert.gen[1][1][3][2][1][1][1], "vert_ghoul2_fastlight_vertex_triple_cl_env_fog" );
+    vk.shaders.refraction_vs[2] = SHADER_MODULE( refraction_mdv_ );
+    vk_set_shader_name( vk.shaders.refraction_vs[2], "refraction_mdv_" );
     vk.shaders.vert.gen[2][0][0][0][0][0][0] = SHADER_MODULE( vert_mdv_single );
     vk_set_shader_name( vk.shaders.vert.gen[2][0][0][0][0][0][0], "vert_mdv_single" );
     vk.shaders.vert.gen[2][0][0][0][0][0][1] = SHADER_MODULE( vert_mdv_single_fog );
