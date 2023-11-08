@@ -555,6 +555,14 @@ void vk_update_attachment_descriptors( void ) {
 		desc.pTexelBufferView = NULL;
 
 		qvkUpdateDescriptorSets( vk.device, 1, &desc, 0, NULL );
+		
+		// refraction
+		if ( vk.refractionActive )
+		{
+			info.imageView = vk.refraction_extract_image_view;
+			desc.dstSet = vk.refraction_extract_descriptor;
+			qvkUpdateDescriptorSets( vk.device, 1, &desc, 0, NULL );
+		}
 
 		// screenmap
 		sd.gl_mag_filter = sd.gl_min_filter = GL_LINEAR;
@@ -663,6 +671,10 @@ void vk_init_descriptors( void ) {
 		alloc.descriptorSetCount = 1;
 		alloc.pSetLayouts = &vk.set_layout_sampler;
 		VK_CHECK( qvkAllocateDescriptorSets( vk.device, &alloc, &vk.color_descriptor ) );
+		
+		// refraction
+		if ( vk.refractionActive )
+			VK_CHECK( qvkAllocateDescriptorSets( vk.device, &alloc, &vk.refraction_extract_descriptor ) );
 
 		// bloom images
 		if ( vk.bloomActive ) {
@@ -1214,7 +1226,7 @@ avoidGen:
 	}
 }
 
-uint32_t vk_append_uniform( void *uniform, size_t size, uint32_t min_offset ) {
+uint32_t vk_append_uniform( const void *uniform, size_t size, uint32_t min_offset ) {
 	const uint32_t offset = PAD(vk.cmd->vertex_buffer_offset, vk.uniform_alignment);
 
 	if ( offset + min_offset > vk.geometry_buffer_size )
@@ -1226,15 +1238,9 @@ uint32_t vk_append_uniform( void *uniform, size_t size, uint32_t min_offset ) {
 	return offset;
 }
 
-static uint32_t vk_push_uniform( const vkUniform_t *uniform ) {
-	const uint32_t offset = PAD(vk.cmd->vertex_buffer_offset, vk.uniform_alignment);
-
-	if ( offset + vk.uniform_item_size > vk.geometry_buffer_size )
-		return ~0U;
-
-	// push uniform
-	Com_Memcpy( vk.cmd->vertex_buffer_ptr + offset, uniform, sizeof(*uniform) );
-	vk.cmd->vertex_buffer_offset = offset + vk.uniform_item_size;
+static uint32_t vk_push_uniform( const vkUniform_t *uniform ) 
+{
+	const uint32_t offset = vk_append_uniform( uniform, sizeof(*uniform), vk.uniform_item_size );
 
 	vk_reset_descriptor( 1 );
 	vk_update_descriptor( 1, vk.cmd->uniform_descriptor );
@@ -1369,20 +1375,20 @@ static void vk_set_fog_params( vkUniform_t *uniform, int *fogStage )
 	if (tess.fogNum && tess.shader->fogPass) {
 		const fogProgramParms_t *fp = RB_CalcFogProgramParms();
 		// vertex data
-		VectorCopy4(fp->fogDistanceVector, uniform->fogDistanceVector);
-		VectorCopy4(fp->fogDepthVector, uniform->fogDepthVector);
-		uniform->fogEyeT[0] = fp->eyeT;
+		VectorCopy4(fp->fogDistanceVector, uniform->fog.fogDistanceVector);
+		VectorCopy4(fp->fogDepthVector, uniform->fog.fogDepthVector);
+		uniform->fog.fogEyeT[0] = fp->eyeT;
 		if (fp->eyeOutside) {
-			uniform->fogEyeT[1] = 0.0; // fog eye out
+			uniform->fog.fogEyeT[1] = 0.0; // fog eye out
 		}
 		else {
-			uniform->fogEyeT[1] = 1.0; // fog eye in
+			uniform->fog.fogEyeT[1] = 1.0; // fog eye in
 		}
 		// fragment data
 		if ( backEnd.isGlowPass )
-			VectorCopy4( colorBlack, uniform->fogColor );
+			VectorCopy4( colorBlack, uniform->fog.fogColor );
 		else
-			VectorCopy4( fp->fogColor, uniform->fogColor );
+			VectorCopy4( fp->fogColor, uniform->fog.fogColor );
 
 		*fogStage = 1;
 	}
@@ -1639,6 +1645,98 @@ void ComputeTexCoords( const int b, const textureBundle_t *bundle ) {
 	}*/
 
 	tess.svars.texcoordPtr[b] = src;
+}
+
+void ComputeTexMods( const textureBundle_t *bundle, float *outMatrix, float *outOffTurb ) {
+	int tm;
+	float matrix[6], currentmatrix[6];
+
+	if (!tess.numVertexes)
+		return;
+
+	matrix[0] = 1.0f; matrix[2] = 0.0f; matrix[4] = 0.0f;
+	matrix[1] = 0.0f; matrix[3] = 1.0f; matrix[5] = 0.0f;
+
+	currentmatrix[0] = 1.0f; currentmatrix[2] = 0.0f; currentmatrix[4] = 0.0f;
+	currentmatrix[1] = 0.0f; currentmatrix[3] = 1.0f; currentmatrix[5] = 0.0f;
+
+	outMatrix[0] = 1.0f; outMatrix[2] = 0.0f;
+	outMatrix[1] = 0.0f; outMatrix[3] = 1.0f;
+
+	outOffTurb[0] = 0.0f; outOffTurb[1] = 0.0f; outOffTurb[2] = 0.0f; outOffTurb[3] = 0.0f;
+
+	for ( tm = 0; tm < bundle->numTexMods ; tm++ ) {
+		switch ( bundle->texMods[tm].type )
+		{
+			
+		case TMOD_NONE:
+			tm = TR_MAX_TEXMODS;		// break out of for loop
+			break;
+
+		case TMOD_TURBULENT:
+			RB_CalcTurbulentFactors(&bundle->texMods[tm].wave, &outOffTurb[2], &outOffTurb[3]);
+			break;
+
+		case TMOD_ENTITY_TRANSLATE:
+			RB_CalcScrollTexMatrix( backEnd.currentEntity->e.shaderTexCoord, matrix );
+			break;
+
+		case TMOD_SCROLL:
+			RB_CalcScrollTexMatrix( bundle->texMods[tm].translate, matrix );
+			break;
+
+		case TMOD_SCALE:
+			RB_CalcScaleTexMatrix( bundle->texMods[tm].translate, matrix );
+			break;
+		
+		case TMOD_STRETCH:
+			RB_CalcStretchTexMatrix( &bundle->texMods[tm].wave,  matrix );
+			break;
+
+		case TMOD_TRANSFORM:
+			RB_CalcTransformTexMatrix( &bundle->texMods[tm], matrix );
+			break;
+
+		case TMOD_ROTATE:
+			RB_CalcRotateTexMatrix( bundle->texMods[tm].translate[0], matrix );
+			break;
+
+		default:
+			ri.Error( ERR_DROP, "ERROR: unknown texmod '%d' in shader '%s'", bundle->texMods[tm].type, tess.shader->name );
+			break;
+		}
+
+		switch ( bundle->texMods[tm].type )
+		{	
+		case TMOD_NONE:
+		case TMOD_TURBULENT:
+		default:
+			break;
+
+		case TMOD_ENTITY_TRANSLATE:
+		case TMOD_SCROLL:
+		case TMOD_SCALE:
+		case TMOD_STRETCH:
+		case TMOD_TRANSFORM:
+		case TMOD_ROTATE:
+			outMatrix[0] = matrix[0] * currentmatrix[0] + matrix[2] * currentmatrix[1];
+			outMatrix[1] = matrix[1] * currentmatrix[0] + matrix[3] * currentmatrix[1];
+
+			outMatrix[2] = matrix[0] * currentmatrix[2] + matrix[2] * currentmatrix[3];
+			outMatrix[3] = matrix[1] * currentmatrix[2] + matrix[3] * currentmatrix[3];
+
+			outOffTurb[0] = matrix[0] * currentmatrix[4] + matrix[2] * currentmatrix[5] + matrix[4];
+			outOffTurb[1] = matrix[1] * currentmatrix[4] + matrix[3] * currentmatrix[5] + matrix[5];
+
+			currentmatrix[0] = outMatrix[0];
+			currentmatrix[1] = outMatrix[1];
+			currentmatrix[2] = outMatrix[2];
+			currentmatrix[3] = outMatrix[3];
+			currentmatrix[4] = outOffTurb[0];
+			currentmatrix[5] = outOffTurb[1];
+			break;
+		}
+	}
 }
 
 #ifdef USE_VBO_GHOUL2
@@ -2209,7 +2307,8 @@ void RB_StageIteratorGeneric( void )
 
 	for ( stage = 0; stage < MAX_SHADER_STAGES; stage++ )
 	{
-		int forceRGBGen = 0;
+		int			forceRGBGen = 0;
+		qboolean	is_refraction = qfalse;
 
 		pStage = tess.xstages[stage];
 
@@ -2267,6 +2366,18 @@ void RB_StageIteratorGeneric( void )
 
 		vk_select_texture( 0 );
 
+		if ( r_lightmap->integer && pStage->bundle[1].isLightmap ) {
+			//vk_select_texture(0);
+			vk_bind( tr.whiteImage ); // replace diffuse texture with a white one thus effectively render only lightmap
+		}
+
+		if ( backEnd.viewParms.portalView == PV_MIRROR ) {
+			pipeline = pStage->vk_mirror_pipeline[fog_stage];
+		}
+		else {
+			pipeline = pStage->vk_pipeline[fog_stage];
+		}
+
 		// for 2D flipped images
 		if ( backEnd.projection2D ) {
 			if ( pStage->vk_2d_pipeline == NULL ) {
@@ -2292,7 +2403,20 @@ void RB_StageIteratorGeneric( void )
 			if ( backEnd.currentEntity->e.renderfx & RF_DISINTEGRATE1 )
 				def.state_bits = GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA | GLS_DEPTHMASK_TRUE | GLS_ATEST_GE_C0;
 
-			if( backEnd.currentEntity->e.renderfx & RF_FORCE_ENT_ALPHA ) {
+			// only force blend on the internal distortion shader
+			if ( tess.shader == tr.distortionShader )
+				def.state_bits = GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA | GLS_DEPTHMASK_TRUE;
+			
+			// refraction
+			if ( tess.shader->useDistortion == qtrue || backEnd.currentEntity->e.renderfx & RF_DISTORTION ) 
+			{
+				def.shader_type = TYPE_REFRACTION;
+				def.face_culling = CT_TWO_SIDED;
+				is_refraction = qtrue;
+				tess_flags |= TESS_NNN;
+			}
+			
+			if ( backEnd.currentEntity->e.renderfx & RF_FORCE_ENT_ALPHA ) {
 				ForceAlpha( (unsigned char *) tess.svars.colors, backEnd.currentEntity->e.shaderRGBA[3] );
 				
 				def.state_bits = GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA;
@@ -2310,16 +2434,28 @@ void RB_StageIteratorGeneric( void )
 		
 			pipeline = vk_find_pipeline_ext( 0, &def, qfalse );
 		}
-		else {
-			if ( backEnd.viewParms.portalView == PV_MIRROR )
-				pipeline = pStage->vk_mirror_pipeline[fog_stage];
-			else
-				pipeline = pStage->vk_pipeline[fog_stage];
-		}
+	
+		if ( is_refraction ) 
+		{
+			// bind extracted color image copy / blit
+			vk_update_descriptor( 2, vk.refraction_extract_descriptor );
 
-		if ( r_lightmap->integer && pStage->bundle[1].isLightmap ) {
-			//vk_select_texture(0);
-			vk_bind( tr.whiteImage ); // replace diffuse texture with a white one thus effectively render only lightmap
+			Com_Memset( &uniform.refraction, 0, sizeof(uniform.refraction) );
+
+			// only do tcGen/tcMod computations on the GPU for refraction for time being on master
+			{
+				ComputeTexMods( &pStage->bundle[0], 
+								uniform.refraction.tcMod.matrix, 
+								uniform.refraction.tcMod.offTurb ); 
+
+				uniform.refraction.tcGen.type = pStage->bundle[0].tcGen;
+
+				if ( pStage->bundle[0].tcGen == TCGEN_VECTOR )
+				{
+					VectorCopy( pStage->bundle[0].tcGenVectors[0], uniform.refraction.tcGen.vector0 );
+					VectorCopy( pStage->bundle[0].tcGenVectors[1], uniform.refraction.tcGen.vector1 );
+				}
+			}
 		}
 
 		VectorCopy4( pStage->normalScale, uniform_global.normalScale );
@@ -2410,6 +2546,11 @@ void RB_StageIteratorGeneric( void )
 
 					item.reset_uniform = qfalse;
 				}
+				else if ( is_refraction ) {
+					vk_push_uniform( &uniform );
+					item.reset_uniform = qfalse;
+				}
+
 	
 				vk_push_uniform_global( &uniform_global );
 			}

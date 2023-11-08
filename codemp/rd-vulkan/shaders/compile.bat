@@ -19,7 +19,7 @@ if not exist %bs% (
 set PATH=%tools_dir%;%PATH%
 
 set glsl=glsl\
-set cl=%VULKAN_SDK%\glslangValidator.exe
+set cl=%VULKAN_SDK%\Bin\glslangValidator.exe
 set tmpf=spirv\data.spv
 set outf=+spirv\shader_data.c
 set outfb=+spirv\shader_binding.c
@@ -138,6 +138,8 @@ SETLOCAL EnableDelayedExpansion
 @rem compile generic shader variations from templates
 @rem vertex shader
 for /L %%i in ( 0,1,2 ) do (                		@rem vbo 
+    call :compile_refraction_vertex_shader %%i
+
 	for /L %%j in ( 0,1,1 ) do (                	@rem fastlight 
 		for /L %%k in ( 0,1,3 ) do (                @rem light 
 			for /L %%l in ( 0,1,2 ) do (            @rem tx   
@@ -167,6 +169,14 @@ del /Q "%tmpf%"
 "%bs%" %outfb% "}"
 
 pause
+
+@rem refraction shaders
+:compile_refraction_vertex_shader
+    "%cl%" -S vert -V -o "%tmpf%" %glsl%refraction.tmpl !vbo[%1]!
+    "%bh%" "%tmpf%" %outf% refraction_!vbo_id[%1]!
+    "%bs%" %outfb% "    vk.shaders.refraction_vs[%1] = SHADER_MODULE( refraction_!vbo_id[%1]! );"
+	"%bs%" %outfb% "    vk_set_shader_name( vk.shaders.refraction_vs[%1], ""refraction_!vbo_id[%1]!"" );"
+exit /B
 
 :compile_vertex_shader
     "%cl%" -S vert -V -o "%tmpf%" %glsl%gen_vert.tmpl !vbo[%1]! !fastlight[%2]! !light[%3]! !tx[%4]! !env[%5]! !fog[%6]!

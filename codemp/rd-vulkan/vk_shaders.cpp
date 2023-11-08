@@ -120,6 +120,10 @@ void vk_create_shader_modules( void )
     VK_SET_OBJECT_NAME(vk.shaders.frag.light[1][0], "linear light fragment module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
     VK_SET_OBJECT_NAME(vk.shaders.frag.light[1][1], "linear light fog fragment module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
 
+    // note: vertex shader uses a template
+    vk.shaders.refraction_fs = SHADER_MODULE(refraction_frag_spv);
+    VK_SET_OBJECT_NAME(vk.shaders.refraction_fs, "refraction vertex module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
+
     
     vk.shaders.color_vs[0] = SHADER_MODULE(color_vert_spv);
     vk.shaders.color_vs[1] = SHADER_MODULE(color_ghoul2_vert_spv);
@@ -231,6 +235,11 @@ void vk_destroy_shader_modules( void )
     qvkDestroyShaderModule(vk.device, vk.shaders.color_fs, NULL);
     qvkDestroyShaderModule(vk.device, vk.shaders.color_vs[0], NULL);
     qvkDestroyShaderModule(vk.device, vk.shaders.color_vs[1], NULL);
+
+    for ( i = 0; i < 3; i++ )
+        qvkDestroyShaderModule(vk.device, vk.shaders.refraction_vs[i], NULL);
+
+    qvkDestroyShaderModule(vk.device, vk.shaders.refraction_fs, NULL);
 
     qvkDestroyShaderModule(vk.device, vk.shaders.fog_vs[0], NULL);
     qvkDestroyShaderModule(vk.device, vk.shaders.fog_fs, NULL);
