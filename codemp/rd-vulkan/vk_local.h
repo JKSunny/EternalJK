@@ -505,6 +505,36 @@ typedef struct vktcGen_s {
 	int32_t	type;
 } vktcGen_t;
 
+typedef struct vkBundle_s {
+	vec4_t		baseColor;
+	vec4_t		vertColor;
+	vktcMod_t	tcMod;
+	vktcGen_t	tcGen;
+	int32_t		rgbGen;
+	int32_t		alphaGen;
+	int32_t		numTexMods;	// make this to a specialization constant
+	int32_t		pad0;
+} vkBundle_t;
+
+typedef struct vkDisintegration_s {
+	vec3_t	origin;
+	float	threshold;
+} vkDisintegration_t;
+
+typedef struct vkDeform_s {
+	float	base;
+	float	amplitude;
+	float	phase;
+	float	frequency;
+
+	vec3_t	vector;
+	float	time;
+
+	int32_t	type;
+	int32_t	func;
+	vec2_t	pad0;
+} vkDeform_t;
+
 // this structure must be in sync with shader uniforms!
 typedef struct {
 	float	mvp[16];
@@ -557,14 +587,13 @@ typedef struct vkUniformBones_s {
 #endif
 
 typedef struct vkUniformGlobal_s {
-	vec4_t rgbGen; 
-	vec4_t alphaGen;
-	vec4_t baseColor[3];
-	vec4_t vertColor[3];
-	vec4_t disintegrationInfo;
-	vec4_t deformInfo[3];
-	vec4_t specularScale;	
-	vec4_t normalScale;	
+	vkBundle_t			bundle[3];
+	vkDisintegration_t	disintegration;
+	vkDeform_t			deform;
+	float				portalRange;
+	vec3_t				pad0;
+	vec4_t				specularScale;	
+	vec4_t				normalScale;	
 } vkUniformGlobal_t;
 
 typedef struct {
