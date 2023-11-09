@@ -87,7 +87,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define MAX_VK_PIPELINES				( 1024 + 128 )
 #define USE_DEDICATED_ALLOCATION
 // depth + msaa + msaa-resolve + screenmap.msaa + screenmap.resolve + screenmap.depth + (bloom_extract + blur pairs + dglow_extract + blur pairs) + dglow-msaa + gamma
-#define MAX_ATTACHMENTS_IN_POOL			( 9 + ( ( 1 + VK_NUM_BLUR_PASSES * 2 ) * 2 ) + 1 + 1 ) // (6+3=9: cubemap.msaa + cubemap.resolve + cubemap.depth) + gamma
+#define MAX_ATTACHMENTS_IN_POOL			( 9 + ( ( 1 + VK_NUM_BLUR_PASSES * 2 ) * 2 ) + 1 + 1 + 1 ) // (6+3=9: cubemap.msaa + cubemap.resolve + cubemap.depth) + gamma + refraction_extract
 
 #define VK_SAMPLER_LAYOUT_BEGIN			2
 //#define MIN_IMAGE_ALIGN				( 128 * 1024 )
