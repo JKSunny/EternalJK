@@ -435,11 +435,12 @@ void vk_initialize( void )
 	vk_set_render_scale();
 
 	vk.fboActive = qtrue;		
+	vk.refractionActive = qtrue;
 
 	vk.vboWorldActive = qtrue;
 	vk.vboGhoul2Active = qtrue;
 	vk.vboMdvActive = qtrue; 
-
+	
 	if ( r_normalMapping->integer )
 		vk.normalMappingActive = qtrue;
 
@@ -483,10 +484,6 @@ void vk_initialize( void )
 	// Dynamic glow
 	if( glConfig.maxActiveTextures >= 4 && r_DynamicGlow->integer )
 		vk.dglowActive = qtrue;
-
-	// Refraction
-	if ( vk.fboActive && glConfig.maxActiveTextures >= 4 )
-		vk.refractionActive = qtrue;
 
 	// Screenmap
 	vk.screenMapSamples = MIN(vkMaxSamples, VK_SAMPLE_COUNT_4_BIT);
