@@ -75,7 +75,7 @@ qboolean vk_begin_dglow_blur( void )
 		uint32_t offsets[6], offset_count;
 
 		// restore clobbered descriptor sets
-		for ( i = 0; i < ( ( vk.maxBoundDescriptorSets >= 6 ) ? 7 : 4 ); i++ ) {
+		for ( i = 0; i < ( ( vk.maxBoundDescriptorSets >= VK_LAYOUT_COUNT ) ? VK_LAYOUT_COUNT : 4 ); i++ ) {
 			if ( vk.cmd->descriptor_set.current[i] != VK_NULL_HANDLE ) {
 				if ( i == 0 || i == 1 ) {
 					offset_count = 0;

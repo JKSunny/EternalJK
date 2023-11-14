@@ -552,6 +552,8 @@ typedef struct textureBundle_s {
 	// pbr inspector
 	int				blendSrcBits;
 	int				blendDstBits;
+
+	bool			glow;
 } textureBundle_t;
 
 
@@ -1834,6 +1836,7 @@ extern cvar_t	*r_ext_texture_filter_anisotropic;
 extern cvar_t	*r_environmentMapping;
 
 extern cvar_t	*r_DynamicGlow;
+extern cvar_t	*r_DynamicGlowAllStages;
 extern cvar_t	*r_DynamicGlowPasses;
 extern cvar_t	*r_DynamicGlowDelta;
 extern cvar_t	*r_DynamicGlowIntensity;

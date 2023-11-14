@@ -2360,9 +2360,17 @@ void RB_StageIteratorGeneric( void )
 		for ( i = 0; i < pStage->numTexBundles; i++ ) {
 			if ( pStage->bundle[i].image[0] != NULL )  {
 				vk_select_texture( i );
+
+				// use blackimage for non glow stages during a glowPass
+				if ( backEnd.isGlowPass && !pStage->bundle[i].glow ) {
+					vk_bind( tr.blackImage );
+					Com_Memset( tess.svars.colors[i], 0xff, tess.numVertexes * 4 );
+					continue;
+				}
+
 				R_BindAnimatedImage( &pStage->bundle[i] );
 
-				if ( tess_flags & (TESS_RGBA0 << i) && ( is_ghoul2_vbo || is_mdv_vbo ) ) {
+				if ( tess.vbo_model_index ) {
 					vk_compute_colors( i, pStage, forceRGBGen );
 
 					if ( is_refraction && i >= 1 )
@@ -2450,7 +2458,7 @@ void RB_StageIteratorGeneric( void )
 			def.vbo_ghoul2 = is_ghoul2_vbo;
 			def.vbo_mdv = is_mdv_vbo;
 
-			if ( !tess.vbo_world_index && !is_ghoul2_vbo && !is_mdv_vbo )
+			if ( !tess.vbo_world_index && !tess.vbo_model_index )
 				def.vk_light_flags = 0;
 		
 			pipeline = vk_find_pipeline_ext( 0, &def, qfalse );
@@ -2470,26 +2478,7 @@ void RB_StageIteratorGeneric( void )
 		VectorCopy4( pStage->normalScale, uniform_global.normalScale );
 		VectorCopy4( pStage->specularScale, uniform_global.specularScale );
 
-		// move glow bundle to texture 0
-		// does not work with multitextured dglow yet.
-		if ( backEnd.isGlowPass && pStage->glow ) 
-		{
-			vk_get_pipeline_def( pStage->vk_pipeline[fog_stage], &def );
-	
-			def.vbo_ghoul2 = is_ghoul2_vbo;
-			def.vbo_mdv = is_mdv_vbo;
-			def.vk_light_flags = 0;
-			def.vk_pbr_flags = 0;
-
-			def.shader_type = TYPE_SINGLE_TEXTURE;
-			pipeline = vk_find_pipeline_ext( 0, &def, qfalse );
-
-			vk_select_texture( 0 );
-			vk_bind( pStage->bundle[ ( pStage->numTexBundles - 1 ) ].image[0] );
-			Com_Memcpy( tess.svars.colors[0], tess.svars.colors[( pStage->numTexBundles - 1 )], sizeof(tess.svars.colors[0]) );
-		}
-
-		else 
+		// removed glow handling statement, this results in unnecessary glow pass binds?
 		{
 			if ( tess.vbo_world_index || tess.vbo_model_index )
 				vk_update_pbr_descriptor(6, vk.brdflut_image_descriptor);
