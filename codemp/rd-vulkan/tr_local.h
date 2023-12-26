@@ -224,6 +224,13 @@ typedef struct orientationr_s {
 	float		modelMatrix[16];
 } orientationr_t;
 
+typedef struct textureMode_s {
+	const char *name;
+	int	minimize, maximize;
+} textureMode_t;
+
+extern	int	gl_filter_min, gl_filter_max;
+
 typedef enum
 {
 	IMGFLAG_NONE			= 0x0000,
@@ -1391,8 +1398,6 @@ compared quickly during the qsorting process
 	#error "Sort field needs to be expanded"
 #endif
 
-extern	int	gl_filter_min, gl_filter_max;
-
 /*
 ** performanceCounters_t
 */
@@ -1992,7 +1997,6 @@ void		R_RotateForEntity( const trRefEntity_t *ent, const viewParms_t *viewParms,
 void		RE_StretchRaw ( int x, int y, int w, int h, int cols, int rows, const byte *data, int client, qboolean dirty );
 void		RE_UploadCinematic( int cols, int rows, const byte *data, int client, qboolean dirty );
 
-void		RE_BeginFrame( stereoFrame_t stereoFrame );
 void		RE_BeginRegistration( glconfig_t *glconfig );
 void		R_ColorShiftLightingBytes( const byte in[4], byte out[4], qboolean hasAlpha ); //rwwRMG - added
 void		RE_LoadWorldMap( const char *mapname );
@@ -2027,6 +2031,7 @@ qboolean	vk_create_phyisical_texture( shaderStage_t *stage, const char *name, im
 qboolean	vk_create_normal_texture( shaderStage_t *stage, const char *name, imgFlags_t flags );
 #endif
 
+textureMode_t *GetTextureMode( const char *name );
 qboolean	R_GetModeInfo( int *width, int *height, int mode );
 
 void		R_SetColorMappings( void );

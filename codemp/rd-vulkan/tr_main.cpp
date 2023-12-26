@@ -495,11 +495,13 @@ static void R_SetFarClip( void )
 	// if not rendering the world (icons, menus, etc)
 	// set a 2k far clip plane
 	if ( tr.refdef.rdflags & RDF_NOWORLDMODEL ) {
+#ifdef RDF_AUTOMAP
 		if (tr.refdef.rdflags & RDF_AUTOMAP)
 		{ //override the zfar then
 			tr.viewParms.zFar = 32768.0f;
 		}
 		else
+#endif
 		{
 			tr.viewParms.zFar = 2048.0f;
 		}
@@ -1448,15 +1450,19 @@ void R_AddDrawSurf( surfaceType_t *surface, int entityNum, shader_t *shader,
 	int			index;
 	drawSurf_t *surf;
 
+#ifdef RDF_NOFOG
 	if (tr.refdef.rdflags & RDF_NOFOG)
 	{
 		fogIndex = 0;
 	}
+#endif
 
+#if defined(SURF_FORCESIGHT) && defined(RDF_ForceSightOn)
 	if ((shader->surfaceFlags & SURF_FORCESIGHT) && !(tr.refdef.rdflags & RDF_ForceSightOn))
 	{	//if shader is only seen with ForceSight and we don't have ForceSight on, then don't draw
 		return;
 	}
+#endif
 
 	// instead of checking for overflow, we just mask the index
 	// so it wraps around
@@ -1622,8 +1628,12 @@ static void R_AddEntitySurface( const trRefdef_t *refdef, trRefEntity_t *ent, in
 				break;
 			case MOD_BAD:		// null model axis
 				if ((ent->e.renderfx & RF_THIRD_PERSON) && (tr.viewParms.portalView == PV_NONE)) {
-					if (!(ent->e.renderfx & RF_SHADOW_ONLY))
-						break;
+#ifdef RF_SHADOW_ONLY
+						if (!(ent->e.renderfx & RF_SHADOW_ONLY))
+#endif
+						{
+							break;
+						}
 				}
 
 				if (ent->e.ghoul2 && G2API_HaveWeGhoul2Models(*((CGhoul2Info_v*)ent->e.ghoul2)))
