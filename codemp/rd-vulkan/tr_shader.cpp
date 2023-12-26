@@ -5183,7 +5183,7 @@ void R_InitShaders( qboolean server )
 
 	memset(hashTable, 0, sizeof(hashTable));
 
-	if (!server)
+	if ( !server )
 	{
 		CreateInternalShaders();
 
