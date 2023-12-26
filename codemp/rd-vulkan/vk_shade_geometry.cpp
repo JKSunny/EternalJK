@@ -1429,11 +1429,13 @@ void R_BindAnimatedImage( const textureBundle_t *bundle ) {
 		return;
 	}
 
+#ifdef RF_SETANIMINDEX
 	if ( backEnd.currentEntity->e.renderfx & RF_SETANIMINDEX )
 	{
 		index = backEnd.currentEntity->e.skinNum;
 	}
 	else
+#endif
 	{
 		// it is necessary to do this messy calc to make sure animations line up
 		// exactly with waveforms of the same frequency
@@ -2187,8 +2189,14 @@ void RB_StageIteratorGeneric( void )
 		tess_flags |= pStage->tessFlags;
 
 		// refraction
-		if ( backEnd.currentEntity && ( tess.shader->useDistortion == qtrue || backEnd.currentEntity->e.renderfx & RF_DISTORTION ) )
+#ifdef RF_DISTORTION
+		if ( tess.shader->useDistortion == qtrue || backEnd.currentEntity->e.renderfx & RF_DISTORTION )
+#else
+		if ( tess.shader->useDistortion == qtrue )
+#endif
+		{
 			is_refraction = qtrue;
+		}
 
 		for ( i = 0; i < pStage->numTexBundles; i++ ) {
 			if ( pStage->bundle[i].image[0] != NULL)  {
@@ -2274,8 +2282,10 @@ void RB_StageIteratorGeneric( void )
 				
 				// depth write, so faces through the model will be stomped over by nearer ones. this works because
 				// we draw RF_FORCE_ENT_ALPHA stuff after everything else, including standard alpha surfs.
+#ifdef RF_ALPHA_DEPTH
 				if ( backEnd.currentEntity->e.renderfx & RF_ALPHA_DEPTH ) 
 					def.state_bits |= GLS_DEPTHMASK_TRUE;
+#endif
 
 			}
 

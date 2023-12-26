@@ -161,7 +161,11 @@ int R_ComputeLOD( trRefEntity_t *ent ) {
 	mdvFrame_t *frame;
 	int lod;
 
+#ifdef RF_NOLOD
 	if ( tr.currentModel->numLods < 2 || (ent->e.renderfx & RF_NOLOD) )
+#else
+	if ( tr.currentModel->numLods < 2 )
+#endif
 	{
 		// model has only 1 LOD level, skip computations and bias
 		lod = 0;
@@ -210,8 +214,12 @@ int R_ComputeLOD( trRefEntity_t *ent ) {
 		}
 	}
 
+#ifdef RF_NOLOD
 	if (!(ent->e.renderfx & RF_NOLOD))
+#endif
+	{
 		lod += r_lodbias->integer;
+	}
 
 	if ( lod >= tr.currentModel->numLods )
 		lod = tr.currentModel->numLods - 1;
