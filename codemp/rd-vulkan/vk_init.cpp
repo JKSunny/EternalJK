@@ -391,7 +391,7 @@ void vk_initialize( void )
 
 	// Memory alignment
 	vk.uniform_alignment = props.limits.minUniformBufferOffsetAlignment;
-	vk.uniform_item_size = PAD( sizeof(vkUniform_t), vk.uniform_alignment );
+	vk.uniform_item_size = PAD( sizeof(vkUniform_t), (size_t)vk.uniform_alignment );
 #ifdef USE_VBO_GHOUL2
 	vk.uniform_data_item_size = PAD( sizeof(vkUniformData_t), vk.uniform_alignment );
 	vk.uniform_bones_item_size = PAD( sizeof(vkUniformBones_t), vk.uniform_alignment );
