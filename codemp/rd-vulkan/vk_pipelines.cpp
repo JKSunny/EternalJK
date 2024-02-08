@@ -140,9 +140,9 @@ void vk_create_descriptor_layout( void )
 
     // Descriptor set layout
     {
-        vk_create_layout_binding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, &vk.set_layout_sampler, qfalse);
-        vk_create_layout_binding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT, &vk.set_layout_uniform, qtrue);
-        vk_create_layout_binding(0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT, &vk.set_layout_storage, qfalse);
+        vk_create_layout_binding( 0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, &vk.set_layout_sampler, qfalse );
+        vk_create_layout_binding( 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT, &vk.set_layout_uniform, qtrue );
+        vk_create_layout_binding( 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT, &vk.set_layout_storage, qfalse );
     }
 }
 
@@ -1101,7 +1101,10 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
     rasterization_state.flags = 0;
     rasterization_state.depthClampEnable = VK_FALSE;
     rasterization_state.rasterizerDiscardEnable = VK_FALSE;
-    rasterization_state.polygonMode = ( def->state_bits & GLS_POLYMODE_LINE ) ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL;
+	if ( def->shader_type == TYPE_DOT )
+	    rasterization_state.polygonMode = VK_POLYGON_MODE_POINT;
+	else
+	    rasterization_state.polygonMode = ( def->state_bits & GLS_POLYMODE_LINE ) ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL;
 
     switch ( def->face_culling )
     {
@@ -1149,6 +1152,10 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
     multisample_state.pNext = NULL;
     multisample_state.flags = 0;
     multisample_state.rasterizationSamples = (vk.renderPassIndex == RENDER_PASS_SCREENMAP) ? (VkSampleCountFlagBits)vk.screenMapSamples : (VkSampleCountFlagBits)vkSamples;
+    
+    if ( renderPassIndex == RENDER_PASS_CUBEMAP )
+        multisample_state.rasterizationSamples = (VkSampleCountFlagBits)VK_SAMPLE_COUNT_1_BIT;
+    
     multisample_state.sampleShadingEnable = VK_FALSE;
     multisample_state.minSampleShading = 1.0f;
     multisample_state.pSampleMask = NULL;
@@ -1275,6 +1282,8 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
         create_info.renderPass = vk.render_pass.screenmap;
     else if ( renderPassIndex == RENDER_PASS_REFRACTION )
         create_info.renderPass = vk.render_pass.refraction.extract;
+    else if ( renderPassIndex == RENDER_PASS_CUBEMAP )
+        create_info.renderPass = vk.render_pass.cubemap;
     else
         create_info.renderPass = vk.render_pass.main;
 
@@ -1360,7 +1369,7 @@ static void vk_create_post_process_pipeline( int program_index, uint32_t width, 
             renderpass = vk.render_pass.dglow.blend;
             layout = vk.pipeline_layout_blend;
             samples = (VkSampleCountFlagBits)vkSamples;
-            pipeline_name = "bloom blend pipeline";
+            pipeline_name = "dglow blend pipeline";
             blend = qtrue;
             break;
 #ifdef VK_PBR_BRDFLUT

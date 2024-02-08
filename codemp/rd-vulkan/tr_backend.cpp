@@ -1301,6 +1301,8 @@ const void	*RB_SwapBuffers( const void *data ) {
 		backEnd.screenshotMask = 0;
 	}
 
+	vk_present_frame();
+
 	backEnd.projection2D = qfalse;
 	backEnd.doneSurfaces = qfalse;
 	backEnd.doneBloom = qfalse;

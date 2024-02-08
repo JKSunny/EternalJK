@@ -163,15 +163,9 @@ static void vk_alloc_attachment_memory( void )
     // perform layout transition
     command_buffer = vk_begin_command_buffer();
     for (i = 0; i < num_attachments; i++) {
-        vk_record_image_layout_transition(command_buffer,
-            attachments[i].descriptor,
-            attachments[i].aspect_flags,
-            0,
+        vk_record_image_layout_transition( command_buffer, attachments[i].descriptor, attachments[i].aspect_flags,
             VK_IMAGE_LAYOUT_UNDEFINED,
-            attachments[i].access_flags,
-            attachments[i].image_layout,
-            VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
-            NULL, NULL );
+            attachments[i].image_layout );
     }
     vk_end_command_buffer(command_buffer);
 
@@ -206,8 +200,7 @@ static void vk_get_image_memory_requirements( VkImage image, VkMemoryRequirement
 }
 
 static void vk_add_attachment_desc( VkImage desc, VkImageView *image_view, VkImageUsageFlags usage, VkMemoryRequirements *reqs, 
-    VkFormat image_format, VkImageAspectFlags aspect_flags, VkAccessFlags access_flags, VkImageLayout image_layout, 
-    VkImageViewType view_type )
+    VkFormat image_format, VkImageAspectFlags aspect_flags, VkImageLayout image_layout, VkImageViewType view_type )
 {
     if (num_attachments >= ARRAY_LEN(attachments)) {
         ri.Error(ERR_FATAL, "Attachments array overflow: max attachments: %d while %d given", (int)ARRAY_LEN(vk.image_memory), num_attachments);
@@ -219,7 +212,6 @@ static void vk_add_attachment_desc( VkImage desc, VkImageView *image_view, VkIma
         attachments[num_attachments].usage = usage;
         attachments[num_attachments].reqs = *reqs;
         attachments[num_attachments].aspect_flags = aspect_flags;
-        attachments[num_attachments].access_flags = access_flags;
         attachments[num_attachments].image_layout = image_layout;
         attachments[num_attachments].image_format = image_format;
         attachments[num_attachments].memory_offset = 0;
@@ -265,14 +257,7 @@ static void create_color_attachment( uint32_t width, uint32_t height, VkSampleCo
     if ( flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT )
         view_type = VK_IMAGE_VIEW_TYPE_CUBE;
 
-    if ( multisample ) {
-        vk_add_attachment_desc( *image, image_view, desc.usage, &memory_requirements, format, VK_IMAGE_ASPECT_COLOR_BIT,
-            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, image_layout, view_type );
-    }
-    else {
-        vk_add_attachment_desc( *image, image_view, desc.usage, &memory_requirements, format, VK_IMAGE_ASPECT_COLOR_BIT,
-            VK_ACCESS_SHADER_READ_BIT, image_layout, view_type );
-    }
+    vk_add_attachment_desc( *image, image_view, usage, &memory_requirements, format, VK_IMAGE_ASPECT_COLOR_BIT, image_layout, view_type );
 }
 
 static void create_depth_attachment( uint32_t width, uint32_t height, VkSampleCountFlagBits samples, 
@@ -310,8 +295,8 @@ static void create_depth_attachment( uint32_t width, uint32_t height, VkSampleCo
 
     vk_get_image_memory_requirements(*image, &memory_requirements);
 
-    vk_add_attachment_desc(*image, image_view, desc.usage, &memory_requirements, vk.depth_format, image_aspect_flags,
-        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_VIEW_TYPE_2D );
+
+    vk_add_attachment_desc( *image, image_view, desc.usage, &memory_requirements, vk.depth_format, image_aspect_flags, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_VIEW_TYPE_2D );
 }
 
 void vk_create_attachments( void )
@@ -345,13 +330,9 @@ void vk_create_attachments( void )
         usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 
         create_color_attachment( REF_CUBEMAP_SIZE, REF_CUBEMAP_SIZE, VK_SAMPLE_COUNT_1_BIT, vk.color_format,
-            usage, &vk.cubeMap.color_image, &vk.cubeMap.color_image_view[0], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, qfalse, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT );
+            usage, &vk.cubeMap.color_image, &vk.cubeMap.color_image_view[0], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, qfalse, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT );
 
-        if ( vk.msaaActive )
-            create_color_attachment( REF_CUBEMAP_SIZE, REF_CUBEMAP_SIZE, (VkSampleCountFlagBits)vkSamples, vk.color_format,
-                usage, &vk.cubeMap.color_image_msaa, &vk.cubeMap.color_image_view_msaa[0], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, qtrue, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT );
-            
-        create_depth_attachment( REF_CUBEMAP_SIZE, REF_CUBEMAP_SIZE, (VkSampleCountFlagBits)vkSamples,
+        create_depth_attachment( REF_CUBEMAP_SIZE, REF_CUBEMAP_SIZE, VK_SAMPLE_COUNT_1_BIT,
                 &vk.cubeMap.depth_image, &vk.cubeMap.depth_image_view );
         
         usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
@@ -488,11 +469,9 @@ void vk_create_attachments( void )
 #endif
 
     VK_SET_OBJECT_NAME( vk.cubeMap.color_image, "cubemap image", VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT );
-    VK_SET_OBJECT_NAME( vk.cubeMap.color_image_msaa, "cubemap msaa image", VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT );
 
     for ( i = 0; i < ARRAY_LEN(vk.cubeMap.color_image_view); i++) {
         VK_SET_OBJECT_NAME( vk.cubeMap.color_image_view[i], va("cubemap image view %i", i), VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT );
-        VK_SET_OBJECT_NAME( vk.cubeMap.color_image_view_msaa[i], va("cubemap face view msaa %i",i), VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT );
     }
 
     VK_SET_OBJECT_NAME( vk.cubeMap.depth_image, "cubemap depth image", VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT );
@@ -670,17 +649,10 @@ void vk_destroy_attachments( void )
         qvkDestroyImage(vk.device, vk.cubeMap.color_image, NULL);
         vk.cubeMap.color_image = VK_NULL_HANDLE;
     }
-	
-    if ( vk.cubeMap.color_image_msaa ) {
-        qvkDestroyImage(vk.device, vk.cubeMap.color_image_msaa, NULL);
-        vk.cubeMap.color_image_msaa = VK_NULL_HANDLE;
-    }
     
     for ( i = 0; i < ARRAY_LEN(vk.cubeMap.color_image_view); i++) {      
         qvkDestroyImageView(vk.device, vk.cubeMap.color_image_view[i], NULL);
-        qvkDestroyImageView(vk.device, vk.cubeMap.color_image_view_msaa[i], NULL);
         vk.cubeMap.color_image_view[i] = VK_NULL_HANDLE;
-        vk.cubeMap.color_image_view_msaa[i] = VK_NULL_HANDLE;
     }
 
     if ( vk.cubeMap.depth_image ) {
