@@ -1557,6 +1557,46 @@ void R_CalcTangents( vec3_t tangent, vec3_t binormal,
 	VectorNormalize( binormal );
 }
 
+void ProjectPointOnPlane_local( vec3_t dst, const vec3_t p, const vec3_t normal )
+{
+	float d = -DotProduct( p, normal );
+	VectorMA( p, d, normal, dst );
+}
+/*
+** assumes "src" is normalized
+*/
+static void PerpendicularVector_local( vec3_t dst, const vec3_t src )
+{
+	int	pos;
+	int i;
+	float minelem = 1.0F;
+	vec3_t tempvec;
+
+	/*
+	** find the smallest magnitude axially aligned vector
+	*/
+	for ( pos = 0, i = 0; i < 3; i++ )
+	{
+		if ( fabs( src[i] ) < minelem )
+		{
+			pos = i;
+			minelem = fabsf( src[i] );
+		}
+	}
+	tempvec[0] = tempvec[1] = tempvec[2] = 0.0F;
+	tempvec[pos] = 1.0F;
+
+	/*
+	** project the point onto the plane defined by src
+	*/
+	ProjectPointOnPlane_local( dst, tempvec, src );
+
+	/*
+	** normalize the result
+	*/
+	VectorNormalize( dst );
+}
+
 void R_TBNtoQtangents( const vec3_t tangent, const vec3_t binormal,
 		       const vec3_t normal, vec4_t qtangent )
 {
@@ -1583,7 +1623,7 @@ void R_TBNtoQtangents( const vec3_t tangent, const vec3_t binormal,
 	// check for several degenerate cases
 	if( VectorLengthSquared( tangent2 ) < 0.001f ) {
 		if( VectorLengthSquared( binormal2 ) < 0.001f ) {
-			PerpendicularVector( tangent2, normal2 );
+			PerpendicularVector_local( tangent2, normal2 );
 			CrossProduct( normal2, tangent2, binormal2 );
 		} else {
 			VectorNormalizeFast( binormal2 );

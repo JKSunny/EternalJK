@@ -1225,7 +1225,7 @@ avoidGen:
 }
 
 uint32_t vk_append_uniform( const void *uniform, size_t size, uint32_t min_offset ) {
-	const uint32_t offset = PAD(vk.cmd->vertex_buffer_offset, vk.uniform_alignment);
+	const uint32_t offset = PAD(vk.cmd->vertex_buffer_offset, (VkDeviceSize)vk.uniform_alignment);
 
 	if ( offset + min_offset > vk.geometry_buffer_size )
 		return ~0U;
@@ -1238,7 +1238,7 @@ uint32_t vk_append_uniform( const void *uniform, size_t size, uint32_t min_offse
 
 static uint32_t vk_push_uniform( const vkUniform_t *uniform ) 
 {
-	const uint32_t offset = vk_append_uniform( uniform, sizeof(*uniform), vk.uniform_item_size );
+	const uint32_t offset = vk_append_uniform( uniform, sizeof(*uniform), (VkDeviceSize)vk.uniform_item_size );
 
 	vk_reset_descriptor( 1 );
 	vk_update_descriptor( 1, vk.cmd->uniform_descriptor );
@@ -1248,7 +1248,7 @@ static uint32_t vk_push_uniform( const vkUniform_t *uniform )
 }
 
 static uint32_t vk_push_uniform_global( const vkUniformGlobal_t *uniform ) {	
-	const uint32_t offset = PAD(vk.cmd->vertex_buffer_offset, vk.uniform_alignment);
+	const uint32_t offset = PAD(vk.cmd->vertex_buffer_offset, (VkDeviceSize)vk.uniform_alignment);
 
 	if ( offset + vk.uniform_global_item_size > vk.geometry_buffer_size )
 		return ~0U;
@@ -2162,6 +2162,7 @@ void RB_AddDrawItemUniformBinding( DrawItem &item, const trRefEntity_t *refEntit
 	}
 			
 	Com_Memcpy( &item.descriptor_set, &vk.cmd->descriptor_set, sizeof(vk.cmd->descriptor_set));
+
 	vk.cmd->descriptor_set.end = 0;
 	vk.cmd->descriptor_set.start = ~0U;
 }
@@ -2560,6 +2561,7 @@ void RB_StageIteratorGeneric( void )
 	
 				vk_push_uniform_global( &uniform_global );
 			}
+
 
 			RB_AddDrawItemIndexBinding( item );
 			RB_AddDrawItemVertexBinding( item );

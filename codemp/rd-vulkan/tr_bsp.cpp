@@ -28,7 +28,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "json.h"
 #undef JSON_IMPLEMENTATION
 
-static const imgFlags_t lightmapFlags = IMGFLAG_NOLIGHTSCALE | IMGFLAG_NO_COMPRESSION | IMGFLAG_LIGHTMAP | IMGFLAG_NOSCALE;
+static const imgFlags_t lightmapFlags = IMGFLAG_NOLIGHTSCALE | IMGFLAG_NO_COMPRESSION | IMGFLAG_LIGHTMAP | IMGFLAG_NOSCALE | IMGFLAG_CLAMPTOEDGE;
 
 /*
 
@@ -311,7 +311,7 @@ static	void R_LoadLightmaps( world_t &worldData, lump_t *l, lump_t *surfs ) {
 					tr.lightmapAtlasSize[0],
 					tr.lightmapAtlasSize[1],
 					//IMGTYPE_DELUXE,
-					lightmapFlags | IMGFLAG_CLAMPTOEDGE,
+					lightmapFlags,
 					0, 0 );
 			}
 		}
@@ -509,7 +509,7 @@ static	void R_LoadLightmaps( world_t &worldData, lump_t *l, lump_t *surfs ) {
 						lightmapHeight,
 						1,
 						image,
-						lightmapWidth * lightmapHeight * 4 );
+						lightmapWidth * lightmapHeight * 4, qtrue );
 				}
 				else
 					tr.lightmaps[i] = R_CreateImage(
@@ -517,10 +517,7 @@ static	void R_LoadLightmaps( world_t &worldData, lump_t *l, lump_t *surfs ) {
 						image,
 						lightmapWidth,
 						lightmapHeight,
-						//IMGTYPE_COLORALPHA,
-						IMGFLAG_NOLIGHTSCALE |
-						IMGFLAG_NO_COMPRESSION |
-						IMGFLAG_CLAMPTOEDGE,
+						lightmapFlags,
 						0, 0 );
 			}
 
@@ -558,7 +555,7 @@ static	void R_LoadLightmaps( world_t &worldData, lump_t *l, lump_t *surfs ) {
 					lightmapSize,
 					1,
 					image,
-					lightmapSize * lightmapSize * 4 );
+					lightmapSize * lightmapSize * 4, qtrue );
 
 			}
 			else
@@ -568,10 +565,7 @@ static	void R_LoadLightmaps( world_t &worldData, lump_t *l, lump_t *surfs ) {
 					image,
 					lightmapSize,
 					lightmapSize,
-					//IMGTYPE_DELUXE,
-					IMGFLAG_NOLIGHTSCALE |
-					IMGFLAG_NO_COMPRESSION |
-					IMGFLAG_CLAMPTOEDGE,
+					lightmapFlags,
 					0, 0 );
 			}
 		}
