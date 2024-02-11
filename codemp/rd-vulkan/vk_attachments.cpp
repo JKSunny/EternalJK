@@ -336,7 +336,7 @@ void vk_create_attachments( void )
             usage, &vk.cubeMap.color_image, &vk.cubeMap.color_image_view[0], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, qfalse, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT );
 
         create_depth_attachment( REF_CUBEMAP_SIZE, REF_CUBEMAP_SIZE, VK_SAMPLE_COUNT_1_BIT,
-                &vk.cubeMap.depth_image, &vk.cubeMap.depth_image_view );
+                &vk.cubeMap.depth_image, &vk.cubeMap.depth_image_view, qtrue );
         
         usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
     }

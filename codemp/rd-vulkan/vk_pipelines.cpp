@@ -149,7 +149,7 @@ void vk_create_descriptor_layout( void )
 void vk_create_pipeline_layout( void )
 {
     // Pipeline layouts
-    VkDescriptorSetLayout set_layouts[VK_LAYOUT_COUNT];
+    VkDescriptorSetLayout set_layouts[VK_DESC_COUNT];
     VkPipelineLayoutCreateInfo desc;
     VkPushConstantRange push_range;
     
@@ -173,7 +173,7 @@ void vk_create_pipeline_layout( void )
     desc.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     desc.pNext = NULL;
     desc.flags = 0;
-    desc.setLayoutCount = (vk.maxBoundDescriptorSets >= VK_LAYOUT_COUNT) ? VK_LAYOUT_COUNT : 4;
+    desc.setLayoutCount = (vk.maxBoundDescriptorSets >= VK_DESC_COUNT) ? VK_DESC_COUNT : 4;
     desc.pSetLayouts = set_layouts;
     desc.pushConstantRangeCount = 1;
     desc.pPushConstantRanges = &push_range;

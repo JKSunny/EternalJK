@@ -86,12 +86,12 @@ qboolean vk_bloom( void )
 		// restore clobbered descriptor sets
 		for ( i = 0; i < VK_NUM_BLUR_PASSES; i++ ) {
 			if ( vk.cmd->descriptor_set.current[i] != VK_NULL_HANDLE ) {
-				if ( i == 0 || i == 1 ) {
+				if ( i == VK_DESC_STORAGE || i == VK_DESC_UNIFORM ) {
 					offset_count = 0;
 
 					offsets[offset_count++] = vk.cmd->descriptor_set.offset[i];
 
-					if ( i == 1 ) {
+					if ( i == VK_DESC_UNIFORM ) {
 						offsets[offset_count++] = vk.cmd->descriptor_set.offset[i + 1];	// 1: camera
 						offsets[offset_count++] = vk.cmd->descriptor_set.offset[i + 2];	// 2: light
 						offsets[offset_count++] = vk.cmd->descriptor_set.offset[i + 3];	// 3: entity
