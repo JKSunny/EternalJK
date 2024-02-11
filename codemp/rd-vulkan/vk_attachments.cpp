@@ -305,7 +305,7 @@ void vk_create_attachments( void )
 
     vk_clear_attachment_pool();
 
-    VkImageUsageFlags usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+    VkImageUsageFlags usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 
     if ( vk.bloomActive ) {
         uint32_t width = gls.captureWidth;
@@ -361,20 +361,19 @@ void vk_create_attachments( void )
         }
     }
 
-    // post-processing / msaa-resolve. usage 21
-    create_color_attachment( glConfig.vidWidth, glConfig.vidHeight, VK_SAMPLE_COUNT_1_BIT, vk.color_format,
-        usage, &vk.color_image, &vk.color_image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, qfalse, 0 );
+        // post-processing / msaa-resolve
+        create_color_attachment( glConfig.vidWidth, glConfig.vidHeight, VK_SAMPLE_COUNT_1_BIT, vk.color_format,
+           usage | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, &vk.color_image, &vk.color_image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, qfalse, 0 );
 
-        // screenmap  usage 20
-        usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+        // screenmap-msaa
+        if ( vk.screenMapSamples > VK_SAMPLE_COUNT_1_BIT ) {
+            create_color_attachment( vk.screenMapWidth, vk.screenMapHeight, (VkSampleCountFlagBits)vk.screenMapSamples, vk.color_format,
+               VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, &vk.screenMap.color_image_msaa, &vk.screenMap.color_image_view_msaa, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, qtrue, 0 );
+        }
 
-    if ( vk.screenMapSamples > VK_SAMPLE_COUNT_1_BIT ) {
-        create_color_attachment( vk.screenMapWidth, vk.screenMapHeight, (VkSampleCountFlagBits)vk.screenMapSamples, vk.color_format,
-            usage, &vk.screenMap.color_image_msaa, &vk.screenMap.color_image_view_msaa, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, qtrue, 0 );
-    }
-
-    create_color_attachment( vk.screenMapWidth, vk.screenMapHeight, VK_SAMPLE_COUNT_1_BIT, vk.color_format,
-        usage, &vk.screenMap.color_image, &vk.screenMap.color_image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, qfalse, 0 );
+        // screenmap/msaa-resolve
+        create_color_attachment( vk.screenMapWidth, vk.screenMapHeight, VK_SAMPLE_COUNT_1_BIT, vk.color_format,
+            usage, &vk.screenMap.color_image, &vk.screenMap.color_image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, qfalse, 0 );
 
     // screenmap depth
     create_depth_attachment( vk.screenMapWidth, vk.screenMapHeight, (VkSampleCountFlagBits)vk.screenMapSamples,
