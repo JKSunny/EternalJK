@@ -52,6 +52,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #if defined (_DEBUG)
 #if defined (_WIN32)
 #define USE_VK_VALIDATION
+#define USE_DEBUG_REPORT
+//#define USE_DEBUG_UTILS
 #endif
 #endif
 
@@ -333,8 +335,14 @@ extern PFN_vkGetPhysicalDeviceSurfaceFormatsKHR		    qvkGetPhysicalDeviceSurface
 extern PFN_vkGetPhysicalDeviceSurfacePresentModesKHR	qvkGetPhysicalDeviceSurfacePresentModesKHR;
 extern PFN_vkGetPhysicalDeviceSurfaceSupportKHR		    qvkGetPhysicalDeviceSurfaceSupportKHR;
 #ifdef USE_VK_VALIDATION
-extern PFN_vkCreateDebugReportCallbackEXT				qvkCreateDebugReportCallbackEXT;
-extern PFN_vkDestroyDebugReportCallbackEXT				qvkDestroyDebugReportCallbackEXT;
+	#ifdef USE_DEBUG_REPORT
+		extern PFN_vkCreateDebugReportCallbackEXT				qvkCreateDebugReportCallbackEXT;
+		extern PFN_vkDestroyDebugReportCallbackEXT				qvkDestroyDebugReportCallbackEXT;
+	#endif
+	#ifdef USE_DEBUG_UTILS
+		extern PFN_vkCreateDebugUtilsMessengerEXT				qvkCreateDebugUtilsMessengerEXT;
+		extern PFN_vkDestroyDebugUtilsMessengerEXT				qvkDestroyDebugUtilsMessengerEXT;
+	#endif
 #endif
 extern PFN_vkAllocateCommandBuffers					    qvkAllocateCommandBuffers;
 extern PFN_vkAllocateDescriptorSets					    qvkAllocateDescriptorSets;
@@ -716,7 +724,12 @@ typedef struct {
 	char			instance_extensions_string[MAX_STRING_CHARS];
 
 #ifdef USE_VK_VALIDATION
-	VkDebugReportCallbackEXT debug_callback;
+	#ifdef USE_DEBUG_REPORT
+		VkDebugReportCallbackEXT debug_callback;
+	#endif
+	#ifdef USE_DEBUG_UTILS
+		VkDebugUtilsMessengerEXT debug_utils_messenger;
+	#endif
 #endif
 
 	uint32_t		queue_family_index;
@@ -1276,7 +1289,6 @@ void		vk_set_object_name( uint64_t obj, const char *objName, VkDebugReportObject
 }
 
 void		vk_debug( const char *msg, ... );
-void		vk_create_debug_callback( void );
 void		R_DebugGraphics( void );
 
 
@@ -1321,4 +1333,12 @@ void	vk_imgui_profiler_end_frame( void );
 size_t	vk_imgui_profiler_start_task( const char *name, uint32_t color );
 void	vk_imgui_profiler_end_task( uint32_t task_id );
 size_t	vk_imgui_profiler_insert_task( const char *name, uint32_t color, double startTime, double endTime );
+#endif
+
+#ifdef USE_VK_VALIDATION
+	void	vk_create_debug_callback( void );
+
+#ifdef USE_DEBUG_UTILS
+	void	vk_create_debug_utils( VkDebugUtilsMessengerCreateInfoEXT &desc );
+#endif
 #endif
