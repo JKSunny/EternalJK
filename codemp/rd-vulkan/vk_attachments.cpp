@@ -261,7 +261,7 @@ static void create_color_attachment( uint32_t width, uint32_t height, VkSampleCo
 }
 
 static void create_depth_attachment( uint32_t width, uint32_t height, VkSampleCountFlagBits samples, 
-    VkImage *image, VkImageView *image_view )
+    VkImage *image, VkImageView *image_view, qboolean allowTransient )
 {
     VkImageCreateInfo desc;
     VkMemoryRequirements memory_requirements;
@@ -281,7 +281,10 @@ static void create_depth_attachment( uint32_t width, uint32_t height, VkSampleCo
     desc.arrayLayers = 1;
     desc.samples = samples;
     desc.tiling = VK_IMAGE_TILING_OPTIMAL;
-    desc.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT;
+	desc.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+	if ( allowTransient ) {
+		desc.usage |= VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT;
+	}
     desc.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     desc.queueFamilyIndexCount = 0;
     desc.pQueueFamilyIndices = NULL;
@@ -381,9 +384,9 @@ void vk_create_attachments( void )
         create_color_attachment( vk.screenMapWidth, vk.screenMapHeight, VK_SAMPLE_COUNT_1_BIT, vk.color_format,
             usage, &vk.screenMap.color_image, &vk.screenMap.color_image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, qfalse, 0 );
 
-    // screenmap depth
-    create_depth_attachment( vk.screenMapWidth, vk.screenMapHeight, (VkSampleCountFlagBits)vk.screenMapSamples,
-        &vk.screenMap.depth_image, &vk.screenMap.depth_image_view );
+        // screenmap depth
+        create_depth_attachment( vk.screenMapWidth, vk.screenMapHeight, (VkSampleCountFlagBits)vk.screenMapSamples,
+            &vk.screenMap.depth_image, &vk.screenMap.depth_image_view, qtrue );
         
         // refraction
         if ( vk.refractionActive )
@@ -423,7 +426,8 @@ void vk_create_attachments( void )
 
     // depth
     create_depth_attachment( glConfig.vidWidth, glConfig.vidHeight, (VkSampleCountFlagBits)vkSamples,
-        &vk.depth_image, &vk.depth_image_view );
+        &vk.depth_image, &vk.depth_image_view, 
+        ( vk.fboActive && ( vk.bloomActive || vk.dglowActive ) ) ? qfalse : qtrue );
 
     vk_alloc_attachment_memory();
 
