@@ -2526,8 +2526,8 @@ struct DrawItem
 
 	struct {
 		uint32_t		start, end;
-		VkDescriptorSet	current[VK_LAYOUT_COUNT];	// 0:storage, 1:uniform, 2:color0, 3:color1, 4:color2, 5:fog, 6:brdf lut, 7:normal, 8:physical, 9:prefilterd envmap, !10:irradiance envmap
-		uint32_t		offset[7];					// 0:storage, 1:uniform, 2: camera, 3: data, 4:ghoul2, 5: global
+		VkDescriptorSet	current[VK_DESC_COUNT];		// 0:storage, 1:uniform, 2:color0, 3:color1, 4:color2, 5:fog, 6:brdf lut, 7:normal, 8:physical, 9:prefilterd envmap, !10:irradiance envmap
+		uint32_t		offset[7];					// 0:storage, 1:uniform, 2: camera, 3: light, 4:ghoul2, 5: global
 	} descriptor_set;
 
 	VkBuffer			shade_buffers[12];
