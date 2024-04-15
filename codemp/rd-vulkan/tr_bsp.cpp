@@ -164,9 +164,8 @@ static	void R_LoadLightmaps( world_t &worldData, lump_t *l, lump_t *surfs ) {
 	int			len;
 	byte		*image;
 	int			imageSize;
-	int			i, j, numLightmaps = 0, textureInternalFormat = 0;
+	int			i, j, numLightmaps = 0;
 	float maxIntensity = 0;
-	double sumIntensity = 0;
 	int numColorComponents = 3;
 
 	//bool hdr_capable = glRefConfig.floatLightmap && r_hdr->integer;
@@ -284,12 +283,14 @@ static	void R_LoadLightmaps( world_t &worldData, lump_t *l, lump_t *surfs ) {
 		tr.deluxemaps = (image_t **)ri.Hunk_Alloc( tr.numLightmaps * sizeof(image_t *), h_low );
 	}
 
+#if 0
 #ifdef HDR_DELUXE_LIGHTMAP
 	if (hdr_capable)
 		textureInternalFormat = GL_RGBA16F;
 	else
 #endif
 		textureInternalFormat = GL_RGBA8;
+#endif
 
 	if ( tr.worldInternalLightmapping )
 	{
@@ -489,8 +490,6 @@ static	void R_LoadLightmaps( world_t &worldData, lump_t *l, lump_t *surfs ) {
 							image[j * 4 + 1] = out[1] * 255;
 							image[j * 4 + 2] = out[2] * 255;
 							image[j * 4 + 3] = 255;
-
-							sumIntensity += intensity;
 						}
 						else
 						{
