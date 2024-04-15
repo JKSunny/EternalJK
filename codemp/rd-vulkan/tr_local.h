@@ -764,7 +764,6 @@ typedef struct trRefdef_s {
 
 	int					num_entities;
 	trRefEntity_t		*entities;
-	trMiniRefEntity_t	*miniEntities;
 
 	int					num_dlights;
 	struct dlight_s		*dlights;
@@ -788,10 +787,16 @@ typedef struct trRefdef_s {
 //=================================================================================
 
 // skins allow models to be retextured without modifying the model file
-typedef struct skinSurface_s {
+typedef struct {
 	char		name[MAX_QPATH];
 	shader_t	*shader;
 } skinSurface_t;
+
+typedef struct skin_s {
+	char			name[MAX_QPATH];		// game path, including extension
+	int				numSurfaces;
+	skinSurface_t	*surfaces[128];
+} skin_t;
 
 typedef struct fog_s {
 	int				originalBrushNumber;
@@ -2564,7 +2569,6 @@ typedef struct backEndData_s {
 	dlight_t			dlights[MAX_DLIGHTS];
 #endif
 	trRefEntity_t		entities[MAX_REFENTITIES];
-	trMiniRefEntity_t	miniEntities[MAX_MINI_ENTITIES];
 	srfPoly_t			*polys;//[MAX_POLYS];
 	polyVert_t			*polyVerts;//[MAX_POLYVERTS];
 	renderCommandList_t	commands;
@@ -2576,7 +2580,6 @@ extern int max_polyverts;
 extern backEndData_t *backEndData;
 
 void *R_GetCommandBuffer( int bytes );
-void RB_ExecuteRenderCommands( const void *data );
 
 void R_AddDrawSurfCmd( drawSurf_t *drawSurfs, int numDrawSurfs );
 
