@@ -2426,8 +2426,6 @@ void RB_StageIteratorGeneric( void )
 				def.face_culling = CT_TWO_SIDED;
 				def.vk_light_flags = 0;
 				tess.xstages[stage]->vk_2d_pipeline = vk_find_pipeline_ext(0, &def, qfalse);
-			}else{
-				Com_Printf("test me");
 			}
 
 
