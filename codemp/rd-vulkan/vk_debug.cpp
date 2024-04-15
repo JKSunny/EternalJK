@@ -53,7 +53,7 @@ void QDECL vk_debug( const char *msg, ... ) {
 	Com_Printf( S_COLOR_CYAN "%s\n", text );
 
 	fp = fopen("./vk_log.log", "a");
-	fprintf(fp, text);
+	fprintf(fp, "%s", text);
 	fclose(fp);
 #endif
 	return;

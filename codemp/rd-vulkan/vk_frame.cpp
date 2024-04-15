@@ -1026,8 +1026,6 @@ static void vk_begin_render_pass( VkRenderPass renderPass, VkFramebuffer frameBu
                     clear_values[ (int)( vk.msaaActive ? 2 : 0 )  ].color = { { 0.75f, 0.75f, 0.75f, 1.0f } };
                 break;
             case RENDER_PASS_DGLOW:
-                    clear_values[ (int)( vk.msaaActive ? 2 : 0 )  ].color = { { 0.0f, 0.0f, 0.0f, 1.0f } };
-                break;
             case RENDER_PASS_REFRACTION:
                     clear_values[ (int)( vk.msaaActive ? 2 : 0 )  ].color = { { 0.0f, 0.0f, 0.0f, 1.0f } };
                 break;
@@ -1286,8 +1284,6 @@ void vk_refraction_extract( void ) {
 
 void vk_begin_post_refraction_extract_render_pass( void )
 {
-    VkViewport      viewport{};
-    VkRect2D        scissor_rect{};
     VkFramebuffer frameBuffer = vk.framebuffers.refraction.extract;
 
     vk.renderPassIndex = RENDER_PASS_REFRACTION;
