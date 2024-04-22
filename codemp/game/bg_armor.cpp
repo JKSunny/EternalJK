@@ -217,8 +217,15 @@ static qboolean JKG_ParseArmorFile(char* buffer, const char* fileName, armorData
 	jsonNode = cJSON_GetObjectItem(json, "stamina");
 	armorData.stamina = cJSON_ToIntegerOpt(jsonNode, 0);
 
-	jsonNode = cJSON_GetObjectItem(json, "filter");
-	armorData.filter = cJSON_ToBooleanOpt(jsonNode, false);
+	jsonNode = cJSON_GetObjectItem(json, "antitoxin");
+	armorData.antitoxin = cJSON_ToBooleanOpt(jsonNode, false);
+
+	//only check for filter, if we don't have antitoxin (as it is superior)
+	if (!armorData.antitoxin)	
+	{
+		jsonNode = cJSON_GetObjectItem(json, "filter");
+		armorData.filter = cJSON_ToBooleanOpt(jsonNode, false);
+	}
 
 	jsonNode = cJSON_GetObjectItem(json, "movemodifier");
 	armorData.movemodifier = cJSON_ToNumberOpt(jsonNode, 1.0);

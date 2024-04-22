@@ -308,7 +308,8 @@
 
 		"canceling": {
 			"noBuffStack": true,
-			"filterRemoval": true,
+			"filterBlocking": true,
+			"antitoxRemoval": true,
 			"noCategoryStack": true
 		},
 

@@ -62,6 +62,8 @@ static void CO_InventoryAttachToACI ( int itemNum, int slot, int attach )
 		JKG_CG_ClearACISlot(slot);
 	}
 }
+//cgImports->SendClientCommand(va("unequip %d", pItems[nSelected].first)); --futuza: <--implement something like this above?
+//cgImports->SendClientCommand(va("equip %d", pItems[nSelected].first));
 
 /*
  *	Performs a UI -> CG request for inventory and container UIs

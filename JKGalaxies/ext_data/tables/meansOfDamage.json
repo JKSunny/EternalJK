@@ -429,6 +429,10 @@
 			"suicideMessageMale": "@JKG_INGAME_SUICIDE_SHOT_MALE",
 			"suicideMessageFemale": "@JKG_INGAME_SUICIDE_SHOT_FEMALE",
 			"suicideMessageNeuter": "@JKG_INGAME_SUICIDE_SHOT_GENDERLESS"
+		},
+		
+		"plums":{
+			"shieldDamageColor": [ "22", "168", "220" ]
 		}
 	},
 
@@ -450,6 +454,10 @@
 			"suicideMessageMale": "@JKG_INGAME_SUICIDE_SHOT_MALE",
 			"suicideMessageFemale": "@JKG_INGAME_SUICIDE_SHOT_FEMALE",
 			"suicideMessageNeuter": "@JKG_INGAME_SUICIDE_SHOT_GENDERLESS"
+		},
+		
+		"plums":{
+			"shieldDamageColor": [ "22", "168", "220" ]
 		}
 	},
 
@@ -471,6 +479,10 @@
 			"suicideMessageMale": "@JKG_INGAME_SUICIDE_ELECTRICAL_MALE",
 			"suicideMessageFemale": "@JKG_INGAME_SUICIDE_ELECTRICAL_FEMALE",
 			"suicideMessageNeuter": "@JKG_INGAME_SUICIDE_ELECTRICAL_GENDERLESS"
+		},
+		
+		"plums":{
+			"shieldDamageColor": [ "22", "168", "220" ]
 		}
 	},
 
@@ -518,8 +530,7 @@
 
 		"plums": {
 			"damageColor": [ "11", "11", "255" ],
-			"lowDamageColor": [ "11", "11", "255" ],
-			"shieldDamageColor": [ "11", "11", "255" ]
+			"lowDamageColor": [ "124", "161", "255" ]
 		}
 	},
 
@@ -545,8 +556,7 @@
 
 		"plums": {
 			"damageColor": [ "255", "169", "65" ],
-			"lowDamageColor": [ "255", "169", "65" ],
-			"shieldDamageColor": [ "255", "169", "65" ]
+			"lowDamageColor": [ "255", "210", "60" ]
 		}
 	},
 
@@ -631,8 +641,7 @@
 
 		"plums": {
 			"damageColor": [ "255", "255", "255" ],
-			"lowDamageColor": [ "255", "255", "255" ],
-			"shieldDamageColor": [ "255", "255", "255" ]
+			"lowDamageColor": [ "255", "255", "255" ]
 		}
 	},
 
@@ -655,8 +664,7 @@
 
 		"plums": {
 			"damageColor": [ "255", "255", "255" ],
-			"lowDamageColor": [ "255", "255", "255" ],
-			"shieldDamageColor": [ "255", "255", "255" ]
+			"lowDamageColor": [ "255", "255", "255" ]
 		}
 	},
 
@@ -709,8 +717,7 @@
 
 		"plums": {
 			"damageColor": [ "255", "169", "65" ],
-			"lowDamageColor": [ "255", "169", "65" ],
-			"shieldDamageColor": [ "255", "169", "65" ]
+			"lowDamageColor": [ "255", "169", "65" ]
 		}
 	},
 

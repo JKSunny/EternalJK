@@ -272,7 +272,10 @@ REFERENCE		ARM_MAXSTAMINA_NEG
 LANG_ENGLISH		"Maximum Stamina: -%i"
 
 REFERENCE       ARM_FILTER
-LANG_ENGLISH    "Filters toxins." 
+LANG_ENGLISH    "Filters toxins."
+
+REFERENCE	ARM_ANTITOXIN
+LANG_ENGLISH	"Removes toxins."
 
 REFERENCE		WEP_DAMAGE
 LANG_ENGLISH		"Damage: %i (%s)"

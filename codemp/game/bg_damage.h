@@ -37,6 +37,8 @@ struct meansOfDamage_t {
 		qboolean dodgeable;		// if true, this damage type can be dodged
 		qboolean shieldBlocks;	// if true, this damage type is blocked entirely by shields
 		qboolean isEMP;	// if true, this damage is electric based (can effect electric equipment)
+
+		//multiply damage to specific types (eg: 1.0 == normal damage, 1.25 shield == +25% extra damage to shields)
 		float armor;
 		float shield;
 		float organic;

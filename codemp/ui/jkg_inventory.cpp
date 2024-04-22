@@ -399,10 +399,17 @@ static void JKG_ConstructArmorDescription(itemInstance_t* pItem, std::vector<std
 		}
 	}
 
-	if (pArmorData->filter)
+	if (pArmorData->antitoxin)
+	{
+		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ARM_ANTITOXIN")));
+	}
+
+	if (pArmorData->filter)	//note, can't have filter if antitoxin is present, as filter is an inferior version
 	{
 		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ARM_FILTER")));
 	}
+
+
 }
 
 // Convert units into feet

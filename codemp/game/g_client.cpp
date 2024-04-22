@@ -1824,6 +1824,8 @@ qboolean ClientUserinfoChanged( int clientNum ) {
 	client->pers.maxStamina = maxStamina;
 	client->ps.stats[STAT_MAX_STAMINA] = client->pers.maxStamina; //force and stamina are the same thing in JKG
 
+	client->ps.buffAntitoxActive = client->ps.buffFilterActive = qfalse;		//set initial state for filter & antitox (no protection)
+
 	if (level.gametype >= GT_TEAM) {
 		s = Info_ValueForKey( userinfo, "teamoverlay" );
 		if ( ! *s || atoi( s ) != 0 ) {
@@ -2125,6 +2127,7 @@ void ClientBegin( int clientNum, qboolean allowTeamReset ) {
 	trap->SendServerCommand(clientNum, "pInv clr");
 	ent->client->ps.credits = 0;
 	//ent->client->ps.spent = 0;
+	ent->client->ps.buffFilterActive = qfalse;
 	if ((ent->r.svFlags & SVF_BOT) && g_gametype.integer >= GT_TEAM)
 	{
 		if (allowTeamReset)
@@ -3063,6 +3066,8 @@ void ClientSpawn(gentity_t *ent, qboolean respawn) {
 	// clear entity values
 	client->ps.stats[STAT_MAX_HEALTH] = client->pers.maxHealth;
 	client->ps.stats[STAT_MAX_STAMINA] = client->pers.maxStamina;
+	client->ps.buffFilterActive = qfalse;
+	client->ps.buffAntitoxActive = qfalse;
 
 	client->ps.eFlags = flags;
 	client->mGameFlags = gameFlags;
@@ -3400,6 +3405,10 @@ void ClientSpawn(gentity_t *ent, qboolean respawn) {
 			else if (it->equipped && it->id->itemType == ITEM_JETPACK) {
 				JKG_JetpackEquipped(ent, i);
 			}
+			else if (it->equipped && (it->id->itemType == ITEM_ARMOR || it->id->itemType == ITEM_CLOTHING)) //--futuza: not quite done, shouldn't re-equip armor if it wasn't equipped before
+			{
+				JKG_EquipItem(ent, i);
+			}
 			else if (it->id->itemType == ITEM_WEAPON) {
 				// It's a weapon, automatically reload us
 				weaponData_t* wp = GetWeaponData(it->id->weaponData.weapon, it->id->weaponData.variation);
@@ -3424,17 +3433,28 @@ void ClientSpawn(gentity_t *ent, qboolean respawn) {
 		}
 	}
 
+	//fill special items to capacity on spawn
 	if (ent->client->shieldEquipped)
 	{
 		ent->client->ps.stats[STAT_SHIELD] = ent->client->ps.stats[STAT_MAX_SHIELD];
 	}
 
 	if (ent->client->jetpackEquipped)
-		ent->client->ps.jetpackFuel = jetpackTable[ent->client->ps.jetpack - 1].fuelCapacity;	//fill jetpack to capacity when spawned
+		ent->client->ps.jetpackFuel = jetpackTable[ent->client->ps.jetpack - 1].fuelCapacity;	
 
 	/*if (client->ps.jetpack) {
-		client->ps.jetpackFuel = jetpackTable[client->ps.jetpack - 1].fuelCapacity;		//fill jetpack
+		client->ps.jetpackFuel = jetpackTable[client->ps.jetpack - 1].fuelCapacity;		//fill jetpack --Futuza: old jka way
 	}*/
+
+	if (ent->client->filterEquipped)
+	{
+		ent->client->ps.buffFilterActive = qtrue;
+	}
+
+	if (ent->client->antitoxEquipped)
+	{
+		ent->client->ps.buffAntitoxActive = qtrue;
+	}
 
 	ent->client->ps.heat = 0.0f;		//set initial heat on spawn
 	ent->client->ps.overheated = false;

@@ -56,24 +56,7 @@ Cmd_ShieldUnequipped
 */
 void Cmd_ShieldUnequipped(gentity_t* ent)
 {
-	if (JKG_HasFreezingBuff(ent->playerState)) //no changing equipment while stunned/frozen etc
-	{
-		return;
-	}
-
-	if (ent->client->shieldEquipped) {
-		for (auto it = ent->inventory->begin(); it != ent->inventory->end(); ++it) {
-			if (it->equipped && it->id->itemType == ITEM_SHIELD) {
-				it->equipped = qfalse;
-			}
-		}
-	}
-
-	ent->client->ps.stats[STAT_MAX_SHIELD] = 0;
-	ent->client->shieldEquipped = qfalse;
-	ent->client->shieldRechargeLast = ent->client->shieldRegenLast = level.time;
-	ent->client->shieldRecharging = qfalse;
-	ent->client->shieldRegenTime = ent->client->shieldRechargeTime = 0;
+	Cmd_ShieldUnequipped(ent, 0);	//index not specified, start at beginning
 }
 
 //overloaded version - if you know the shield's index start there
@@ -84,7 +67,7 @@ void Cmd_ShieldUnequipped(gentity_t* ent, unsigned int index)
 		return;
 	}
 
-	if (index > ent->inventory->size())
+	if (index > ent->inventory->size() )
 	{
 		trap->SendServerCommand(ent - g_entities, "Cmd_ShieldUnequipped() called with out of bounds index! Defaulting to 0.\n");
 		index = 0;
@@ -147,20 +130,7 @@ Cmd_JetpackUnequipped
 */
 void Cmd_JetpackUnequipped(gentity_t* ent)
 {
-	if (JKG_HasFreezingBuff(ent->playerState)) //no changing equipment while stunned/frozen etc
-	{
-		return;
-	}
-	// Iterate through the inventory and remove the jetpack that is equipped
-	for (auto it = ent->inventory->begin(); it != ent->inventory->end(); it++) {
-		if (it->equipped && it->id->itemType == ITEM_JETPACK) {
-			it->equipped = qfalse;
-		}
-	}
-
-	ent->client->jetpackEquipped = qfalse;
-	ent->client->pItemJetpack = nullptr;
-	ent->client->ps.jetpack = 0;
+	Cmd_JetpackUnequipped(ent, 0);	//index not provided start at beginning
 }
 
 //overloaded version - if you know the jetpack's index start there
@@ -171,9 +141,9 @@ void Cmd_JetpackUnequipped(gentity_t* ent, unsigned int index)
 		return;
 	}
 
-	if (index > ent->inventory->size())
+	if (index > ent->inventory->size() )
 	{
-		trap->SendServerCommand(ent - g_entities, "Cmd_ShieldUnequipped() called with out of bounds index! Defaulting to 0.\n");
+		trap->SendServerCommand(ent - g_entities, "Cmd_JetpackUnequipped() called with out of bounds index! Defaulting to 0.\n");
 		index = 0;
 	}
 
@@ -198,7 +168,7 @@ Our armor has been changed. Recalculate stats.
 */
 void JKG_ArmorChanged(gentity_t* ent) {
 	
-	bool haveFullHP = false, haveFullStamina = false;
+	bool haveFullHP = false, haveFullStamina = false, haveFilterEquip = false, haveAntitoxEquip = false;
 
 	if (ent->client->ps.stats[STAT_HEALTH] >= ent->client->ps.stats[STAT_MAX_HEALTH]) //check if we have full health already
 		haveFullHP = true;
@@ -206,12 +176,28 @@ void JKG_ArmorChanged(gentity_t* ent) {
 	if (ent->playerState->forcePower >= ent->client->ps.stats[STAT_MAX_STAMINA])	//check if forcepower is full
 		haveFullStamina = true;
 
-	//increase maxhealth/stamina
+	//reset maxhealth/stamina to max
 	ent->client->ps.stats[STAT_MAX_HEALTH] = ent->client->pers.maxHealth;
+	ent->client->ps.stats[STAT_MAX_STAMINA] = ent->client->pers.maxStamina;
+	ent->client->ps.buffFilterActive = haveFilterEquip;
+	ent->client->ps.buffAntitoxActive = haveAntitoxEquip;
+
+	//loop through inventory and check for stat increases
 	for (auto it = ent->inventory->begin(); it != ent->inventory->end(); ++it) {
-		if (it->equipped && it->id->itemType == ITEM_ARMOR) {
+		if (it->equipped && (it->id->itemType == ITEM_ARMOR || it->id->itemType == ITEM_CLOTHING))
+		{
 			ent->client->ps.stats[STAT_MAX_HEALTH] += it->id->armorData.pArm->hp;
 			ent->client->ps.stats[STAT_MAX_STAMINA] += it->id->armorData.pArm->stamina;
+
+			if (it->id->armorData.pArm->filter)
+			{
+				haveFilterEquip = true;
+			}
+
+			if (it->id->armorData.pArm->antitoxin)
+			{
+				haveAntitoxEquip = true;
+			}
 		}
 	}
 
@@ -226,6 +212,10 @@ void JKG_ArmorChanged(gentity_t* ent) {
 		if (ent->playerState->forcePower < ent->client->ps.stats[STAT_MAX_STAMINA])
 			ent->playerState->forcePower = ent->client->ps.stats[STAT_MAX_STAMINA];
 	}
+
+	//set to false if we didn't have any, set to true if we had at least 1
+	ent->client->filterEquipped = ent->client->ps.buffFilterActive = haveFilterEquip;
+	ent->client->antitoxEquipped = ent->client->ps.buffAntitoxActive = haveAntitoxEquip;
 }
 
 /*
@@ -273,7 +263,7 @@ void JKG_EquipItem(gentity_t *ent, int iNum)
 
 		(*ent->inventory)[iNum].equipped = true;
 	}
-	else if (item.id->itemType == ITEM_ARMOR)
+	else if (item.id->itemType == ITEM_ARMOR || item.id->itemType == ITEM_CLOTHING)
 	{
 		armorData_t* pArm = item.id->armorData.pArm;
 		int previousArmor = ent->client->ps.armor[pArm->slot] - 1;
@@ -285,7 +275,7 @@ void JKG_EquipItem(gentity_t *ent, int iNum)
 			// We need to iterate through the inventory and remove the old equipped item.
 			for (auto it = ent->inventory->begin(); it != ent->inventory->end(); ++it)
 			{
-				if (it->equipped && it->id->itemType == ITEM_ARMOR
+				if ( (it->equipped && it->id->itemType == ITEM_ARMOR || item.id->itemType == ITEM_CLOTHING)
 					&& it->id->armorData.pArm->slot == armorTable[previousArmor].slot) //if its equipped armor, and takes up the same slot type, we can only have one per slot
 				{
 					it->equipped = qfalse;
@@ -298,7 +288,8 @@ void JKG_EquipItem(gentity_t *ent, int iNum)
 	else if (item.id->itemType == ITEM_SHIELD) {
 		JKG_ShieldEquipped(ent, iNum, qtrue);
 	}
-	else if (item.id->itemType == ITEM_JETPACK) {
+	else if (item.id->itemType == ITEM_JETPACK) 
+	{
 		JKG_JetpackEquipped(ent, iNum);
 	}
 	else
@@ -488,6 +479,7 @@ void ItemUse_Jetpack(gentity_t *ent)
 					higher[2] += 20.0f;
 					G_Sound(ent, CHAN_AUTO, G_SoundIndex("sound/effects/energy_crackle.wav"));
 					G_PlayEffectID(G_EffectIndex("effects/Player/electrocute.efx"), higher, ent->client->ps.viewangles);
+					Jetpack_Off(ent);	//switch it off
 					return;
 				}
 			}

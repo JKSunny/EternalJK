@@ -527,6 +527,7 @@ struct gentity_s {
 	/////////////////////////////////////////
 	// 
 	// EVERYTHING ABOVE THIS POINT MUST BE POD
+	// Futuza: probably not necessary since C++11
 	//
 	/////////////////////////////////////////
 	std::vector<itemInstance_t>* inventory;
@@ -1026,6 +1027,8 @@ struct gclient_s {
 	qboolean	shieldRecharging;	// to make sure that the shield sound doesn't play twice
 	qboolean	jetpackEquipped;	//is there a jetpack equipped?
 	itemJetpackData_t* pItemJetpack;
+	qboolean	filterEquipped;		//Whether client is protected against 'filterable' buffs (eg: poison/toxin), see also ps.buffFilterActive
+	qboolean	antitoxEquipped;	//Whether client is protected & detoxed against antitox buffs (eg: poison/toxin)
 
 	unsigned short ammoTable[MAX_AMMO_TYPES];		// Max ammo indices increased to JKG_MAX_AMMO_INDICES
 

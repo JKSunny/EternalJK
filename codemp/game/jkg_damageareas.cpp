@@ -175,6 +175,15 @@ void G_BuffEntity(gentity_t* ent, gentity_t* buffer, int buffID, float intensity
 	}
 
 	pBuff = &buffTable[buffID];
+
+	// having a filter blocks toxin buffs
+	if (pBuff->cancel.filterBlocking)
+	{
+		if (ent->client->ps.buffFilterActive)
+		{
+			return;
+		}
+	}
 	
 	// Try and cancel out any existing buffs first, this will clear out room for the new buff ideally
 	for (i = 0; i < PLAYERBUFF_BITS; i++)
@@ -463,6 +472,16 @@ void G_TickBuffs(gentity_t* ent)
 			{
 				G_RemoveBuff(ent, i);
 				continue;
+			}
+
+			// remove toxins and other debuffs from bloodstream
+			if (pBuff->cancel.antitoxRemoval)
+			{
+				if (ent->client->ps.buffAntitoxActive)
+				{
+					G_RemoveBuff(ent, i);
+					continue;
+				}
 			}
 
 			// check for dealing damage

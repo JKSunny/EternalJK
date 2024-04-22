@@ -3855,6 +3855,7 @@ void G_CheckForBlowingUp(gentity_t *ent, gentity_t *enemy, vec3_t point, int dam
 //[/FullDismemberment]
 
 
+
 /*
 G_ArmorDurabilityModifier()
 
@@ -4124,6 +4125,7 @@ bool G_LocationBasedDamageModifier(gentity_t *ent, vec3_t point, int mod, int df
 	case HL_BACK_RT:
 	case HL_BACK_LT:
 	case HL_BACK:
+		//todo: check if jetpack equipped, if so short it out/add emp debuff
 	case HL_CHEST_RT:
 	case HL_CHEST_LT:
 	case HL_CHEST:
@@ -4186,6 +4188,7 @@ bool G_LocationBasedDamageModifier(gentity_t *ent, vec3_t point, int mod, int df
 rww - end dismemberment/lbd
 ===================================
 */
+
 
 #define PLAYER_KNOCKDOWN_HOLD_EXTRA_TIME 0
 
@@ -4297,9 +4300,11 @@ void G_Knockdown( gentity_t *self, gentity_t *attacker, const vec3_t pushDir, fl
 ===================================
 //Evasion Mechanics
 JKG_EvaluateEvasion()
+
+//Allow clients to reduce damage done to them by rolling.
 ===================================
 */
-int G_EvaluateEvasion(gentity_s* targ, gentity_s* attacker, int take)
+int JKG_EvaluateEvasion(gentity_s* targ, gentity_s* attacker, int take)
 {
 	/*
 			Note:
@@ -4363,6 +4368,101 @@ int G_EvaluateEvasion(gentity_s* targ, gentity_s* attacker, int take)
 		return take;
 }
 
+
+/*
+===================================
+//EMP Damage Effects
+JKG_ApplyEMPDamageEffects()
+
+Apply EMP effects from electric damage (disable jetpacks, remove jetfuel based on damage taken, etc)
+===================================
+*/
+void JKG_ApplyEMPDamageEffects(gentity_t* target, meansOfDamage_t* means, const int take)
+{
+	//ensure there was actually emp damage done
+	if (take && target->client && means->modifiers.isEMP)
+	{
+		//=== Handle Jetpacks ===
+		// Futuza: note that a better version of disabling EMP effects is available through the standard-emp debuff, this only shorts stuff out briefly and removes jetfuel
+		// see how it interacts with jetpacks in jkg_equip.cpp ItemUse_Jetpack()
+
+		//short out jetpacks
+		if (target->client->ps.eFlags & EF_JETPACK_ACTIVE)
+			Jetpack_Off(target);
+
+		//remove jetfuel (don't apply jetfuel 'damage' from sources less than 2, such as emp debuffs)
+		if (take > 1)
+		{
+			target->client->ps.jetpackFuel > 0 ? target->client->ps.jetpackFuel -= take : target->client->ps.jetpackFuel = 0;
+
+			if (target->client->ps.jetpackFuel <= 0)
+				target->client->ps.jetpackFuel = 0;
+
+
+		}
+		//=== Handle Other Equipment ===
+		/*
+			todo: other effects for other equipment here
+			eg: short out cloaking devices, specific types of shields, etc
+		  */
+	}
+}
+
+/*
+===================================
+//Reduce Damage if Shielded
+JKG_ApplyShieldProtection()
+
+Shields act as a scapegoat to protect a shielded client from damage before it is applied to the target's hp directly
+===================================
+*/
+void JKG_ApplyShieldProtection(gentity_t* targ, meansOfDamage_t* means, int *ssave, int *take, const int dflags, vec3_t dir)	//ssave and take are pointers to ints in the main combat function so we can modify these values
+{
+
+	// check if shield nulls damage completely
+	if (targ->client && means->modifiers.shieldBlocks && targ->client->ps.stats[STAT_SHIELD] > 0)
+	{
+		*ssave = 1;	//setting to 1 for now, to indicate immunity since we can't display 0's or characters with plums yet
+		*take = 0;
+		ShieldHitEffect(targ, dir, *ssave);
+
+	}
+	else  //or save some from shield
+	{
+		*ssave = CheckShield(targ, *take, dflags, means);
+		if (*ssave)
+		{
+			if (targ->client) {
+				if (targ->client->ps.stats[STAT_SHIELD] > *ssave) {
+					// absorb all damage by the shield, and don't take any
+					targ->client->ps.stats[STAT_SHIELD] -= *ssave;
+					*take = 0;
+				}
+				else if (targ->client->ps.stats[STAT_SHIELD] > 0)
+				{
+					//special exception for when damage ties shield charge
+					if (static_cast<int>(*take * means->modifiers.shield) == targ->client->ps.stats[STAT_SHIELD])
+					{
+						targ->client->ps.stats[STAT_SHIELD] = 0;
+						*take = 0;
+					}
+
+					// we have some shield charge but some damage will break through
+					else
+					{
+						*take -= targ->client->ps.stats[STAT_SHIELD];
+						targ->client->ps.stats[STAT_SHIELD] = 0;
+
+						if (*take < 1)			//this isn't just safety checking, in the event that the means does extra damage to shields, ssave will be > take, so we'd end up a negative spill over.
+							*take = -*take;	  //eg: 27 shield, 26 take (multipled to 41 shield dmg reduced to 27) == 26-27 == -1, uh oh!  no worries, math is still correct, just reverse the negative
+					}
+
+				}
+			}
+			ShieldHitEffect(targ, dir, *ssave);
+		}
+	}
+}
 
 
 /*
@@ -4515,9 +4615,10 @@ void GLua_NPCEV_OnPain(gentity_t *self, gentity_t *attacker, int damage);
 void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 			   vec3_t dir, vec3_t point, int damage, int dflags, int mod ) {
 	gclient_t	*client;
-	int			take;
-	int			ssave;
-	int			knockback;
+	int			take = 0;	//how much damage we actually take
+	int			ssave = 0;	//shield save
+	int			directDmg = 0; //direct damage (bypasses shield from ACP weaponry)
+	int			knockback = 0;
 	qboolean	isHeadShot = false;
 	meansOfDamage_t* means = JKG_GetMeansOfDamage(mod);
 
@@ -4833,14 +4934,31 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 	}
 	take = damage;  //from this point on want to know diff between damage received and what is actually taken (things like shields, armor, evasion all will reduce it)
 
-	//if roll dodges are allowed (on by default)
+/////////////////////////////////////////
+//	JKG DAMAGE CALCULATIONS
+/////////////////////////////////////////
+// 
+// 	0. Make sure godmode isn't applicable & 1/2 self damage (see above)
+// 	1. Check for evasion (roll dodges)
+//  2. Check & calculate direct damage (shield will be bypassed: ACP etc)
+//	3. Reduce damage by shield amount
+//  4. Apply direct damage (from step 2)
+//  5. Modify damage by special debuffs
+//	6. Modify damage by location based modifier
+//	7. Reduce damage by armor reduction
+//  8. Modify damage by client type (eg: organic, droid)
+//  9. Apply EMP Effects (eg: disable jetpack, etc)
+//
+
+
+	//calculate roll dodge/evasion reduction
 	if (jkg_allowDodge.integer > 0 && take > 0 && means->modifiers.dodgeable && targ->client)
 	{
-		take = G_EvaluateEvasion(targ, attacker, take); //calculate roll dodge reduction
+		take = JKG_EvaluateEvasion(targ, attacker, take); 
 	}
 
-	int directDmg = 0; //direct damage that bypasses shield from ACP weaponry
-	if (mod == JKG_GetMeansOfDamageIndex("MOD_ACP") ) //handle division of ACP type damage
+	//handle division of ACP type damage
+	if (mod == JKG_GetMeansOfDamageIndex("MOD_ACP") ) 
 	{
 		const weaponData_t* weaponData;
 		weaponData = GetWeaponData(attacker->client->ps.weapon, attacker->client->ps.weaponVariation);
@@ -4862,84 +4980,25 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 			directDmg = 1;
 	}
 
-	///////////////////////////////////////
-	//
-	//	1. Reduce damage by shield amount
-	//  2. Modify damage by special debuffs
-	//	3. Modify damage by location based modifier
-	//	4. Reduce damage by armor reduction
-	//  5. Modify damage by client type (eg: organic, droid)
+	//see if shields protect target
+	if(client && client->ps.stats[STAT_SHIELD] > 0)
+		JKG_ApplyShieldProtection(targ, means, &ssave, &take, dflags, dir);	//ssave and take are modified
 
-	// save some from shield
-	if (targ->client && means->modifiers.shieldBlocks && targ->client->ps.stats[STAT_SHIELD] > 0)
+	//apply direct damage in case the shield was bypassed
+	take = take + directDmg;	
+
+	//save some from buff resistance (eg: carbonite protects)
+	if (client && take > 0 && JKG_HasResistanceBuff(targ->playerState))
 	{
-		// this damage is -completely avoided- because we're wearing a shield
-		ssave = 1;	//setting to 1 for now, to indicate immunity since we can't display 0's or characters with plums yet
-		take = 0;
-		ShieldHitEffect(targ, dir, ssave);
-
-	}
-	else
-	{
-		ssave = CheckShield(targ, take, dflags, means);
-		if (ssave)
-		{
-			if (targ->client) {
-				if (targ->client->ps.stats[STAT_SHIELD] > ssave) {
-					// absorb all damage by the shield, and don't take any
-					targ->client->ps.stats[STAT_SHIELD] -= ssave;
-					take = 0;
-				}
-				else if (targ->client->ps.stats[STAT_SHIELD] > 0)
-				{
-					//special exception for when damage ties shield charge
-					if (static_cast<int>(take*means->modifiers.shield) == targ->client->ps.stats[STAT_SHIELD])
-					{
-						targ->client->ps.stats[STAT_SHIELD] = 0;
-						take = 0;
-					}
-
-					// we have some shield charge but some damage will break through
-					else
-					{
-						take -= targ->client->ps.stats[STAT_SHIELD];
-						targ->client->ps.stats[STAT_SHIELD] = 0;
-
-						if (take < 1)			//this isn't just safety checking, in the event that the means does extra damage to shields, ssave will be > take, so we'd end up a negative spill over.
-							take = -take;	  //eg: 27 shield, 26 take (multipled to 41 shield dmg reduced to 27) == 26-27 == -1, uh oh!  no worries, math is still correct, just reverse the negative
-					}
-					
-				}
-			}
-			ShieldHitEffect(targ, dir, ssave);
-		}
-	}
-
-	take = take + directDmg;	//apply direct damage in case the shield was bypassed
-
-	// save some from being resistant (eg: carbonite protects us)
-	if (targ->client && take > 0 && JKG_HasResistanceBuff(targ->playerState))
-	{
-		take = take / 2; //reduce damage by 1/2
+		take *= 0.5; //reduce damage by 1/2
 		if (take < 1)
 			take = 1;
-	}
-
-	//apply EMP effects from electric damage
-	if (take && targ->client && means->modifiers.isEMP)
-	{
-		//short out jetpacks
-		if (targ->client->ps.eFlags & EF_JETPACK_ACTIVE)
-			Jetpack_Off(targ);
-
-		//--Futuza: note that a better version of EMP is available through the standard-emp debuff, this only shorts stuff out once
-		//see how it interacts with jetpacks in jkg_equip.cpp ItemUse_Jetpack()
 	}
 
 	//see if we should modify it by damage location/reduce by worn armor
 	if (take > 0 && !(dflags&DAMAGE_NO_HIT_LOC))
 	{
-		if (targ->client &&
+		if (client &&
 			attacker->inuse)
 		{ //check for location based damage stuff.
 			isHeadShot = G_LocationBasedDamageModifier(targ, point, mod, dflags, &take, means);	//check for headshot, location based modifiers, and armor
@@ -4960,9 +5019,14 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 		}
 	}
 
+	//apply EMP effects from electric damage
+	JKG_ApplyEMPDamageEffects(targ, means, take); 
+
+	// note, Force Protect doesn't do anything (eez removed the code)
+
 #ifndef FINAL_BUILD
 	if ( g_debugDamage.integer ) {
-		trap->Print( "%i: client:%i health:%i damage:%i armor:%i\n", level.time, targ->s.number,
+		trap->Print( "%i: client:%i health:%i damage:%i shield:%i\n", level.time, targ->s.number,
 			targ->health, take, ssave );
 	}
 #endif
@@ -5007,8 +5071,6 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 		targ->client->lasthurt_client = attacker->s.number;
 		targ->client->lasthurt_mod = mod;
 	}
-
-	// note, Force Protect doesn't do anything (I removed the code)
 
 	if (( ssave || take ) && targ->client && !targ->NPC )
 	{

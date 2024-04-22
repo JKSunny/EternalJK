@@ -1778,6 +1778,8 @@ typedef struct playerState_s {
 
 	int				buffsActive;
 	buffdata_t		buffs[MAX_BUFFS];
+	qboolean		buffFilterActive;	// Prevents 'filterable' buffs (toxins etc) from being applied while wearing protective equipment (gas mask, etc)
+	qboolean		buffAntitoxActive;	// Prevents & actively removes 'antitoxRemoval' buffs (toxins etc) while wearing protective equipment (bloodstream filter, etc)
 	
 	int				saberActionFlags;
 

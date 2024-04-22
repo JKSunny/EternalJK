@@ -2160,24 +2160,6 @@ void ClientThink_real( gentity_t *ent ) {
 		}
 	}
 
-// remove debuffs that shields protect from: now done in jkg_damageareas.cpp!
-	// remove toxins and other debuffs that filters protects
-	if (ent->inventory->size() > 0 && JKG_ClientAlive(ent))
-	{
-		// check inventory for filter items
-		for (auto it = ent->inventory->begin(); it != ent->inventory->end(); ++it)
-		{
-			if (it->equipped && ( it->id->itemType == ITEM_ARMOR || it->id->itemType == ITEM_CLOTHING) )
-			{
-				if (it->id->armorData.pArm->filter)
-				{
-					JKG_CheckFilterRemoval(&ent->client->ps);
-				}
-				break;
-			}
-		}
-	}
-
 	// mark the time, so the connection sprite can be removed
 	ucmd = &ent->client->pers.cmd;
 

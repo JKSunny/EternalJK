@@ -16,7 +16,7 @@ typedef struct gentity_s gentity_t;
 #define MAX_ITEM_FILE_LENGTH    (16384)
 #define MAX_ITEM_NAME			(64)
 #define MAX_ITEM_DESCRIPTION	(250)
-#define MAX_INVENTORY_ITEMS		(256)
+#define MAX_INVENTORY_ITEMS		(256)		//max number of items per player inventory
 
 #define MAX_ACI_SLOTS			(10)
 #define MAX_ARMOR_PIECES		(512)		//unused
