@@ -4937,17 +4937,17 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 /////////////////////////////////////////
 //	JKG DAMAGE CALCULATIONS
 /////////////////////////////////////////
-// 
-// 	0. Make sure godmode isn't applicable & 1/2 self damage (see above)
-// 	1. Check for evasion (roll dodges)
-//  2. Check & calculate direct damage (shield will be bypassed: ACP etc)
+//
+//	0. Make sure godmode isn't applicable & 1/2 self damage (see above)
+//	1. Check for evasion (roll dodges)
+//	2. Check & calculate direct damage (shield will be bypassed: ACP etc)
 //	3. Reduce damage by shield amount
-//  4. Apply direct damage (from step 2)
-//  5. Modify damage by special debuffs
+//	4. Apply direct damage (from step 2)
+//	5. Modify damage by special debuffs
 //	6. Modify damage by location based modifier
 //	7. Reduce damage by armor reduction
-//  8. Modify damage by client type (eg: organic, droid)
-//  9. Apply EMP Effects (eg: disable jetpack, etc)
+//	8. Modify damage by client type (eg: organic, droid)
+//	9. Apply EMP Effects (eg: disable jetpack, etc)
 //
 
 

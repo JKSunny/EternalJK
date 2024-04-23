@@ -5134,6 +5134,13 @@ static void PM_Weapon(void)
 		return;
 	}
 
+	//don't destroy our last remaining det_pack, we need it to detonate
+	if (pm->ps->weapon == WP_DET_PACK && weaponData->firemodes[pm->ps->firingMode].useQuantity && pm->ps->stats[STAT_AMMO] < 2)
+	{
+		Com_Printf("No more charges. Switch firing modes to detonate placed charges.\n");
+		return;
+	}
+
 	doStdAnim = 0;
 #ifndef _GAME
 	if (pm->ps->weapon == WP_MELEE)

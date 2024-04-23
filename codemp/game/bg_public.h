@@ -671,7 +671,6 @@ typedef enum {
 #define EF_ONFIRE			(1<<12)		// JKG: Damage types - on fire
 
 #define	EF_TALK					(1<<13)		// draw a talk balloon
-//#define	EF_CONNECTION			(1<<14)		// draw a connection trouble sprite
 #define EF_ELECTROCUTED          (1 << 14)   // JKG: Damage types - electrocuted
 #define	EF_SPRINTING			(1<<15)		// JKG: sprinting
 
@@ -696,6 +695,7 @@ typedef enum {
 #define EF_JETPACK				(1<<29)		//rww - wearing a jetpack
 #define EF_JETPACK_FLAMING		(1<<30)		//rww - jetpack fire effect
 
+//#define	EF_CONNECTION			(1<<14)		// draw a connection trouble sprite
 #define	EF_CONNECTION			(1<<31)		// we have a bad connection
 
 //These new EF2_??? flags were added for NPCs, they really should not be used often.
