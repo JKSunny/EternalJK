@@ -4482,6 +4482,9 @@ void PM_BeginWeaponChange( int weaponId, const weaponData_t* weaponData) {
 	if(!BG_GetWeaponByIndex(pm->cmd.weapon, &weapon, &variation))
 		return;
 
+	qboolean veryhot = qfalse;
+	const int OVERHEAT_PENALTY = 300;
+
 	/*if( pm->ps->clientNum >= MAX_CLIENTS )
 	{
 		if ( weaponId > 0 && pm->ps->clientNum, weaponId)
@@ -4521,17 +4524,28 @@ void PM_BeginWeaponChange( int weaponId, const weaponData_t* weaponData) {
 	}
 
 	// Is our weapon hot? (50%+ heat)
-	if (pm->ps->heat > pm->ps->maxHeat / 2.0f)
+	if (pm->ps->heat > pm->ps->maxHeat * 0.5f)
 	{
+		
+
 		PM_AddEvent(EV_OVERHEATED);
 
 		//add weaponTime wait if weapon is hot
-		pm->ps->weaponTime += (10 * (pm->ps->heat / pm->ps->maxHeat*100));
+		pm->ps->weaponTime += (7 * (pm->ps->heat / pm->ps->maxHeat*100));
 
 		if (pm->ps->heat > pm->ps->heatThreshold)
-			pm->ps->weaponTime += 400; //extra penalty for switching while beyond threshold
+		{
+			pm->ps->weaponTime += OVERHEAT_PENALTY; //extra penalty for switching while beyond threshold
+			veryhot = qtrue;
+		}
 
 		//In the future allow, but apply damage if we switch while overheated? possibly as a skill?
+		
+		/* eg:
+			
+			gentity_t* ent = &g_entities[pm->ps->clientNum];
+			G_BuffEntity(ent, ent, (JKG_ResolveBuffName("standard-fire")), 1.0, 6000);	//start em on fire for switching early
+		*/
 	}
 
     // Change of weapon
@@ -4568,15 +4582,48 @@ void PM_BeginWeaponChange( int weaponId, const weaponData_t* weaponData) {
 
 	}
 
+	//if switching from melee, move fast
+	else if (pm->ps->weapon == WP_MELEE)
+	{
+		pm->ps->weaponTime += (weaponData->swapTime / 2);	//150 by default
+		PM_SetAnim(SETANIM_TORSO, BOTH_STAND2TO1, SETANIM_FLAG_OVERRIDE);
+	}
+
+	//for everything else
 	else
 	{
 		pm->ps->weaponTime += weaponData->swapTime;
-		
-		if (weapon == WP_MELEE || weapon == WP_BRYAR_PISTOL || weapon == WP_THERMAL) //if switching to melee, a pistol, or grenade reduce switch time
-		{
-			pm->ps->weaponTime -= (0.25 * weaponData->swapTime); //25% (-75 default)
-		}
 		PM_SetAnim(SETANIM_TORSO, TORSO_DROPWEAP1, SETANIM_FLAG_OVERRIDE);
+	}
+
+	//bonus reductions to weaponTime if swapping to saber, melee, pistol, or grenades
+	if ((weapon == WP_SABER || weapon == WP_MELEE || weapon == WP_BRYAR_PISTOL || weapon == WP_THERMAL)  
+			&& pm->ps->weaponTime > weaponData->swapTime)
+	{
+		//if switching to a pistol/grenade/saber reduce switch time
+		if (weapon == WP_BRYAR_PISTOL || weapon == WP_THERMAL || weapon == WP_SABER)
+		{
+			pm->ps->weaponTime -= (0.25 * weaponData->swapTime); //25% reduced swaptime
+		}
+
+		//if switching to melee, its even faster
+		if (weapon == WP_MELEE)
+		{
+			pm->ps->weaponTime -= (0.5 * weaponData->swapTime); //50% reduced swaptime
+
+			//if overheating but switching to melee, ignore heat penalty
+			if (veryhot)
+			{
+				pm->ps->weaponTime -= OVERHEAT_PENALTY; 
+			}
+		}
+
+		//all of them reduce it regardless
+		pm->ps->weaponTime = pm->ps->weaponTime * 0.90;		//10% reduced weapontime
+
+		//safety check
+		if (pm->ps->weaponTime < 0)
+			pm->ps->weaponTime = 0;
 	}
 }
 
