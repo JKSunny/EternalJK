@@ -195,14 +195,14 @@
 	
 	"MOD_HEAL": 
 	{
-		//the opposite of damage...
+		//the opposite of damage...for meatbags!
 		"inventoryName": "@JKG_INVENTORY_MOD_HEAL",
 		
 		"modifiers": {
 			"ignoreArmor": true,
 			"ignoreShield": true,
-			"organic": 1.1,
-			"droid": 0.5
+			"organic": 1.0,
+			"droid": 0.0
 		},
 		
 		"killFeed": {
@@ -216,6 +216,32 @@
 		"plums": {
 			"damageColor": [ "17", "255", "17" ],
 			"lowDamageColor": [ "89", "247", "110" ]
+		}
+	},
+
+	"MOD_REPAIR": 
+	{
+		//the opposite of damage...for droids!
+		"inventoryName": "@JKG_INVENTORY_MOD_REPAIR",
+		
+		"modifiers": {
+			"ignoreArmor": true,
+			"ignoreShield": true,
+			"organic": 0.0,
+			"droid": 1.0
+		},
+		
+		"killFeed": {
+			"killMessage": "@MP_INGAME_KILLED_GENERIC",
+			"deathMessage": "@MP_INGAME_DIED_GENERIC",
+			"suicideMessageMale": "@MP_INGAME_SUICIDE_GENERICDEATH_MALE",
+			"suicideMessageFemale": "@MP_INGAME_SUICIDE_GENERICDEATH_FEMALE",
+			"suicideMessageNeuter":	"@MP_INGAME_SUICIDE_GENERICDEATH_GENDERLESS"
+		},
+		
+		"plums": {
+			"damageColor": [ "30", "245", "120" ],
+			"lowDamageColor": [ "45", "228", "135" ]
 		}
 	},
 
@@ -301,7 +327,7 @@
 		"modifiers": {
 			"dodgeable": true,
 			"armor": 1.0,
-			"organic": 1.2,
+			"organic": 1.1,
 			"shield": 0.9,
 			"droid": 1.0
 		},
@@ -347,7 +373,7 @@
 			"dodgeable": true,
 			"armor": 0.65,
 			"organic": 1.15,
-			"droid": 0.2
+			"droid": 0.5
 		},
 
 		"dismemberment": {
@@ -370,9 +396,9 @@
 		"modifiers": {
 			"ignoreShield": false,
 			"dodgeable": true,
-			"armor": 0.85,
+			"armor": 0.8,
 			"organic": 1.1,
-			"shield": 1.2,
+			"shield": 1.1,
 			"droid": 0.8
 		},
 
@@ -396,8 +422,8 @@
 		"modifiers": {
 			"ignoreArmor": true,
 			"dodgeable": true,
-			"organic": 1.1,
-			"shield": 0.75,
+			"organic": 1.0,
+			"shield": 0.7,
 			"droid": 1.0
 		},
 
@@ -418,9 +444,9 @@
 			"isEMP": true,
 			"ignoreArmor": true,
 			"dodgeable": true,
-			"organic": 0.2,
+			"organic": 0.5,
 			"shield": 2.0,
-			"droid": 2.1
+			"droid": 2.0
 		},
 
 		"killFeed": {
@@ -443,8 +469,8 @@
 		"modifiers": {
 			"isEMP": true,
 			"dodgeable": true,
-			"organic": 0.4,
-			"shield": 1.7,
+			"organic": 0.6,
+			"shield": 1.8,
 			"droid": 1.8
 		},
 
@@ -493,10 +519,10 @@
 		"modifiers": {
 			"isEMP": true,
 			"dodgeable": true,
-			"armor": 1.0,
+			"armor": 0.8,
 			"organic": 1.0,
 			"shield": 1.0,
-			"droid": 0.7
+			"droid": 0.8
 		},
 
 		"killFeed": {
@@ -516,7 +542,7 @@
 			"dodgeable": true,
 			"armor": 0.8,
 			"organic": 1.1,
-			"shield": 1.2,
+			"shield": 1.0,
 			"droid": 0.8
 		},
 
@@ -542,7 +568,7 @@
 			"ignoreShield": false,
 			"armor": 0.9,
 			"organic": 1.4,
-			"shield": 0.5,
+			"shield": 1.0,
 			"droid": 0.8
 		},
 
@@ -627,7 +653,7 @@
 		"modifiers": {
 			"armor": 0.8,
 			"organic": 1.1,
-			"shield": 1.2,
+			"shield": 1.0,
 			"droid": 0.8
 		},
 
@@ -651,7 +677,10 @@
 
 		"modifiers": {
 			"organic": 0.5,
-			"droid": 0.3
+			"droid": 0.3,
+			"shield": 0.5,
+			"armor": 0.75,
+			"shieldBlocks": true
 		},
 
 		"killFeed": {
@@ -703,7 +732,7 @@
 			"shieldBlocks": true,
 			"armor": 0.9,
 			"organic": 1.4,
-			"shield": 0.8,
+			"shield": 1.0,
 			"droid": 0.8
 		},
 

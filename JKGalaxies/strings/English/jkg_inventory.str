@@ -325,6 +325,12 @@ LANG_ENGLISH		"telefragging"
 REFERENCE		MOD_TEAM_CHANGE
 LANG_ENGLISH		"team change"
 
+REFERENCE       MOD_HEAL
+LANG_ENGLISH        "heal"
+
+REFERENCE       MOD_REPAIR
+LANG_ENGLISH        "repair"
+
 REFERENCE		MOD_SABER
 LANG_ENGLISH		"lightsaber"
 
@@ -386,7 +392,7 @@ REFERENCE		MOD_POISONED
 LANG_ENGLISH		"poison"
 
 REFERENCE       MOD_CURED
-LANG_ENGLISH        "heal"
+LANG_ENGLISH        "detox heal"
 
 REFERENCE       MOD_STAMINA
 LANG_ENGLISH        "stamina"
