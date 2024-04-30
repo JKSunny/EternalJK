@@ -2765,12 +2765,19 @@ static void WP_GetWeaponDirection( gentity_t *ent, int firemode, const vec3_t fo
 		float fSpreadModifiers = 1.0f;
 		double fKnockBack = ( double )fireMode->baseDamage;
 		JKG_ApplyAmmoOverride(fKnockBack, currentAmmo->overrides.knockback);
-
+		
 		/* Client is in air, might be using a jetpack or something, add some slop! */
 		if ( bIsInAir )
 		{
 			fSpreadModifiers *= weaponAccuracy->inAirModifier;
 			fKnockBack	*= 3.00f;
+
+			//if movement type is jetpack, its even more sloppy
+			if (cl->ps.pm_type == PM_JETPACK)	
+			{
+				fKnockBack *= 2.00f;
+				fSpreadModifiers *= 1.20f;
+			}
 		}
 		/* Client is currently running and not walking and/or crouching, a different slop value */
 		else if ( !bIsCrouching && bIsMoving && !bIsWalking )
