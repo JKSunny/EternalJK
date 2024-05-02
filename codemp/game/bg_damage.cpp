@@ -90,14 +90,20 @@ static void JKG_ParseSingleMeansOfDamage(const char* name, cJSON* json) {
 		mod.modifiers.droid = 1.0f;
 		mod.modifiers.organic = 1.0f;
 		mod.modifiers.shield = 1.0f;
+
+		mod.modifiers.ignoreArmor = qfalse;
+		mod.modifiers.ignoreShield = qfalse;
+		mod.modifiers.shieldBlocks = qfalse;
+		mod.modifiers.dodgeable = qfalse;
+		mod.modifiers.isEMP = qfalse;
 	}
 
 	jsonNode = cJSON_GetObjectItem(json, "dismemberment");
 	if (jsonNode) {
-		child = cJSON_GetObjectItem(json, "canDismember");
+		child = cJSON_GetObjectItem(jsonNode, "canDismember");
 		mod.dismemberment.canDismember = cJSON_ToBooleanOpt(child, qfalse);
 
-		child = cJSON_GetObjectItem(json, "blowChunks");
+		child = cJSON_GetObjectItem(jsonNode, "blowChunks");
 		mod.dismemberment.blowChunks = cJSON_ToBooleanOpt(child, qfalse);
 	}
 

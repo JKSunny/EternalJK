@@ -5194,6 +5194,23 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 						trap->SendServerCommand(attacker - g_entities, va("notify 1 \"Head blow!\""));
 					}
 				}
+
+				//check for dismemberment for players --futuza: todo, check wtf is going on with armor when dismemberment happens
+				if (targ->s.eType == ET_PLAYER || targ->s.eType == ET_BODY)
+				{
+					if ((means->dismemberment.canDismember || means->dismemberment.blowChunks)
+						&& take > 2 && !(dflags & DAMAGE_NO_DISMEMBER))
+					{
+						if (means->dismemberment.canDismember)
+						{
+							G_CheckForDismemberment(targ, attacker, targ->pos1, take, targ->client->ps.torsoAnim, qtrue);
+						}
+						if (means->dismemberment.blowChunks)
+						{
+							G_CheckForBlowingUp(targ, attacker, targ->pos1, take, targ->client->ps.torsoAnim, qtrue);
+						}
+					}
+				}
 			}
 			else if (targ->s.eType == ET_NPC)
 			{ //g2animent
@@ -5228,6 +5245,8 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 					G_CheckForDismemberment(targ, attacker, targ->pos1, take, targ->client->ps.torsoAnim, qtrue);
 				}
 			}
+
+
 
 			targ->enemy = attacker;
 			targ->die (targ, inflictor, attacker, take, mod);
