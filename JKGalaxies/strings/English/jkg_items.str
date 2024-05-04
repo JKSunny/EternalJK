@@ -152,6 +152,9 @@ LANG_ENGLISH	"Arakyd Mk 1 Anti-Personel \nLaser Trip Mine"
 REFERENCE	MINE_LASERTRIP_MK2
 LANG_ENGLISH	"Arakyd Mk 2 Anti-Personel \nLaser Trip Mine"
 
+REFERENCE	MINE_SEQUENCER
+LANG_ENGLISH	"Proximity-sensor rigged \nSequencer Charge"
+
 
 REFERENCE	PISTOL_SUPPRESSORPISTOL
 LANG_ENGLISH	"Trandoshan Suppressor Pistol"

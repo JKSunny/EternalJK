@@ -78,7 +78,9 @@
         "meansofdeath": "MOD_BRYAR_PISTOL",
 		"ammobase": "AMMO_SS_POWERPAK",
 		"ammodefault": "AMMO_SS_POWERPAK",
-        "clipSize":              10
+        "clipSize":              10,
+        "heatGenerated": 4,
+        "maxHeat": 50
     },
     
     "firemode1": {

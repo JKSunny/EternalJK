@@ -16,7 +16,8 @@
             "ammo":         [ "models/weapons/EE-3_Rifle/numbers3", "models/weapons/EE-3_Rifle/numbers2", "models/weapons/EE-3_Rifle/numbers1" ]
         },
         
-        "gunposition":      "11.0 -4.0 -7.0",
+//        "gunposition":      "11.0 -4.0 -7.0",
+        "gunposition":      "12.0 -4.0 -6.0",
         "ironsightsposition": "7.0 0 -2.61",
         "ironsightsfov": "75",
     
@@ -105,7 +106,7 @@
     
 	"playeranims": {
         "idle":         { "torso": "BOTH_IDLE1", "legs": "BOTH_IDLE1" },
-        "reload":       { "torso": "TORSO_DROPWEAP1" },
+        "reload":       { "torso": "BOTH_RIFLERELOADB" },
         "sights":        { "torso": "TORSO_WEAPONREADY2", "legs": "BOTH_STAND1" },
         "sightsFiring":       { "torso": "BOTH_ATTACK2" },
 	"ready":	{ "torso": "BOTH_BASE_PISTOLSTANCE", "legs": "BOTH_STAND1" },
