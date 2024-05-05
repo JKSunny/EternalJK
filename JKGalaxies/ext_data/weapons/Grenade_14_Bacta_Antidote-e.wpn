@@ -31,8 +31,8 @@
 			"projectilefx": "weapons/bactaglow_teal",
 			"runsound": "sound/weapons/helpfulnade_loop.wav",
 			"miss": {
-				"impactfx": "weapons/watergun_impact_big",
-				"shockwavefx": "weapons/watergun_impact_small"
+				"impactfx": "weapons/bactagun_impact_big",
+				"shockwavefx": "weapons/bactagun_impact_small"
 			},
 			"hit": {
 				"impactfx": "weapons/bactagun_impact_big",
@@ -53,6 +53,7 @@
             ],
             "chargingsound": "sound/weapons/grenade_cook.wav",
             "projectilemodel": "models/weapons/Grenade_Bacta/projectile.md3",
+			"projectilefx": "weapons/bactaglow_teal",
 			"runsound": "sound/weapons/helpfulnade_loop.wav",
             "miss": {
                 "impactfx": "weapons/bactagun_impact_big",
