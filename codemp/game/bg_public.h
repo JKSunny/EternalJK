@@ -1051,6 +1051,7 @@ typedef enum {
 	MOD_TELEFRAG,
 	MOD_TEAM_CHANGE,
 	MOD_HEAL,	//heals, not damage
+	MOD_REPAIR,	//heals for droids
 	MOD_SABER,
 	MOD_VIBROBLADE,
 	MOD_MELEE

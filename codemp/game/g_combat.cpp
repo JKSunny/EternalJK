@@ -3868,6 +3868,10 @@ G_ArmorDurabilityModifier()
 */
 int G_ArmorDurabilityModifier(gentity_t* ent, int* damage, const int take, const int armorSlot)
 {
+	//check if durability is enabled
+	if (jkg_durability.integer < 1)
+		return 0;
+
 	int playDurabilitySnd = 0; //default: return 0/false if no durability damage, return 1+ if durability damage or the item hit is already at 0 durability
 	for (auto it = ent->inventory->begin(); it != ent->inventory->end(); ++it)
 	{
@@ -5195,8 +5199,8 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 					}
 				}
 
-				//check for dismemberment for players --futuza: todo, check wtf is going on with armor when dismemberment happens
-				if (targ->s.eType == ET_PLAYER || targ->s.eType == ET_BODY)
+				//check for dismemberment for players --futuza: todo check wtf is going on with armor when dismemberment happens
+				if (targ->s.eType == ET_PLAYER)
 				{
 					if ((means->dismemberment.canDismember || means->dismemberment.blowChunks)
 						&& take > 2 && !(dflags & DAMAGE_NO_DISMEMBER))
@@ -5211,6 +5215,7 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 						}
 					}
 				}
+				
 			}
 			else if (targ->s.eType == ET_NPC)
 			{ //g2animent

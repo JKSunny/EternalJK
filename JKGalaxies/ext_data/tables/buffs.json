@@ -467,8 +467,7 @@
 		"priority": 50,
 		"canceling": 
 		{
-			"noBuffStack": true,
-
+			"noBuffStack": true
 		},
 		"damage": 
 		{
