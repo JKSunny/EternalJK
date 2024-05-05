@@ -195,7 +195,7 @@ LANG_ENGLISH	"Snub-Barrelled \nDE-10 Blaster Pistol"
 REFERENCE	PISTOL_Q2_HOLDOUTPISTOL
 LANG_ENGLISH	"Merr-Sonn Model Q2 \nHold-Out Blaster Pistol"
 
-REFERENCE   PISTOL_WESTAR-34_Pistol
+REFERENCE   PISTOL_WESTAR-34_PISTOL
 LANG_ENGLISH    "Concordian Crescent Technologies \nWestar-34 Blaster Pistol"
 
 REFERENCE   PISTOL_PULSEREVOLVER
