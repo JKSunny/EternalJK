@@ -1962,25 +1962,22 @@ static void vk_imgui_draw_inspector( void ) {
 	ImGui::PopStyleVar();
 }
 
-static void vk_imgui_draw_render_mode( void ){
+static void vk_imgui_draw_render_mode( const char **modes, uint32_t num_render_modes ) {
 	static const char *current_render_mode;
 	
-	current_render_mode = render_modes[ inspector.render_mode ];
+	current_render_mode = modes[ inspector.render_mode.index ];
 
 	ImGui::SetNextItemWidth( 200 );
 
 	ImGui::PushStyleColor( ImGuiCol_FrameBg , ImVec4(0.00f, 0.00f, 0.00f, 1.00f) );
 	if ( ImGui::BeginCombo( "##RenderModeInspector", current_render_mode, ImGuiComboFlags_HeightLarge ) )
 	{
-		for ( uint32_t n = 0; n < IM_ARRAYSIZE( render_modes ); n++ )
+		for ( uint32_t n = 0; n < num_render_modes; n++ )
 		{
-			bool is_selected = ( current_render_mode == render_modes[n] );
+			bool is_selected = ( current_render_mode == modes[n] );
 
-			if ( ImGui::Selectable( render_modes[n], is_selected ) ){
-				inspector.render_mode = n;
-
-				vk_update_mvp( NULL );
-			}
+			if ( ImGui::Selectable( modes[n], is_selected ) )
+				inspector.render_mode.index = n;
 
 			if ( is_selected )
 				ImGui::SetItemDefaultFocus();
@@ -1988,7 +1985,6 @@ static void vk_imgui_draw_render_mode( void ){
 		ImGui::EndCombo();
 	}
 	ImGui::PopStyleColor();
-
 }
 
 static void vk_imgui_draw_play_button( float height ) 
@@ -2143,10 +2139,35 @@ static void vk_imgui_draw_viewport( void ) {
 	ImGui::PopStyleVar();
 
 	ImGui::SetCursorScreenPos( ImVec2( pos.x + region.x - 205.0f, pos.y + 4.0f ) );
-	vk_imgui_draw_render_mode();
+	vk_imgui_draw_render_mode( render_modes, IM_ARRAYSIZE( render_modes ) );
 
-	ImGui::Image( gameTexture, { (float)gls.windowWidth, (float)gls.windowHeight } );
+	ImGui::Image( inspector.render_mode.image, { (float)gls.windowWidth, (float)gls.windowHeight } );
 	ImGui::End();
+}
+
+//
+// bind image descriptors
+//
+static void vk_imgui_bind_game_color_image( void ) {
+	Vk_Sampler_Def sd;
+	VkSampler	sampler;
+
+	Com_Memset(&sd, 0, sizeof(sd));
+	sd.gl_mag_filter = sd.gl_min_filter = vk.blitFilter;
+	sd.address_mode = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	sd.max_lod_1_0 = qtrue;
+	sd.noAnisotropy = qtrue;
+
+	sampler = vk_find_sampler(&sd);
+
+	inspector.render_mode.image = ImGui_ImplVulkan_AddTexture( sampler, vk.gamma_image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL );
+}
+
+void vk_imgui_swapchain_restarted( void ) {
+	vk_imgui_bind_game_color_image();
+
+	glConfig.vidWidth = (int)windows.viewport.size.x;
+    glConfig.vidHeight = (int)windows.viewport.size.y - 46.0f;
 }
 
 static void vk_imgui_create_gui( void ) 
@@ -2179,13 +2200,17 @@ static void vk_imgui_create_gui( void )
 	if ( !inspector.init ) {
 		vk_imgui_clear_inspector( qtrue );
 	
-		inspector.init = qtrue;
 		inspector.merge_shaders = true;
 		inspector.outline_selected = true;
 
 		// windows
 		Com_Memset( &windows, 0, sizeof(windows) );
 		windows.viewport.p_open = true;
+
+		// render image
+		vk_imgui_bind_game_color_image();
+
+		inspector.init = qtrue;
 	}
 
 	vk_imgui_draw_bars();
@@ -2199,31 +2224,6 @@ static void vk_imgui_create_gui( void )
 	vk_imgui_draw_viewport();
 
 	ImGui::End();
-}
-
-//
-// bind image descriptors
-//
-static void vk_imgui_bind_game_color_image( void ) {
-	Vk_Sampler_Def sd;
-	VkSampler	sampler;
-
-	Com_Memset(&sd, 0, sizeof(sd));
-	sd.gl_mag_filter = sd.gl_min_filter = vk.blitFilter;
-	sd.address_mode = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-	sd.max_lod_1_0 = qtrue;
-	sd.noAnisotropy = qtrue;
-
-	sampler = vk_find_sampler(&sd);
-
-	gameTexture = ImGui_ImplVulkan_AddTexture( sampler, vk.gamma_image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL );
-}
-
-void vk_imgui_swapchain_restarted( void ) {
-	vk_imgui_bind_game_color_image();
-
-	glConfig.vidWidth = (int)windows.viewport.size.x;
-    glConfig.vidHeight = (int)windows.viewport.size.y - 46.0f;
 }
 
 //
@@ -2427,8 +2427,6 @@ void vk_imgui_initialize( void )
 
 		ImGui_ImplVulkan_DestroyFontUploadObjects();
 	}
-
-	vk_imgui_bind_game_color_image();
 }
 
 void vk_imgui_shutdown( void )
@@ -2440,6 +2438,8 @@ void vk_imgui_shutdown( void )
     ImGui::DestroyContext( ImContext );
 
 	Com_Memset( &imguiGlobal, 0, sizeof(imguiGlobal) );
+
+	ImGui_ImplVulkan_RemoveTexture( inspector.render_mode.image );
 }
 
 static void vk_imgui_get_input_state( void )

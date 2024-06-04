@@ -56,8 +56,12 @@ typedef struct {
 	char		search_keyword[MAX_QPATH];
 	bool		merge_shaders;	// merge shaders with same name and update in bulk
 	int			num_shaders;
-	int			render_mode;
 	bool		outline_selected;
+
+	struct {
+		int				index;
+		VkDescriptorSet	image;	// attachment image the engine renders to
+	} render_mode;
 
 	struct {
 		uint32_t	type;
@@ -139,8 +143,6 @@ static imgui_profiler_t		profiler;
 
 static shader_t *hashTable[FILE_HASH_SIZE];
 static shader_t *merge_shader_list[MAX_SHADERS];
-
-static VkDescriptorSet gameTexture;	// image the game is buffered on
 
 static ImVector<ImRect> s_GroupPanelLabelStack;
 ImGuiUtils::ProfilersWindow profilersWindow;
@@ -400,7 +402,7 @@ static void vk_imgui_execute_cmd( const char *text ){
 }
 
 int vk_imgui_get_render_mode( void ){
-	return inspector.render_mode;
+	return inspector.render_mode.index;
 }
 
 int vk_imgui_get_shader_editor_index ( void ) {
