@@ -87,7 +87,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: ${{ matrix.build_type == 'Release' }}
         with:
-          name: TaystJK-windows-${{ matrix.arch }}-${{ matrix.build_type }}-${{ matrix.portable }}
+          name: EternalJK-windows-${{ matrix.arch }}-${{ matrix.build_type }}-${{ matrix.portable }}
           path: ${{ github.workspace }}/build/bin/JediAcademy
           if-no-files-found: error
 
@@ -163,13 +163,13 @@ jobs:
         if: ${{ matrix.build_type == 'Release' }}
         working-directory: ${{ github.workspace }}/install/JediAcademy
         shell: bash
-        run: tar -czvf TaystJK-linux-${{ matrix.arch }}-${{ matrix.build_type }}-${{ matrix.portable }}.tar.gz  *
+        run: tar -czvf EternalJK-linux-${{ matrix.arch }}-${{ matrix.build_type }}-${{ matrix.portable }}.tar.gz  *
 
       - uses: actions/upload-artifact@v4
         if: ${{ matrix.build_type == 'Release' }}
         with:
-          name: TaystJK-linux-${{ matrix.arch }}-${{ matrix.build_type }}-${{ matrix.portable }}
-          path: ${{github.workspace}}/install/JediAcademy/TaystJK-linux-${{ matrix.arch }}-${{ matrix.build_type }}-${{ matrix.portable }}.tar.gz
+          name: EternalJK-linux-${{ matrix.arch }}-${{ matrix.build_type }}-${{ matrix.portable }}
+          path: ${{github.workspace}}/install/JediAcademy/EternalJK-linux-${{ matrix.arch }}-${{ matrix.build_type }}-${{ matrix.portable }}.tar.gz
           if-no-files-found: error
 
   macos:
@@ -224,19 +224,19 @@ jobs:
         shell: bash
         run: cmake --install .
 
-      - name: Create TaystJK binary archive
+      - name: Create EternalJK binary archive
         if: ${{ matrix.build_type == 'Release' }}
         working-directory: ${{ github.workspace }}/install/JediAcademy
         shell: bash
         run: |
-          chmod +x taystjk.x86_64.app/Contents/MacOS/taystjk.x86_64
-          tar -czvf TaystJK-macos-${{ matrix.arch }}-${{ matrix.build_type }}-${{ matrix.portable }}.tar.gz *
+          chmod +x EternalJK.x86_64.app/Contents/MacOS/EternalJK.x86_64
+          tar -czvf EternalJK-macos-${{ matrix.arch }}-${{ matrix.build_type }}-${{ matrix.portable }}.tar.gz *
 
       - uses: actions/upload-artifact@v4
         if: ${{ matrix.build_type == 'Release' }}
         with:
-          name: TaystJK-macos-${{ matrix.arch }}-${{ matrix.build_type }}-${{ matrix.portable }}
-          path: ${{ github.workspace }}/install/JediAcademy/TaystJK-macos-${{ matrix.arch }}-${{ matrix.build_type }}-${{ matrix.portable }}.tar.gz
+          name: EternalJK-macos-${{ matrix.arch }}-${{ matrix.build_type }}-${{ matrix.portable }}
+          path: ${{ github.workspace }}/install/JediAcademy/EternalJK-macos-${{ matrix.arch }}-${{ matrix.build_type }}-${{ matrix.portable }}.tar.gz
           if-no-files-found: error
 
   macos-m1:
@@ -291,19 +291,19 @@ jobs:
         shell: bash
         run: cmake --install .
 
-      - name: Create TaystJK binary archive
+      - name: Create EternalJK binary archive
         if: ${{ matrix.build_type == 'Release' }}
         working-directory: ${{ github.workspace }}/install/JediAcademy
         shell: bash
         run: |
-          chmod +x taystjk.arm64.app/Contents/MacOS/taystjk.arm64
-          tar -czvf TaystJK-macos-${{ matrix.arch }}-${{ matrix.build_type }}-${{ matrix.portable }}.tar.gz *
+          chmod +x EternalJK.arm64.app/Contents/MacOS/EternalJK.arm64
+          tar -czvf EternalJK-macos-${{ matrix.arch }}-${{ matrix.build_type }}-${{ matrix.portable }}.tar.gz *
 
       - uses: actions/upload-artifact@v4
         if: ${{ matrix.build_type == 'Release' }}
         with:
-          name: TaystJK-macos-${{ matrix.arch }}-${{ matrix.build_type }}-${{ matrix.portable }}
-          path: ${{ github.workspace }}/install/JediAcademy/TaystJK-macos-${{ matrix.arch }}-${{ matrix.build_type }}-${{ matrix.portable }}.tar.gz
+          name: EternalJK-macos-${{ matrix.arch }}-${{ matrix.build_type }}-${{ matrix.portable }}
+          path: ${{ github.workspace }}/install/JediAcademy/EternalJK-macos-${{ matrix.arch }}-${{ matrix.build_type }}-${{ matrix.portable }}.tar.gz
           if-no-files-found: error
 
   create-latest:
@@ -320,12 +320,12 @@ jobs:
 
       - name: Create binary archives
         run: |
-          7z a -r TaystJK-windows-x86.zip                   ./TaystJK-windows-x86-Release-Non-Portable/*
-          7z a -r TaystJK-windows-x86_64.zip                ./TaystJK-windows-x86_64-Release-Non-Portable/*
-          mv ./TaystJK-linux-x86-Release-Non-Portable/*     ./TaystJK-linux-x86.tar.gz
-          mv ./TaystJK-linux-x86_64-Release-Non-Portable/*  ./TaystJK-linux-x86_64.tar.gz
-          mv ./TaystJK-macos-x86_64-Release-Non-Portable/*  ./TaystJK-macos-x86_64.tar.gz
-          mv ./TaystJK-macos-arm64-Release-Non-Portable/*   ./TaystJK-macos-arm64.tar.gz
+          7z a -r EternalJK-windows-x86.zip                   ./EternalJK-windows-x86-Release-Non-Portable/*
+          7z a -r EternalJK-windows-x86_64.zip                ./EternalJK-windows-x86_64-Release-Non-Portable/*
+          mv ./EternalJK-linux-x86-Release-Non-Portable/*     ./EternalJK-linux-x86.tar.gz
+          mv ./EternalJK-linux-x86_64-Release-Non-Portable/*  ./EternalJK-linux-x86_64.tar.gz
+          mv ./EternalJK-macos-x86_64-Release-Non-Portable/*  ./EternalJK-macos-x86_64.tar.gz
+          mv ./EternalJK-macos-arm64-Release-Non-Portable/*   ./EternalJK-macos-arm64.tar.gz
 
       - name: Create latest build
         uses: crowbarmaster/GH-Automatic-Releases@latest
@@ -352,12 +352,12 @@ jobs:
 
       - name: Create binary archives
         run: |
-          7z a -r TaystJK-windows-x86.zip                   ./TaystJK-windows-x86-Release-Non-Portable/*
-          7z a -r TaystJK-windows-x86_64.zip                ./TaystJK-windows-x86_64-Release-Non-Portable/*
-          mv ./TaystJK-linux-x86-Release-Non-Portable/*     ./TaystJK-linux-x86.tar.gz
-          mv ./TaystJK-linux-x86_64-Release-Non-Portable/*  ./TaystJK-linux-x86_64.tar.gz
-          mv ./TaystJK-macos-x86_64-Release-Non-Portable/*  ./TaystJK-macos-x86_64.tar.gz
-          mv ./TaystJK-macos-arm64-Release-Non-Portable/*   ./TaystJK-macos-arm64.tar.gz
+          7z a -r EternalJK-windows-x86.zip                   ./EternalJK-windows-x86-Release-Non-Portable/*
+          7z a -r EternalJK-windows-x86_64.zip                ./EternalJK-windows-x86_64-Release-Non-Portable/*
+          mv ./EternalJK-linux-x86-Release-Non-Portable/*     ./EternalJK-linux-x86.tar.gz
+          mv ./EternalJK-linux-x86_64-Release-Non-Portable/*  ./EternalJK-linux-x86_64.tar.gz
+          mv ./EternalJK-macos-x86_64-Release-Non-Portable/*  ./EternalJK-macos-x86_64.tar.gz
+          mv ./EternalJK-macos-arm64-Release-Non-Portable/*   ./EternalJK-macos-arm64.tar.gz
 
       - name: Create latest beta build
         uses: crowbarmaster/GH-Automatic-Releases@latest
@@ -378,12 +378,12 @@ jobs:
     strategy:
       matrix:
         include:
-          - artifact_dir: TaystJK-windows-x86-Release-Non-Portable/JediAcademy/
-            artifact_name: TaystJK-windows-x86.zip
+          - artifact_dir: EternalJK-windows-x86-Release-Non-Portable/JediAcademy/
+            artifact_name: EternalJK-windows-x86.zip
             zip: true
 
-          - artifact_dir: TaystJK-windows-x86_64-Release-Non-Portable/JediAcademy/
-            artifact_name: TaystJK-windows-x86_64.zip
+          - artifact_dir: EternalJK-windows-x86_64-Release-Non-Portable/JediAcademy/
+            artifact_name: EternalJK-windows-x86_64.zip
             zip: true
 
           - artifact_dir: EternalJK-linux-x86-Release-Non-Portable
