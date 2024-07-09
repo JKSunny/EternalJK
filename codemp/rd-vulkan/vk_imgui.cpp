@@ -2141,7 +2141,7 @@ static void vk_imgui_draw_viewport( void ) {
 	ImGui::SetCursorScreenPos( ImVec2( pos.x + region.x - 205.0f, pos.y + 4.0f ) );
 	vk_imgui_draw_render_mode( render_modes, IM_ARRAYSIZE( render_modes ) );
 
-	ImGui::Image( inspector.render_mode.image, { (float)gls.windowWidth, (float)gls.windowHeight } );
+	ImGui::Image( (ImU64)inspector.render_mode.image, { (float)gls.windowWidth, (float)gls.windowHeight } );
 	ImGui::End();
 }
 

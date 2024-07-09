@@ -92,7 +92,7 @@ if(APPLE)
 endif()
 
 # Custom CMake Modules needed
-list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_SOURCE_DIR}/CMakeModules")
+list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_SOURCE_DIR}/cmake/Modules")
 
 Include(CheckTypeSize)
 check_type_size("void*" CMAKE_SIZEOF_VOID_P)
@@ -195,9 +195,17 @@ if(MSVC)
 	set(SharedDefines ${SharedDefines} "_SCL_SECURE_NO_WARNINGS")
 	set(SharedDefines ${SharedDefines} "_CRT_NONSTDC_NO_DEPRECATE")
 
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /EHsc /arch:SSE2")
+	# Warnings
+	# 4244 = conversion' conversion from 'type1' to 'type2', possible loss of data
+	# 4996 = 'function': was declared deprecated
+	# 4267 = 'var' : conversion from 'size_t' to 'type', possible loss of data
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /wd4244 /wd4996 /wd4267")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4244 /wd4996 /wd4267")
 
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:SSE2")
+	if (Architecture STREQUAL "x86")
+		set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /arch:SSE2")
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:SSE2")
+	endif()
 	
 	# Configure MSVC Runtime
 	include(MSVCRuntime)

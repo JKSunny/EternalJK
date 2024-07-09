@@ -77,9 +77,6 @@ if(WIN32)
 				DESTINATION ${JKAInstallDir}
 				COMPONENT ${JKAMPClientComponent})
 
-		install(PROGRAMS ${CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS}
-				DESTINATION ${JKAInstallDir}
-				COMPONENT ${JKAMPClientComponent})
 	endif()
 endif()
 
