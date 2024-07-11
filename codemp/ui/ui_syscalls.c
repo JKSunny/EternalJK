@@ -185,7 +185,7 @@ int trap_CM_LerpTag( orientation_t *tag, clipHandle_t mod, int startFrame, int e
 	return Q_syscall( UI_CM_LERPTAG, tag, mod, startFrame, endFrame, PASSFLOAT(frac), tagName );
 }
 void trap_R_GetImGuiContext( void ) {
-	return Q_syscall( UI_R_GETIMGUICONTEXT );
+	Q_syscall( UI_R_GETIMGUICONTEXT );
 }
 uint64_t trap_R_GetImGuiTexture( qhandle_t hShader ) {
 	return Q_syscall( UI_R_GETIMGUITEXTURE, hShader );

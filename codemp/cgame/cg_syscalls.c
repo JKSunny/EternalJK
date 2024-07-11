@@ -112,7 +112,7 @@ void trap_UpdateScreen( void ) {
 	Q_syscall( CG_UPDATESCREEN );
 }
 void trap_R_GetImGuiContext( void ) {
-	return Q_syscall( CG_R_GETIMGUICONTEXT );
+	Q_syscall( CG_R_GETIMGUICONTEXT );
 }
 uint64_t trap_R_GetImGuiTexture( qhandle_t hShader ) {
 	return Q_syscall( CG_R_GETIMGUITEXTURE );
