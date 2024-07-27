@@ -161,6 +161,34 @@ PFN_vkResetCommandPool							qvkResetCommandPool;
 
 PFN_vkCmdDrawIndexedIndirect					qvkCmdDrawIndexedIndirect;
 
+#ifdef USE_RTX
+PFN_vkGetPhysicalDeviceFeatures2					qvkGetPhysicalDeviceFeatures2;
+PFN_vkGetPhysicalDeviceProperties2					qvkGetPhysicalDeviceProperties2;
+PFN_vkCmdDispatch									qvkCmdDispatch;
+PFN_vkCreateComputePipelines						qvkCreateComputePipelines;
+
+PFN_vkCreateAccelerationStructureKHR				qvkCreateAccelerationStructureKHR;
+PFN_vkDestroyAccelerationStructureKHR				qvkDestroyAccelerationStructureKHR;
+PFN_vkCmdBuildAccelerationStructuresKHR				qvkCmdBuildAccelerationStructuresKHR;
+PFN_vkCmdCopyAccelerationStructureKHR				qvkCmdCopyAccelerationStructureKHR;
+PFN_vkGetAccelerationStructureDeviceAddressKHR		qvkGetAccelerationStructureDeviceAddressKHR;
+PFN_vkCmdWriteAccelerationStructuresPropertiesKHR	qvkCmdWriteAccelerationStructuresPropertiesKHR;
+PFN_vkGetAccelerationStructureBuildSizesKHR			qvkGetAccelerationStructureBuildSizesKHR;
+PFN_vkGetBufferDeviceAddress						qvkGetBufferDeviceAddress;
+PFN_vkCreateRayTracingPipelinesKHR					qvkCreateRayTracingPipelinesKHR;
+PFN_vkCmdTraceRaysKHR								qvkCmdTraceRaysKHR;
+PFN_vkGetRayTracingShaderGroupHandlesKHR			qvkGetRayTracingShaderGroupHandlesKHR;
+
+PFN_vkCreateBufferView								qvkCreateBufferView;
+PFN_vkDestroyBufferView								qvkDestroyBufferView;
+
+PFN_vkBindBufferMemory2								qvkBindBufferMemory2;
+PFN_vkCmdFillBuffer									qvkCmdFillBuffer;
+
+PFN_vkCmdBeginDebugUtilsLabelEXT					qvkCmdBeginDebugUtilsLabelEXT;
+PFN_vkCmdEndDebugUtilsLabelEXT						qvkCmdEndDebugUtilsLabelEXT;
+#endif
+
 static char *Q_stradd( char *dst, const char *src )
 {
     char c;
@@ -199,11 +227,18 @@ static qboolean vk_used_instance_extension( const char *ext )
     if (Q_stricmp(ext, VK_EXT_DEBUG_UTILS_EXTENSION_NAME) == 0)
         return qtrue;
 
+#if 0
 	if ( Q_stricmp( ext, VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME ) == 0 )
 		return qtrue;
+#endif
 
 	if ( Q_stricmp( ext, VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME ) == 0 )
 		return qtrue;
+
+#ifdef USE_RTX
+	//if ( Q_stricmp( ext, VK_KHR_DEVICE_GROUP_CREATION_EXTENSION_NAME ) == 0 )
+	//	return qtrue;
+#endif
 
     return qfalse;
 
@@ -232,8 +267,11 @@ static void vk_create_instance( void )
     appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
     appInfo.pEngineName = "Quake3";
     appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-    appInfo.apiVersion = VK_MAKE_VERSION(1, 0, 0);
-
+#ifdef USE_RTX
+    appInfo.apiVersion = VK_MAKE_VERSION(1, 2, 0);
+#else
+	appInfo.apiVersion = VK_MAKE_VERSION(1, 0, 0);
+#endif
 	flags = 0;
     count = 0;
     extension_count = 0;
@@ -448,6 +486,42 @@ static void get_present_format( int present_bits, VkFormat *bgr, VkFormat *rgb )
 		*rgb = sel->rgb;
 	}
 }
+#ifdef USE_RTX
+static qboolean pick_surface_format_hdr(VkSurfaceFormatKHR* format, const VkSurfaceFormatKHR avail_surface_formats[], size_t num_avail_surface_formats)
+{
+	VkSurfaceFormatKHR acceptable_formats[] = {
+		{ VK_FORMAT_R16G16B16A16_SFLOAT, VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT }
+	};
+
+	for(int i = 0; i < ARRAY_LEN(acceptable_formats); i++) {
+		for(int j = 0; j < num_avail_surface_formats; j++) {
+			if((acceptable_formats[i].format == avail_surface_formats[j].format)
+				&& (acceptable_formats[i].colorSpace == avail_surface_formats[j].colorSpace)){
+				*format = avail_surface_formats[j];
+				return qtrue;
+			}
+		}
+	}
+	return qfalse;
+}
+
+static qboolean pick_surface_format_sdr(VkSurfaceFormatKHR* format, const VkSurfaceFormatKHR avail_surface_formats[], size_t num_avail_surface_formats)
+{
+	VkFormat acceptable_formats[] = {
+		VK_FORMAT_R8G8B8A8_SRGB, VK_FORMAT_B8G8R8A8_SRGB,
+	};
+
+	for(int i = 0; i < ARRAY_LEN(acceptable_formats); i++) {
+		for(int j = 0; j < num_avail_surface_formats; j++) {
+			if(acceptable_formats[i] == avail_surface_formats[j].format) {
+				*format = avail_surface_formats[j];
+				return qtrue;
+			}
+		}
+	}
+	return qfalse;
+}
+#endif
 
 qboolean vk_select_surface_format( VkPhysicalDevice physical_device, VkSurfaceKHR surface )
 {
@@ -504,6 +578,37 @@ qboolean vk_select_surface_format( VkPhysicalDevice physical_device, VkSurfaceKH
 		}
 	}
 
+#if 1
+#ifdef USE_RTX
+	//if ( vk.rtxActive )	// sunny, not set here ..
+	{
+		qboolean surface_format_found = qfalse;
+		if ( r_hdr->integer != 0 ) {
+			surface_format_found = pick_surface_format_hdr( &vk.base_format, candidates, format_count );
+			vk.rtx_surf_is_hdr = surface_format_found;
+			if ( !surface_format_found ) {
+				Com_Printf( "HDR was requested but no supported surface format was found.\n" );
+				//Cvar_SetByVar(cvar_hdr, "0", FROM_CODE);
+			}
+		} else {
+			vk.rtx_surf_is_hdr = qfalse;
+		}
+		// sunny, disable for now. use quake3e method above
+#if 1
+		if ( !surface_format_found ) {
+			// HDR disabled, or fallback to SDR
+			surface_format_found = pick_surface_format_sdr( &vk.base_format, candidates, format_count );
+		}
+		if ( !surface_format_found ) {
+			 ri.Printf( PRINT_ERROR, "no acceptable surface format available!\n" );
+			return qfalse;
+		}
+#endif
+		//vk.base_format = vk.present_format;
+	}
+#endif
+#endif
+
     free(candidates);
 
     return qtrue;
@@ -511,7 +616,8 @@ qboolean vk_select_surface_format( VkPhysicalDevice physical_device, VkSurfaceKH
 
  void vk_setup_surface_formats( VkPhysicalDevice physical_device )
 {
-    vk.color_format		= get_hdr_format(vk.base_format.format);
+    //vk.color_format		= get_hdr_format(vk.base_format.format);
+    vk.color_format		= vk.base_format.format;
     vk.depth_format		= get_depth_format(physical_device);
     vk.bloom_format		= vk.base_format.format;
     vk.capture_format	= VK_FORMAT_R8G8B8A8_UNORM;
@@ -566,7 +672,7 @@ static qboolean vk_create_device( VkPhysicalDevice physical_device, int device_i
 	// create VkDevice
 	{
 		char *str;
-		const char *device_extension_list[5];
+		const char *device_extension_list[13];
 		uint32_t device_extension_count;
 		const char *ext, *end;
 		const float priority = 1.0;
@@ -582,6 +688,21 @@ static qboolean vk_create_device( VkPhysicalDevice physical_device, int device_i
 		qboolean debugMarker = qfalse;
 		qboolean toolingInfo = qfalse;
 		uint32_t i, len, count = 0;
+
+#ifdef USE_RTX
+		qboolean raytracing = qfalse;
+		qboolean descIndexing = qfalse;
+		qboolean maintance3 = qfalse;
+		qboolean mutableType = qfalse;
+		qboolean pipelineLib = qfalse;
+		qboolean accelStruct = qfalse;
+		qboolean deferredHostOp = qfalse;
+
+		vk.rtxprops_khr.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PROPERTIES_NV;
+		vk.props2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+		vk.props2.pNext = &vk.rtxprops_khr;
+		qvkGetPhysicalDeviceProperties2( physical_device, &vk.props2 );
+#endif
 
 		VK_CHECK(qvkEnumerateDeviceExtensionProperties(physical_device, NULL, &count, NULL));
 		extension_properties = (VkExtensionProperties*)malloc(count * sizeof(VkExtensionProperties));
@@ -609,7 +730,29 @@ static qboolean vk_create_device( VkPhysicalDevice physical_device, int device_i
 			else if (strcmp(ext, VK_EXT_TOOLING_INFO_EXTENSION_NAME) == 0) {
 				toolingInfo = qtrue;
 			}
-
+#ifdef USE_RTX
+			else if ( ( strcmp(ext, VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME) == 0 ) ) {
+				raytracing = qtrue;
+			}
+			else if ( ( strcmp(ext, VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME) == 0 ) ) {
+				descIndexing = qtrue;
+			}
+			else if ( ( strcmp(ext, VK_KHR_MAINTENANCE3_EXTENSION_NAME) == 0 ) ) {
+				maintance3 = qtrue;
+			}
+			else if ( ( strcmp(ext, VK_EXT_MUTABLE_DESCRIPTOR_TYPE_EXTENSION_NAME) == 0 ) ) {
+				mutableType = qtrue;
+			}
+			else if ( ( strcmp(ext, VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME) == 0 ) ) {
+				accelStruct = qtrue;
+			}
+			else if ( ( strcmp(ext, VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME) == 0 ) ) {
+				pipelineLib = qtrue;
+			}
+			else if ( ( strcmp(ext, VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME) == 0 ) ) {
+				deferredHostOp = qtrue;
+			}
+#endif
 			// add this device extension to glConfig
 			if (i != 0) {
 				if (str + 1 >= end)
@@ -655,6 +798,25 @@ static qboolean vk_create_device( VkPhysicalDevice physical_device, int device_i
 		if ( toolingInfo )
 			device_extension_list[device_extension_count++] = VK_EXT_TOOLING_INFO_EXTENSION_NAME;
 
+#ifdef USE_RTX
+		if ( raytracing && descIndexing && maintance3 && mutableType
+			&& accelStruct && pipelineLib && deferredHostOp ) 
+		{
+			device_extension_list[device_extension_count++] = VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME;
+			device_extension_list[device_extension_count++] = VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME;
+			device_extension_list[device_extension_count++] = VK_KHR_MAINTENANCE3_EXTENSION_NAME;
+			device_extension_list[device_extension_count++] = VK_EXT_MUTABLE_DESCRIPTOR_TYPE_EXTENSION_NAME;
+
+			device_extension_list[device_extension_count++] = VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME;
+			device_extension_list[device_extension_count++] = VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME;
+			device_extension_list[device_extension_count++] = VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME;
+
+			vk.rtxSupport = qtrue;
+
+			Com_Printf(" \n\n RAYTRACING SUPPORT: \n\n ");
+		}
+#endif
+
 		qvkGetPhysicalDeviceFeatures(physical_device, &device_features);
 
 		if (device_features.fillModeNonSolid == VK_FALSE) {
@@ -687,9 +849,10 @@ static qboolean vk_create_device( VkPhysicalDevice physical_device, int device_i
 			vk.fragmentStores = qtrue;
 		}
 
-		if(device_features.multiDrawIndirect) {
+		if (device_features.multiDrawIndirect) {
 			features.multiDrawIndirect = VK_TRUE;
 		}
+
 
 #ifdef USE_VK_PBR
 		if ( device_features.geometryShader )
@@ -709,8 +872,126 @@ static qboolean vk_create_device( VkPhysicalDevice physical_device, int device_i
 		device_desc.ppEnabledLayerNames = NULL;
 		device_desc.enabledExtensionCount = device_extension_count;
 		device_desc.ppEnabledExtensionNames = device_extension_list;
-		device_desc.pEnabledFeatures = &features;
 
+#ifdef USE_RTX
+		// query device 16-bit float capabilities
+		VkPhysicalDevice16BitStorageFeatures features_16bit_storage;
+		Com_Memset( &features_16bit_storage, 0, sizeof(VkPhysicalDevice16BitStorageFeatures) );
+		features_16bit_storage.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES;
+		features_16bit_storage.pNext = NULL;
+
+		{
+			VkPhysicalDeviceVulkan12Features device_features_1_2;
+			Com_Memset( &device_features_1_2, 0, sizeof(VkPhysicalDeviceVulkan12Features) );
+			device_features_1_2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+			device_features_1_2.pNext = &features_16bit_storage;
+
+			VkPhysicalDeviceFeatures2 features2;
+			Com_Memset( &features2, 0, sizeof(VkPhysicalDeviceFeatures2) );
+			features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
+			features2.pNext = &device_features_1_2;
+
+			qvkGetPhysicalDeviceFeatures2( physical_device, &features2 );
+			vk.supports_fp16 = device_features_1_2.shaderFloat16 && features_16bit_storage.storageBuffer16BitAccess;
+		}
+
+		Com_Printf("FP16 support: %s\n", vk.supports_fp16 ? "yes" : "no");
+		
+		VkPhysicalDeviceAccelerationStructureFeaturesKHR physical_device_as_features;
+		Com_Memset( &physical_device_as_features, 0, sizeof(VkPhysicalDeviceAccelerationStructureFeaturesKHR) );
+		physical_device_as_features.sType								= VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
+		physical_device_as_features.pNext								= &features_16bit_storage;
+		physical_device_as_features.accelerationStructure				= VK_TRUE;
+
+		VkPhysicalDeviceRayTracingPipelineFeaturesKHR physical_device_rt_pipeline_features;
+		Com_Memset( &physical_device_rt_pipeline_features, 0, sizeof(VkPhysicalDeviceRayTracingPipelineFeaturesKHR) );
+		physical_device_rt_pipeline_features.sType						= VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
+		physical_device_rt_pipeline_features.pNext						= &physical_device_as_features;
+		physical_device_rt_pipeline_features.rayTracingPipeline			= VK_TRUE;
+
+		VkPhysicalDeviceVulkan12Features device_features_vk12;
+		Com_Memset( &device_features_vk12, 0, sizeof(VkPhysicalDeviceVulkan12Features) );
+		device_features_vk12.sType										= VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+		device_features_vk12.pNext										= &physical_device_rt_pipeline_features;
+		device_features_vk12.descriptorIndexing							= VK_TRUE;
+		device_features_vk12.shaderFloat16								= vk.supports_fp16 ? VK_TRUE : VK_FALSE;
+		device_features_vk12.shaderSampledImageArrayNonUniformIndexing	= VK_TRUE;
+		device_features_vk12.shaderStorageBufferArrayNonUniformIndexing = VK_TRUE;
+		device_features_vk12.runtimeDescriptorArray						= VK_TRUE;
+		device_features_vk12.samplerFilterMinmax						= VK_TRUE;
+		device_features_vk12.bufferDeviceAddress						= VK_TRUE;
+		device_features_vk12.bufferDeviceAddressMultiDevice				= VK_FALSE,
+		device_features_vk12.descriptorBindingVariableDescriptorCount	= VK_TRUE;
+		device_features_vk12.descriptorBindingPartiallyBound			= VK_TRUE;
+
+		// extended features
+		features.robustBufferAccess = VK_TRUE;
+		features.fullDrawIndexUint32 = VK_TRUE;
+		features.imageCubeArray = VK_TRUE;
+		features.independentBlend = VK_TRUE;
+		features.geometryShader = VK_FALSE;
+		features.tessellationShader = VK_FALSE;
+		features.sampleRateShading = VK_FALSE;
+		features.dualSrcBlend = VK_FALSE;
+		features.logicOp = VK_FALSE;
+		features.multiDrawIndirect = VK_FALSE;
+		features.drawIndirectFirstInstance = VK_FALSE;
+		features.depthClamp = VK_FALSE;
+		features.depthBiasClamp = VK_FALSE;
+		features.fillModeNonSolid = VK_FALSE;
+		features.depthBounds = VK_FALSE;
+		features.wideLines = VK_FALSE;
+		features.largePoints = VK_FALSE;
+		features.alphaToOne = VK_FALSE;
+		features.multiViewport = VK_FALSE;
+		features.samplerAnisotropy = VK_TRUE;
+		features.textureCompressionETC2 = VK_FALSE;
+		features.textureCompressionASTC_LDR = VK_FALSE;
+		features.textureCompressionBC = VK_FALSE;
+		features.occlusionQueryPrecise = VK_FALSE;
+		features.pipelineStatisticsQuery = VK_TRUE;
+		features.vertexPipelineStoresAndAtomics = VK_FALSE;
+		features.fragmentStoresAndAtomics = VK_FALSE;
+		features.shaderTessellationAndGeometryPointSize = VK_FALSE;
+		features.shaderImageGatherExtended = VK_FALSE;
+		features.shaderStorageImageExtendedFormats = VK_TRUE;
+		features.shaderStorageImageMultisample = VK_FALSE;
+		features.shaderStorageImageReadWithoutFormat = VK_FALSE;
+		features.shaderStorageImageWriteWithoutFormat = VK_FALSE;
+		features.shaderUniformBufferArrayDynamicIndexing = VK_TRUE;
+		features.shaderSampledImageArrayDynamicIndexing = VK_TRUE;
+		features.shaderStorageBufferArrayDynamicIndexing = VK_TRUE;
+		features.shaderStorageImageArrayDynamicIndexing = VK_TRUE;
+		features.shaderClipDistance = VK_FALSE;
+		features.shaderCullDistance = VK_FALSE;
+		features.shaderFloat64 = VK_FALSE;
+		features.shaderInt64 = VK_FALSE;
+		features.shaderInt16 = vk.supports_fp16 ? VK_TRUE : VK_FALSE;
+		features.shaderResourceResidency = VK_FALSE;
+		features.shaderResourceMinLod = VK_FALSE;
+		features.sparseBinding = VK_FALSE;
+		features.sparseResidencyBuffer = VK_FALSE;
+		features.sparseResidencyImage2D = VK_FALSE;
+		features.sparseResidencyImage3D = VK_FALSE;
+		features.sparseResidency2Samples = VK_FALSE;
+		features.sparseResidency4Samples = VK_FALSE;
+		features.sparseResidency8Samples = VK_FALSE;
+		features.sparseResidency16Samples = VK_FALSE;
+		features.sparseResidencyAliased = VK_FALSE;
+		features.variableMultisampleRate = VK_FALSE;
+		features.inheritedQueries = VK_FALSE;
+
+		VkPhysicalDeviceFeatures2 device_features2;
+		Com_Memset( &device_features2, 0, sizeof(device_features2) );
+		device_features2.sType		= VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
+		device_features2.pNext		= &device_features_vk12;
+		device_features2.features	= features;
+		
+		device_desc.pNext = &device_features2;
+		device_desc.pEnabledFeatures = nullptr;
+#else
+		device_desc.pEnabledFeatures = &features;
+#endif
 		result = qvkCreateDevice(physical_device, &device_desc, NULL, &vk.device);
 		if (result < 0) {
 			ri.Printf(PRINT_ERROR, "vkCreateDevice returned %s\n", vk_result_string(result));
@@ -784,6 +1065,11 @@ __initStart:
 	INIT_INSTANCE_FUNCTION(vkGetPhysicalDeviceSurfaceFormatsKHR)
 	INIT_INSTANCE_FUNCTION(vkGetPhysicalDeviceSurfacePresentModesKHR)
 	INIT_INSTANCE_FUNCTION(vkGetPhysicalDeviceSurfaceSupportKHR)
+
+#ifdef USE_RTX
+	INIT_INSTANCE_FUNCTION(vkGetPhysicalDeviceProperties2)
+	INIT_INSTANCE_FUNCTION(vkGetPhysicalDeviceFeatures2)
+#endif
 
 #ifdef USE_VK_VALIDATION
 	#ifdef USE_DEBUG_REPORT
@@ -988,6 +1274,34 @@ __initStart:
 	INIT_DEVICE_FUNCTION(vkFlushMappedMemoryRanges)
 	INIT_DEVICE_FUNCTION(vkResetCommandPool)
 #endif
+
+#ifdef USE_RTX
+	if ( vk.rtxSupport ) {
+		INIT_DEVICE_FUNCTION(vkCmdDispatch);
+		INIT_DEVICE_FUNCTION(vkCreateComputePipelines);	
+
+		INIT_DEVICE_FUNCTION(vkCreateAccelerationStructureKHR);
+		INIT_DEVICE_FUNCTION(vkDestroyAccelerationStructureKHR);
+		INIT_DEVICE_FUNCTION(vkCmdBuildAccelerationStructuresKHR);
+		INIT_DEVICE_FUNCTION(vkCmdCopyAccelerationStructureKHR);
+		INIT_DEVICE_FUNCTION(vkGetAccelerationStructureDeviceAddressKHR);
+		INIT_DEVICE_FUNCTION(vkCmdWriteAccelerationStructuresPropertiesKHR);
+		INIT_DEVICE_FUNCTION(vkGetAccelerationStructureBuildSizesKHR);
+		INIT_DEVICE_FUNCTION(vkGetBufferDeviceAddress);
+		INIT_DEVICE_FUNCTION(vkCreateRayTracingPipelinesKHR);
+		INIT_DEVICE_FUNCTION(vkCmdTraceRaysKHR);
+		INIT_DEVICE_FUNCTION(vkGetRayTracingShaderGroupHandlesKHR);
+
+		INIT_DEVICE_FUNCTION(vkCreateBufferView);
+		INIT_DEVICE_FUNCTION(vkDestroyBufferView);
+
+		INIT_DEVICE_FUNCTION(vkBindBufferMemory2);
+		INIT_DEVICE_FUNCTION(vkCmdFillBuffer);
+
+		INIT_DEVICE_FUNCTION(vkCmdBeginDebugUtilsLabelEXT);
+		INIT_DEVICE_FUNCTION(vkCmdEndDebugUtilsLabelEXT);
+	}
+#endif
 }
 
 #undef INIT_INSTANCE_FUNCTION
@@ -1120,6 +1434,36 @@ void vk_deinit_library( void )
 #endif
 
 	qvkCmdDrawIndexedIndirect = NULL;
+
+#ifdef USE_RTX
+	qvkGetPhysicalDeviceProperties2 = NULL;
+	qvkGetPhysicalDeviceFeatures2 = NULL;
+
+	qvkCmdDispatch = NULL;
+	qvkCreateComputePipelines = NULL;
+
+	qvkCreateAccelerationStructureKHR = NULL;
+	qvkDestroyAccelerationStructureKHR = NULL;
+	qvkCmdBuildAccelerationStructuresKHR = NULL;
+	qvkCmdCopyAccelerationStructureKHR = NULL;
+	qvkGetAccelerationStructureDeviceAddressKHR = NULL;
+	qvkCmdWriteAccelerationStructuresPropertiesKHR = NULL;
+	qvkGetAccelerationStructureBuildSizesKHR = NULL;
+	qvkGetBufferDeviceAddress = NULL;
+	qvkCreateRayTracingPipelinesKHR = NULL;
+	qvkCmdTraceRaysKHR = NULL;
+	qvkGetRayTracingShaderGroupHandlesKHR = NULL;
+
+	qvkCreateBufferView = NULL;
+	qvkDestroyBufferView = NULL;
+
+	qvkBindBufferMemory2 = NULL;
+	qvkCmdFillBuffer = NULL;
+
+	qvkCmdBeginDebugUtilsLabelEXT = NULL;
+	qvkCmdEndDebugUtilsLabelEXT = NULL;
+#endif
+
 }
 
 #define FORMAT_DEPTH(format, r_bits, g_bits, b_bits) case(VK_FORMAT_##format): *r = r_bits; *b = b_bits; *g = g_bits; return qtrue;

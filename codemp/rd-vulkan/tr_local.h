@@ -24,6 +24,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #ifndef TR_LOCAL_H
 #define TR_LOCAL_H
 
+#define USE_RTX
+
 #define USE_VK_PBR
 #ifdef USE_VK_PBR
 	#define VK_PBR_BRDFLUT		// for inspecting codebase, does not toggle brdflut. 
@@ -288,6 +290,9 @@ typedef struct image_s {
 	VkImage					handle;
 	VkImageView				view;
 	VkDescriptorSet			descriptor_set;
+#ifdef USE_RTX
+	VkSampler				sampler;
+#endif
 	qboolean				isLightmap;
 	uint32_t				mipLevels;		// gl texture binding
 	VkSamplerAddressMode	wrapClampMode;	
@@ -309,12 +314,18 @@ typedef struct VBO_s
 	VkDeviceMemory	memory;
 
 	uint32_t		offsets[12];
+#if defined(USE_RTX) && defined(USE_RTX_GLOBAL_MODEL_VBO)
+	size_t			size;
+#endif
 } VBO_t;
 
 typedef struct IBO_s
 {
 	VkBuffer		buffer;
 	VkDeviceMemory	memory;
+#if defined(USE_RTX) && defined(USE_RTX_GLOBAL_MODEL_VBO)
+	size_t			size;
+#endif
 } IBO_t;
 
 //===============================================================================
@@ -799,6 +810,10 @@ typedef struct trRefdef_s {
 
 	qboolean			switchRenderPass;
 	qboolean			needScreenMap;
+
+#ifdef USE_RTX
+	ref_feedback_t		feedback;
+#endif
 } trRefdef_t;
 
 
@@ -903,6 +918,9 @@ typedef struct drawSurf_s {
 	uint32_t			sort;			// bit combination for fast compares
 	surfaceType_t		*surface;		// any of surface*_t
 	int					fogIndex;
+#ifdef USE_RTX
+	vk_blas_t			*blas;
+#endif
 } drawSurf_t;
 
 #ifdef USE_PMLIGHT
@@ -1105,6 +1123,12 @@ typedef struct msurface_s {
 	int					vcVisible;		// if == tr.viewCount, is actually VISIBLE in this frame, i.e. passed facecull and has been added to the drawsurf list
 	int					lightCount;		// if == tr.lightCount, already added to the litsurf list for the current light
 #endif
+#ifdef USE_RTX
+	vk_blas_t			*blas;
+	qboolean			added;
+	qboolean			skip;
+	qboolean			notBrush;
+#endif
 	surfaceType_t		*data;			// any of srf*_t
 } msurface_t;
 
@@ -1143,6 +1167,16 @@ typedef struct
 	byte		latLong[2];
 } mgrid_t;
 
+#ifdef USE_RTX
+typedef struct light_poly_s {
+	float	positions[9]; // 3x vec3_t
+	vec3_t	off_center;
+	vec3_t	color;
+	void	*material;
+	int		cluster;
+	int		style;
+} light_poly_t;
+#endif
 
 typedef struct world_s {
 	char		name[MAX_QPATH];		// ie: maps/tim_dm2.bsp
@@ -1189,7 +1223,19 @@ typedef struct world_s {
 
 	int			numClusters;
 	int			clusterBytes;
-	const byte	*vis;					// may be passed in by CM_LoadMap to save space
+	const byte	*vis;					// may be passed in by CM_LoadMap to save space	
+#ifdef USE_RTX
+	const byte		*vis2;
+	int				numvisibility;
+
+	int				num_cluster_lights;
+	int				*cluster_light_offsets;
+	int				*cluster_lights;
+
+	int				num_light_polys;
+	int				allocated_light_polys;
+	light_poly_t	*light_polys;
+#endif
 
 	byte		*novis;					// clusterBytes of 0xff
 
@@ -1302,6 +1348,15 @@ typedef struct mdxmVBOMesh_s
 	int numIndexes;
 	int numVertexes;
 
+#ifdef USE_RTX
+	int meshIndex;
+	int modelIndex;
+#ifndef USE_RTX_GLOBAL_MODEL_VBO
+	int vertexOffset;
+	model_vbo_t *vbo_rtx;
+#endif
+#endif
+
 	VBO_t *vbo;
 	IBO_t *ibo;
 } mdxmVBOMesh_t;
@@ -1310,7 +1365,10 @@ typedef struct mdxmVBOModel_s
 {
 	int numVBOMeshes;
 	mdxmVBOMesh_t *vboMeshes;
-
+#ifdef USE_RTX
+	uint32_t	model_index;
+	model_vbo_t vbo_rtx;
+#endif
 	VBO_t *vbo;
 	IBO_t *ibo;
 } mdxmVBOModel_t;
@@ -1960,6 +2018,40 @@ extern cvar_t	*cl_paused;
 extern cvar_t	*sv_paused;
 extern cvar_t	*com_sv_running;
 extern cvar_t	*com_cl_running;
+#endif
+
+#ifdef USE_RTX
+extern  cvar_t  *pt_caustics;
+extern  cvar_t  *pt_dof;
+extern  cvar_t  *pt_projection;
+extern  cvar_t  *tm_blend_enable;
+
+#define UBO_CVAR_DO( _handle, _value ) \
+	extern cvar_t *sun_##_handle;
+	UBO_CVAR_LIST
+#undef UBO_CVAR_DO
+
+extern  cvar_t *sun_color[3];
+extern  cvar_t *sun_elevation;
+extern  cvar_t *sun_azimuth;
+extern  cvar_t *sun_angle;
+extern  cvar_t *sun_brightness;
+extern  cvar_t *sun_bounce;
+extern  cvar_t *sun_animate;
+extern  cvar_t *sun_gamepad;
+
+extern  cvar_t *sun_preset;
+extern  cvar_t *sun_latitude;
+
+extern  cvar_t *physical_sky;
+extern  cvar_t *physical_sky_draw_clouds;
+extern  cvar_t *physical_sky_space;
+extern  cvar_t *physical_sky_brightness;
+
+extern  cvar_t *sky_scattering;
+extern  cvar_t *sky_transmittance;
+extern  cvar_t *sky_phase_g;
+extern  cvar_t *sky_amb_phase_g;
 #endif
 
 /*
@@ -2783,3 +2875,7 @@ qboolean	vk_imgui_merge_shaders( void );
 qboolean	vk_imgui_outline_selected( void );
 #endif
 #endif
+
+#define VK_RTX_LINKER
+#include "rtx/vk_rtx.h"
+#undef VK_RTX_LINKER

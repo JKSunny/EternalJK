@@ -41,7 +41,14 @@ void vk_create_sync_primitives( void )
         // swapchain image acquired
         VK_CHECK(qvkCreateSemaphore(vk.device, &desc, NULL, &vk.tess[i].image_acquired));
         VK_CHECK(qvkCreateSemaphore(vk.device, &desc, NULL, &vk.tess[i].rendering_finished));
+#ifdef USE_RTX
+        VK_CHECK(qvkCreateSemaphore(vk.device, &desc, NULL, &vk.tess[i].semaphores.trace_finished));
+        VK_CHECK(qvkCreateSemaphore(vk.device, &desc, NULL, &vk.tess[i].semaphores.transfer_finished));
 
+
+	    vk.tess[i].semaphores.trace_signaled = qfalse;
+	    vk.tess[i].semaphores.prev_trace_signaled = qfalse;
+#endif
         fence_desc.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
         fence_desc.pNext = NULL;
         fence_desc.flags = VK_FENCE_CREATE_SIGNALED_BIT;
@@ -53,6 +60,10 @@ void vk_create_sync_primitives( void )
         VK_SET_OBJECT_NAME(vk.tess[i].image_acquired, va("image_acquired semaphore %i", i), VK_DEBUG_REPORT_OBJECT_TYPE_SEMAPHORE_EXT);
         VK_SET_OBJECT_NAME(vk.tess[i].rendering_finished, "rendering_finished semaphore", VK_DEBUG_REPORT_OBJECT_TYPE_SEMAPHORE_EXT);
         VK_SET_OBJECT_NAME(vk.tess[i].rendering_finished_fence, "rendering_finished fence", VK_DEBUG_REPORT_OBJECT_TYPE_FENCE_EXT);
+#ifdef USE_RTX       
+        VK_SET_OBJECT_NAME(vk.tess[i].semaphores.trace_finished, "trace_finished fence", VK_DEBUG_REPORT_OBJECT_TYPE_FENCE_EXT);
+        VK_SET_OBJECT_NAME(vk.tess[i].semaphores.transfer_finished, "transfer_finished fence", VK_DEBUG_REPORT_OBJECT_TYPE_FENCE_EXT);
+#endif
     }
 }
 
@@ -65,6 +76,10 @@ void vk_destroy_sync_primitives( void )
     for (i = 0; i < NUM_COMMAND_BUFFERS; i++) {
         qvkDestroySemaphore(vk.device, vk.tess[i].image_acquired, NULL);
         qvkDestroySemaphore(vk.device, vk.tess[i].rendering_finished, NULL);
+#ifdef USE_RTX
+        qvkDestroySemaphore(vk.device, vk.tess[i].semaphores.trace_finished, NULL);
+        qvkDestroySemaphore(vk.device, vk.tess[i].semaphores.transfer_finished, NULL);
+#endif
         qvkDestroyFence(vk.device, vk.tess[i].rendering_finished_fence, NULL);
         vk.tess[i].waitForFence = qfalse;
     }  
@@ -95,7 +110,11 @@ void vk_create_render_passes()
         if (vk.msaaActive)
             attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;	// Assuming this will be completely overwritten
         else
+#ifdef USE_GBUFFER
+            attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+#else
             attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+#endif
 #else
         attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;	// Assuming this will be completely overwritten
 #endif
@@ -122,6 +141,12 @@ void vk_create_render_passes()
         attachments[1].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         attachments[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     }
+#ifdef USE_GBUFFER
+        attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+        attachments[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        attachments[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
+#endif
+
     attachments[1].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
     attachments[1].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
@@ -225,6 +250,27 @@ void vk_create_render_passes()
     VK_CHECK(qvkCreateRenderPass(device, &desc, NULL, &vk.render_pass.main));
     VK_SET_OBJECT_NAME(vk.render_pass.main, "render pass - main", VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT);
     
+#ifdef USE_GBUFFER
+    attachments[0].format = vk.gbuffer_format;
+    attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+
+    attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    attachments[1].stencilLoadOp = r_stencilbits->integer ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    if ( vk.bloomActive || vk.dglowActive || vk.refractionActive ) {
+        attachments[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE; // keep it for post-bloom/dynamic-glow pass
+        attachments[1].stencilStoreOp = r_stencilbits->integer ? VK_ATTACHMENT_STORE_OP_STORE : VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    }
+    else {
+        attachments[1].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        attachments[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    }
+
+    VK_CHECK(qvkCreateRenderPass(device, &desc, NULL, &vk.render_pass.gbuffer));
+    VK_SET_OBJECT_NAME(vk.render_pass.gbuffer, "render pass - gbuffer", VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT);
+
+    attachments[0].format = vk.color_format;
+#endif
+
     // refraction
     {
         // color buffer
@@ -245,6 +291,22 @@ void vk_create_render_passes()
         VK_CHECK( qvkCreateRenderPass( device, &desc, NULL, &vk.render_pass.refraction.extract ) );
         VK_SET_OBJECT_NAME( vk.render_pass.refraction.extract, "render pass - refraction extract", VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT );        
     }
+
+#ifdef USE_GBUFFER_COMPOSE
+        uint32_t tmp_attachement_count = desc.attachmentCount;
+
+        Com_Memset(&subpass, 0, sizeof(subpass));
+        subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        subpass.colorAttachmentCount = 1;
+        subpass.pColorAttachments = &color_attachment_ref;
+
+        desc.attachmentCount = 1; // 2 ? no ? DEPTH
+
+        VK_CHECK(qvkCreateRenderPass(device, &desc, NULL, &vk.render_pass.composition));
+        VK_SET_OBJECT_NAME(vk.render_pass.composition, "render pass - composition", VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT);
+
+        desc.attachmentCount = tmp_attachement_count;
+#endif
 
     if ( vk.bloomActive || vk.dglowActive )
     {
@@ -298,6 +360,29 @@ void vk_create_render_passes()
             VK_CHECK( qvkCreateRenderPass( device, &desc, NULL, &vk.render_pass.dglow.blend ) );
             VK_SET_OBJECT_NAME( vk.render_pass.dglow.blend, "render pass - dglow post blend", VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT );
         }
+
+#ifdef USE_RTX
+        // rtx post blit blend
+        if ( vk.rtxActive )     
+        {
+            // color buffer
+            attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; // load from previous pass
+
+            // depth buffer
+            attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+            attachments[1].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            attachments[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+            attachments[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+
+            if ( vk.msaaActive ) {
+                attachments[2].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+                attachments[2].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            }
+
+            VK_CHECK( qvkCreateRenderPass( device, &desc, NULL, &vk.render_pass.rtx_final_blit.blend ) );
+            VK_SET_OBJECT_NAME( vk.render_pass.rtx_final_blit.blend, "render pass - rtx final blit lancoz", VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT );
+        }
+#endif
 
         // bloom extraction, using resolved/main fbo as a source
         desc.attachmentCount = 1;
@@ -401,6 +486,25 @@ void vk_create_render_passes()
     VK_CHECK(qvkCreateRenderPass(device, &desc, NULL, &vk.render_pass.gamma));
     VK_SET_OBJECT_NAME(vk.render_pass.gamma, "render pass - gamma", VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT);
     
+#ifdef USE_RTX
+    // rtx blit
+    if ( vk.rtxActive ) 
+    {
+        attachments[0].flags = 0;
+        attachments[0].format = vk.color_format;
+        attachments[0].samples = VK_SAMPLE_COUNT_1_BIT;
+        attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+        attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE; // needed for presentation
+        attachments[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        attachments[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        attachments[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        attachments[0].finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+        VK_CHECK(qvkCreateRenderPass(device, &desc, NULL, &vk.render_pass.rtx_final_blit.blit));
+        VK_SET_OBJECT_NAME(vk.render_pass.rtx_final_blit.blit, "render pass - rtx blit", VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT);
+    }
+#endif
+
 #ifdef USE_VK_IMGUI
     // inspector / present
     attachments[0].flags = 0;
@@ -614,9 +718,34 @@ void vk_create_framebuffers()
 
             VK_CHECK(qvkCreateFramebuffer(vk.device, &desc, NULL, &vk.framebuffers.main[i]));
             VK_SET_OBJECT_NAME(vk.framebuffers.main[i], "framebuffer - main", VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT);
+        
+#ifdef USE_GBUFFER
+#ifdef USE_GBUFFER_COMPOSE
+            desc.renderPass = vk.render_pass.composition;
+            uint32_t tmp_attachment_count = desc.attachmentCount;
+            desc.attachmentCount = 1;
+
+            VK_CHECK(qvkCreateFramebuffer(vk.device, &desc, NULL, &vk.framebuffers.composition[i]));
+            VK_SET_OBJECT_NAME(vk.framebuffers.composition[i], "framebuffer - composition", VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT);
+
+            desc.attachmentCount = tmp_attachment_count;
+#endif
+
+            desc.renderPass = vk.render_pass.gbuffer;
+            attachments[0] = vk.gbuffer_image_view;
+
+            VK_CHECK(qvkCreateFramebuffer(vk.device, &desc, NULL, &vk.framebuffers.gbuffer[i]));
+            VK_SET_OBJECT_NAME(vk.framebuffers.gbuffer[i], "framebuffer - gbuffer", VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT);
+#endif
         }
         else {
             vk.framebuffers.main[i] = vk.framebuffers.main[0];
+#ifdef USE_GBUFFER
+#ifdef USE_GBUFFER_COMPOSE
+            vk.framebuffers.composition[i] = vk.framebuffers.composition[0];
+#endif
+            vk.framebuffers.gbuffer[i] = vk.framebuffers.gbuffer[0];
+#endif
         }
 
         // inspector / present
@@ -638,6 +767,19 @@ void vk_create_framebuffers()
     attachments[0] = vk.gamma_image_view;
     VK_CHECK(qvkCreateFramebuffer(vk.device, &desc, NULL, &vk.framebuffers.gamma));
     VK_SET_OBJECT_NAME(vk.framebuffers.gamma, "framebuffer - gamma-correction", VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT);
+
+#ifdef USE_RTX
+    // rtx final blit lancoz
+    desc.renderPass = vk.render_pass.rtx_final_blit.blit;
+    desc.attachmentCount = 1;
+    desc.width = glConfig.vidWidth;
+    desc.height = glConfig.vidHeight;
+
+    attachments[0] = vk.color_image_view;
+
+    VK_CHECK(qvkCreateFramebuffer(vk.device, &desc, NULL, &vk.framebuffers.rtx_final_blit));
+    VK_SET_OBJECT_NAME(vk.framebuffers.rtx_final_blit, "framebuffer - final blit lancoz", VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT);
+#endif
 
     // refraction
     {
@@ -895,6 +1037,32 @@ void vk_destroy_render_passes( void )
         vk.render_pass.cubemap = VK_NULL_HANDLE;
     }
 #endif
+
+#ifdef USE_RTX
+    if ( vk.render_pass.rtx_final_blit.blend != VK_NULL_HANDLE ) {
+        qvkDestroyRenderPass( vk.device, vk.render_pass.rtx_final_blit.blend, NULL );
+        vk.render_pass.rtx_final_blit.blend = VK_NULL_HANDLE;
+    }
+
+    if ( vk.render_pass.rtx_final_blit.blit != VK_NULL_HANDLE ) {
+        qvkDestroyRenderPass( vk.device, vk.render_pass.rtx_final_blit.blit, NULL );
+        vk.render_pass.rtx_final_blit.blit = VK_NULL_HANDLE;
+    }
+#endif
+
+#ifdef USE_GBUFFER
+    if ( vk.render_pass.gbuffer != VK_NULL_HANDLE ) {
+        qvkDestroyRenderPass( vk.device, vk.render_pass.gbuffer, NULL );
+        vk.render_pass.gbuffer = VK_NULL_HANDLE;
+    }
+
+#ifdef USE_GBUFFER_COMPOSE
+    if ( vk.render_pass.composition != VK_NULL_HANDLE ) {
+        qvkDestroyRenderPass( vk.device, vk.render_pass.composition, NULL );
+        vk.render_pass.composition = VK_NULL_HANDLE;
+    }
+#endif
+#endif
 }
 
 void vk_destroy_framebuffers( void )
@@ -972,6 +1140,25 @@ void vk_destroy_framebuffers( void )
         }
     }
 #endif
+
+#ifdef USE_GBUFFER
+    for ( i = 0; i < ARRAY_LEN( vk.framebuffers.gbuffer ); i++ ) {
+        if ( vk.framebuffers.gbuffer[i] != VK_NULL_HANDLE ) {
+            qvkDestroyFramebuffer( vk.device, vk.framebuffers.gbuffer[i], NULL );
+            vk.framebuffers.gbuffer[i] = VK_NULL_HANDLE;
+        }
+    }
+
+#ifdef USE_GBUFFER_COMPOSE
+    for ( i = 0; i < ARRAY_LEN( vk.framebuffers.composition ); i++ ) {
+        if ( vk.framebuffers.composition[i] != VK_NULL_HANDLE ) {
+            qvkDestroyFramebuffer( vk.device, vk.framebuffers.composition[i], NULL );
+            vk.framebuffers.composition[i] = VK_NULL_HANDLE;
+        }
+    }
+#endif
+#endif
+
 }
 
 static qboolean vk_find_screenmap_drawsurfs( void )
@@ -1023,6 +1210,9 @@ static void vk_begin_render_pass( VkRenderPass renderPass, VkFramebuffer frameBu
 #ifdef USE_BUFFER_CLEAR
         switch( vk.renderPassIndex ){
             case RENDER_PASS_MAIN:
+#ifdef USE_GBUFFER
+            case RENDER_PASS_GBUFFER:
+#endif
                     clear_values[ (int)( vk.msaaActive ? 2 : 0 )  ].color = { { 0.75f, 0.75f, 0.75f, 1.0f } };
                 break;
             case RENDER_PASS_DGLOW:
@@ -1046,6 +1236,16 @@ static void vk_begin_render_pass( VkRenderPass renderPass, VkFramebuffer frameBu
 
         if ( vk.renderPassIndex == RENDER_PASS_INSPECTOR )
             render_pass_begin_info.clearValueCount = 1;
+
+#ifdef USE_GBUFFER_COMPOSE
+        if ( vk.renderPassIndex == RENDER_PASS_COMPOSE ) {
+            clear_values[0].color = { { 0.025f, 0.025f, 0.025f, 1.0f } };
+            clear_values[1].depthStencil.depth = 1.0;
+            clear_values[1].depthStencil.stencil = 0;
+
+            render_pass_begin_info.clearValueCount = 2;
+        }
+#endif
 
         vk_world.dirty_depth_attachment = 0;  
     }
@@ -1098,6 +1298,38 @@ void vk_begin_main_render_pass( void )
 
     vk_begin_render_pass(vk.render_pass.main, frameBuffer, qtrue, vk.renderWidth, vk.renderHeight);
 }
+
+#ifdef USE_GBUFFER
+void vk_begin_gbuffer_render_pass( void )
+{
+    VkFramebuffer frameBuffer = vk.framebuffers.gbuffer[vk.swapchain_image_index];
+
+    vk.renderPassIndex = RENDER_PASS_GBUFFER;
+
+    vk.renderWidth = glConfig.vidWidth;
+    vk.renderHeight = glConfig.vidHeight;
+    vk.renderScaleX = vk.renderScaleY = 1.0f;
+
+    vk_begin_render_pass(vk.render_pass.gbuffer, frameBuffer, qtrue, vk.renderWidth, vk.renderHeight);
+}
+
+#ifdef USE_GBUFFER_COMPOSE
+void vk_begin_composition_render_pass( void )
+{
+    VkViewport viewport;
+    //VkRect2D scissor_rect;
+    VkFramebuffer frameBuffer = vk.framebuffers.composition[vk.swapchain_image_index];
+
+    vk.renderPassIndex = RENDER_PASS_COMPOSE;
+
+    vk.renderWidth = glConfig.vidWidth;
+    vk.renderHeight = glConfig.vidHeight;
+    vk.renderScaleX = vk.renderScaleY = 1.0f;
+
+    vk_begin_render_pass(vk.render_pass.composition, frameBuffer, qtrue, vk.renderWidth, vk.renderHeight);
+}
+#endif
+#endif
 
 void vk_begin_post_blend_render_pass( VkRenderPass renderpass, qboolean clearValues )
 {
@@ -1295,6 +1527,33 @@ void vk_begin_post_refraction_extract_render_pass( void )
     vk_begin_render_pass( vk.render_pass.refraction.extract, frameBuffer, qfalse, vk.renderWidth, vk.renderHeight );
 }
 
+#ifdef USE_RTX
+VkResult
+vkpt_final_blit_filtered(VkCommandBuffer cmd_buf)
+{
+	uint32_t idx, prev_idx;
+	vk_rtx_get_descriptor_index( idx, prev_idx );
+
+	VkDescriptorSet desc_sets[] = {
+		vk.rtxDescriptor[idx].set,
+		vk.imageDescriptor.set,
+        vk.desc_set_ubo
+	};
+
+	vk_begin_render_pass( vk.render_pass.rtx_final_blit.blit, vk.framebuffers.rtx_final_blit,
+    qfalse, vk.extent_unscaled.width, vk.extent_unscaled.height );
+
+	qvkCmdBindDescriptorSets( cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS,
+		vk.rt_pipeline.layout, 0, ARRAY_LEN(desc_sets), desc_sets, 0, 0 );
+
+	qvkCmdBindPipeline( cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_final_blit );
+	qvkCmdDraw( cmd_buf, 4, 1, 0, 0 );
+	qvkCmdEndRenderPass( cmd_buf );
+
+	return VK_SUCCESS;
+}
+#endif
+
 void vk_begin_frame( void )
 {
     VkCommandBufferBeginInfo begin_info;
@@ -1322,8 +1581,14 @@ void vk_begin_frame( void )
 			}
 		}
         vk_imgui_profiler_end_task( wait_for_fence_task );
-        
-        
+
+#ifdef USE_RTX
+        // and 
+       // VK_CHECK( qvkWaitForFences( vk.device, 1, 
+        //    &vk.tess[(vk.swapchain_image_index - 1) % vk.swapchain_image_count].rendering_finished_fence, VK_TRUE, 1e10 ) );
+#endif
+        vk_imgui_profiler_end_task( wait_for_fence_task );
+
         if ( !ri.VK_IsMinimized() ) {
             size_t acquire_task = vk_imgui_profiler_start_task( "ImageAcquire",	RGBA_LE(0xd35400ffu) );
             //result = qvkAcquireNextImageKHR( vk.device, vk.swapchain, UINT64_MAX, vk.image_acquired, VK_NULL_HANDLE, &vk.swapchain_image_index );
@@ -1363,7 +1628,9 @@ void vk_begin_frame( void )
 
     vk.cmd->last_pipeline = VK_NULL_HANDLE;
     backEnd.screenMapDone = qfalse;
-
+#ifdef USE_RTX
+    VK_BeginRenderClear();
+#endif
     if (vk_find_screenmap_drawsurfs()) {
         vk_begin_screenmap_render_pass();
     }
@@ -1521,6 +1788,11 @@ void vk_end_frame( void )
         if ( vk.bloomActive )
             vk_bloom();
 
+#ifdef USE_RTX
+	    if ( vk.rtxActive )
+		    vk_rtx_begin_blit();
+#endif
+
         if ( backEnd.screenshotMask && vk.capture.image )
         {
             vk_end_render_pass();
@@ -1639,7 +1911,11 @@ void vk_present_frame( void )
 			// or we don't
 			ri.Error( ERR_FATAL, "vkQueuePresentKHR returned %s", vk_result_string( res ) );
 	}
-    
+
+#ifdef USE_RTX
+    vk.frame_counter++;
+#endif
+
     vk_imgui_profiler_end_frame();
 }
 

@@ -578,6 +578,9 @@ IBO_t *R_CreateIBO( const char *name, const byte *vbo_data, int vbo_size )
 	vk_release_model_ibo( tr.numIBOs );
 
 	ibo = tr.ibos[tr.numIBOs] = (IBO_t *)ri.Hunk_Alloc(sizeof(*ibo), h_low);
+#if defined(USE_RTX) && defined(USE_RTX_GLOBAL_MODEL_VBO)
+	ibo->size = vbo_size;
+#endif
 
 	desc.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	desc.pNext = NULL;
@@ -589,12 +592,20 @@ IBO_t *R_CreateIBO( const char *name, const byte *vbo_data, int vbo_size )
 	// device-local buffer
 	desc.size = vbo_size;
 	desc.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+#if defined(USE_RTX) && defined(USE_RTX_GLOBAL_MODEL_VBO)
+	if ( vk.rtxActive )
+		desc.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+#endif
 	VK_CHECK( qvkCreateBuffer( vk.device, &desc, NULL, &tr.ibos[tr.numIBOs]->buffer ) );
-	
+
 	// staging buffer
 	desc.size = vbo_size;
 	desc.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 	VK_CHECK(qvkCreateBuffer(vk.device, &desc, NULL, &staging_vertex_buffer));
+#if defined(USE_RTX) && defined(USE_RTX_GLOBAL_MODEL_VBO)
+	if ( vk.rtxActive )
+		desc.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+#endif
 
 	// memory requirements
 	qvkGetBufferMemoryRequirements( vk.device, tr.ibos[tr.numIBOs]->buffer, &vb_mem_reqs );
@@ -669,6 +680,9 @@ VBO_t *R_CreateVBO( const char *name, const byte *vbo_data, int vbo_size )
 	vk_release_model_vbo( tr.numVBOs );
 
 	vbo = tr.vbos[tr.numVBOs] = (VBO_t *)ri.Hunk_Alloc(sizeof(*vbo), h_low);
+#if defined(USE_RTX) && defined(USE_RTX_GLOBAL_MODEL_VBO)
+	vbo->size = vbo_size;
+#endif
 
 	desc.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	desc.pNext = NULL;
@@ -680,12 +694,20 @@ VBO_t *R_CreateVBO( const char *name, const byte *vbo_data, int vbo_size )
 	// device-local buffer
 	desc.size = vbo_size;
 	desc.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+#if defined(USE_RTX) && defined(USE_RTX_GLOBAL_MODEL_VBO)
+	if ( vk.rtxActive )
+		desc.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+#endif
 	VK_CHECK( qvkCreateBuffer( vk.device, &desc, NULL, &tr.vbos[tr.numVBOs]->buffer ) );
 	
 	// staging buffer
 	desc.size = vbo_size;
 	desc.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 	VK_CHECK(qvkCreateBuffer(vk.device, &desc, NULL, &staging_vertex_buffer));
+#if defined(USE_RTX) && defined(USE_RTX_GLOBAL_MODEL_VBO)
+	if ( vk.rtxActive )
+		desc.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+#endif
 
 	// memory requirements
 	qvkGetBufferMemoryRequirements( vk.device, tr.vbos[tr.numVBOs]->buffer, &vb_mem_reqs );
@@ -851,6 +873,15 @@ void R_BuildMDXM( model_t *mod, mdxmHeader_t *mdxm )
 {
 	if( !vk.vboGhoul2Active )
 		return;
+
+#ifdef USE_RTX
+	if ( !vk.rtxActive )
+		return;
+
+	#ifndef USE_RTX_GLOBAL_MODEL_VBO
+		return;
+	#endif
+#endif
 
 	mdxmVBOModel_t		*vboModel;
 	mdxmSurface_t		*surf;
@@ -1069,7 +1100,10 @@ void R_BuildMDXM( model_t *mod, mdxmHeader_t *mdxm )
 			vboMeshes[n].maxIndex = baseVertexes[n + 1] - 1;
 			vboMeshes[n].numVertexes = surf->numVerts;
 			vboMeshes[n].numIndexes = surf->numTriangles * 3;
-
+#if defined(USE_RTX) && defined(USE_RTX_GLOBAL_MODEL_VBO)
+			vboMeshes[n].meshIndex = n;
+			vboMeshes[n].modelIndex = vbo->index;
+#endif
 			surf = (mdxmSurface_t *)((byte *)surf + surf->ofsEnd);
 		}
 
@@ -1078,6 +1112,10 @@ void R_BuildMDXM( model_t *mod, mdxmHeader_t *mdxm )
 
 		ri.Hunk_FreeTempMemory ( indexOffsets );
 		ri.Hunk_FreeTempMemory ( baseVertexes );
+
+#if defined(USE_RTX) && defined(USE_RTX_GLOBAL_MODEL_VBO)
+		vk_rtx_bind_model( vbo->index );
+#endif
 
 		// find the next LOD
 		lod = (mdxmLOD_t *)( (byte *)lod + lod->ofsEnd );

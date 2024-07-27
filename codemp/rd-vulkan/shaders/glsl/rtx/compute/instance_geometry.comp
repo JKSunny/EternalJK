@@ -1,0 +1,361 @@
+#version 460
+#extension GL_GOOGLE_include_directive    : enable
+#extension GL_EXT_nonuniform_qualifier    : enable
+
+#include "../utils.glsl"
+
+//#define GLOBAL_UBO_DESC_SET_IDX 0
+#include "../global_ubo.h"
+
+#include "../global_textures.h"
+
+//#define VERTEX_BUFFER_DESC_SET_IDX 1
+#include "../vertex_buffer.h"
+
+#include "../read_visbuf.glsl"
+
+#ifdef USE_RTX_GLOBAL_MODEL_VBO
+	#define MODEL_VERTEX_POSITION	0
+	#define MODEL_VERTEX_NORMAL		4
+	#define MODEL_VERTEX_TEXCOORD	8
+	#define MODEL_VERTEX_BONEREFS	10
+	#define MODEL_VERTEX_WEIGHTS	11
+	#define MODEL_VERTEX_TANGENTS	12
+	#define MODEL_VERTEX_SIZE		16
+#else
+	#define MODEL_VERTEX_POSITION	0
+	#define MODEL_VERTEX_NORMAL		3
+	#define MODEL_VERTEX_TEXCOORD	6
+	#define MODEL_VERTEX_TANGENTS	8
+	#define MODEL_VERTEX_SIZE		12
+#endif
+
+layout(set = 1,	binding = 0) readonly buffer MODEL_VBO {
+	uint data[];
+} model_vbos[];
+
+#ifdef USE_RTX_GLOBAL_MODEL_VBO
+	layout(set = 3,	binding = 0) readonly buffer MODEL_IBO {
+		uint data[];
+	} model_ibos[];
+#endif
+
+uint get_model_uint(uint model_id, uint offset)
+{
+	return model_vbos[nonuniformEXT(model_id)].data[offset];
+}
+
+vec2 get_model_float2(uint model_id, uint offset)
+{
+	vec2 result;
+	result.x = uintBitsToFloat(model_vbos[nonuniformEXT(model_id)].data[offset + 0]);
+	result.y = uintBitsToFloat(model_vbos[nonuniformEXT(model_id)].data[offset + 1]);
+	return result;
+}
+
+vec3 get_model_float3(uint model_id, uint offset)
+{
+	vec3 result;
+	result.x = uintBitsToFloat(model_vbos[nonuniformEXT(model_id)].data[offset + 0]);
+	result.y = uintBitsToFloat(model_vbos[nonuniformEXT(model_id)].data[offset + 1]);
+	result.z = uintBitsToFloat(model_vbos[nonuniformEXT(model_id)].data[offset + 2]);
+	return result;
+}
+
+vec4 get_model_float4(uint model_id, uint offset)
+{
+	vec4 result;
+	result.x = uintBitsToFloat(model_vbos[nonuniformEXT(model_id)].data[offset + 0]);
+	result.y = uintBitsToFloat(model_vbos[nonuniformEXT(model_id)].data[offset + 1]);
+	result.z = uintBitsToFloat(model_vbos[nonuniformEXT(model_id)].data[offset + 2]);
+	result.w = uintBitsToFloat(model_vbos[nonuniformEXT(model_id)].data[offset + 3]);
+	return result;
+}
+
+mat4x3 GetBoneMatrix( uint model_index, uint index)
+{
+	mat3x4 bone = instance_buffer.model_mdxm_bones[model_index][index];
+	return mat4x3(
+		bone[0].x, bone[1].x, bone[2].x,
+		bone[0].y, bone[1].y, bone[2].y,
+		bone[0].z, bone[1].z, bone[2].z,
+		bone[0].w, bone[1].w, bone[2].w);
+}
+
+Triangle
+get_model_triangle(uint model_id, uint prim_id, uint idx_offset, uint vert_offset)
+{
+	uint idx_base = idx_offset + prim_id * 3;
+
+	uvec3 idx;
+#ifdef USE_RTX_GLOBAL_MODEL_VBO
+	idx.x = model_ibos[nonuniformEXT(model_id)].data[idx_base + 0];
+	idx.y = model_ibos[nonuniformEXT(model_id)].data[idx_base + 1];
+	idx.z = model_ibos[nonuniformEXT(model_id)].data[idx_base + 2];
+#else
+	idx.x = model_vbos[nonuniformEXT(model_id)].data[idx_base + 0];
+	idx.y = model_vbos[nonuniformEXT(model_id)].data[idx_base + 1];
+	idx.z = model_vbos[nonuniformEXT(model_id)].data[idx_base + 2];
+#endif
+
+	idx = idx * MODEL_VERTEX_SIZE + vert_offset;
+
+	Triangle t;
+	t.positions[0] = get_model_float3(model_id, idx[0] + MODEL_VERTEX_POSITION);
+	t.positions[1] = get_model_float3(model_id, idx[1] + MODEL_VERTEX_POSITION);
+	t.positions[2] = get_model_float3(model_id, idx[2] + MODEL_VERTEX_POSITION);
+
+	t.normals[0] = get_model_float3(model_id, idx[0] + MODEL_VERTEX_NORMAL);
+	t.normals[1] = get_model_float3(model_id, idx[1] + MODEL_VERTEX_NORMAL);
+	t.normals[2] = get_model_float3(model_id, idx[2] + MODEL_VERTEX_NORMAL);
+
+	t.tex_coords0[0] = get_model_float2(model_id, idx[0] + MODEL_VERTEX_TEXCOORD);
+	t.tex_coords0[1] = get_model_float2(model_id, idx[1] + MODEL_VERTEX_TEXCOORD);
+	t.tex_coords0[2] = get_model_float2(model_id, idx[2] + MODEL_VERTEX_TEXCOORD);
+
+	NTB ntb[3];
+	QTangentToNTB( get_model_float4(model_id, idx[0] + MODEL_VERTEX_TANGENTS), ntb[0] );
+	QTangentToNTB( get_model_float4(model_id, idx[1] + MODEL_VERTEX_TANGENTS), ntb[1] );
+	QTangentToNTB( get_model_float4(model_id, idx[2] + MODEL_VERTEX_TANGENTS), ntb[2] );
+
+	t.tangents[0] = ntb[0].tangent.xyz;
+	t.tangents[1] = ntb[1].tangent.xyz;
+	t.tangents[2] = ntb[2].tangent.xyz;	
+
+	t.material_id = 0; // needs to come from uniform buffer
+
+#if 0
+	if(tangent.w < 0)
+		t.material_id |= MATERIAL_FLAG_HANDEDNESS;
+
+	t.alpha = 1.0;
+#endif
+
+	return t;
+}
+
+Triangle
+get_mxdm_triangle(uint model_id, uint prim_id, uint idx_offset, uint vert_offset)
+{
+	uint idx_base = idx_offset + prim_id * 3;
+
+	uvec3 idx;
+#ifdef USE_RTX_GLOBAL_MODEL_VBO
+	idx.x = model_ibos[nonuniformEXT(model_id)].data[idx_base + 0];
+	idx.y = model_ibos[nonuniformEXT(model_id)].data[idx_base + 1];
+	idx.z = model_ibos[nonuniformEXT(model_id)].data[idx_base + 2];
+#else
+	idx.x = model_vbos[nonuniformEXT(model_id)].data[idx_base + 0];
+	idx.y = model_vbos[nonuniformEXT(model_id)].data[idx_base + 1];
+	idx.z = model_vbos[nonuniformEXT(model_id)].data[idx_base + 2];
+#endif
+
+	idx = idx * MODEL_VERTEX_SIZE + vert_offset;
+
+	Triangle t;
+	t.positions[0] = get_model_float3(model_id, idx[0] + MODEL_VERTEX_POSITION);
+	t.positions[1] = get_model_float3(model_id, idx[1] + MODEL_VERTEX_POSITION);
+	t.positions[2] = get_model_float3(model_id, idx[2] + MODEL_VERTEX_POSITION);
+
+	t.normals[0] = get_model_float3(model_id, idx[0] + MODEL_VERTEX_NORMAL);
+	t.normals[1] = get_model_float3(model_id, idx[1] + MODEL_VERTEX_NORMAL);
+	t.normals[2] = get_model_float3(model_id, idx[2] + MODEL_VERTEX_NORMAL);
+
+	t.tex_coords0[0] = get_model_float2(model_id, idx[0] + MODEL_VERTEX_TEXCOORD);
+	t.tex_coords0[1] = get_model_float2(model_id, idx[1] + MODEL_VERTEX_TEXCOORD);
+	t.tex_coords0[2] = get_model_float2(model_id, idx[2] + MODEL_VERTEX_TEXCOORD);
+
+	NTB ntb[3];
+	QTangentToNTB( get_model_float4(model_id, idx[0] + MODEL_VERTEX_TANGENTS), ntb[0] );
+	QTangentToNTB( get_model_float4(model_id, idx[1] + MODEL_VERTEX_TANGENTS), ntb[1] );
+	QTangentToNTB( get_model_float4(model_id, idx[2] + MODEL_VERTEX_TANGENTS), ntb[2] );
+
+	t.tangents[0] = ntb[0].tangent.xyz;
+	t.tangents[1] = ntb[1].tangent.xyz;
+	t.tangents[2] = ntb[2].tangent.xyz;	
+
+	for ( int i_vtx = 0; i_vtx < 3; i_vtx++)
+	{
+		mat4x3 skin_matrix = mat4x3(0);
+
+		uint bone_indices =  get_model_uint(model_id, idx[i_vtx] + MODEL_VERTEX_BONEREFS);
+		vec4 bone_weights =  unpackUnorm4x8(get_model_uint(model_id, idx[i_vtx] + MODEL_VERTEX_WEIGHTS));
+
+		for (int i_bone = 0; i_bone < 4; i_bone++)
+		{
+			uint bone_index = ( bone_indices >> (i_bone * 8) ) & 0xFF;
+			float bone_weight = bone_weights[i_bone];
+
+			mat4x3 m = GetBoneMatrix( model_id, bone_index );
+			skin_matrix += m * bone_weight;
+		}
+
+		t.positions[i_vtx]		= skin_matrix * vec4( t.positions[i_vtx], 1.0 );
+		t.normals[i_vtx]		= normalize(skin_matrix * vec4( t.normals[i_vtx], 0.0 ));
+		t.tangents[i_vtx]	= normalize(skin_matrix * vec4( t.tangents[i_vtx], 0.0 ));
+	}
+
+	t.material_id = 0; // needs to come from uniform buffer
+
+#if 0
+	if(tangent.w < 0)
+		t.material_id |= MATERIAL_FLAG_HANDEDNESS;
+
+	t.alpha = 1.0;
+#endif
+
+	return t;
+}
+
+#define LOCAL_SIZE_X 512
+
+layout(local_size_x = LOCAL_SIZE_X, local_size_y = 1, local_size_z = 1) in;
+
+void main()
+{
+	uint instance_id = gl_WorkGroupID.x;
+
+	int model_index = instance_buffer.model_indices[instance_id];
+
+	bool is_world = false;//(model_index & 0x80000000) != 0;
+	uint buf_offset, num_triangles;
+
+#if 0
+	if(is_world)
+	{
+		instance_id = ~model_index;
+		buf_offset = instance_buffer.bsp_instance_buf_offset[instance_id];
+		num_triangles = instance_buffer.bsp_instance_buf_size[instance_id];
+	}
+	else
+#endif
+	{
+		instance_id = model_index;
+		buf_offset = instance_buffer.model_instance_buf_offset[instance_id];
+		num_triangles = instance_buffer.model_instance_buf_size[instance_id];
+	}
+
+	for( uint idx = gl_LocalInvocationID.x; idx < num_triangles; idx += LOCAL_SIZE_X )
+	{
+		Triangle t_i;
+		mat4 M_curr = mat4(1.0);
+		mat4 M_prev = mat4(1.0);
+		const int is_mdxm = 1;	// only format supported
+
+#if 0
+		if(is_world) {
+		}
+		else 
+#endif
+		{	/* model */
+			ModelInstance mi_curr = instance_buffer.model_instances[instance_id];
+			M_curr = mi_curr.M;
+
+			uint id_prev = instance_buffer.model_current_to_prev[instance_id];
+			ModelInstance mi_prev = mi_curr;
+			if(id_prev != ~0u)
+			{
+				mi_prev = instance_buffer.model_instances_prev[id_prev];
+			}
+
+			/* model mdxm/ghoul2 */
+			if ( is_mdxm != 0 )
+			{
+				t_i	= get_mxdm_triangle( mi_curr.model_index, idx, mi_curr.idx_offset, mi_curr.offset_curr );
+				
+				if (id_prev != ~0u)
+				{
+					Triangle t_prev = get_mxdm_triangle( mi_curr.model_index, idx, mi_curr.idx_offset, mi_curr.offset_prev );
+					t_i.positions_prev = t_prev.positions;
+					M_prev = mi_prev.M;
+				}
+				else
+				{
+					t_i.positions_prev = t_i.positions;
+					M_prev = M_curr;
+				}
+
+#if 0
+				t_i.alpha = mi_curr.alpha.x;
+#endif
+				t_i.material_id = mi_curr.material;
+				// t_i.material_id |= MATERIAL_FLAG_HANDEDNESS; // not sure
+				t_i.cluster = instance_buffer.model_cluster_id[instance_id];
+			}
+			else
+			{ /* model */
+				{
+					/* read and interpolate triangles for model for _current_ frame */
+					Triangle t			= get_model_triangle( mi_curr.model_index, idx, mi_curr.idx_offset, mi_curr.offset_curr );
+					Triangle t_prev		= get_model_triangle( mi_curr.model_index, idx, mi_curr.idx_offset, mi_curr.offset_prev );
+
+					float backlerp = mi_curr.backlerp;
+
+					t_i.positions[0] = mix(t.positions[0], t_prev.positions[0], backlerp);
+					t_i.positions[1] = mix(t.positions[1], t_prev.positions[1], backlerp);
+					t_i.positions[2] = mix(t.positions[2], t_prev.positions[2], backlerp);
+
+					t_i.normals[0] = mix(t.normals[0], t_prev.normals[0], backlerp);
+					t_i.normals[1] = mix(t.normals[1], t_prev.normals[1], backlerp);
+					t_i.normals[2] = mix(t.normals[2], t_prev.normals[2], backlerp);
+
+					t_i.tangents[0] = mix(t.tangents[0], t_prev.tangents[0], backlerp);
+					t_i.tangents[1] = mix(t.tangents[1], t_prev.tangents[1], backlerp);
+					t_i.tangents[2] = mix(t.tangents[2], t_prev.tangents[1], backlerp);
+	#if 0
+					t_i.alpha = mi_curr.alpha.x;
+	#endif
+					t_i.tex_coords0  = t.tex_coords0;
+
+					t_i.material_id = t.material_id | mi_curr.material;
+					t_i.cluster = instance_buffer.model_cluster_id[instance_id];
+				}
+
+				if(id_prev != ~0u)
+				{
+					/* read and interpolate triangles for model for _previous_ frame */
+					Triangle t = get_model_triangle(mi_prev.model_index, idx, mi_prev.idx_offset, mi_prev.offset_curr);
+					Triangle t_prev = get_model_triangle(mi_prev.model_index, idx, mi_prev.idx_offset, mi_prev.offset_prev);
+					M_prev = mi_prev.M;
+
+					float backlerp = mi_prev.backlerp;
+
+					t_i.positions_prev[0] = mix(t.positions[0], t_prev.positions[0], backlerp);
+					t_i.positions_prev[1] = mix(t.positions[1], t_prev.positions[1], backlerp);
+					t_i.positions_prev[2] = mix(t.positions[2], t_prev.positions[2], backlerp);
+				}
+				else
+				{
+					M_prev = M_curr;
+
+					t_i.positions_prev[0] = t_i.positions[0];
+					t_i.positions_prev[1] = t_i.positions[1];
+					t_i.positions_prev[2] = t_i.positions[2];
+				}		
+			}
+		}
+
+		t_i.positions[0] = vec3(M_curr * vec4(t_i.positions[0], 1.0));
+		t_i.positions[1] = vec3(M_curr * vec4(t_i.positions[1], 1.0));
+		t_i.positions[2] = vec3(M_curr * vec4(t_i.positions[2], 1.0));
+
+		t_i.positions_prev[0] = vec3(M_prev * vec4(t_i.positions_prev[0], 1.0));
+		t_i.positions_prev[1] = vec3(M_prev * vec4(t_i.positions_prev[1], 1.0));
+		t_i.positions_prev[2] = vec3(M_prev * vec4(t_i.positions_prev[2], 1.0));
+
+		t_i.normals[0] = vec3(M_curr * vec4(t_i.normals[0], 0.0));
+		t_i.normals[1] = vec3(M_curr * vec4(t_i.normals[1], 0.0));
+		t_i.normals[2] = vec3(M_curr * vec4(t_i.normals[2], 0.0));
+
+		t_i.tangents[0] = vec3(M_curr * vec4(t_i.tangents[0], 0.0));
+		t_i.tangents[1] = vec3(M_curr * vec4(t_i.tangents[1], 0.0));
+		t_i.tangents[2] = vec3(M_curr * vec4(t_i.tangents[2], 0.0));
+		
+#if 0
+		uint instance_triangle_id = pack_instance_id_triangle_idx(instance_id | (is_world ? VISBUF_WORLD_INSTANCE_FLAG : 0), idx);
+#else
+		uint instance_triangle_id = pack_instance_id_triangle_idx(instance_id | (0), idx);
+		store_instanced_triangle(t_i, instance_triangle_id, idx + buf_offset);
+#endif
+	}
+}

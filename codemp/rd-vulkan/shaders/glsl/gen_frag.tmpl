@@ -135,7 +135,11 @@ layout(location = 4) in vec2 fog_tex_coord;
 #ifdef USE_DF
 layout(depth_less) out float gl_FragDepth;
 #else
-layout(location = 0) out vec4 out_color;
+	#if defined(USE_GBUFFER) && defined(PER_PIXEL_LIGHTING)
+	layout(location = 0) out uvec4 out_color;
+	#else
+	layout(location = 0) out vec4 out_color;
+	#endif
 #endif
 
 #ifdef USE_ATEST
@@ -270,6 +274,187 @@ layout (constant_id = 8) const float identity_color = 1.0;
 		return cubeLightColor * (specular.rgb * EnvBRDF.x + EnvBRDF.y);
 	}
 #endif
+
+
+
+
+
+
+
+
+
+
+#if defined(USE_GBUFFER)
+	#define RGB9E5_EXPONENT_BITS          5
+	#define RGB9E5_MANTISSA_BITS          9
+	#define RGB9E5_EXP_BIAS               15
+	#define RGB9E5_MAX_VALID_BIASED_EXP   31
+
+	#define MAX_RGB9E5_EXP               ( RGB9E5_MAX_VALID_BIASED_EXP - RGB9E5_EXP_BIAS )
+	#define RGB9E5_MANTISSA_VALUES       ( 1<<RGB9E5_MANTISSA_BITS )
+	#define MAX_RGB9E5_MANTISSA          ( RGB9E5_MANTISSA_VALUES-1 )
+	#define MAX_RGB9E5                   ( (float(MAX_RGB9E5_MANTISSA))/RGB9E5_MANTISSA_VALUES * (1<<MAX_RGB9E5_EXP) )
+	#define EPSILON_RGB9E5               ( (1.0/RGB9E5_MANTISSA_VALUES) / (1<<RGB9E5_EXP_BIAS) )
+
+	float clamp_range_for_rgb9e5( float x ) 
+	{
+		return clamp( x, 0.0, MAX_RGB9E5 );
+	}
+
+	int floor_log2( float x ) 
+	{
+		uint f = floatBitsToUint( x );
+		uint biasedexponent = ( f & 0x7F800000u ) >> 23;
+		return int( biasedexponent ) - 127;
+	}
+
+
+	// https://www.khronos.org/registry/OpenGL/extensions/EXT/EXT_texture_shared_exponent.txt
+	uint float3_to_rgb9e5( vec3 rgb ) 
+	{
+		float rc = clamp_range_for_rgb9e5( rgb.x );
+		float gc = clamp_range_for_rgb9e5( rgb.y );
+		float bc = clamp_range_for_rgb9e5( rgb.z );
+
+		float maxrgb = max( rc, max( gc, bc ) );
+		int exp_shared = max( -RGB9E5_EXP_BIAS-1, floor_log2( maxrgb ) ) + 1 + RGB9E5_EXP_BIAS;
+		float denom = exp2( float( exp_shared - RGB9E5_EXP_BIAS - RGB9E5_MANTISSA_BITS ) );
+
+		int maxm = int( floor( maxrgb / denom + 0.5 ) );
+		if ( maxm == MAX_RGB9E5_MANTISSA + 1 ) {
+			denom *= 2;
+			exp_shared += 1;
+		}
+
+		int rm = int( floor( rc / denom + 0.5 ) );
+		int gm = int( floor( gc / denom + 0.5 ) );
+		int bm = int( floor( bc / denom + 0.5 ) );
+
+		return ( uint( rm ) << ( 32 - 9 ) )
+			|  ( uint( gm ) << ( 32 - 9 * 2 ) )
+			|  ( uint( bm ) << ( 32 - 9 * 3 ) )
+			| uint( exp_shared );
+	}
+
+	uint bitfield_extract( uint value, uint offset, uint bits ) 
+	{
+		uint mask = ( 1u << bits ) - 1u;
+		return ( value >> offset ) & mask;
+	}
+
+	vec3 rgb9e5_to_float3( uint v ) 
+	{
+		int exponent =
+			int( bitfield_extract( v, 0, RGB9E5_EXPONENT_BITS ) ) - RGB9E5_EXP_BIAS - RGB9E5_MANTISSA_BITS;
+		float scale = exp2( float( exponent ) );
+
+		return vec3(
+			float( bitfield_extract( v, 32 - RGB9E5_MANTISSA_BITS, RGB9E5_MANTISSA_BITS ) ) * scale,
+			float( bitfield_extract( v, 32 - RGB9E5_MANTISSA_BITS * 2, RGB9E5_MANTISSA_BITS ) ) * scale,
+			float( bitfield_extract( v, 32 - RGB9E5_MANTISSA_BITS * 3, RGB9E5_MANTISSA_BITS ) ) * scale
+		);
+	}
+
+	uint pack_unorm( float val, uint bitCount ) 
+	{
+		uint maxVal = ( 1u << bitCount ) - 1;
+		return uint( clamp( val, 0.0, 1.0 ) * maxVal + 0.5 );
+	}
+
+	float unpack_unorm( uint pckd, uint bitCount ) 
+	{
+		uint maxVal = ( 1u << bitCount ) - 1;
+		return float( pckd & maxVal ) / maxVal;
+	}
+
+	uint pack_color_888( vec3 color ) 
+	{
+		color = sqrt( color );
+		uint pckd = 0;
+		pckd += pack_unorm( color.x, 8 );
+		pckd += pack_unorm( color.y, 8 ) << 8;
+		pckd += pack_unorm( color.z, 8 ) << 16;
+		return pckd;
+	}
+
+	vec3 unpack_color_888( uint p ) 
+	{
+		vec3 color = vec3(
+			unpack_unorm( p, 8),
+			unpack_unorm( p >> 8, 8 ),
+			unpack_unorm( p >> 16, 8 )
+		);
+		return color * color;
+	}
+
+	float pack_normal_11_10_11( vec3 n ) 
+	{
+		uint pckd = 0;
+		pckd += pack_unorm( n.x * 0.5 + 0.5, 11 );
+		pckd += pack_unorm( n.y * 0.5 + 0.5, 10 ) << 11;
+		pckd += pack_unorm( n.z * 0.5 + 0.5, 11 ) << 21;
+		return uintBitsToFloat( pckd );
+	}
+
+	vec3 unpack_normal_11_10_11( float pckd ) 
+	{
+		uint p = floatBitsToUint( pckd );
+		return normalize( vec3(
+			unpack_unorm( p, 11 ),
+			unpack_unorm( p >> 11, 10 ),
+			unpack_unorm( p >> 21, 11 )
+		) * 2.0 - 1.0 );
+	}
+
+	float roughness_to_perceptual_roughness( float r ) 
+	{
+		return sqrt( r );
+	}
+
+	float perceptual_roughness_to_roughness( float r ) 
+	{
+		return r * r;
+	}
+
+	uvec4 pack_gbuffer(	in vec3 diffuse,
+						in vec3 specular,
+						in vec3 normal,
+						in float roughness,
+						in float ao )
+	{
+		vec4 res = 0.0.xxxx;
+
+		res.x = uintBitsToFloat( pack_color_888( diffuse ) );
+		res.y = pack_normal_11_10_11( normal );
+
+		vec2 roughness_ao = vec2( roughness_to_perceptual_roughness (roughness ), ao );
+
+		res.z = uintBitsToFloat( packUnorm2x16( roughness_ao ) );
+		res.w = uintBitsToFloat( float3_to_rgb9e5( specular ) );
+
+		return floatBitsToUint( res );
+	}
+
+	void unpack_gbuffer( in uvec4 gbuffer,
+						 out vec3 diffuse,
+						 out vec3 specular,
+						 out vec3 normal, 
+						 out float roughness,
+						 out float ao ) 
+	{
+		vec4 res = vec4( 0 );
+
+		diffuse = unpack_color_888( gbuffer.x );
+		normal = unpack_normal_11_10_11( uintBitsToFloat( gbuffer.y ) );
+
+		vec2 roughness_ao = unpackUnorm2x16( gbuffer.z );
+		roughness = perceptual_roughness_to_roughness( roughness_ao.x );
+		ao = roughness_ao.y;
+
+		specular = rgb9e5_to_float3( gbuffer.w );
+	}
+#endif
+
 
 void main() {
 	vec4 diffuse;
@@ -519,17 +704,6 @@ void main() {
 			attenuation = 1.0;
 		#endif
 
-		N = CalcNormal( var_Normal.xyz, frag_tex_coord0 );	
-
-		#if defined(USE_LIGHTMAP) || defined(USE_LIGHT_VERTEX)
-			ambientColor = lightColor;
-			float surfNL = clamp(dot(var_Normal.xyz, L), 0.0, 1.0);
-			lightColor /= max( surfNL, 0.25 );
-			ambientColor = max( ambientColor - lightColor * surfNL, 0.0 );
-		#endif
-
-		lightColor *= PI;
-
 		vec4 specular = vec4( 1.0 );
 		float roughness = 0.99;
 		float AO = 1.0;
@@ -553,6 +727,39 @@ void main() {
 			specular.rgb *= u_SpecularScale.xyz;
 			roughness = mix( 1.0, 0.01, specular.a * ( 1.0 - u_SpecularScale.w ) );
 		}
+
+		vec4 normal = var_Normal;
+#if defined(USE_GBUFFER)
+		uvec4 gbuffer = pack_gbuffer( 
+			diffuse.rgb,
+			specular.rgb,
+			normal.rgb,
+			roughness,
+			AO );
+
+		/*unpack_gbuffer( 
+			gbuffer, 
+			diffuse.rgb,
+			specular.rgb,
+			normal.rgb,
+			roughness,
+			AO );*/
+
+		out_color = gbuffer;
+#else
+
+
+
+		N = CalcNormal( normal.xyz, frag_tex_coord0 );	
+
+		#if defined(USE_LIGHTMAP) || defined(USE_LIGHT_VERTEX)
+			ambientColor = lightColor;
+			float surfNL = clamp(dot(normal.xyz, L), 0.0, 1.0);
+			lightColor /= max( surfNL, 0.25 );
+			ambientColor = max( ambientColor - lightColor * surfNL, 0.0 );
+		#endif
+
+		lightColor *= PI;
 
 
 		ambientColor *= AO;
@@ -586,7 +793,7 @@ void main() {
 				case 2 : out_color.rgb = specular.rgb; break;		
 				case 3 : out_color.rgb = vec3(roughness); break;
 				case 4 : out_color.rgb = vec3(AO); break;			// Ambient Occlusion		
-				case 5 : out_color.rgb = ( var_Normal.rgb * 0.5 + 0.5 ); break;		// Normals
+				case 5 : out_color.rgb = ( normal.rgb * 0.5 + 0.5 ); break;		// Normals
 				case 6 : out_color.rgb = ( N * 0.5 + 0.5 ); break;					// Normals + Normalmap
 				case 7 : out_color.rgb = L; break;					// Lightdir
 				case 8 : out_color.rgb = E; break;					// ViewDir
@@ -604,13 +811,17 @@ void main() {
 				case 20 : out_color.rgb = vec3(NH); break;
 				case 21 : out_color.rgb = vec3(VH); break;
 				case 22 : out_color.rgb = CalcIBLContribution( roughness, N, E, NE, specular.rgb * AO ); break;
+				#if defined(USE_GBUFFER)				
+					case 23 : out_color.rgb = gbuffer.rgb; break;
+				#endif
 			}
-		}	
+		}
+#endif
 	#else
 		out_color = base;
 	#endif
 
-	#if defined(USE_FOG)
+	#if defined(USE_FOG) && !defined(USE_GBUFFER)
 		out_color = mix( out_color, fog * fogColor, fog.a );
 	#endif
 

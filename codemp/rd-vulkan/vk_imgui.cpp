@@ -123,7 +123,7 @@ static void vk_imgui_draw_profiler( void )
 //
 // drawing methods
 //
-static qboolean imgui_draw_vec3_control( const char *label, vec3_t &values, float resetValue, float columnWidth ){
+static qboolean imgui_draw_vec3_control( const char *label, vec3_t &values, float resetValue, float speed, float columnWidth ){
 	// inspired by Hazel
 	// https://github.com/TheCherno/Hazel/blob/master/Hazelnut/src/Panels/SceneHierarchyPanel.cpp#L109
 	qboolean modified = qfalse;
@@ -157,7 +157,7 @@ static qboolean imgui_draw_vec3_control( const char *label, vec3_t &values, floa
 		ImGui::PopStyleColor( 3 );
 
 		ImGui::SameLine();
-		if( ImGui::DragFloat( "##X", &values[0], 0.1f, 0.0f, 0.0f, "%.2f" ) )
+		if( ImGui::DragFloat( "##X", &values[0], speed, 0.0f, 0.0f, "%.2f" ) )
 			modified = qtrue;
 		ImGui::PopItemWidth();
 		ImGui::SameLine();
@@ -176,7 +176,7 @@ static qboolean imgui_draw_vec3_control( const char *label, vec3_t &values, floa
 		ImGui::PopStyleColor( 3 );
 
 		ImGui::SameLine();
-		if( ImGui::DragFloat( "##Y", &values[1], 0.1f, 0.0f, 0.0f, "%.2f" ) )
+		if( ImGui::DragFloat( "##Y", &values[1], speed, 0.0f, 0.0f, "%.2f" ) )
 			modified = qtrue;
 		ImGui::PopItemWidth();
 		ImGui::SameLine();	
@@ -195,7 +195,7 @@ static qboolean imgui_draw_vec3_control( const char *label, vec3_t &values, floa
 		ImGui::PopStyleColor( 3 );
 
 		ImGui::SameLine();
-		if( ImGui::DragFloat( "##Z", &values[2], 0.1f, 0.0f, 0.0f, "%.2f" ) )
+		if( ImGui::DragFloat( "##Z", &values[2], speed, 0.0f, 0.0f, "%.2f" ) )
 			modified = qtrue;
 		ImGui::PopItemWidth();	
 	}
@@ -783,6 +783,9 @@ void vk_imgui_clear_inspector( qboolean reset )
 	Com_Memset( &inspector.entity, 0, sizeof(inspector.entity) );
 	Com_Memset( &inspector.node, 0, sizeof(inspector.node) );
 	Com_Memset( &inspector.surface, 0, sizeof(inspector.surface) );
+#ifdef USE_RTX
+	Com_Memset( &inspector.rtx_light_poly, 0, sizeof(inspector.rtx_light_poly) );
+#endif
 }
 
 // handler to set/update ptrs and info for the current object selected
@@ -846,12 +849,78 @@ static void vk_imgui_selected_object_handler( void )
 				
 				break;
 			}
+#ifdef USE_RTX
+			case OT_RTX_LIGHT_POLY:
+			{
+				inspector.rtx_light_poly.active = qtrue;
+				inspector.rtx_light_poly.light = (light_poly_t*)inspector.selected.ptr;
+				break;
+			}
+#endif
 		}
 
 		inspector.selected.prev = inspector.selected.ptr;
 		return;
 	}
 }
+
+#ifdef USE_RTX
+static void vk_rtx_imgui_draw_objects_lights_polys( void )
+{
+	uint32_t i;
+	ImGuiTreeNodeFlags flags;
+	light_poly_t *light;
+
+	flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap;
+
+	bool parentNode = ImGui::TreeNodeEx( "RTX Light polys", flags );
+
+	if ( !parentNode ) 
+		return;
+	
+	bool opened, selected;
+
+	for ( int nlight = 0; nlight < tr.world->num_light_polys; nlight++ )
+	{
+		selected = false;
+		light = tr.world->light_polys + nlight;
+
+		if ( !light )
+			break;
+
+		flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanAvailWidth;
+				
+		if ( inspector.selected.ptr == light )
+			selected = true;
+
+		if ( selected ) {
+			flags |= ImGuiTreeNodeFlags_Selected ;
+			ImGui::PushStyleColor( ImGuiCol_Text, ImVec4(0.99f, 0.42f, 0.01f, 1.0f) );
+		}
+
+		opened = ImGui::TreeNodeEx( (void*)light, flags, 
+			va("%d", light->cluster ) );
+
+		if ( ImGui::IsItemClicked() ) {
+			inspector.selected.type = OT_RTX_LIGHT_POLY;
+			inspector.selected.ptr = light;
+		}
+
+		if ( opened )
+			ImGui::TreePop();
+
+		if ( selected )
+			ImGui::PopStyleColor();	
+	}
+
+	ImGui::TreePop();
+}
+
+static void vk_rtx_imgui_draw_objects_lights( void ) 
+{
+	vk_rtx_imgui_draw_objects_lights_polys();
+}
+#endif
 
 static void vk_imgui_draw_objects( void ) 
 {
@@ -875,10 +944,14 @@ static void vk_imgui_draw_objects( void )
 			//vk_imgui_draw_objects_nodes();
 			vk_imgui_draw_objects_entities();
 			vk_imgui_draw_objects_flares();
+
+#ifdef USE_RTX
+			vk_rtx_imgui_draw_objects_lights();
+#endif
 		}
 
 		vk_imgui_draw_objects_shaders();
-		
+
 		ImGui::ListBoxFooter();
 	}
 	ImGui::PopStyleColor();
@@ -1301,6 +1374,54 @@ static void vk_imgui_draw_inspector_shader_visualize( int index ) {
 		return;
 	}
 
+#ifdef USE_RTX
+	// dirty hack to quickly test textures
+	{
+		rtx_material_t *mat;
+
+
+		mat = vk_rtx_get_material( (uint32_t)sh->index );
+
+
+		ImGuiBeginGroupPanel( va(ICON_FA_LAYER_GROUP " RTX material"), ImVec2( -1.0f, 0.0f ) );
+
+		ImGui::GetWindowDrawList()->ChannelsSplit( 3 );
+		ImGui::GetWindowDrawList()->ChannelsSetCurrent( 1 );
+
+		ImGui::PushItemWidth( ImGui::GetContentRegionAvail().x );
+		ImGui::BeginGroup();
+		ImGui::Dummy( ImVec2( ImGui::GetContentRegionAvail().x-10.0f, 0.0f ) );
+
+		ImVec2 padding = { 20.0f, 10.0f };
+		ImVec2 p0 = ImGui::GetCursorScreenPos();
+		ImGui::SetCursorScreenPos( p0 + padding );
+
+		{
+			ImGui::BeginGroup();
+			ImGui::Dummy( ImVec2( 0.0f, 1.0f ) );
+
+			vk_imgui_draw_inspector_shader_visualize_texture( tr.images[mat->albedo], va( "Albedo: %d", mat->albedo ) );
+
+			vk_imgui_draw_inspector_shader_visualize_texture( tr.images[mat->emissive], va( "Emissive: %d", mat->emissive ) );
+
+			ImGui::EndGroup();
+		}
+
+		ImGui::EndGroup();
+		ImVec2 p1 = ImGui::GetItemRectMax() + padding;
+			
+		ImGui::Dummy( ImVec2( 0.0f, padding.y ) );
+		p0.x += 10.0f;
+		p1.x -= 20.0f;
+			
+		ImGui::GetWindowDrawList()->ChannelsSetCurrent(0);
+		ImGui::GetWindowDrawList()->AddRectFilled( p0, p1, RGBA_LE(0x0f0f0fffu), 5.0f );
+		ImGui::GetWindowDrawList()->ChannelsMerge();
+
+		ImGuiEndGroupPanel( color_palette[0] );
+	}
+#endif
+
 	for ( i = 0; i < MAX_SHADER_STAGES; i++ ) 
 	{
 		pStage = sh->stages[i];
@@ -1530,7 +1651,7 @@ static void vk_imgui_draw_inspector_transform( void ) {
 		return;
 
 	if ( inspector.transform.origin )
-		imgui_draw_vec3_control( "Origin", *inspector.transform.origin, 0.0f, 100.0f );
+		imgui_draw_vec3_control( "Origin", *inspector.transform.origin, 0.0f, 0.1f, 100.0f );
 	
 	if ( inspector.transform.radius )
 		imgui_draw_text_column( "Radius",  va("%d", *inspector.transform.radius), 100.0f );
@@ -1847,10 +1968,10 @@ static void vk_imgui_draw_inspector_entity( void ) {
 		// lighting
 		if ( ImGui::BeginTabItem( "Lighting" ) ) 
 		{
-			imgui_draw_vec3_control( "lightDir", ent->lightDir, 0.0f, 100.0f );
-			imgui_draw_vec3_control( "modelLightDir", ent->modelLightDir, 0.0f, 100.0f );
-			imgui_draw_vec3_control( "directedLight", ent->directedLight, 0.0f, 100.0f );
-			imgui_draw_vec3_control( "shadowLightDir", ent->shadowLightDir, 0.0f, 100.0f );
+			imgui_draw_vec3_control( "lightDir", ent->lightDir, 0.0f, 0.1f, 100.0f );
+			imgui_draw_vec3_control( "modelLightDir", ent->modelLightDir, 0.0f, 0.1f, 100.0f );
+			imgui_draw_vec3_control( "directedLight", ent->directedLight, 0.0f, 0.1f, 100.0f );
+			imgui_draw_vec3_control( "shadowLightDir", ent->shadowLightDir, 0.0f, 0.1f, 100.0f );
 			
 			imgui_draw_colorpicker3( "ambientLight", ent->ambientLight );
 
@@ -1937,13 +2058,55 @@ static void vk_imgui_draw_inspector_node( void ) {
 	imgui_draw_text_column( "Contents", va("%d", node->contents), 100.0f );
 	imgui_draw_text_column( "Vis frame", va("%d", node->contents), 100.0f );
 	
-	imgui_draw_vec3_control( "Mins", node->mins, 0.0f, 100.0f );
-	imgui_draw_vec3_control( "Maxs", node->maxs, 0.0f, 100.0f );
+	imgui_draw_vec3_control( "Mins", node->mins, 0.0f, 0.1f, 100.0f );
+	imgui_draw_vec3_control( "Maxs", node->maxs, 0.0f, 0.1f, 100.0f );
 
 	imgui_draw_text_column( "nummarksurfaces", va("%d", node->nummarksurfaces), 100.0f );
 
 	ImGui::TreePop();
 }
+
+#ifdef USE_RTX
+static void vk_imgui_draw_inspector_rtx_light_poly( void ) {
+	if ( !inspector.rtx_light_poly.active )
+		return;
+
+	light_poly_t *light = inspector.rtx_light_poly.light;
+
+	if ( !light )
+		return;
+
+	ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
+	bool opened = ImGui::TreeNodeEx((void*)typeid(inspector.shader).hash_code(), flags, ICON_FA_FILL_DRIP " Light poly");
+
+	if ( !opened )
+		return;
+
+	ImGui::Text( va("Cluster: %d", light->cluster) );
+	ImGui::Text( va("Style: %d", light->style) );
+
+	ImGui::Separator();
+
+	vec3_t *pos1 = (vec3_t*)light->positions + 0;
+	vec3_t *pos2 = (vec3_t*)light->positions + 3;
+	vec3_t *pos3 = (vec3_t*)light->positions + 6;
+
+	imgui_draw_vec3_control( "Vertex 1", *pos1, 0.0f, 0.1f, 100.0f );
+	imgui_draw_vec3_control( "Vertex 2", *pos2, 0.0f, 0.1f, 100.0f );
+	imgui_draw_vec3_control( "Vertex 3", *pos3, 0.0f, 0.1f, 100.0f );
+
+	ImGui::Separator();
+
+	imgui_draw_vec3_control( "Off center", light->off_center, 0.0f, 0.1f, 100.0f );
+
+	if ( imgui_draw_colorpicker3( "ambientLight", light->color ) )
+	{
+
+	}
+
+	ImGui::TreePop();
+}
+#endif
 
 static void vk_imgui_draw_inspector( void ) {
 	ImGui::PushStyleVar( ImGuiStyleVar_WindowPadding, ImVec2{ 4.0f, 10.0f } );
@@ -1954,6 +2117,9 @@ static void vk_imgui_draw_inspector( void ) {
 		vk_imgui_draw_inspector_entity();
 		vk_imgui_draw_inspector_node();
 		vk_imgui_draw_inspector_node_surface();
+#ifdef USE_RTX
+		vk_imgui_draw_inspector_rtx_light_poly();
+#endif
 	}
 
 	vk_imgui_draw_inspector_shader();
@@ -2083,6 +2249,12 @@ static void vk_imgui_draw_bar_status( ImGuiIO &io, ImGuiViewportP *viewport )
 			ImGui::Text( va("[F1] Input %s", ( imguiGlobal.input_state ? "enabled" : "disabled" ) ) );
 			ImGui::SameLine( 225 );
 			ImGui::Text( "Mouse x:%d y:%d", (int)io.MousePos.x, (int)io.MousePos.y );
+			ImGui::SameLine( 425 );
+			ImGui::Text( "Origin x:%d y:%d z:%d", 
+				(int)backEnd.viewParms.ori.origin[0], 
+				(int)backEnd.viewParms.ori.origin[1], 
+				(int)backEnd.viewParms.ori.origin[2] );
+
 			ImGui::EndMenuBar();
 		}
 		ImGui::End();
@@ -2098,6 +2270,230 @@ static inline void vk_imgui_draw_bars( void )
 	//vk_imgui_draw_bar_tools( io, viewport );
 	vk_imgui_draw_bar_status( io, viewport );
 }
+
+#ifdef USE_RTX
+
+// cvars
+#define UBO_CVAR_DO( _handle, _value ) static float value_sun_##_handle = _value;
+	UBO_CVAR_LIST
+#undef UBO_CVAR_DO
+static float value_pt_caustics;
+static float value_pt_dof;
+static float value_pt_projection;
+
+static float value_sun_elevation;
+static float value_sun_azimuth;
+static float value_sun_latitude;
+static float value_sun_angle;
+static float value_sun_bounce;
+static float value_sun_brightness;
+static vec3_t value_sun_color;
+
+static float value_sun_preset;
+static float value_sun_animate;
+
+
+static float value_sky_transmittance;
+static float value_sky_phase_g;
+static float value_sky_amb_phase_g;
+static float value_sky_scattering;
+static float value_physical_sky_draw_clouds;
+
+void vk_imgui_bind_rtx_cvars( void ) 
+{
+	value_pt_caustics		= pt_caustics->integer;
+	value_pt_dof			= pt_dof->integer;
+	value_pt_projection		= pt_projection->integer;
+
+	value_sun_elevation		= sun_elevation->integer;
+	value_sun_azimuth		= sun_azimuth->integer;
+	value_sun_latitude		= sun_latitude->integer;
+	value_sun_angle			= sun_angle->integer;
+	value_sun_bounce		= sun_bounce->integer;
+	value_sun_brightness	= sun_brightness->integer;
+	value_sun_color[0]		= sun_color[0]->value;
+	value_sun_color[1]		= sun_color[1]->value;
+	value_sun_color[2]		= sun_color[2]->value;
+
+	value_sun_preset		= sun_preset->value;
+	value_sun_animate		= sun_animate->value;
+
+	value_sky_transmittance	= sky_transmittance->value;
+	value_sky_phase_g		= sky_phase_g->value;
+	value_sky_amb_phase_g	= sky_amb_phase_g->value;
+	value_sky_scattering	= sky_scattering->value;
+
+	value_physical_sky_draw_clouds	= physical_sky_draw_clouds->value;
+}
+
+static void vk_imgui_draw_rtx_sun_presets( void )
+{
+	static const char *current_sun_preset;
+	
+	current_sun_preset = rtx_sun_presets[ sun_preset->integer ];
+
+	ImGui::SetNextItemWidth( 200 );
+
+	ImGui::PushStyleColor( ImGuiCol_FrameBg , ImVec4(0.00f, 0.00f, 0.00f, 1.00f) );
+	if ( ImGui::BeginCombo( "##RTXSunPresetInspector", current_sun_preset, ImGuiComboFlags_HeightLarge ) )
+	{
+		for ( uint32_t n = 0; n < IM_ARRAYSIZE( rtx_sun_presets ); n++ )
+		{
+			bool is_selected = ( current_sun_preset == rtx_sun_presets[n] );
+
+			if ( ImGui::Selectable( rtx_sun_presets[n], is_selected ) ) {
+				ri.Cvar_Set( "sun_preset", va( "%d", n ) );
+			}
+
+			if ( is_selected )
+				ImGui::SetItemDefaultFocus();
+		}
+		ImGui::EndCombo();
+	}
+	ImGui::PopStyleColor();
+}
+
+static void vk_imgui_draw_rtx_settings_light( void ) 
+{
+	qboolean modified = qfalse;
+
+	if ( !tr.world )
+		return;
+
+	if ( sun_preset->integer == SUN_PRESET_NONE )
+	{
+		if ( ImGui::DragFloat( "sun_elevation", &value_sun_elevation, 0.5f, 0.0f, 0.0f, "%.2f" ) )
+			ri.Cvar_Set( "sun_elevation", va( "%f", value_sun_elevation ) );
+
+		if ( ImGui::DragFloat( "sun_azimuth", &value_sun_azimuth, 0.5f, 0.0f, 0.0f, "%.2f" ) )
+			ri.Cvar_Set( "sun_azimuth", va( "%f", value_sun_azimuth ) );
+
+		if ( ImGui::DragFloat( "sun_latitude", &value_sun_latitude, 0.5f, 0.0f, 0.0f, "%.2f" ) )
+			ri.Cvar_Set( "sun_latitude", va( "%f", value_sun_latitude ) );
+	}
+
+	ImGui::Separator();
+
+	if ( ImGui::DragFloat( "sun_angle", &value_sun_angle, 0.5f, 0.0f, 0.0f, "%.2f" ) )
+		ri.Cvar_Set( "sun_angle", va( "%f", value_sun_angle ) );
+
+	if ( ImGui::DragFloat( "sun_bounce", &value_sun_bounce, 0.1f, 0.0f, 0.0f, "%.2f" ) )
+		ri.Cvar_Set( "sun_bounce", va( "%f", value_sun_bounce ) );
+
+	if ( ImGui::DragFloat( "sun_brightness", &value_sun_brightness, 0.1f, 0.0f, 0.0f, "%.2f" ) )
+		ri.Cvar_Set( "sun_brightness", va( "%f", value_sun_brightness ) );
+
+	ImGui::Separator();
+
+	if ( ImGui::DragFloat( "sky_transmittance", &value_sky_transmittance, 0.1f, 0.0f, 0.0f, "%.2f" ) )
+		ri.Cvar_Set( "sky_transmittance", va( "%f", value_sky_transmittance ) );
+
+	if ( ImGui::DragFloat( "sky_phase_g", &value_sky_phase_g, 0.1f, 0.0f, 0.0f, "%.2f" ) )
+		ri.Cvar_Set( "sky_phase_g", va( "%f", value_sky_phase_g ) );
+	
+	if ( ImGui::DragFloat( "sky_amb_phase_g", &value_sky_amb_phase_g, 0.1f, 0.0f, 0.0f, "%.2f" ) )
+		ri.Cvar_Set( "sky_amb_phase_g", va( "%f", value_sky_amb_phase_g ) );
+
+	if ( ImGui::DragFloat( "sky_scattering", &value_sky_scattering, 0.1f, 0.0f, 0.0f, "%.2f" ) )
+		ri.Cvar_Set( "sky_scattering", va( "%f", value_sky_scattering ) );
+
+	if ( ImGui::DragFloat( "draw_clouds", &value_physical_sky_draw_clouds, 0.5f, 0.0f, 0.0f, "%.2f" ) )
+		ri.Cvar_Set( "draw_clouds", va( "%f", value_physical_sky_draw_clouds ) );
+
+	ImGui::Separator();
+
+	vk_imgui_draw_rtx_sun_presets();
+
+	if ( ImGui::DragFloat( "sun_animate", &value_sun_animate, 0.001f, 0.0f, 0.0f, "%.4f" ) )
+		ri.Cvar_Set( "sun_animate", va( "%f", value_sun_animate ) );
+
+	ImGui::Separator();
+
+	if ( imgui_draw_colorpicker3( "ambientLight", value_sun_color ) )
+	{
+		ri.Cvar_Set( "sun_color_r", va( "%f", value_sun_color[0] / 255.0f ) );
+		ri.Cvar_Set( "sun_color_g", va( "%f", value_sun_color[1] / 255.0f ) );
+		ri.Cvar_Set( "sun_color_b", va( "%f", value_sun_color[2] / 255.0f ) );
+
+		physical_sky_cvar_changed();	// other sun cvars are handled with modified state.
+	}
+
+	ImGui::Separator();
+	if ( ImGui::Button( ICON_FA_UNDO " TEST", ImVec2{ 70, 30 } ) ) {
+		vk_rtx_destroy_shaders();
+	}
+
+	ImGui::Separator();
+}
+
+static void vk_imgui_draw_rtx_settings_cvars( void )  
+{
+	if ( ImGui::DragFloat( "pt_caustics", &value_pt_caustics, 0.1f, 0.0f, 0.0f, "%.2f" ) )
+		ri.Cvar_Set( "pt_caustics", va( "%f", value_pt_caustics ) );
+
+	if ( ImGui::DragFloat( "pt_dof", &value_pt_dof, 0.1f, 0.0f, 0.0f, "%.2f" ) )
+		ri.Cvar_Set( "pt_dof", va( "%f", value_pt_dof ) );
+
+	if ( ImGui::DragFloat( "pt_projection", &value_pt_projection, 0.1f, 0.0f, 0.0f, "%.2f" ) )
+		ri.Cvar_Set( "pt_projection", va( "%f", value_pt_projection ) );
+
+	// created from macros, float only
+	#define UBO_CVAR_DO( _handle, _value ) \
+		if ( ImGui::DragFloat( #_handle, &value_sun_##_handle, 0.1f, 0.0f, 0.0f, "%.2f" ) ) \
+			ri.Cvar_Set( #_handle, va( "%f", value_sun_##_handle ) );
+		UBO_CVAR_LIST
+	#undef UBO_CVAR_DO
+}
+
+static void vk_imgui_draw_rtx_settings( void ) 
+{
+	ImGui::PushStyleVar( ImGuiStyleVar_WindowPadding, ImVec2{ 4.0f, 10.0f } );
+	ImGui::Begin( "RTX Settings##Object" );
+
+	vk_imgui_draw_rtx_settings_light();
+	vk_imgui_draw_rtx_settings_cvars();
+
+	ImGui::End();
+	ImGui::PopStyleVar();
+}
+
+static void vk_imgui_draw_rtx_feedback( void ) 
+{
+	if ( !vk.rtxActive )
+		return;
+
+	ImGui::PushStyleVar( ImGuiStyleVar_WindowPadding, ImVec2{ 4.0f, 10.0f } );
+	ImGui::Begin( "RTX Feedback##Window" );
+
+	{
+		ImGui::Text( va("View cluster: %d / %d", backEnd.refdef.feedback.viewcluster, vk.numClusters) );
+		ImGui::Text( va("Look at cluster: %d / %d", backEnd.refdef.feedback.lookatcluster, vk.numClusters) );
+
+		ImGui::Separator();
+
+		ImGui::Text( va("View material: %s", backEnd.refdef.feedback.view_material) );
+		ImGui::Text( va("View material override: %s", backEnd.refdef.feedback.view_material_override) );
+	
+		ImGui::Separator();
+
+		ImGui::Text( va("Resolution scale: %d", backEnd.refdef.feedback.resolution_scale) );
+		ImGui::Text( va("Num light polys: %d", backEnd.refdef.feedback.num_light_polys) );
+
+		ImGui::Separator();
+
+		ImGui::ColorEdit4("HDR color##3", (float*)&backEnd.refdef.feedback.hdr_color, 
+			ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel | 
+			ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoPicker );
+
+		ImGui::Separator();
+		ImGui::Text( va("Sun luminance: %f", backEnd.refdef.feedback.sun_luminance) );
+		ImGui::Text( va("Adapted luminance: %f", backEnd.refdef.feedback.adapted_luminance) );
+	}
+
+	ImGui::End();
+	ImGui::PopStyleVar();
+}
+#endif
 
 static void vk_imgui_draw_viewport( void ) {
 	if ( !windows.viewport.p_open )
@@ -2139,9 +2535,51 @@ static void vk_imgui_draw_viewport( void ) {
 	ImGui::PopStyleVar();
 
 	ImGui::SetCursorScreenPos( ImVec2( pos.x + region.x - 205.0f, pos.y + 4.0f ) );
+
+#ifdef USE_RTX
+	if ( vk.rtxActive )  
+	{
+		uint32_t index;
+
+		vk_imgui_draw_render_mode( rtx_render_modes, NUM_TOTAL_RENDER_MODES_RTX );
+
+		if ( inspector.render_mode.index < NUM_BOUND_RENDER_MODES_RTX )
+		{
+			if ( inspector.render_mode.index > 0 )
+				index = 1; // FLAT_COLOR;
+			else 
+				index = 0; // TAA_OUTPUT + TONEMAPPING;
+
+			ImGui::Image( (ImU64)inspector.render_mode.rtx_image.bound[index], 
+				{ (float)gls.windowWidth, (float)gls.windowHeight } );
+		}
+
+		// unbound images in the rtx or compute descriptors will have to be drawn directly
+		else
+		{
+			VkDescriptorSet *image = &inspector.render_mode.rtx_image.unbound[SHADOW_MAP_RENDER_MODE_RTX];
+			if ( *image == NULL )
+			{
+				VkImageView shadow_image_view;
+				VkSampler shadow_sampler;
+				vk_rtx_get_god_rays_shadowmap( shadow_image_view, shadow_sampler );
+				*image = ImGui_ImplVulkan_AddTexture( shadow_sampler, shadow_image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL );
+			}
+
+			index = ( inspector.render_mode.index - NUM_BOUND_RENDER_MODES_RTX);
+
+			ImGui::Image( (ImU64)inspector.render_mode.rtx_image.unbound[index], 
+				{ (float)gls.windowWidth, (float)gls.windowHeight } );
+		}
+
+		return ImGui::End();
+	} 
+#endif
+
 	vk_imgui_draw_render_mode( render_modes, IM_ARRAYSIZE( render_modes ) );
 
 	ImGui::Image( (ImU64)inspector.render_mode.image, { (float)gls.windowWidth, (float)gls.windowHeight } );
+
 	ImGui::End();
 }
 
@@ -2159,12 +2597,37 @@ static void vk_imgui_bind_game_color_image( void ) {
 	sd.noAnisotropy = qtrue;
 
 	sampler = vk_find_sampler(&sd);
-
 	inspector.render_mode.image = ImGui_ImplVulkan_AddTexture( sampler, vk.gamma_image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL );
 }
 
+#ifdef USE_RTX
+void vk_imgui_bind_rtx_draw_image( void )
+{
+	if ( !vk.rtxActive ) 
+		return;
+
+	uint32_t i, j;
+	Vk_Sampler_Def sd;
+	VkSampler	sampler;
+
+	Com_Memset(&sd, 0, sizeof(sd));
+	sd.gl_mag_filter = sd.gl_min_filter = vk.blitFilter;
+	sd.address_mode = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	sd.max_lod_1_0 = qtrue;
+	sd.noAnisotropy = qtrue;
+	
+	sampler = vk_find_sampler( &sd );
+
+	inspector.render_mode.rtx_image.bound[0] = inspector.render_mode.image;	// blitted to color_image
+	inspector.render_mode.rtx_image.bound[1] = ImGui_ImplVulkan_AddTexture( sampler, vk.rtx_images[RTX_IMG_FLAT_COLOR].view, VK_IMAGE_LAYOUT_GENERAL );
+}
+#endif
+
 void vk_imgui_swapchain_restarted( void ) {
 	vk_imgui_bind_game_color_image();
+#ifdef USE_RTX
+	vk_imgui_bind_rtx_draw_image();
+#endif
 
 	glConfig.vidWidth = (int)windows.viewport.size.x;
     glConfig.vidHeight = (int)windows.viewport.size.y - 46.0f;
@@ -2209,6 +2672,10 @@ static void vk_imgui_create_gui( void )
 
 		// render image
 		vk_imgui_bind_game_color_image();
+	#ifdef USE_RTX
+		vk_imgui_bind_rtx_draw_image();
+		vk_imgui_bind_rtx_cvars();
+	#endif
 
 		inspector.init = qtrue;
 	}
@@ -2222,7 +2689,10 @@ static void vk_imgui_create_gui( void )
 	vk_imgui_draw_shader_editor();
 	vk_imgui_draw_profiler();
 	vk_imgui_draw_viewport();
-
+#ifdef USE_RTX
+	vk_imgui_draw_rtx_settings();
+	vk_imgui_draw_rtx_feedback();
+#endif
 	ImGui::End();
 }
 
@@ -2440,6 +2910,18 @@ void vk_imgui_shutdown( void )
 	Com_Memset( &imguiGlobal, 0, sizeof(imguiGlobal) );
 
 	ImGui_ImplVulkan_RemoveTexture( inspector.render_mode.image );
+
+#ifdef USE_RTX
+	uint32_t i;
+
+	ImGui_ImplVulkan_RemoveTexture( inspector.render_mode.rtx_image.bound[0] );
+	ImGui_ImplVulkan_RemoveTexture( inspector.render_mode.rtx_image.bound[1] );
+
+	for ( i = 0; i < NUM_UNBOUND_RENDER_MODES_RTX; i++ ) 
+	{
+		ImGui_ImplVulkan_RemoveTexture( inspector.render_mode.rtx_image.unbound[i] );
+	}	
+#endif
 }
 
 static void vk_imgui_get_input_state( void )

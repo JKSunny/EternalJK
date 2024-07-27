@@ -128,9 +128,38 @@ set(MPVulkanRendererFiles ${MPVulkanRendererFiles} ${MPVulkanRendererVulkanAsset
 
 set(MPVulkanRendererUtils
 	"${MPDir}/rd-vulkan/utils/stb_dxt.h"
+	"${MPDir}/rd-vulkan/utils/stb_image.h"
 	"${MPDir}/rd-vulkan/utils/legit-profiler/imgui_legit_profiler.h")
 source_group("renderer\\utils" FILES ${MPVulkanRendererUtils})
 set(MPVulkanRendererFiles ${MPVulkanRendererFiles} ${MPVulkanRendererUtils})
+
+set(MPVulkanRendererRTX
+	"${MPDir}/rd-vulkan/rtx/vk_rtx.h"
+	"${MPDir}/rd-vulkan/rtx/vk_rtx.cpp"
+	"${MPDir}/rd-vulkan/rtx/vk_rtx_as.cpp"
+	"${MPDir}/rd-vulkan/rtx/vk_rtx_asvgf.h"
+	"${MPDir}/rd-vulkan/rtx/vk_rtx_asvgf.cpp"
+	"${MPDir}/rd-vulkan/rtx/vk_rtx_buffer.cpp"
+	"${MPDir}/rd-vulkan/rtx/vk_rtx_bsp.cpp"
+	"${MPDir}/rd-vulkan/rtx/vk_rtx_descriptor.cpp"
+	"${MPDir}/rd-vulkan/rtx/vk_rtx_god_rays.cpp"
+	"${MPDir}/rd-vulkan/rtx/vk_rtx_physical_sky.h"
+	"${MPDir}/rd-vulkan/rtx/vk_rtx_physical_sky.cpp"
+	"${MPDir}/rd-vulkan/rtx/vk_rtx_material.cpp"
+	"${MPDir}/rd-vulkan/rtx/vk_rtx_matrix.cpp"
+	"${MPDir}/rd-vulkan/rtx/vk_rtx_model.cpp"
+	"${MPDir}/rd-vulkan/rtx/vk_rtx_pipelines.cpp"
+	"${MPDir}/rd-vulkan/rtx/vk_rtx_precomputed_sky.h"
+	"${MPDir}/rd-vulkan/rtx/vk_rtx_precomputed_sky.cpp"
+	"${MPDir}/rd-vulkan/rtx/vk_rtx_shader.cpp"
+	"${MPDir}/rd-vulkan/rtx/vk_rtx_shade.cpp"
+	"${MPDir}/rd-vulkan/rtx/vk_rtx_shadow_map.cpp"
+	"${MPDir}/rd-vulkan/rtx/vk_rtx_tonemap.cpp"
+	"${MPDir}/rd-vulkan/rtx/vk_rtx_tonemap.h"
+	"${MPDir}/rd-vulkan/rtx/vk_rtx_uniform.cpp"
+	"${MPDir}/rd-vulkan/rtx/vk_rtx_image.cpp")
+source_group("renderer\\rtx" FILES ${MPVulkanRendererRTX})
+set(MPVulkanRendererFiles ${MPVulkanRendererFiles} ${MPVulkanRendererRTX})
 
 set(MPVulkanRendererCommonFiles
 	"${MPDir}/qcommon/matcomp.cpp"

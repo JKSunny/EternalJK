@@ -263,6 +263,9 @@ typedef struct refEntity_s {
 	float		endTime;
 	float		saberLength;
 
+//#ifdef USE_RTX
+	int			id;
+//#endif
 /*
 Ghoul2 Insert Start
 */

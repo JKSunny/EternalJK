@@ -180,6 +180,19 @@ void vk_create_pipeline_layout( void )
     VK_CHECK(qvkCreatePipelineLayout(vk.device, &desc, NULL, &vk.pipeline_layout));
     VK_SET_OBJECT_NAME(vk.pipeline_layout, "pipeline layout - main", VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT);
 
+#ifdef USE_GBUFFER_COMPOSE
+    set_layouts[0] = vk.set_layout_sampler; // sampler
+    set_layouts[1] = vk.set_layout_sampler; // sampler
+
+    desc.setLayoutCount = 1;
+    desc.pushConstantRangeCount = 0;
+    desc.pPushConstantRanges = NULL;
+
+    desc.pSetLayouts = set_layouts;
+    VK_CHECK(qvkCreatePipelineLayout(vk.device, &desc, NULL, &vk.pipeline_layout_composition));
+    VK_SET_OBJECT_NAME(vk.pipeline_layout_composition, "pipeline layout - composition", VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT);
+#endif
+
     // flare test pipeline
    /* set_layouts[0] = vk.set_layout; // dynamic storage buffer
     desc.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -1282,8 +1295,10 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
         create_info.renderPass = vk.render_pass.screenmap;
     else if ( renderPassIndex == RENDER_PASS_REFRACTION )
         create_info.renderPass = vk.render_pass.refraction.extract;
-    else if ( renderPassIndex == RENDER_PASS_CUBEMAP )
-        create_info.renderPass = vk.render_pass.cubemap;
+#ifdef USE_GBUFFER
+    else if ( renderPassIndex == RENDER_PASS_GBUFFER )
+        create_info.renderPass = vk.render_pass.gbuffer;
+#endif
     else
         create_info.renderPass = vk.render_pass.main;
 
@@ -1380,6 +1395,17 @@ static void vk_create_post_process_pipeline( int program_index, uint32_t width, 
             layout = vk.pipeline_layout_brdflut;
             samples = VK_SAMPLE_COUNT_1_BIT;
             pipeline_name = "brdf LUT pipeline";
+            blend = qfalse;
+            break;
+#endif
+#ifdef USE_RTX
+        case 6: // rtx final blit lancoz
+            pipeline = &vk.pipeline_final_blit;
+            fs_module = vk.final_blit_shader_frag->modules[0];
+            renderpass = vk.render_pass.rtx_final_blit.blit;
+            layout = vk.rt_pipeline.layout;
+            samples = VK_SAMPLE_COUNT_1_BIT;
+            pipeline_name = "rtx final blit lancoz";
             blend = qfalse;
             break;
 #endif
@@ -1619,6 +1645,231 @@ static void vk_create_post_process_pipeline( int program_index, uint32_t width, 
     VK_CHECK( qvkCreateGraphicsPipelines( vk.device, VK_NULL_HANDLE, 1, &create_info, NULL, pipeline ) );
     VK_SET_OBJECT_NAME( *pipeline, pipeline_name, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT );
 }
+
+
+#ifdef USE_GBUFFER
+// keep this as "mergable" with vk_create_post_process_pipeline() 
+// as possible for future refactoring
+static void vk_create_pipeline_ext( int program_index, const char *name,
+    uint32_t width, uint32_t height)
+{
+    VkPipelineShaderStageCreateInfo shader_stages[2];
+    VkPipelineVertexInputStateCreateInfo vertex_input_state;
+    VkPipelineInputAssemblyStateCreateInfo input_assembly_state;
+    VkPipelineRasterizationStateCreateInfo rasterization_state;
+    VkPipelineDepthStencilStateCreateInfo depth_stencil_state;
+    VkPipelineViewportStateCreateInfo viewport_state;
+    VkPipelineMultisampleStateCreateInfo multisample_state;
+    VkPipelineColorBlendStateCreateInfo blend_state;
+    VkPipelineColorBlendAttachmentState attachment_blend_state[2] = {};
+    VkPipelineDynamicStateCreateInfo dynamic_state;
+    VkDynamicState dynamic_state_array[2] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+    VkGraphicsPipelineCreateInfo create_info;
+    VkRenderPass        renderpass;
+    VkPipelineLayout    layout;
+    VkPipeline          *pipeline;
+    VkViewport          viewport;
+    VkRect2D            scissor;
+
+    //
+    // Viewport.
+    //
+    {
+        viewport.x = 0.0;
+        viewport.y = 0.0;
+        viewport.width = width;
+        viewport.height = height;
+        viewport.minDepth = 0.0;
+        viewport.maxDepth = 1.0;
+
+        scissor.offset.x = viewport.x;
+        scissor.offset.y = viewport.y;
+        scissor.extent.width = viewport.width;
+        scissor.extent.height = viewport.height;
+
+        viewport_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+        viewport_state.pNext = NULL;
+        viewport_state.flags = 0;
+        viewport_state.viewportCount = 1;
+        viewport_state.pViewports = &viewport;
+        viewport_state.scissorCount = 1;
+        viewport_state.pScissors = &scissor;
+    }
+
+    //
+    // Primitive assembly.
+    //
+    {
+        input_assembly_state.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+        input_assembly_state.pNext = NULL;
+        input_assembly_state.flags = 0;
+        input_assembly_state.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        input_assembly_state.primitiveRestartEnable = VK_FALSE;
+    }
+
+    //
+    // Rasterization.
+    //
+    {
+        rasterization_state.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+        rasterization_state.pNext = NULL;
+        rasterization_state.flags = 0;
+        rasterization_state.depthClampEnable = VK_FALSE;
+        rasterization_state.rasterizerDiscardEnable = VK_FALSE;
+        rasterization_state.polygonMode = VK_POLYGON_MODE_FILL;
+        rasterization_state.cullMode = VK_CULL_MODE_FRONT_BIT;
+        //rasterization_state.frontFace = VK_FRONT_FACE_CLOCKWISE; // Q3 defaults to clockwise vertex order
+        rasterization_state.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE; // Q3 defaults to clockwise vertex order
+        rasterization_state.depthBiasEnable = VK_FALSE;
+        rasterization_state.depthBiasConstantFactor = 0.0f;
+        rasterization_state.depthBiasClamp = 0.0f;
+        rasterization_state.depthBiasSlopeFactor = 0.0f;
+        rasterization_state.lineWidth = 1.0f;
+    }
+
+    //
+    // Attachment state
+    //
+    {
+        Com_Memset(&attachment_blend_state, 0, sizeof(attachment_blend_state));
+
+        attachment_blend_state[0].blendEnable = VK_FALSE;
+        attachment_blend_state[0].colorWriteMask = 0xf;
+
+        attachment_blend_state[1].blendEnable = VK_FALSE;
+        attachment_blend_state[1].colorWriteMask = 0xf;
+    }
+
+    //
+    // Blend state
+    //
+    {
+        blend_state.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+        blend_state.pNext = NULL;
+        blend_state.flags = 0;
+        blend_state.logicOpEnable = VK_FALSE;
+        blend_state.logicOp = VK_LOGIC_OP_COPY;
+        blend_state.attachmentCount = 1;
+        blend_state.pAttachments = attachment_blend_state;
+        blend_state.blendConstants[0] = 0.0f;
+        blend_state.blendConstants[1] = 0.0f;
+        blend_state.blendConstants[2] = 0.0f;
+        blend_state.blendConstants[3] = 0.0f;
+
+    }
+
+    //
+    // Depth stencil state
+    //
+    {
+        Com_Memset(&depth_stencil_state, 0, sizeof(depth_stencil_state));
+        depth_stencil_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+        depth_stencil_state.pNext = NULL;
+        depth_stencil_state.flags = 0;
+        depth_stencil_state.depthTestEnable = VK_TRUE;
+        depth_stencil_state.depthWriteEnable = VK_TRUE;
+        depth_stencil_state.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+        depth_stencil_state.back.compareOp = VK_COMPARE_OP_ALWAYS; // missing in other pipeline. ok?
+    }
+
+    //
+    // Multisample state
+    //
+    {
+        multisample_state.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+        multisample_state.pNext = NULL;
+        multisample_state.flags = 0;
+        multisample_state.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+        multisample_state.sampleShadingEnable = VK_FALSE;
+        multisample_state.minSampleShading = 1.0f;
+        multisample_state.pSampleMask = NULL;
+        multisample_state.alphaToCoverageEnable = VK_FALSE;
+        multisample_state.alphaToOneEnable = VK_FALSE;
+    }
+
+    //
+    // Dynamic state
+    //
+    {
+        dynamic_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+        dynamic_state.pNext = NULL;
+        dynamic_state.flags = 0;
+        dynamic_state.dynamicStateCount = ARRAY_LEN(dynamic_state_array);
+        dynamic_state.pDynamicStates = dynamic_state_array;
+    }
+
+    //
+    // Vertex input state
+    //
+    {
+        vertex_input_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        vertex_input_state.pNext = NULL;
+        vertex_input_state.flags = 0;
+        vertex_input_state.vertexBindingDescriptionCount = 0;
+        vertex_input_state.pVertexBindingDescriptions = NULL;
+        vertex_input_state.vertexAttributeDescriptionCount = 0;
+        vertex_input_state.pVertexAttributeDescriptions = NULL;
+    }
+
+    //
+    // Shader stage
+    //
+    switch (program_index) {
+#ifdef USE_GBUFFER_COMPOSE
+        case 1:
+            layout = vk.pipeline_layout_composition;
+            renderpass = vk.render_pass.composition;
+            pipeline = &vk.composition_pipeline;
+            set_shader_stage_desc(shader_stages + 0, VK_SHADER_STAGE_VERTEX_BIT, vk.shaders.composition_vs, "main");
+            set_shader_stage_desc(shader_stages + 1, VK_SHADER_STAGE_FRAGMENT_BIT, vk.shaders.composition_fs, "main");
+            break;
+#endif
+        default:
+            return;
+    }
+
+    if (*pipeline != VK_NULL_HANDLE) {
+        vk_wait_idle();
+        qvkDestroyPipeline(vk.device, *pipeline, NULL);
+        *pipeline = VK_NULL_HANDLE;
+    }
+
+    shader_stages[0].pSpecializationInfo = NULL;
+    shader_stages[1].pSpecializationInfo = NULL;
+    //
+    // Pipeline
+    //
+    {
+        create_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        create_info.pNext = NULL;
+        create_info.flags = 0;
+
+        create_info.stageCount = ARRAY_LEN(shader_stages);
+        create_info.pStages = shader_stages;
+        create_info.pInputAssemblyState = &input_assembly_state;
+        create_info.pTessellationState = NULL;
+        create_info.pViewportState = &viewport_state;
+        create_info.pRasterizationState = &rasterization_state;
+        create_info.pMultisampleState = &multisample_state;
+        create_info.pDepthStencilState = &depth_stencil_state;
+        create_info.pColorBlendState = &blend_state;
+        create_info.pDynamicState = &dynamic_state;
+        create_info.pDynamicState = NULL;
+        create_info.pVertexInputState = &vertex_input_state;
+
+        create_info.layout = layout;
+        create_info.renderPass = renderpass;
+
+        create_info.subpass = 0;
+        create_info.basePipelineHandle = VK_NULL_HANDLE;
+        create_info.basePipelineIndex = -1;
+
+        VK_CHECK(qvkCreateGraphicsPipelines(vk.device, vk.pipelineCache, 1, &create_info, NULL, pipeline));
+        VK_SET_OBJECT_NAME(*pipeline, va("%s pipeline", name), VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT);
+        vk.pipeline_create_count++;
+    }
+}
+#endif
 
 static void vk_create_blur_pipeline( char *name, int program_index, uint32_t index, uint32_t width, uint32_t height, qboolean horizontal_pass )
 {
@@ -2167,8 +2418,22 @@ void vk_create_pipelines( void )
 {
     vk_alloc_persistent_pipelines();
 
+#ifdef USE_GBUFFER_COMPOSE
+    vk_create_pipeline_ext(1, "composition", gls.windowWidth, gls.windowHeight);
+#endif
+
     vk.pipelines_world_base = vk.pipelines_count;
 }
+
+#ifdef USE_RTX
+void vk_rtx_create_final_blit_pipeline( void ) 
+{
+    if ( !vk.rtxActive )
+        return;
+
+    vk_create_post_process_pipeline( 6, vk.extent_unscaled.width, vk.extent_unscaled.height );
+}
+#endif
 
 #ifdef VK_PBR_BRDFLUT
 static void vk_create_brdflut_pipeline( void )

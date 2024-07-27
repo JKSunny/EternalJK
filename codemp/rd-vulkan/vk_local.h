@@ -441,6 +441,28 @@ extern PFN_vkDebugMarkerSetObjectNameEXT				qvkDebugMarkerSetObjectNameEXT;
 
 extern PFN_vkCmdClearColorImage							qvkCmdClearColorImage;
 
+#ifdef USE_RTX
+extern PFN_vkGetPhysicalDeviceProperties2					qvkGetPhysicalDeviceProperties2;
+
+extern PFN_vkCreateAccelerationStructureKHR					qvkCreateAccelerationStructureKHR;
+extern PFN_vkDestroyAccelerationStructureKHR				qvkDestroyAccelerationStructureKHR;
+extern PFN_vkCmdBuildAccelerationStructuresKHR				qvkCmdBuildAccelerationStructuresKHR;
+extern PFN_vkCmdCopyAccelerationStructureKHR				qvkCmdCopyAccelerationStructureKHR;
+extern PFN_vkGetAccelerationStructureDeviceAddressKHR		qvkGetAccelerationStructureDeviceAddressKHR;
+extern PFN_vkCmdWriteAccelerationStructuresPropertiesKHR	qvkCmdWriteAccelerationStructuresPropertiesKHR;
+extern PFN_vkGetAccelerationStructureBuildSizesKHR			qvkGetAccelerationStructureBuildSizesKHR;
+extern PFN_vkGetBufferDeviceAddress							qvkGetBufferDeviceAddress;
+extern PFN_vkCreateRayTracingPipelinesKHR					qvkCreateRayTracingPipelinesKHR;
+extern PFN_vkCmdTraceRaysKHR								qvkCmdTraceRaysKHR;
+extern PFN_vkGetRayTracingShaderGroupHandlesKHR				qvkGetRayTracingShaderGroupHandlesKHR;
+
+extern PFN_vkCmdDispatch									qvkCmdDispatch;
+extern PFN_vkCreateComputePipelines							qvkCreateComputePipelines;
+extern PFN_vkCmdFillBuffer									qvkCmdFillBuffer;
+
+extern PFN_vkCmdBeginDebugUtilsLabelEXT						qvkCmdBeginDebugUtilsLabelEXT;
+extern PFN_vkCmdEndDebugUtilsLabelEXT						qvkCmdEndDebugUtilsLabelEXT;
+#endif
 
 typedef float mat4_t[16];
 typedef float mat3x4_t[12];
@@ -479,6 +501,12 @@ typedef enum {
 	RENDER_PASS_CUBEMAP,
 	RENDER_PASS_INSPECTOR,
 	RENDER_PASS_REFRACTION,
+#ifdef USE_GBUFFER
+	RENDER_PASS_GBUFFER,
+#ifdef USE_GBUFFER_COMPOSE
+	RENDER_PASS_COMPOSE,
+#endif
+#endif
 	RENDER_PASS_COUNT
 } renderPass_t;
 
@@ -675,11 +703,28 @@ typedef struct {
 	float modelview_transform[16]  QALIGN(16);
 } Vk_World;
 
+#ifdef USE_RTX
+typedef struct semaphore_group_s {
+	VkSemaphore		transfer_finished;
+	VkSemaphore		trace_finished;
+	qboolean		trace_signaled;
+	qboolean		prev_trace_signaled;
+} semaphore_group_t;
+#endif
+
 typedef struct vk_tess_s {
 	VkCommandBuffer		command_buffer;
+	VkCommandBuffer		command_buffer_trace;
+	VkCommandBuffer		command_buffer_trace2;
+	VkCommandBuffer		command_buffer_transfer;
 
 	VkSemaphore			image_acquired;
 	VkSemaphore			rendering_finished;
+
+#ifdef USE_RTX
+	semaphore_group_t	semaphores;
+#endif
+
 	VkFence				rendering_finished_fence;
 	qboolean			waitForFence;
 	
@@ -716,6 +761,14 @@ typedef struct vk_tess_s {
 	uint32_t			bones_ubo_offset;
 } vk_tess_t;
 
+
+#ifdef USE_RTX
+#include "rtx/vk_rtx.h"
+
+typedef struct shader_s shader_t;
+typedef struct msurface_s msurface_t;
+#endif
+
 // Vk_Instance contains engine-specific vulkan resources that persist entire renderer lifetime.
 // This structure is initialized/deinitialized by vk_initialize/vk_shutdown functions correspondingly.
 typedef struct {
@@ -744,8 +797,173 @@ typedef struct {
 	uint32_t		queue_family_index;
 	VkDevice		device;
 	VkQueue			queue;
+	VkQueue			queue_new;
 
 	VkPhysicalDeviceMemoryProperties devMemProperties;
+
+#ifdef USE_RTX
+	uint64_t		frame_counter;
+	vkgeometry_t	geometry;
+
+	qboolean		rtxSupport;	// device supports raytracing
+	qboolean		rtxActive;	// raytracing on
+	qboolean		rtx_surf_is_hdr;
+
+	VkPhysicalDeviceProperties						props;
+	VkPhysicalDeviceProperties2						props2;	// unused?
+	VkPhysicalDeviceRayTracingPropertiesNV			rtxprops_nv;
+	VkPhysicalDeviceRayTracingPipelinePropertiesKHR rtxprops_khr;
+
+	VkExtent2D		extent_screen_images;
+	VkExtent2D		extent_render;
+	VkExtent2D		extent_render_prev;
+	VkExtent2D		extent_unscaled;
+	VkExtent2D		extent_taa_images;
+	VkExtent2D		extent_taa_output;
+
+	uint32_t		shaderGroupHandleSize;
+	uint32_t		shaderGroupBaseAlignment;
+	uint32_t		device_count;
+	uint32_t		gpu_slice_width;
+	uint32_t		gpu_slice_width_prev;
+
+	vec2_t			taa_samples[NUM_TAA_SAMPLES];
+
+	bool			supports_fp16;
+	int				effective_aa_mode;
+
+	cluster_t		*clusterList;
+	int				numFixedCluster;
+	int				numClusters;
+	int				clusterBytes;
+	int				numMaxClusters;
+	const byte		*vis;
+
+	char			cluster_debug_mask[VIS_MAX_BYTES];
+	int				cluster_debug_index;
+
+	qboolean		worldASInit;
+
+	vkbuffer_t		rt_shader_binding_table;
+	vkpipeline_t	rt_pipeline;
+
+	vkpipeline_t	asvgf_pipeline[ASVGF_NUM_PIPELINES];
+	vkshader_t		*asvgf_shader[NUM_ASVGF_SHADER_MODULES];
+
+	vkpipeline_t	tonemap_pipeline[TM_NUM_PIPELINES];
+	vkshader_t		*tonemap_shader[TM_NUM_SHADERS];
+
+	vkpipeline_t	physical_sky_pipeline[PHYSICAL_SKY_NUM_PIPELINES];
+	vkshader_t		*physical_sky_shader[NUM_PHYSICAL_SKY_SHADER_MODULES];
+
+	vkpipeline_t	god_rays_pipeline[ASVGF_NUM_PIPELINES];
+	vkshader_t		*god_rays_shader[NUM_ASVGF_SHADER_MODULES];
+
+	VkPipeline		pipeline_final_blit;
+	vkshader_t		*final_blit_shader_frag;
+	
+	vkimage_t		envmap;
+	vkimage_t		blue_noise;
+	vkimage_t		physicalSkyImages	[NUM_PHYSICAL_SKY_IMAGES];
+	vkimage_t		rtx_images[NUM_RTX_IMAGES];
+
+	VkDescriptorSetLayout       desc_set_layout_ubo;
+	VkDescriptorSet             desc_set_ubo;
+
+	vkdescriptor_t	rtxDescriptor		[VK_MAX_SWAPCHAIN_SIZE];
+	vkdescriptor_t	computeDescriptor	[VK_MAX_SWAPCHAIN_SIZE];
+	vkdescriptor_t	imageDescriptor;
+
+	struct {
+		VkDescriptorPool		pool;
+		VkDescriptorSetLayout	layout;
+		vkbuffer_t				buffer_vertex;
+
+		struct {
+			VkDescriptorSet		vbos;
+#ifdef USE_RTX_GLOBAL_MODEL_VBO
+			VkDescriptorSet		ibos;
+#endif
+		} descriptor;
+
+		struct {
+			vk_blas_t	dynamic[VK_MAX_SWAPCHAIN_SIZE];
+			vk_blas_t	transparent_models[VK_MAX_SWAPCHAIN_SIZE];
+			vk_blas_t	viewer_models[VK_MAX_SWAPCHAIN_SIZE];
+			vk_blas_t	viewer_weapon[VK_MAX_SWAPCHAIN_SIZE];
+			vk_blas_t	explosions[VK_MAX_SWAPCHAIN_SIZE];
+		} blas;
+	} model_instance;
+
+	Shadowmap		precomputed_shadowmapdata;
+
+	struct {
+		// world static (world geometry that does not requiere updates)
+		vk_blas_t	world;
+		vk_blas_t	world_transparent;
+	} blas_static;
+
+	struct {
+		// world dynamic data (world geometry that requieres texture/color or uv updates)
+		vk_blas_t	data_world;
+		vk_blas_t	data_world_transparent;
+
+		// world dynamic AS (world geometry that requieres AS updates)
+		vk_blas_t	as_world[VK_MAX_SWAPCHAIN_SIZE];
+		vk_blas_t	as_world_transparent[VK_MAX_SWAPCHAIN_SIZE];
+	} blas_dynamic;
+
+	struct {
+		uint32_t	index_offset;
+		uint32_t	vertex_offset;
+		uint32_t	num_vertices;
+		shader_t	*shader;
+		msurface_t	*surf;
+		int			cluster;
+		int			fogindex;
+	} updateDataOffsetXYZ[3500];
+	uint32_t		updateDataOffsetXYZCount;
+
+	struct {
+		uint32_t	index_offset;
+		uint32_t	vertex_offset;
+		uint32_t	countXYZ;
+		uint32_t	num_vertices;
+		shader_t	*shader;
+		msurface_t	*surf;
+		int			cluster;
+	} updateASOffsetXYZ[3500];
+	uint32_t		updateASOffsetXYZCount;
+
+	// Top AS (Buffers) for each swapchain image
+	vk_tlas_t		tlas[VK_MAX_SWAPCHAIN_SIZE];
+	vkbuffer_t		tlas_buffer[VK_MAX_SWAPCHAIN_SIZE];
+
+	// stores offset and stuff for in shader lookup
+	vkbuffer_t		buffer_blas_instance[VK_MAX_SWAPCHAIN_SIZE];
+	vkbuffer_t		buffer_blas_instance_data[VK_MAX_SWAPCHAIN_SIZE];		// extended data
+	
+	vkbuffer_t		buffer_readback;
+	vkbuffer_t		buffer_readback_staging[VK_MAX_SWAPCHAIN_SIZE];
+
+	vkbuffer_t		buffer_light;
+	vkbuffer_t		buffer_light_staging[VK_MAX_SWAPCHAIN_SIZE];
+	vkbuffer_t		buffer_light_stats[NUM_LIGHT_STATS_BUFFERS];
+	vkbuffer_t		buffer_light_counts_history[LIGHT_COUNT_HISTORY];
+
+	vkbuffer_t		buffer_tonemap;
+
+	vkbuffer_t		buffer_sun_color;
+
+	vkbuffer_t		scratch_buffer;	// only required for build, not needed after build
+	VkDeviceSize	scratch_buffer_ptr;
+
+	vkUniformRTX_t	buffer_uniform;
+	vkInstanceRTX_t buffer_uniform_instance;
+
+	int				prevToCurrInstance[300];
+	vkbuffer_t		prevToCurrInstanceBuffer[VK_MAX_SWAPCHAIN_SIZE];
+#endif
 
 	VkSwapchainKHR	swapchain;
 	uint32_t		swapchain_image_count;
@@ -829,7 +1047,12 @@ typedef struct {
 #ifdef VK_PBR_BRDFLUT
 		VkRenderPass brdflut;
 #endif
-		
+#ifdef USE_GBUFFER
+		VkRenderPass gbuffer;
+	#ifdef USE_GBUFFER_COMPOSE
+		VkRenderPass composition;
+	#endif
+#endif
 		VkRenderPass cubemap;
 
 		struct {
@@ -847,6 +1070,12 @@ typedef struct {
 			VkRenderPass extract;
 			VkRenderPass blend;
 		} dglow;
+#ifdef USE_RTX
+		struct {
+			VkRenderPass blit;
+			VkRenderPass blend;
+		} rtx_final_blit;
+#endif
 	} render_pass;
 
 	struct {
@@ -864,6 +1093,15 @@ typedef struct {
 		VkFramebuffer capture;
 #ifdef VK_PBR_BRDFLUT
 		VkFramebuffer brdflut;
+#endif
+#ifdef USE_RTX
+		VkFramebuffer rtx_final_blit;
+#endif
+#ifdef USE_GBUFFER
+		VkFramebuffer gbuffer[MAX_SWAPCHAIN_IMAGES];
+	#ifdef USE_GBUFFER_COMPOSE
+		VkFramebuffer composition[MAX_SWAPCHAIN_IMAGES];
+	#endif
 #endif
 
 		VkFramebuffer cubemap[6];
@@ -1042,6 +1280,10 @@ typedef struct {
 		VkShaderModule prefilterenvmap_fs;
 		VkShaderModule refraction_vs[3];
 		VkShaderModule refraction_fs;
+#ifdef USE_GBUFFER_COMPOSE
+		VkShaderModule composition_vs;
+		VkShaderModule composition_fs;
+#endif
 	} shaders;
 
 	uint32_t frame_count;
@@ -1072,6 +1314,18 @@ typedef struct {
 	VkFormat bloom_format;
 	VkFormat capture_format;
 	VkFormat compressed_format;
+
+#ifdef USE_GBUFFER
+	VkImage				gbuffer_image;
+	VkImageView			gbuffer_image_view;
+	VkDescriptorSet		gbuffer_descriptor;
+	VkFormat			gbuffer_format;
+
+#ifdef USE_GBUFFER_COMPOSE
+	VkPipelineLayout	pipeline_layout_composition;
+	VkPipeline			composition_pipeline;
+#endif
+#endif
 
 	VkImageLayout initSwapchainLayout;
 
@@ -1231,6 +1485,12 @@ uint32_t	vk_find_pipeline_ext( uint32_t base, const Vk_Pipeline_Def *def, qboole
 VkPipeline	vk_gen_pipeline( uint32_t index );
 void		vk_end_render_pass( void );
 void		vk_begin_main_render_pass( void );
+#ifdef USE_GBUFFER
+void		vk_begin_gbuffer_render_pass( void );
+#ifdef USE_GBUFFER_COMPOSE
+void		vk_begin_composition_render_pass( void );
+#endif
+#endif
 void		vk_get_pipeline_def( uint32_t pipeline, Vk_Pipeline_Def *def );
 uint32_t	vk_append_uniform( const void *uniform, size_t size, uint32_t min_offset );
 
@@ -1309,6 +1569,12 @@ struct ImGuiGlobal {
 };
 
 extern ImGuiGlobal	imguiGlobal;
+
+#ifdef USE_RTX
+VkResult	vkpt_final_blit_filtered(VkCommandBuffer cmd_buf);
+void		vk_rtx_create_final_blit_pipeline( void );
+void		vk_imgui_bind_rtx_cvars( void );
+#endif
 
 void		vk_imgui_initialize( void );
 void		vk_imgui_shutdown( void );

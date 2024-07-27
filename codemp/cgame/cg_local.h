@@ -29,6 +29,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "game/bg_public.h"
 #include "cg_public.h"
 
+#define USE_RTX
+
 // The entire cgame module is unloaded and reloaded on each level change,
 // so there is NO persistant data between levels on the client side.
 // If you absolutely need something stored, it can either be kept
@@ -567,6 +569,9 @@ typedef struct centity_s {
 #if 1
 	vec3_t			lastOrigin; //strafetrail
 	int				lastStrafeTrailTime;
+#endif
+#ifdef USE_RTX
+	int			id;
 #endif
 } centity_t;
 

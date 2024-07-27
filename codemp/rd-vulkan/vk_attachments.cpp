@@ -364,9 +364,22 @@ void vk_create_attachments( void )
         }
     }
 
-        // post-processing / msaa-resolve
-        create_color_attachment( glConfig.vidWidth, glConfig.vidHeight, VK_SAMPLE_COUNT_1_BIT, vk.color_format,
-           usage | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, &vk.color_image, &vk.color_image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, qfalse, 0 );
+    // post-processing / msaa-resolve. usage 21
+#ifdef USE_RTX
+    VkImageUsageFlags usage_rtx = (VkImageUsageFlags)(usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+
+    create_color_attachment( glConfig.vidWidth, glConfig.vidHeight, VK_SAMPLE_COUNT_1_BIT, vk.color_format,
+        usage_rtx, &vk.color_image, &vk.color_image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, qfalse, 0 );
+#else
+    create_color_attachment( glConfig.vidWidth, glConfig.vidHeight, VK_SAMPLE_COUNT_1_BIT, vk.color_format,
+        usage | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, &vk.color_image, &vk.color_image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, qfalse, 0 );
+#endif
+
+#ifdef USE_GBUFFER
+    create_color_attachment( glConfig.vidWidth, glConfig.vidHeight, VK_SAMPLE_COUNT_1_BIT, vk.gbuffer_format,
+        usage, &vk.gbuffer_image, &vk.gbuffer_image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, qfalse, 0 );
+
+#endif
 
     // gamma image
     create_color_attachment( glConfig.vidWidth, glConfig.vidHeight, VK_SAMPLE_COUNT_1_BIT, vk.color_format,
@@ -442,6 +455,11 @@ void vk_create_attachments( void )
     VK_SET_OBJECT_NAME( vk.color_image, "color image", VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT );
     VK_SET_OBJECT_NAME( vk.color_image_view, "color image view", VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT );
     
+#ifdef USE_GBUFFER
+    VK_SET_OBJECT_NAME( vk.gbuffer_image, "gbuffer image", VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT );
+    VK_SET_OBJECT_NAME( vk.gbuffer_image_view, "gbuffer image view", VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT );
+#endif
+
     VK_SET_OBJECT_NAME( vk.gamma_image, "gamma image", VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT );
     VK_SET_OBJECT_NAME( vk.gamma_image_view, "gamma image view", VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT );
 
@@ -567,6 +585,16 @@ void vk_destroy_attachments( void )
         vk.color_image = VK_NULL_HANDLE;
         vk.color_image_view = VK_NULL_HANDLE;
     }
+
+#ifdef USE_GBUFFER
+    // gbuffer
+    if (vk.gbuffer_image) {
+        qvkDestroyImage(vk.device, vk.gbuffer_image, NULL);
+        qvkDestroyImageView(vk.device, vk.gbuffer_image_view, NULL);
+        vk.gbuffer_image = VK_NULL_HANDLE;
+        vk.gbuffer_image_view = VK_NULL_HANDLE;
+    }
+#endif
 
     // gamma
     if (vk.gamma_image) {

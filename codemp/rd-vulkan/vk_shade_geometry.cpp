@@ -617,6 +617,15 @@ void vk_update_attachment_descriptors( void ) {
 			qvkUpdateDescriptorSets( vk.device, 1, &desc, 0, NULL );	
 		}
 #endif
+
+#ifdef USE_GBUFFER
+		{
+			info.imageView = vk.gbuffer_image_view;
+			desc.dstSet = vk.gbuffer_descriptor;
+
+			qvkUpdateDescriptorSets( vk.device, 1, &desc, 0, NULL );
+		}
+#endif
 	}
 }
 
@@ -694,6 +703,10 @@ void vk_init_descriptors( void ) {
 #ifdef VK_PBR_BRDFLUT
 		if( vk.cubemapActive )
 			VK_CHECK( qvkAllocateDescriptorSets( vk.device, &alloc, &vk.brdflut_image_descriptor ) );
+#endif
+
+#ifdef USE_GBUFFER
+		VK_CHECK( qvkAllocateDescriptorSets( vk.device, &alloc, &vk.gbuffer_descriptor ) );
 #endif
 
 		// cubemap
@@ -2275,6 +2288,37 @@ void RB_StageIteratorGeneric( void )
 	qboolean				fogCollapse;
 	qboolean				is_ghoul2_vbo;
 	qboolean				is_mdv_vbo;
+
+	// whats this sunny?
+	for ( stage = 0; stage < MAX_SHADER_STAGES; stage++ )
+	{
+		int			forceRGBGen = 0;
+		qboolean	is_refraction = qfalse;
+
+		pStage = tess.xstages[stage];
+
+		if ( !pStage || !pStage->active )
+			break;
+
+#ifdef USE_GBUFFER
+		// poop
+		vk_get_pipeline_def(pStage->vk_pipeline[0], &def);
+
+		if ( vk.renderPassIndex == RENDER_PASS_GBUFFER && !def.vk_light_flags ) {
+
+			if ( (!tess.vbo_world_index && !tess.vbo_model_index) 
+				|| backEnd.projection2D )
+				return; // this will create missing stages ..
+		}
+
+		if ( vk.renderPassIndex == RENDER_PASS_MAIN && def.vk_light_flags ) {
+			 if( !backEnd.projection2D )
+				return; // this will create missing stages ..
+		}
+#endif
+	}
+
+
 
 	is_ghoul2_vbo = qfalse;
 	is_mdv_vbo = qfalse;

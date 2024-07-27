@@ -24,7 +24,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "tr_local.h"
 
 void vk_set_object_name( uint64_t obj, const char *objName, VkDebugReportObjectTypeEXT objType ) {
-	if ( qvkDebugMarkerSetObjectNameEXT && obj ) {
+	/*if ( qvkDebugMarkerSetObjectNameEXT && obj ) {
 		VkDebugMarkerObjectNameInfoEXT info;
 		info.sType = VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT;
 		info.pNext = VK_NULL_HANDLE;
@@ -32,7 +32,7 @@ void vk_set_object_name( uint64_t obj, const char *objName, VkDebugReportObjectT
 		info.object = obj;
 		info.pObjectName = objName;
 		qvkDebugMarkerSetObjectNameEXT( vk.device, &info );
-	}
+	}*/
 }
 
 /*

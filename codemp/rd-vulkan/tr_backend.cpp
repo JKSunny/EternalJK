@@ -249,6 +249,30 @@ static void RB_SubmitDrawSurfs( drawSurf_t *drawSurfs, int numDrawSurfs, float o
 		if ( vk.renderPassIndex == RENDER_PASS_SCREENMAP && entityNum != REFENTITYNUM_WORLD && backEnd.refdef.entities[entityNum].e.renderfx & RF_DEPTHHACK )
 			continue;
 
+
+#ifdef USE_GBUFFER
+		// find a better solution .. 
+		/*if ( vk.renderPassIndex == RENDER_PASS_MAIN ) {
+			if ( *drawSurf->surface == SF_MDX || *drawSurf->surface == SF_MDV ||
+				 *drawSurf->surface == SF_FACE || *drawSurf->surface == SF_GRID ||
+				*drawSurf->surface == SF_TRIANGLES ) 
+			{
+				continue;
+			}
+		}
+		else if ( vk.renderPassIndex == RENDER_PASS_GBUFFER ){
+			if (  *drawSurf->surface != SF_MDX && *drawSurf->surface != SF_MDV &&
+				 *drawSurf->surface != SF_FACE && *drawSurf->surface != SF_GRID &&
+				*drawSurf->surface != SF_TRIANGLES ) 
+			{
+				continue;
+			}
+		}*/
+
+#endif
+
+
+
 		// check if we have any dynamic glow surfaces before dglow pass
 		if( !backEnd.hasGlowSurfaces && vk.dglowActive && !backEnd.isGlowPass && shader->hasGlow )
 			backEnd.hasGlowSurfaces = qtrue;
@@ -892,6 +916,12 @@ const void *RB_StretchPic ( const void *data ) {
 		vk_bloom();
 	}
 
+#ifdef USE_RTX
+	if ( vk.rtxActive ) {
+		vk_rtx_begin_blit();
+	}
+#endif
+
 	RB_AddQuadStamp2( cmd->x, cmd->y, cmd->w, cmd->h, cmd->s1, cmd->t1, 
 		cmd->s2, cmd->t2, backEnd.color2D );
 
@@ -1140,26 +1170,93 @@ const void	*RB_DrawSurfs( const void *data ) {
 	VBO_UnBind();
 #endif
 
-	RB_UpdateUniformConstants( &backEnd.refdef, &backEnd.viewParms );
 
-	// clear the z buffer, set the modelview, etc
-	RB_BeginDrawingView();
 
-#ifdef VK_CUBEMAP
-	if ( backEnd.viewParms.targetCube != nullptr ) 
+
+#ifdef USE_GBUFFER
+	vk_end_render_pass();		// end main
+
+	vk_begin_gbuffer_render_pass();
+	RB_RenderDrawSurfList( cmd->drawSurfs, cmd->numDrawSurfs );
+	vk_end_render_pass();
+
+#ifdef USE_GBUFFER_COMPOSE
+	// composition begin
+	VkViewport viewport;
+	get_viewport(&viewport, DEPTH_RANGE_NORMAL);
+
+	vk_begin_composition_render_pass();
+
+    //{
+        //get_scissor_rect(&scissor_rect);
+       // qvkCmdSetScissor(vk.cmd->command_buffer, 0, 1, &scissor_rect);
+
+       /* get_viewport(&viewport, DEPTH_RANGE_NORMAL);
+
+        viewport.width = gls.windowWidth;
+        viewport.width = gls.windowHeight;
+
+        qvkCmdSetViewport(vk.cmd->command_buffer, 0, 1, &viewport);*/
+    //}
+
+
+    qvkCmdBindDescriptorSets(vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout_composition, 0, 1, &vk.gbuffer_descriptor, 0, NULL);
+    qvkCmdBindPipeline(vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.composition_pipeline);
+    qvkCmdDraw(vk.cmd->command_buffer, 3, 1, 0, 0);
+
+
+    viewport.width = vk.renderWidth;
+    viewport.height = vk.renderHeight;
+	qvkCmdSetViewport(vk.cmd->command_buffer, 0, 1, &viewport);
+
+	vk_end_render_pass();
+
+
+
+	// composition end
+#endif
+
+	vk_begin_main_render_pass();
+#endif
+
+#ifdef USE_RTX
+	if ( vk.rtxActive && (tr.viewParms.portalView == PV_NONE) && backEnd.refdef.rdflags != RDF_NOWORLDMODEL ) 
 	{
 		vk_end_render_pass();
-		vk_begin_cubemap_render_pass();
 
-		RB_RenderDrawSurfList( cmd->drawSurfs, cmd->numDrawSurfs );
+		vk_rtx_begin_scene( &backEnd.refdef, cmd->drawSurfs, cmd->numDrawSurfs );
+
+		vk_begin_main_render_pass();
 
 		backEnd.doneSurfaces = qtrue; // for bloom
 
-		return (const void*)(cmd + 1);
-	}
+		return (const void *)(cmd + 1);
+	} else
 #endif
+	{
+		RB_UpdateUniformConstants( &backEnd.refdef, &backEnd.viewParms );
 
-	RB_RenderDrawSurfList( cmd->drawSurfs, cmd->numDrawSurfs );
+		// clear the z buffer, set the modelview, etc
+		RB_BeginDrawingView();
+
+	#ifdef VK_CUBEMAP
+		if ( backEnd.viewParms.targetCube != nullptr ) 
+		{
+			vk_end_render_pass();
+			vk_begin_cubemap_render_pass();
+
+			RB_RenderDrawSurfList( cmd->drawSurfs, cmd->numDrawSurfs );
+
+			backEnd.doneSurfaces = qtrue; // for bloom
+
+			return (const void*)(cmd + 1);
+		}
+	#endif
+
+		//RB_RenderDrawSurfList( cmd->drawSurfs, cmd->numDrawSurfs );
+	}
+
+	return (const void*)(cmd + 1);
 
 #ifdef USE_VBO
 	VBO_UnBind();
@@ -1232,6 +1329,9 @@ const void	*RB_DrawBuffer( const void *data ) {
 	cmd = (const drawBufferCommand_t *)data;
 
 	vk_begin_frame();
+#ifdef USE_RTX
+	vk_rtx_begin_frame();
+#endif
 
 	vk_set_depthrange(DEPTH_RANGE_NORMAL);
 

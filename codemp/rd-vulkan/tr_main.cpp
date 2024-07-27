@@ -1568,6 +1568,11 @@ static void R_AddEntitySurfaces( const trRefdef_t *refdef )
 	int				i;
 	trRefEntity_t	*ent;
 
+#ifdef USE_RTX
+	if ( vk.rtxActive )
+		return;
+#endif
+
 	if (!r_drawentities->integer) {
 		return;
 	}

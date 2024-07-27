@@ -10454,7 +10454,9 @@ void CG_Player( centity_t *cent ) {
 	}
 
 	memset (&legs, 0, sizeof(legs));
-
+#ifdef USE_RTX
+	legs.id = cent->id + 0;
+#endif
 	CG_SetGhoul2Info(&legs, cent);
 
 	VectorCopy(cent->modelScale, legs.modelScale);
@@ -10837,7 +10839,9 @@ void CG_Player( centity_t *cent ) {
 	ScaleModelAxis(&legs);
 
 	memset( &torso, 0, sizeof(torso) );
-
+#ifdef USE_RTX
+	torso.id = cent->id + 10;
+#endif
 	//rww - force speed "trail" effect
 	if (!(cent->currentState.powerups & (1 << PW_SPEED)) || doAlpha || !cg_speedTrail.integer)
 	{

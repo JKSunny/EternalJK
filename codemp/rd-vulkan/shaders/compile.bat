@@ -140,7 +140,7 @@ SETLOCAL EnableDelayedExpansion
 for /L %%i in ( 0,1,2 ) do (                		@rem vbo 
     call :compile_refraction_vertex_shader %%i
 
-	for /L %%j in ( 0,1,1 ) do (                	@rem fastlight 
+ 	for /L %%j in ( 0,1,1 ) do (                	@rem fastlight 
 		for /L %%k in ( 0,1,3 ) do (                @rem light 
 			for /L %%l in ( 0,1,2 ) do (            @rem tx   
 				for /L %%m in ( 0,1,1 ) do (        @rem +env
@@ -151,18 +151,18 @@ for /L %%i in ( 0,1,2 ) do (                		@rem vbo
 			)
 		)
 	)
-)
+ )
 
 @rem fragment shader
-for /L %%i in ( 0,1,1 ) do (                	@rem fastlight
+@rem for /L %%i in ( 0,1,1 ) do (                	@rem fastlight
 	for /L %%j in ( 0,1,3 ) do (                @rem light
 		for /L %%k in ( 0,1,2 ) do (            @rem tx 
 			for /L %%l in ( 0,1,1 ) do (        @rem +fog
-				call :compile_fragment_shader %%i, %%j, %%k, %%l
+				call :compile_fragment_shader 1, %%j, %%k, %%l
 			)
 		)
 	)
-)
+@rem )
 
 del /Q "%tmpf%"
 

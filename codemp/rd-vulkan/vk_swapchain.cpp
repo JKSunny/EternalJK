@@ -33,6 +33,11 @@ void vk_restart_swapchain( const char *funcname )
 
     for ( i = 0; i < NUM_COMMAND_BUFFERS; i++ ) {
         qvkResetCommandBuffer( vk.tess[i].command_buffer, 0 );
+#ifdef USE_RTX
+        qvkResetCommandBuffer( vk.tess[i].command_buffer_trace, 0 );
+        qvkResetCommandBuffer( vk.tess[i].command_buffer_trace2, 0 );
+        qvkResetCommandBuffer( vk.tess[i].command_buffer_transfer, 0 );
+#endif
     }
 
     vk_destroy_pipelines(qfalse);
@@ -180,6 +185,11 @@ void vk_create_swapchain( VkPhysicalDevice physical_device, VkDevice device,
     }
 
     ri.Printf( PRINT_ALL, "selected presentation mode: %s, image count: %i\n", vk_pmode_to_str( present_mode ), image_count );
+
+#ifdef USE_RTX
+    if ( vk.rtxActive )
+        image_count = 2;
+#endif
 
     // create swap chain
     desc.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;

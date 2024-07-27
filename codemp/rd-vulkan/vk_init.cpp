@@ -449,9 +449,19 @@ void vk_initialize( void )
 		vk.cubemapActive = qtrue;
 #endif
 
+#ifdef USE_RTX
+	// Raytracing
+	if ( vk.rtxSupport && r_vertexLight->value == 2 ) {
+		vk.rtxActive = qtrue;
+		vk.msaaActive = qfalse;
+	}
+#else
 	//if (r_ext_multisample->integer && !r_ext_supersample->integer)
-	if ( r_ext_multisample->integer )
+#ifndef USE_GBUFFER
+	if ( r_ext_multisample->integer  )
 		vk.msaaActive = qtrue;
+#endif
+#endif
 
 	// MSAA
 	vkMaxSamples = MIN( props.limits.sampledImageColorSampleCounts, props.limits.sampledImageDepthSampleCounts);
@@ -471,13 +481,16 @@ void vk_initialize( void )
 	// Anisotropy
 	ri.Printf( PRINT_ALL, "Anisotropy max: %dx, using %dx\n\n", r_ext_max_anisotropy->integer, r_ext_texture_filter_anisotropic->integer );
 		
+#ifndef USE_GBUFFER
 	// Bloom
 	if ( r_bloom->integer )
 		vk.bloomActive = qtrue;
 
 	// Dynamic glow
+
 	if( glConfig.maxActiveTextures >= 4 && r_DynamicGlow->integer )
 		vk.dglowActive = qtrue;
+#endif
 
 	// Screenmap
 	vk.screenMapSamples = MIN(vkMaxSamples, VK_SAMPLE_COUNT_4_BIT);
@@ -515,16 +528,25 @@ void vk_initialize( void )
 
 	vk_create_swapchain( vk.physical_device, vk.device, vk.surface, vk.present_format, &vk.swapchain );
 	vk_texture_mode( r_textureMode->string, qtrue );
+#ifndef USE_RTX
 	vk_render_splash();
+#endif
 	vk_create_attachments();
 	vk_create_render_passes();
 	vk_create_framebuffers();
-#ifdef USE_VK_IMGUI
-	vk_imgui_initialize();
-#endif
 
 #ifdef VK_CUBEMAP
 	vk_create_cubemap_prefilter();
+#endif
+
+#ifdef USE_RTX
+	Com_Memcpy( &vk.props, &props, sizeof(VkPhysicalDeviceProperties) );
+	vk_rtx_initialize();
+	vk_render_splash();
+#endif
+
+#ifdef USE_VK_IMGUI
+	vk_imgui_initialize();
 #endif
 
 	vk.active = qtrue;
@@ -584,6 +606,10 @@ void vk_shutdown( void )
 	qvkFreeMemory(vk.device, vk.storage.memory, NULL);
 
     vk_destroy_shader_modules();
+
+#ifdef USE_RTX
+	vk_rtx_shutdown();
+#endif
 
 __cleanup:
 	if (vk.device != VK_NULL_HANDLE)

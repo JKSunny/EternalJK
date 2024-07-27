@@ -3861,7 +3861,10 @@ void CG_AddPacketEntities( qboolean isPortal ) {
 		CG_AddCEntity(veh);
 		veh->bodyHeight = cg.time; //indicate we have already been added
 	}
-
+#ifdef USE_RTX
+	cent = &cg_entities[cg.predictedPlayerState.clientNum];
+	cent->id = 10 + ((cg.predictedPlayerState.clientNum+1) * 100);
+#endif
 	CG_AddCEntity( &cg_entities[cg.predictedPlayerState.clientNum] );
 
 	/*
@@ -3876,6 +3879,9 @@ void CG_AddPacketEntities( qboolean isPortal ) {
 		if (cg.snap->entities[ num ].number != cg.snap->ps.clientNum)
 		{
 			cent = &cg_entities[ cg.snap->entities[ num ].number ];
+#ifdef USE_RTX
+			cent->id = 10 + ((cg.snap->entities[num].number+1) * 100);
+#endif
 			if (cent->currentState.eType == ET_PLAYER &&
 				cent->currentState.m_iVehicleNum)
 			{ //add his veh first
@@ -3886,7 +3892,9 @@ void CG_AddPacketEntities( qboolean isPortal ) {
 					if (cg.snap->entities[j].number == cent->currentState.m_iVehicleNum)
 					{
 						centity_t *veh = &cg_entities[cg.snap->entities[j].number];
-
+#ifdef USE_RTX
+						veh->id = 10 + ((cg.snap->entities[j].number+1) * 100);
+#endif
 						CG_AddCEntity(veh);
 						veh->bodyHeight = cg.time; //indicate we have already been added
 						break;

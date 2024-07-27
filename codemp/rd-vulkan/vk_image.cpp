@@ -101,6 +101,10 @@ void vk_texture_mode( const char *string, const qboolean init ) {
 		img = tr.images[i];
 		if ( img->flags & IMGFLAG_MIPMAP ) {
 			vk_update_descriptor_set( img, qtrue );
+#ifdef USE_RTX
+			vk_rtx_bind_descriptor_image_sampler( &vk.imageDescriptor, 0, (VkShaderStageFlagBits)VK_GLOBAL_IMAGEARRAY_SHADER_STAGE_FLAGS, img->sampler, img->view, img->index );
+			vk.imageDescriptor.needsUpdate = qtrue;
+#endif
 		}
 	}
 }
@@ -568,19 +572,29 @@ void vk_generate_image_upload_data( image_t *image, byte *data, Image_Upload_Dat
 	upload_data->base_level_width = scaled_width;
 	upload_data->base_level_height = scaled_height;
 
-	if (r_texturebits->integer > 16 || r_texturebits->integer == 0 || (image->flags & IMGFLAG_LIGHTMAP)) {
-		if (!vk.compressed_format || (image->flags & IMGFLAG_NO_COMPRESSION)) {
-			image->internalFormat = VK_FORMAT_R8G8B8A8_UNORM;
-			//image->internalFormat = VK_FORMAT_B8G8R8A8_UNORM;
+#ifdef USE_RTX
+	// just a test
+	if ( image->flags & IMGFLAG_RGB )
+	{
+		image->internalFormat = VK_FORMAT_R8G8B8A8_SRGB;
+	}
+	else 
+#endif
+	{
+		if (r_texturebits->integer > 16 || r_texturebits->integer == 0 || (image->flags & IMGFLAG_LIGHTMAP)) {
+			if (!vk.compressed_format || (image->flags & IMGFLAG_NO_COMPRESSION)) {
+				image->internalFormat = VK_FORMAT_R8G8B8A8_UNORM;
+				//image->internalFormat = VK_FORMAT_B8G8R8A8_UNORM;
+			}
+			else {
+				image->internalFormat = vk.compressed_format;
+				compressed = qtrue;
+			}
 		}
 		else {
-			image->internalFormat = vk.compressed_format;
-			compressed = qtrue;
+			qboolean has_alpha = RawImage_HasAlpha(data, scaled_width * scaled_height);
+			image->internalFormat = has_alpha ? VK_FORMAT_B4G4R4A4_UNORM_PACK16 : VK_FORMAT_A1R5G5B5_UNORM_PACK16;
 		}
-	}
-	else {
-		qboolean has_alpha = RawImage_HasAlpha(data, scaled_width * scaled_height);
-		image->internalFormat = has_alpha ? VK_FORMAT_B4G4R4A4_UNORM_PACK16 : VK_FORMAT_A1R5G5B5_UNORM_PACK16;
 	}
 
 	if (scaled_width == width && scaled_height == height && !mipmap) {
@@ -989,7 +1003,12 @@ void vk_update_descriptor_set( image_t *image, qboolean mipmap ) {
 		sampler_def.noAnisotropy = qtrue;
 	}
 
+#ifdef USE_RTX
+	image->sampler = vk_find_sampler(&sampler_def);
+	image_info.sampler = image->sampler;
+#else
 	image_info.sampler = vk_find_sampler(&sampler_def);
+#endif
 	image_info.imageView = image->view;
 	image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
@@ -1070,8 +1089,10 @@ void vk_create_image( image_t *image, int width, int height, int mip_levels ) {
 		VK_CHECK( qvkCreateImageView( vk.device, &desc, NULL, &image->view ) );
 	}
 
+#ifndef USE_RTX
 	if ( !vk.active ) // splash screen does not require a descriptorset
 		return;
+#endif
 
 	// create associated descriptor set
 	if ( image->descriptor_set == VK_NULL_HANDLE )
@@ -1087,6 +1108,11 @@ void vk_create_image( image_t *image, int width, int height, int mip_levels ) {
 	}
 
 	vk_update_descriptor_set( image, mip_levels > 1 ? qtrue : qfalse );
+#ifdef USE_RTX
+	vk_rtx_bind_descriptor_image_sampler( &vk.imageDescriptor, 0, (VkShaderStageFlagBits)VK_GLOBAL_IMAGEARRAY_SHADER_STAGE_FLAGS, image->sampler, image->view, image->index );
+	vk_rtx_set_descriptor_update_size( &vk.imageDescriptor, 0, (VkShaderStageFlagBits)VK_GLOBAL_IMAGEARRAY_SHADER_STAGE_FLAGS, image->index + 1 );
+	vk.imageDescriptor.needsUpdate = qtrue;
+#endif
 
 	VK_SET_OBJECT_NAME( image->handle, image->imgName, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT );
 	VK_SET_OBJECT_NAME( image->view, image->imgName, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT );
@@ -1180,7 +1206,12 @@ image_t *R_CreateImage( const char *name, byte *pic, int width, int height, imgF
     image->next = hashTable[hash];
     hashTable[hash] = image;
 
-    tr.images[tr.numImages++] = image;
+#ifdef USE_RTX
+	image->index = tr.numImages++;
+	tr.images[image->index] = image;
+#else
+	tr.images[tr.numImages++] = image;
+#endif
 
 	// record which map it was used on
 	image->iLastLevelUsedOn = RE_RegisterMedia_GetLevel();

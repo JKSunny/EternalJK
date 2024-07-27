@@ -1,0 +1,528 @@
+/*
+===========================================================================
+Copyright (C) 1999 - 2005, Id Software, Inc.
+Copyright (C) 2000 - 2013, Raven Software, Inc.
+Copyright (C) 2001 - 2013, Activision, Inc.
+Copyright (C) 2013 - 2015, OpenJK contributors
+
+This file is part of the OpenJK source code.
+
+OpenJK is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License version 2 as
+published by the Free Software Foundation.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, see <http://www.gnu.org/licenses/>.
+===========================================================================
+*/
+
+#include "tr_local.h"
+
+static void* R_LocalMalloc( size_t size )
+{
+	return ri.Hunk_AllocateTempMemory( size );
+}
+
+static void* R_LocalReallocSized( void *ptr, size_t old_size, size_t new_size )
+{
+	void *mem = ri.Hunk_AllocateTempMemory( new_size );
+	if  ( ptr )
+	{
+		memcpy( mem, ptr, old_size );
+		ri.Hunk_FreeTempMemory( ptr );
+	}
+	return mem;
+}
+
+static void R_LocalFree( void *ptr )
+{
+	if ( ptr )
+		ri.Hunk_FreeTempMemory( ptr );
+}
+
+#define STBI_MALLOC			R_LocalMalloc
+#define STBI_REALLOC_SIZED	R_LocalReallocSized
+#define STBI_FREE			R_LocalFree
+
+#define STB_IMAGE_IMPLEMENTATION
+#define STBI_NO_GIF
+//#define STBI_TEMP_ON_STACK
+//#define STBI_ONLY_HDR
+#include <utils/stb_image.h>
+
+#define IMG_BYTE 0
+#define IMG_FLOAT 1
+
+static void LoadPNG16( const char *filename, byte **pic, int *width, int *height ) 
+{
+	byte *fbuffer;
+	int len, components;
+
+	len = ri.FS_ReadFile( (char*)filename, (void**)&fbuffer );
+	if ( !fbuffer )
+		return;
+
+	*pic = (byte*)stbi_load_16_from_memory( fbuffer, len, width, height, &components, STBI_rgb_alpha );
+	if ( *pic == NULL ) 
+	{
+		ri.FS_FreeFile( fbuffer );
+		return;
+	}
+
+	ri.FS_FreeFile( fbuffer );
+}
+
+static void R_LoadImage16( const char *name, byte **pic, int *width, int *height ) {
+	int		len;
+
+	*pic = NULL;
+	*width = 0;
+	*height = 0;
+
+	len = (int)strlen( name );
+	if ( len < 5 )
+		return;
+
+	if ( !Q_stricmp( name + len - 4, ".png" ) )
+		LoadPNG16( name, pic, width, height );
+}
+
+static void vk_rtx_copy_buffer_to_image(vkimage_t* image, uint32_t width, uint32_t height, VkBuffer *buffer, uint32_t mipLevel, uint32_t arrayLayer)
+{
+	VkCommandBuffer command_buffer;
+	command_buffer = vk_begin_command_buffer();
+
+	VkImageMemoryBarrier barrier;
+	Com_Memset( &barrier, 0, sizeof(VkImageMemoryBarrier) );
+	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	barrier.subresourceRange.baseArrayLayer = 0;
+	barrier.subresourceRange.layerCount = image->arrayLayers;
+	barrier.subresourceRange.baseMipLevel = 0;
+	barrier.subresourceRange.levelCount = image->mipLevels;
+
+	// transition to VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+	barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	barrier.srcAccessMask = 0;
+	barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	barrier.image = image->handle;
+
+	qvkCmdPipelineBarrier(command_buffer,
+		VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+		VK_PIPELINE_STAGE_TRANSFER_BIT,
+		0, 0, NULL, 0, NULL,
+		1, &barrier);
+
+	// buffer to image
+
+	VkBufferImageCopy region;
+	region.bufferOffset = 0;
+	region.bufferRowLength = 0;
+	region.bufferImageHeight = 0;
+	region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	region.imageSubresource.mipLevel = mipLevel;
+	region.imageSubresource.baseArrayLayer = arrayLayer;
+	region.imageSubresource.layerCount = 1;
+	region.imageOffset.x = 0;
+	region.imageOffset.y = 0;
+	region.imageOffset.z = 0;
+	region.imageExtent.width = width;
+	region.imageExtent.height = height;
+	region.imageExtent.depth = 1;
+
+	qvkCmdCopyBufferToImage(command_buffer, *buffer, image->handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+	// transition to VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+
+	barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+	barrier.image = image->handle;
+	qvkCmdPipelineBarrier(command_buffer,
+		VK_PIPELINE_STAGE_TRANSFER_BIT,
+		VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+		0, 0, NULL, 0, NULL,
+		1, &barrier);
+
+	vk_end_command_buffer(command_buffer);
+}
+
+static void vk_rtx_create_image_array( const char *name, vkimage_t *image, uint32_t width, uint32_t height, 
+	VkFormat format, VkImageUsageFlags usage, uint32_t mipLevels, uint32_t arrayLayers, VkImageCreateFlags flags ) 
+{
+	image->extent.width = width;
+	image->extent.height = height;
+	image->extent.depth = 1;
+
+	image->mipLevels = mipLevels;
+	image->arrayLayers = arrayLayers;
+
+	// create image
+	{
+		VkImageCreateInfo desc;
+		desc.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+		desc.pNext = NULL;
+		desc.flags = flags;
+		desc.imageType = VK_IMAGE_TYPE_2D;
+		desc.format = format;
+		desc.extent.width = width;
+		desc.extent.height = height;
+		desc.extent.depth = 1;
+		desc.mipLevels = image->mipLevels;
+		desc.arrayLayers = image->arrayLayers;
+		desc.samples = VK_SAMPLE_COUNT_1_BIT;
+		desc.tiling = VK_IMAGE_TILING_OPTIMAL;
+		desc.usage = usage;
+		desc.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		desc.queueFamilyIndexCount = 0;
+		desc.pQueueFamilyIndices = NULL;
+		desc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+		VK_CHECK(qvkCreateImage(vk.device, &desc, NULL, &image->handle));
+		VK_CreateImageMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &image->handle, &image->memory);
+	}
+
+	// create image view
+	{
+		VkImageViewCreateInfo desc;
+		desc.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		desc.pNext = NULL;
+		desc.flags = 0;
+		desc.image = image->handle;
+
+		if ( image->arrayLayers == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY )
+			desc.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
+		else
+			desc.viewType = image->arrayLayers > 1 ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D;
+
+		desc.format = format;
+		desc.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+		desc.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+		desc.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+		desc.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+		desc.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		desc.subresourceRange.baseMipLevel = 0;
+		desc.subresourceRange.levelCount = image->mipLevels;//VK_REMAINING_MIP_LEVELS;
+		desc.subresourceRange.baseArrayLayer = 0;
+		desc.subresourceRange.layerCount = image->arrayLayers;
+		VK_CHECK(qvkCreateImageView(vk.device, &desc, NULL, &image->view));
+	}
+
+	VK_SET_OBJECT_NAME( &image->handle, name, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT );
+	VK_SET_OBJECT_NAME( &image->view, name, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT );
+}
+
+static void vk_rtx_create_image( const char *name, vkimage_t *image, uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage, uint32_t mipLevels ) 
+{
+	vk_rtx_create_image_array( name, image, width, height, format, usage, mipLevels, 1, 0 );
+}
+
+void vk_rtx_create_cubemap( vkimage_t *image, uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage, uint32_t mipLevels ) 
+{
+	vk_rtx_create_image_array( "cubemap", image, width, height, format, usage, mipLevels, 6, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT );
+}
+
+void vk_rtx_create_sampler(	vkimage_t *image, VkFilter magFilter, VkFilter minFilter, 
+						VkSamplerMipmapMode mipmapMode, VkSamplerAddressMode addressMode)
+{
+    if( image->sampler != NULL ) {
+        qvkDestroySampler( vk.device, image->sampler, NULL );
+        image->sampler = VK_NULL_HANDLE;
+    }
+    
+	qboolean lod25 = qfalse;
+	if ( (minFilter == VK_FILTER_NEAREST || minFilter == VK_FILTER_LINEAR) 
+		&& mipmapMode == VK_SAMPLER_MIPMAP_MODE_NEAREST ) 
+	{
+		lod25 = qtrue;
+	}
+
+	VkSamplerCreateInfo desc;
+	desc.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	desc.pNext = NULL;
+	desc.flags = 0;
+	desc.magFilter = magFilter;
+	desc.minFilter = minFilter;
+	desc.mipmapMode = mipmapMode;
+	desc.addressModeU = addressMode;
+	desc.addressModeV = addressMode;
+	desc.addressModeW = addressMode;
+	desc.mipLodBias = 0.0f;
+	desc.anisotropyEnable = VK_FALSE;
+	desc.maxAnisotropy = 1;
+	desc.compareEnable = VK_FALSE;
+	desc.compareOp = VK_COMPARE_OP_ALWAYS;
+	desc.minLod = 0.0f;
+	desc.maxLod = lod25 ? 0.25f : 12.0f;
+	desc.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+	desc.unnormalizedCoordinates = VK_FALSE;
+	VK_CHECK( qvkCreateSampler( vk.device, &desc, NULL, &image->sampler ) );
+}
+
+void vk_rtx_upload_image_data( vkimage_t *image, uint32_t width, uint32_t height, const uint8_t *pixels, 
+						 uint32_t bytes_per_pixel, uint32_t mipLevel, uint32_t arrayLayer ) 
+{
+	VkDeviceSize imageSize = (uint64_t) width * (uint64_t) height * (uint64_t) 1 * (uint64_t)bytes_per_pixel;
+	vkbuffer_t staging;
+
+	vk_rtx_buffer_create( &staging, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT );	
+
+	// write data to buffer
+	uint8_t *p;
+	VK_CHECK( qvkMapMemory( vk.device, staging.memory, 0, imageSize, 0, (void**)(&p) ) );
+	Com_Memcpy( p, pixels, (size_t)(imageSize) );
+	qvkUnmapMemory( vk.device, staging.memory );
+
+	vk_rtx_copy_buffer_to_image( image, width, height, &staging.buffer, mipLevel, arrayLayer );
+
+	qvkDestroyBuffer( vk.device, staging.buffer, NULL );
+	qvkFreeMemory( vk.device, staging.memory, NULL );
+}
+
+static void vk_rtx_record_image_layout_transition( vkimage_t *image, VkImageLayout oldLayout, VkImageLayout newLayout )
+{
+	VkCommandBuffer command_buffer;
+	command_buffer = vk_begin_command_buffer();
+
+	VkImageMemoryBarrier barrier;
+	Com_Memset( &barrier, 0, sizeof(VkImageMemoryBarrier) );
+	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	barrier.pNext = NULL;
+	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	barrier.subresourceRange.baseMipLevel = 0;
+	barrier.subresourceRange.levelCount = 1;
+	barrier.subresourceRange.baseArrayLayer = 0;
+	barrier.subresourceRange.layerCount = 1;
+	barrier.subresourceRange.levelCount = image->mipLevels;
+	
+	// Source layouts (old)
+	// Source access mask controls actions that have to be finished on the old layout
+	// before it will be transitioned to the new layout
+	switch ( oldLayout )
+	{
+		case VK_IMAGE_LAYOUT_UNDEFINED:
+			// Image layout is undefined (or does not matter)
+			// Only valid as initial layout
+			// No flags required, listed only for completeness
+			barrier.srcAccessMask = VK_ACCESS_NONE;
+			break;
+
+		case VK_IMAGE_LAYOUT_PREINITIALIZED:
+			// Image is preinitialized
+			// Only valid as initial layout for linear images, preserves memory contents
+			// Make sure host writes have been finished
+			barrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
+			break;
+
+		case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+			// Image is a color attachment
+			// Make sure any writes to the color buffer have been finished
+			barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			break;
+
+		case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
+			// Image is a depth/stencil attachment
+			// Make sure any writes to the depth/stencil buffer have been finished
+			barrier.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			break;
+
+		case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
+			// Image is a transfer source 
+			// Make sure any reads from the image have been finished
+			barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+			break;
+
+		case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
+			// Image is a transfer destination
+			// Make sure any writes to the image have been finished
+			barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+			break;
+
+		case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
+			// Image is read by a shader
+			// Make sure any shader reads from the image have been finished
+			barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+			break;
+		default:
+			// Other source layouts aren't handled (yet)
+			break;
+	}
+
+	// Target layouts (new)
+	// Destination access mask controls the dependency for the new image layout
+	switch ( newLayout )
+	{
+		case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
+			// Image will be used as a transfer destination
+			// Make sure any writes to the image have been finished
+			barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+			break;
+
+		case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
+			// Image will be used as a transfer source
+			// Make sure any reads from the image have been finished
+			barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+			break;
+
+		case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+			// Image will be used as a color attachment
+			// Make sure any writes to the color buffer have been finished
+			barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			break;
+
+		case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
+			// Image layout will be used as a depth/stencil attachment
+			// Make sure any writes to depth/stencil buffer have been finished
+			barrier.dstAccessMask = barrier.dstAccessMask | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			break;
+
+		case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
+			// Image will be read in a shader (sampler, input attachment)
+			// Make sure any writes to the image have been finished
+			if (barrier.srcAccessMask == VK_ACCESS_NONE)
+			{
+				barrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
+			}
+			barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+			break;
+		case VK_IMAGE_LAYOUT_GENERAL:
+			barrier.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+			break;
+		default:
+			// Other source layouts aren't handled (yet)
+			break;
+	}
+
+	barrier.oldLayout = oldLayout;
+	barrier.newLayout = newLayout;
+	barrier.image = image->handle;
+
+	qvkCmdPipelineBarrier( command_buffer,
+		VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+		VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+		0, 0, NULL, 0, NULL,
+		1, &barrier );
+
+	vk_end_command_buffer( command_buffer );
+}
+
+#define IMG_FLAGS	VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT  | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+static void vk_rtx_create_images( const char *name, uint32_t index, uint32_t width, uint32_t height, VkFormat format )
+{
+	vk_rtx_create_image( name, &vk.rtx_images[index], width, height, format, IMG_FLAGS, 1);
+
+	qboolean linear = qfalse;
+
+	switch ( index )
+	{
+		case RTX_IMG_ASVGF_TAA_A:
+		case RTX_IMG_ASVGF_TAA_B:
+		case RTX_IMG_TAA_OUTPUT:
+			linear = qtrue; break;
+	}
+
+	if ( linear )
+		vk_rtx_create_sampler( &vk.rtx_images[index], VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT );
+	else 
+		vk_rtx_create_sampler( &vk.rtx_images[index], VK_FILTER_NEAREST, VK_FILTER_NEAREST, VK_SAMPLER_MIPMAP_MODE_NEAREST, VK_SAMPLER_ADDRESS_MODE_REPEAT );
+
+	vk_rtx_record_image_layout_transition( &vk.rtx_images[index], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL );
+	VK_SET_OBJECT_NAME( vk.rtx_images[index].handle,	name,	VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT );
+	VK_SET_OBJECT_NAME( vk.rtx_images[index].view,		name,	VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT );
+}
+#undef IMG_FLAGS
+
+void vk_rtx_create_images( void ) 
+{
+	#define IMG_DO( _handle, _binding, _format, _glsl_format, _w, _h ) \
+		vk_rtx_create_images( #_handle, RTX_IMG_##_handle, _w, _h, VK_FORMAT_##_format );
+		LIST_IMAGES
+	#undef IMG_DO
+
+	#define IMG_DO( _handle, _binding, _format, _glsl_format, _w, _h ) \
+		vk_rtx_create_images( #_handle, RTX_IMG_##_handle##_A, _w, _h, VK_FORMAT_##_format ); \
+		vk_rtx_create_images( #_handle, RTX_IMG_##_handle##_B, _w, _h, VK_FORMAT_##_format );
+		LIST_IMAGES_A_B
+	#undef IMG_DO
+}
+
+void vk_rtx_destroy_image( vkimage_t *image )
+{
+	VK_CHECK( qvkQueueWaitIdle( vk.queue ) );
+
+    if ( image->handle != NULL ) 
+	{
+        qvkDestroyImage( vk.device, image->handle, NULL );
+        image->handle = VK_NULL_HANDLE;
+    }
+
+    if ( image->view != NULL ) 
+	{
+        qvkDestroyImageView( vk.device, image->view, NULL );
+        image->view = VK_NULL_HANDLE;
+    }
+
+    if ( image->sampler != NULL ) 
+	{
+        qvkDestroySampler( vk.device, image->sampler, NULL );
+        image->sampler = VK_NULL_HANDLE;
+    }
+
+	if ( image->memory != NULL ) 
+	{
+		qvkFreeMemory( vk.device, image->memory, NULL );
+		image->memory = VK_NULL_HANDLE;
+	}
+
+	memset( image, 0, sizeof(vkimage_t) );
+}
+
+void vk_rtx_create_blue_noise( void ) 
+{
+	uint32_t	i, j, channel;
+	int			width, height;
+	int			bytes_per_channel = 2;
+	byte		*pic;
+
+	const int num_blue_noise_images = NUM_BLUE_NOISE_TEX / 4;
+	const int res = BLUE_NOISE_RES;
+	const size_t img_size = (size_t)res * (size_t)res;
+	const size_t total_size = img_size * sizeof(uint16_t);
+
+	vk_rtx_create_image_array( "blue noise array", &vk.blue_noise, res, res, VK_FORMAT_R16_UNORM, 
+		VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 
+		1, NUM_BLUE_NOISE_TEX, 0 );
+	
+	for ( i = 0; i < num_blue_noise_images; i++ ) 
+	{
+		char buf[1024];
+		snprintf(buf, sizeof buf, "blue_noise_textures/%d_%d/HDR_RGBA_%04d.png", res, res, i);
+			
+		R_LoadImage16( buf, &pic, &width, &height );
+
+		// HDR is RGBA
+		for ( channel = 0; channel < 4; channel++ ) 
+		{
+			uint8_t img[2 * res * res];
+
+			for ( j = 0; j < img_size; j++ ) 
+			{
+				img[(j * bytes_per_channel) + 0] = *(pic + ((j * 8) + ((channel * bytes_per_channel) + 0)));
+				img[(j * bytes_per_channel) + 1] = *(pic + ((j * 8) + ((channel * bytes_per_channel) + 1)));
+			}
+
+			vk_rtx_upload_image_data( &vk.blue_noise, width, height, img, bytes_per_channel, 0, (i*4) + channel );
+		}
+
+		Z_Free( pic );
+	}
+
+	vk_rtx_create_sampler( &vk.blue_noise, VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT );
+}

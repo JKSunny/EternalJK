@@ -419,6 +419,10 @@ void RE_BeginFrame( stereoFrame_t stereoFrame ) {
 		r_fastsky->modified = qfalse;
 	}
 
+#ifdef USE_RTX
+	vk_rtx_cvar_handler();
+#endif
+
 	//
 	// draw buffer stuff
 	//

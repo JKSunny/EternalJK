@@ -751,6 +751,11 @@ static	void R_LoadVisibility( const lump_t *l, world_t &worldData ) {
 	byte	*buf;
 
 	len = ( worldData.numClusters + 63 ) & ~63;
+
+#ifdef USE_RTX
+	worldData.numvisibility = len;
+#endif
+
 	worldData.novis = (unsigned char *)Hunk_Alloc( len, h_low );
 	memset( worldData.novis, 0xff, len );
 
@@ -3219,6 +3224,10 @@ void RE_LoadWorldMap_Actual( const char *name, world_t &worldData, int index )
 
 #ifdef USE_VBO
 	R_BuildWorldVBO(s_worldData.surfaces, s_worldData.numsurfaces);
+#endif
+
+#ifdef USE_RTX
+	R_PreparePT( worldData );
 #endif
 
 	if (ri.CM_GetCachedMapDiskImage())

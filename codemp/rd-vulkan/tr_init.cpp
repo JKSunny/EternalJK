@@ -232,6 +232,40 @@ cvar_t	*com_sv_running;
 cvar_t	*com_cl_running;
 #endif
 
+#ifdef USE_RTX
+cvar_t	*pt_caustics;
+cvar_t	*pt_dof;
+cvar_t	*pt_projection;
+cvar_t	*tm_blend_enable;
+
+#define UBO_CVAR_DO( _handle, _value ) cvar_t *sun_##_handle;
+	UBO_CVAR_LIST
+#undef UBO_CVAR_DO
+
+cvar_t *sun_color[3];
+cvar_t *sun_elevation;
+cvar_t *sun_azimuth;
+cvar_t *sun_angle;
+cvar_t *sun_brightness;
+cvar_t *sun_bounce;
+cvar_t *sun_animate;
+cvar_t *sun_gamepad;
+
+cvar_t *sun_preset;
+cvar_t *sun_latitude;
+
+cvar_t *physical_sky;
+cvar_t *physical_sky_draw_clouds;
+cvar_t *physical_sky_space;
+cvar_t *physical_sky_brightness;
+
+cvar_t *sky_scattering;
+cvar_t *sky_transmittance;
+cvar_t *sky_phase_g;
+cvar_t *sky_amb_phase_g;
+
+#endif
+
 // the limits apply to the sum of all scenes in a frame --
 // the main view, all the 3D icons, etc
 #define	DEFAULT_MAX_POLYS		600
@@ -769,6 +803,9 @@ static consoleCommand_t	commands[] = {
 	{ "r_cleardecals",		RE_ClearDecals },
 	{ "remapSky",			R_RemapSkyShader_f },
 	{ "clearRemaps",		R_ClearRemaps_f },
+#ifdef USE_RTX
+	{ "show_pvs",			vk_rtx_show_pvs_f },
+#endif
 	{ "vkinfo",				vk_info_f }
 };
 
@@ -1002,6 +1039,48 @@ void R_Register( void )
 	com_cl_running						= ri.Cvar_Get("cl_running",							"0",						CVAR_ROM, "Is the client running?" );
 #endif
 
+#ifdef USE_RTX
+	pt_caustics							= ri.Cvar_Get("pt_caustics",						"1",	CVAR_NONE, "");
+	pt_dof								= ri.Cvar_Get("pt_dof",								"0",	CVAR_NONE, "");
+	pt_projection						= ri.Cvar_Get("pt_projection",						"0",	CVAR_NONE, "");
+	tm_blend_enable						= ri.Cvar_Get("tm_blend_enable",					"1",	CVAR_NONE, "");
+	
+#define UBO_CVAR_DO( _handle, _value ) sun_##_handle = ri.Cvar_Get( #_handle,	#_value, CVAR_NONE, "" );
+	UBO_CVAR_LIST
+#undef UBO_CVAR_DO
+
+    static char _rgb[3] = {'r', 'g', 'b'};
+
+    // sun
+    for (int i = 0; i < 3; ++i)
+    {
+        char buff[32]; 
+        snprintf(buff, 32, "sun_color_%c", _rgb[i]);
+        sun_color[i] = ri.Cvar_Get(buff, "1.0", 0, "");
+    }
+
+    sun_elevation				= ri.Cvar_Get( "sun_elevation",				"34",	0, "");
+    sun_azimuth					= ri.Cvar_Get( "sun_azimuth",				"258",	0, ""); 
+    sun_angle					= ri.Cvar_Get( "sun_angle",					"1.0",	0, ""); 
+    sun_brightness				= ri.Cvar_Get( "sun_brightness",			"10.0",	0, ""); 
+    sun_bounce					= ri.Cvar_Get( "sun_bounce",				"1.0",	0, ""); 
+    sun_animate					= ri.Cvar_Get( "sun_animate",				"0",	0, ""); 
+	sun_preset					= ri.Cvar_Get( "sun_preset",				va("%d", SUN_PRESET_MORNING), CVAR_ARCHIVE, "");
+	sun_latitude				= ri.Cvar_Get( "sun_latitude",				"32.9",	CVAR_ARCHIVE,	""); // latitude of former HQ of id Software in Richardson, TX
+	sun_gamepad					= ri.Cvar_Get( "sun_gamepad",				"0",	0, "");
+
+    // sky
+    physical_sky				= ri.Cvar_Get( "physical_sky",				"1",	0, "" );
+    physical_sky_draw_clouds	= ri.Cvar_Get( "physical_sky_draw_clouds",	"1",	0, "" );
+    physical_sky_space			= ri.Cvar_Get( "physical_sky_space",		"0",	0, "" );
+	physical_sky_brightness		= ri.Cvar_Get( "physical_sky_brightness",	"0",	0, "" );
+	
+	sky_scattering				= ri.Cvar_Get( "sky_scattering",			"5.0",	0, "" );
+	sky_transmittance			= ri.Cvar_Get( "sky_transmittance",			"10.0", 0, "" );
+	sky_phase_g					= ri.Cvar_Get( "sky_phase_g",				"0.9",	0, "" );
+	sky_amb_phase_g				= ri.Cvar_Get( "sky_amb_phase_g",			"0.3",	0, "" );
+#endif
+
 /*
 Ghoul2 Insert Start
 */
@@ -1161,6 +1240,10 @@ void R_Init( void ) {
 	R_InitDecals();
 	R_InitWorldEffects();
 	RestoreGhoul2InfoArray();
+
+#ifdef USE_RTX
+	vk_rtx_begin_registration();
+#endif
 
 	vk_debug("----- finished R_Init -----\n" );
 }

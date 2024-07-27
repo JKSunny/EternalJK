@@ -1278,7 +1278,10 @@ static qboolean ParseStage(shaderStage_t *stage, const char **text)
 
 				if (shader.noLightScale)
 					flags |= IMGFLAG_NOLIGHTSCALE;
-
+#ifdef USE_RTX
+				if ( vk.rtxActive && tr.mapLoading )
+					flags |= IMGFLAG_RGB;
+#endif
 				stage->bundle[0].image[0] = R_FindImageFile(token, flags, 0);
 
 
@@ -3536,6 +3539,9 @@ void R_RemoveRemap( int index, qboolean bulk ) {
 			}
 			
 			sh->remappedShader = NULL;
+#ifdef USE_RTX
+			vk_rtx_update_shader_material( sh, sh->updatedShader );
+#endif
 		}
 		sh = sh->next;
 	}
@@ -3599,6 +3605,10 @@ void R_UpdateShader( int index, const char *shaderText, qboolean bulk ) {
 			#ifdef USE_VBO
 			vk_inspector_transfer_world_vbo( sh, sh->updatedShader );
 			#endif
+
+#ifdef USE_RTX
+			vk_rtx_update_shader_material( sh, sh->updatedShader );
+#endif
 		}
 		sh = sh->next;
 	}
@@ -4895,7 +4905,7 @@ shader_t *FinishShader( void )
 			}
 
 			// this will be a copy of the vk_pipeline[0] but with faceculling disabled
-			pStage->vk_2d_pipeline = 0;
+			pStage->vk_2d_pipeline = NULL;
 		}
 	}
 

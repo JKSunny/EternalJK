@@ -2446,12 +2446,18 @@ void G2_ProcessGeneratedSurfaceBolts(CGhoul2Info &ghoul2, mdxaBone_v &bonePtr, m
 }
 
 #ifdef USE_VBO_GHOUL2
-static inline void vk_set_ghoul2_vbo_mesh( const CRenderSurface &RS, CRenderableSurface *surf, const int lod, const int surfaceIndex )
+static inline void vk_set_ghoul2_vbo_mesh( const CRenderSurface &RS, CRenderableSurface *surf, const int lod, const int surfaceIndex, shader_t *shader )
 {
 	if ( !vk.vboGhoul2Active )
 		return;
 
+#ifdef USE_RTX
+	if ( vk.rtxActive )
+		return vk_rtx_found_mdxm_vbo_mesh( &RS.currentModel->data.glm->vboModels[lod].vboMeshes[RS.surfaceNum], shader );
+#endif
+
 	surf->vboMesh = &RS.currentModel->data.glm->vboModels[lod].vboMeshes[RS.surfaceNum];
+
 #ifdef _DEBUG
 	assert( surf->vboMesh != NULL && RS.surfaceNum == surfaceIndex );
 #endif
@@ -2525,7 +2531,7 @@ void RenderSurfaces( CRenderSurface &RS, const trRefEntity_t *ent, int entityNum
 			CRenderableSurface *newSurf = AllocGhoul2RenderableSurface();
 			newSurf->surfaceData = surface;
 #ifdef USE_VBO_GHOUL2
-			vk_set_ghoul2_vbo_mesh( RS, newSurf, RS.lod, surface->thisSurfaceIndex );
+			vk_set_ghoul2_vbo_mesh( RS, newSurf, RS.lod, surface->thisSurfaceIndex, (shader_t*)shader );
 #endif
 			newSurf->boneCache = RS.boneCache;
 			R_AddDrawSurf( (surfaceType_t *)newSurf, entityNum, (shader_t *)shader, RS.fogNum, cubemapIndex );
@@ -4379,6 +4385,10 @@ qboolean R_LoadMDXM( model_t *mod, void *buffer, const char *mod_name, qboolean 
 
 #ifdef USE_VBO_GHOUL2
 	R_BuildMDXM( mod, mdxm );
+
+	#ifndef USE_RTX_GLOBAL_MODEL_VBO
+		vk_rtx_build_mdxm_vbo( mod, mdxm );
+	#endif
 #endif
 
 	return qtrue;
@@ -4854,3 +4864,215 @@ qboolean R_LoadMDXA( model_t *mod, void *buffer, const char *mod_name, qboolean 
 #endif
 	return qtrue;
 }
+
+#ifdef USE_RTX
+// dedicated duplicate methods for rtx with unused code removed like shadows
+static void vk_rtx_RenderSurfaces( CRenderSurface &RS, const trRefEntity_t *ent, int entityNum ) //also ended up just ripping right from SP.
+{
+	// back track and get the surfinfo struct for this surface
+	mdxmSurface_t			*surface;
+	mdxmHierarchyOffsets_t	*surfIndexes;
+	mdxmSurfHierarchy_t		*surfInfo;
+	const shader_t			*shader = 0;
+	int						offFlags = 0;	// sunny shouldnt this be uint?
+	uint32_t				i;
+
+	assert( RS.currentModel );
+	assert( RS.currentModel->data.glm && RS.currentModel->data.glm->header );
+
+	// back track and get the surfinfo struct for this surface
+	surface		= (mdxmSurface_t *)G2_FindSurface( RS.currentModel, RS.surfaceNum, RS.lod );
+	surfIndexes = (mdxmHierarchyOffsets_t *)((byte *)RS.currentModel->data.glm->header + sizeof(mdxmHeader_t));
+	surfInfo	= (mdxmSurfHierarchy_t *)((byte *)surfIndexes + surfIndexes->offsets[surface->thisSurfaceIndex]);
+
+	// see if we have an override surface in the surface list
+	const surfaceInfo_t	*surfOverride = G2_FindOverrideSurface( RS.surfaceNum, RS.rootSList );
+
+	// really, we should use the default flags for this surface unless it's been overriden
+	offFlags = surfInfo->flags;
+
+	// set the off flags if we have some
+	if ( surfOverride )
+		offFlags = surfOverride->offFlags;
+
+	// if this surface is not off, add it to the shader render list
+	if ( !offFlags )
+	{
+		shader = R_GetShaderByHandle( surfInfo->shaderIndex );
+
+ 		if ( RS.cust_shader )
+			shader = RS.cust_shader;
+
+		else if ( RS.skin )
+		{
+			uint32_t j;
+
+			// match the surface name to something in the skin file
+			shader = tr.defaultShader;
+
+			for ( j = 0 ; j < RS.skin->numSurfaces ; j++ )
+			{
+				// the names have both been lowercased
+				if ( !strcmp( RS.skin->surfaces[j]->name, surfInfo->name ) )
+				{
+					shader = (shader_t*)RS.skin->surfaces[j]->shader;
+					break;
+				}
+			}
+		}
+
+		// don't add third_person objects if not viewing through a portal
+		if ( !RS.personalModel )
+		{
+#ifdef USE_VBO_GHOUL2
+			vk_set_ghoul2_vbo_mesh( RS, NULL, RS.lod, surface->thisSurfaceIndex, (shader_t*)shader );
+#endif
+
+#if 0
+#ifdef USE_VK_IMGUI
+			if ( vk_imgui_outline_selected() ) {
+				mdxmSurfHierarchy_t *debug_surf = (mdxmSurfHierarchy_t*)vk_imgui_get_selected_surface();
+				shader_t *debug_shader = vk_imgui_get_selected_shader();
+				qboolean merge_shaders = vk_imgui_merge_shaders();
+
+				if ( ( debug_surf && debug_surf == surfInfo ) || 
+					 ( !merge_shaders && debug_shader && debug_shader == shader ) ||
+					 ( merge_shaders && debug_shader && !strcmp( debug_shader->name, shader->name ) ) )
+				{
+					// sunny not implemented .. use cluster debug method?
+				}
+			}
+#endif
+#endif
+		}
+	}
+
+	// if we are turning off all descendants, then stop this recursion now
+	if ( offFlags & G2SURFACEFLAG_NODESCENDANTS )
+		return;
+
+	// now recursively call for the children
+	for ( i = 0; i < surfInfo->numChildren; i++ )
+	{
+		RS.surfaceNum = surfInfo->childIndexes[i];
+		vk_rtx_RenderSurfaces( RS, ent, entityNum );
+	}
+}
+
+void vk_rtx_AddGhoulSurfaces( trRefEntity_t *ent, int entityNum ) 
+{
+	CGhoul2Info_v	&ghoul2 = *((CGhoul2Info_v *)ent->e.ghoul2);
+	mdxaBone_t		rootMatrix;
+	shader_t		*cust_shader = 0;
+	qboolean		personalModel;
+	int				whichLod, modelCount, fogNum, currentTime;
+	int				modelList[256] = { 0 };
+	skin_t			*skin;
+	uint32_t		i;
+
+	if ( !ghoul2.IsValid() )
+		return;
+
+	// if we don't want server ghoul2 models and this is one, or we just don't want ghoul2 models at all, then return
+	if ( r_noServerGhoul2->integer )
+		return;
+
+	if ( !G2_SetupModelPointers( ghoul2 ) )
+		return;
+
+	currentTime = G2API_GetTime( tr.refdef.time );
+	fogNum = 0;
+
+	// culling is disabled for now ..
+
+	HackadelicOnClient = true;
+
+	// are any of these models setting a new origin?
+	RootMatrix( ghoul2, currentTime, ent->e.modelScale,rootMatrix );
+
+   	// don't add third_person objects if not in a portal
+	personalModel = (qboolean)( (ent->e.renderfx & RF_THIRD_PERSON) && (tr.viewParms.portalView == PV_NONE) );
+
+	assert( ghoul2.size() <= 255 );
+	modelList[255] = 548;
+
+	// order sort the ghoul 2 models so bolt ons get bolted to the right model
+	G2_Sort_Models( ghoul2, modelList, ARRAY_LEN(modelList), &modelCount );
+	assert( modelList[255] == 548 );
+
+	// construct a world matrix for this entity
+	//G2_GenerateWorldMatrix( ent->e.angles, ent->e.origin );
+
+	// walk each possible model for this entity and try rendering it out
+	for ( i = 0; i < modelCount; i++ )
+	{
+		CGhoul2Info *model = &ghoul2[ modelList[ i ] ];
+
+		if ( model->mValid && !(model->mFlags & GHOUL2_NOMODEL) && !(model->mFlags & GHOUL2_NORENDER) )
+		{
+			//
+			// figure out whether we should be using a custom shader for this model
+			//
+			skin = NULL;
+			cust_shader = NULL;
+
+			if ( ent->e.customShader )
+				cust_shader = R_GetShaderByHandle( ent->e.customShader );
+
+			else
+			{
+				// figure out the custom skin thing
+				if ( model->mCustomSkin )
+					skin = R_GetSkinByHandle( model->mCustomSkin );
+
+				else if ( ent->e.customSkin )
+					skin = R_GetSkinByHandle( ent->e.customSkin );
+
+				else if ( model->mSkin > 0 && model->mSkin < tr.numSkins )
+					skin = R_GetSkinByHandle( model->mSkin );
+			}
+			
+#if 0
+			whichLod = G2_ComputeLOD( ent, model->currentModel, model->mLodBias );
+#else
+			whichLod = 0;
+#endif
+
+			//
+			// bone matrices for this model
+			//
+			if ( i && model->mModelBoltLink != -1 )
+			{
+				int	boltMod = (model->mModelBoltLink >> MODEL_SHIFT) & MODEL_AND;
+				int	boltNum = (model->mModelBoltLink >> BOLT_SHIFT) & BOLT_AND;
+				mdxaBone_t bolt;
+				G2_GetBoltMatrixLow( ghoul2[boltMod], boltNum, ent->e.modelScale, bolt );
+				G2_TransformGhoulBones( model->mBlist, bolt, *model, currentTime );
+			}
+			else
+				G2_TransformGhoulBones( model->mBlist, rootMatrix, *model, currentTime );
+
+			CBoneCache *bc = model->mBoneCache;
+			for (int bone = 0; bone < (int)bc->mBones.size(); bone++)
+			{
+				const mdxaBone_t& b = bc->EvalRender(bone);
+				Com_Memcpy( bc->boneMatrices + bone, &b.matrix[0][0], sizeof(mat3x4_t));
+			}
+
+			const int model_index = model->currentModel->data.glm->vboModels[whichLod].vbo->index;
+			Com_Memcpy( &vk.buffer_uniform_instance.model_mdxm_bones[model_index], bc->boneMatrices, sizeof(mat3x4_t) * bc->mBones.size() );
+
+			//
+			// meshes (surfaces) for this model
+			//
+			G2_FindOverrideSurface( -1, model->mSlist ); //reset the quick surface override lookup;
+
+			CRenderSurface RS( model->mSurfaceRoot, model->mSlist, cust_shader, fogNum, personalModel, model->mBoneCache, ent->e.renderfx, skin, (model_t *)model->currentModel, whichLod, model->mBltlist, NULL, NULL );
+
+			vk_rtx_RenderSurfaces( RS, ent, entityNum );
+		}
+	}
+
+	HackadelicOnClient = false;
+}
+#endif
