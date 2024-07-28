@@ -1330,7 +1330,8 @@ const void	*RB_DrawBuffer( const void *data ) {
 
 	vk_begin_frame();
 #ifdef USE_RTX
-	vk_rtx_begin_frame();
+	if ( vk.rtxActive )
+		vk_rtx_begin_frame();
 #endif
 
 	vk_set_depthrange(DEPTH_RANGE_NORMAL);

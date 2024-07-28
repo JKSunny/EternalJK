@@ -860,7 +860,7 @@ void R_Register( void )
 	r_overBrightBits					= ri.Cvar_Get( "r_overBrightBits",					"0",						CVAR_ARCHIVE_ND|CVAR_LATCH, "" );
 	r_mapOverBrightBits					= ri.Cvar_Get( "r_mapOverBrightBits",				"0",						CVAR_ARCHIVE_ND|CVAR_LATCH, "" );
 	r_simpleMipMaps						= ri.Cvar_Get( "r_simpleMipMaps",					"1",						CVAR_ARCHIVE_ND|CVAR_LATCH, "" );
-	r_vertexLight						= ri.Cvar_Get( "r_vertexLight",						"0",						CVAR_ARCHIVE|CVAR_LATCH, "" );
+	r_vertexLight						= ri.Cvar_Get( "r_vertexLight",						"2",						CVAR_ARCHIVE|CVAR_LATCH, "" );
 	r_uiFullScreen						= ri.Cvar_Get( "r_uifullscreen",					"0",						CVAR_NONE, "" );
 	r_subdivisions						= ri.Cvar_Get( "r_subdivisions",					"4",						CVAR_ARCHIVE_ND|CVAR_LATCH, "" );
 	ri.Cvar_CheckRange( r_subdivisions, 0, 80, qfalse );
@@ -1065,7 +1065,7 @@ void R_Register( void )
     sun_brightness				= ri.Cvar_Get( "sun_brightness",			"10.0",	0, ""); 
     sun_bounce					= ri.Cvar_Get( "sun_bounce",				"1.0",	0, ""); 
     sun_animate					= ri.Cvar_Get( "sun_animate",				"0",	0, ""); 
-	sun_preset					= ri.Cvar_Get( "sun_preset",				va("%d", SUN_PRESET_MORNING), CVAR_ARCHIVE, "");
+	sun_preset					= ri.Cvar_Get( "sun_preset",				va("%d", SUN_PRESET_NONE), CVAR_ARCHIVE, "");
 	sun_latitude				= ri.Cvar_Get( "sun_latitude",				"32.9",	CVAR_ARCHIVE,	""); // latitude of former HQ of id Software in Richardson, TX
 	sun_gamepad					= ri.Cvar_Get( "sun_gamepad",				"0",	0, "");
 

@@ -1,31 +1,16 @@
 # EternalJK
 [![build](https://github.com/JKSunny/EternalJK/actions/workflows/build.yml/badge.svg)](https://github.com/JKSunny/EternalJK/actions/workflows/build.yml)
 
-This fork focuses on the jaPRO integration and Client Engine modifications.
-
-If you have any suggestions or would like to submit a bug report, please post them in [issues](https://github.com/eternalcodes/EternalJK/issues).
-
-[![Website](https://img.shields.io/badge/website-japro-brightgreen.svg)](http://playja.pro) [![Fork](https://img.shields.io/badge/repository-japro%20game%20library-blue.svg)](https://github.com/videoP/jaPRO)
-
 ## License
 
 [![License](https://img.shields.io/github/license/eternalcodes/EternalJK.svg)](https://github.com/eternalcodes/EternalJK/blob/master/LICENSE.txt)
 
 OpenJK is licensed under GPLv2 as free software. You are free to use, modify and redistribute OpenJK following the terms in LICENSE.txt.
 
-
-## For players
-
-Installing and running EternalJK:
-
-1. [Download the latest release](https://github.com/eternalcodes/EternalJK/releases).
-2. Extract the file into the Jedi Academy `GameData` folder. For Steam users, this will be in `<Steam Folder>/steamapps/common/Jedi Academy/GameData/`.
-3. Run eternaljk.x86.exe (Rename to jamp.exe for better steam support)
-
 ## For Developers
 
 ### Contributing to EternalJK
-* [Fork](https://github.com/eternalcodes/EternalJK/fork) the EternalJK project on GitHub
+* [Fork](https://github.com/JKSunny/EternalJK/fork) the EternalJK project on GitHub
 * Create a new branch on your fork and make your changes
 * Send a [pull request](https://help.github.com/articles/creating-a-pull-request) to upstream (eternaljk/master)
 
@@ -40,6 +25,57 @@ Therefore the vulkan renderer is now based on Quake3e. <br />A list of the addit
 
 Many thanks to all the contributors that worked & are still working hard on improving the Q3 engine!
 
+### Raytracing support
+> **NOTE** This is Work-in-progress, its lacking features and is unstable. \
+> E.g. switching map requires a full restart because buffer clearing is not implemented yet. \
+> - To-do list will follow.
+
+I wanted to learn more on the topic of RayTracing. \
+The current implementation is not yet complete, but the essential functionality should be there. \
+It needs more TLC, due to time constraints I have decided to put this project on hold.
+
+I believe its a waste to let this codebase collect dust, and decided to share it. \
+Because the Jedi Knight community remains highly active, with further development, this project <ins>could</ins> become stable and playable, either through my efforts or with your involvement. 
+
+I used [Quake-III-Arena-R](https://github.com/fknfilewalker/Quake-III-Arena-R) as a starting point, however transitioned to [Q2RTX](https://github.com/NVIDIA/Q2RTX) relativly quickly. \
+[Q2RTX](https://github.com/NVIDIA/Q2RTX) is active and receives frequent updates. \
+Also the code base is very clear plus I like the RayTraced result!
+I can highly recommend you to give their great effort a try if you have not done so already.
+
+**Main differences in this codebase:**
+
+> Q2RTX implemented their own material system. \
+> However I wanted to use the native .shader and support the .mtr material system from **Rend2** \
+> I did a quick mockup of that, I have not added multistage support yet.
+
+> Ghoul2 support is added *(No MD3 yet)*, and uses the same IBO's and VBO's used for **Beta** and **PBR** branch with minor tweaks. \
+> Q2RTX uses a single buffer for the IBO and VBO and does have Ghoul2 support. \
+> I did port this method, but it is define guarded and can safely be removed.
+
+> BSP level loading and buffers differ. \
+> This should however be looked at and transitioned to Q2RTX method of tlas and blas creation *(top/bottom level accel structure)*
+
+> **GETTING STARTED** \
+> Set cvar r_normalMapping 1, r_specularMapping 1, r_hdr 0, r_fullscreen 1 and r_vertexLight 2 
+> Everything is define guarded using **USE_RTX** in the codebase
+
+> **IMPORTANT** Requires assets from [Q2RTX on Steam](https://store.steampowered.com/app/1089130/Quake_II_RTX/) \
+> Download and locate the install folder and open baseq2 folder \
+> Locate and open blue_noise.pkz and copy the folder "blue_noise" to the base folder of your Jedi Academy install folder. \
+> Do the same for the folder "env" in q2rtx_media.pkz. \
+> You should now have the following file structure: GameData/base/blue_noise and GameData/base/env \
+> *~ Give Q2RTX a try as well*
+
+If you made it this far reading, thank you for your time and hopefully this may be of any use in the future.
+
+Sources: \
+[Quake-III-Arena-R](https://github.com/fknfilewalker/Quake-III-Arena-R) \
+[Q2RTX](https://github.com/NVIDIA/Q2RTX) - [License](https://github.com/NVIDIA/Q2RTX/blob/master/license.txt)
+
+References: \
+[Vulkan Specification](https://registry.khronos.org/vulkan/specs/1.2-extensions/html/vkspec.html) \
+[SaschaWillems - Vulkan](https://github.com/SaschaWillems/Vulkan)
+
 ### ImGui support 
 Press F1 to toggle input
 
@@ -50,10 +86,6 @@ Dear ImGui: Bloat-free Graphical User interface for C++ with minimal dependencie
 cimgui: Thin c-api wrapper for c++ Dear ImGui<br />
 [Repository](https://github.com/cimgui/cimgui) - 
 [License](https://github.com/cimgui/cimgui/blob/docking_inter/LICENSE)
-
-Legit profiler: ImGui helper class for simple profiler histogram<br />
-[Repository](https://github.com/Raikiri/LegitProfiler) - 
-[License](https://github.com/Raikiri/LegitProfiler/blob/master/LICENSE.txt)
 
 ## Maintainers
 
