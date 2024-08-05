@@ -130,6 +130,9 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define ENVIRONMENT_STATIC		1
 #define ENVIRONMENT_DYNAMIC		2
 
+#define MAX_LIGHT_SOURCES        32
+#define MAX_LIGHT_STYLES         64
+
 // Variables that have "_lf", "_hf" or "_spec" suffix apply to the low-frequency, high-frequency or specular lighting channels, respectively.
 
 // BINDING OFFSETS

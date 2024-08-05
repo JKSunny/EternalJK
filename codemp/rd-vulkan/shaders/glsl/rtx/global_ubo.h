@@ -126,6 +126,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 	GLOBAL_UBO_VAR_LIST_DO( MAT4,	 shadow_map_VP					) \
 	GLOBAL_UBO_VAR_LIST_DO( MAT4,	 environment_rotation_matrix	) \
 	\
+	GLOBAL_UBO_VAR_LIST_DO( SPHERELIGHTDATA, sphere_light_data[MAX_LIGHT_SOURCES] ) \
 	GLOBAL_UBO_VAR_LIST_DO( VEC4,	 cam_pos						) \
 	\
 	GLOBAL_UBO_VAR_LIST_DO( VEC4,	 world_center					) \
@@ -304,6 +305,14 @@ struct LightBuffer
 {
 	LIGHT_BUFFER_LIST
 };
+
+STRUCT ( 
+	VEC3	( center )
+	FLOAT	( radius )
+	VEC3	( color )
+	FLOAT	( pad )
+, SphereLightData )
+#define SPHERELIGHTDATA(n) SphereLightData n;
 
 #undef VERTEX_BUFFER_LIST_DO
 
