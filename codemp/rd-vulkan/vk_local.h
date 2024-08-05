@@ -501,12 +501,6 @@ typedef enum {
 	RENDER_PASS_CUBEMAP,
 	RENDER_PASS_INSPECTOR,
 	RENDER_PASS_REFRACTION,
-#ifdef USE_GBUFFER
-	RENDER_PASS_GBUFFER,
-#ifdef USE_GBUFFER_COMPOSE
-	RENDER_PASS_COMPOSE,
-#endif
-#endif
 	RENDER_PASS_COUNT
 } renderPass_t;
 
@@ -1047,12 +1041,6 @@ typedef struct {
 #ifdef VK_PBR_BRDFLUT
 		VkRenderPass brdflut;
 #endif
-#ifdef USE_GBUFFER
-		VkRenderPass gbuffer;
-	#ifdef USE_GBUFFER_COMPOSE
-		VkRenderPass composition;
-	#endif
-#endif
 		VkRenderPass cubemap;
 
 		struct {
@@ -1097,13 +1085,6 @@ typedef struct {
 #ifdef USE_RTX
 		VkFramebuffer rtx_final_blit;
 #endif
-#ifdef USE_GBUFFER
-		VkFramebuffer gbuffer[MAX_SWAPCHAIN_IMAGES];
-	#ifdef USE_GBUFFER_COMPOSE
-		VkFramebuffer composition[MAX_SWAPCHAIN_IMAGES];
-	#endif
-#endif
-
 		VkFramebuffer cubemap[6];
 
 		struct {
@@ -1280,10 +1261,6 @@ typedef struct {
 		VkShaderModule prefilterenvmap_fs;
 		VkShaderModule refraction_vs[3];
 		VkShaderModule refraction_fs;
-#ifdef USE_GBUFFER_COMPOSE
-		VkShaderModule composition_vs;
-		VkShaderModule composition_fs;
-#endif
 	} shaders;
 
 	uint32_t frame_count;
@@ -1314,18 +1291,6 @@ typedef struct {
 	VkFormat bloom_format;
 	VkFormat capture_format;
 	VkFormat compressed_format;
-
-#ifdef USE_GBUFFER
-	VkImage				gbuffer_image;
-	VkImageView			gbuffer_image_view;
-	VkDescriptorSet		gbuffer_descriptor;
-	VkFormat			gbuffer_format;
-
-#ifdef USE_GBUFFER_COMPOSE
-	VkPipelineLayout	pipeline_layout_composition;
-	VkPipeline			composition_pipeline;
-#endif
-#endif
 
 	VkImageLayout initSwapchainLayout;
 
@@ -1485,12 +1450,6 @@ uint32_t	vk_find_pipeline_ext( uint32_t base, const Vk_Pipeline_Def *def, qboole
 VkPipeline	vk_gen_pipeline( uint32_t index );
 void		vk_end_render_pass( void );
 void		vk_begin_main_render_pass( void );
-#ifdef USE_GBUFFER
-void		vk_begin_gbuffer_render_pass( void );
-#ifdef USE_GBUFFER_COMPOSE
-void		vk_begin_composition_render_pass( void );
-#endif
-#endif
 void		vk_get_pipeline_def( uint32_t pipeline, Vk_Pipeline_Def *def );
 uint32_t	vk_append_uniform( const void *uniform, size_t size, uint32_t min_offset );
 

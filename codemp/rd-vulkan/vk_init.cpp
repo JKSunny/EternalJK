@@ -457,10 +457,8 @@ void vk_initialize( void )
 	}
 #else
 	//if (r_ext_multisample->integer && !r_ext_supersample->integer)
-#ifndef USE_GBUFFER
 	if ( r_ext_multisample->integer  )
 		vk.msaaActive = qtrue;
-#endif
 #endif
 
 	// MSAA
@@ -481,7 +479,6 @@ void vk_initialize( void )
 	// Anisotropy
 	ri.Printf( PRINT_ALL, "Anisotropy max: %dx, using %dx\n\n", r_ext_max_anisotropy->integer, r_ext_texture_filter_anisotropic->integer );
 		
-#ifndef USE_GBUFFER
 	// Bloom
 	if ( r_bloom->integer )
 		vk.bloomActive = qtrue;
@@ -490,7 +487,6 @@ void vk_initialize( void )
 
 	if( glConfig.maxActiveTextures >= 4 && r_DynamicGlow->integer )
 		vk.dglowActive = qtrue;
-#endif
 
 	// Screenmap
 	vk.screenMapSamples = MIN(vkMaxSamples, VK_SAMPLE_COUNT_4_BIT);

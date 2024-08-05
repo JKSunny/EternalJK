@@ -122,7 +122,6 @@ del /Q "%tmpf%"
 pause
 
 :compile_fragment_shader
-    @rem set "flags=!fastlight[%1]! !light[%2]! !tx[%3]! !fog[%4]! -DUSE_GBUFFER"
 	set "flags=!fastlight[%1]! !light[%2]! !tx[%3]! !fog[%4]!"
     set "name=!fastlight_id[%1]!!light_id[%2]!!tx_id[%3]!!fog_id[%4]!"
     if %3 equ 0 ( set "flags=%flags% -DUSE_ATEST" )

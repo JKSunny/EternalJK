@@ -177,13 +177,6 @@ void vk_create_shader_modules( void )
 
     vk.shaders.filtercube_gm = SHADER_MODULE(filtercube_geom_spv);
     VK_SET_OBJECT_NAME(vk.shaders.filtercube_gm, "filter cube geometry shader", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
-
-#ifdef USE_GBUFFER_COMPOSE
-    vk.shaders.composition_vs = SHADER_MODULE(composition_vert_spv);
-    vk.shaders.composition_fs = SHADER_MODULE(composition_frag_spv);
-    VK_SET_OBJECT_NAME(vk.shaders.composition_vs, "composition vertex module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
-    VK_SET_OBJECT_NAME(vk.shaders.composition_fs, "composition fragment module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
-#endif
 }
 
 void vk_destroy_shader_modules( void )
@@ -273,9 +266,4 @@ void vk_destroy_shader_modules( void )
     qvkDestroyShaderModule(vk.device, vk.shaders.filtercube_gm, NULL);
     qvkDestroyShaderModule(vk.device, vk.shaders.prefilterenvmap_fs, NULL);
     qvkDestroyShaderModule(vk.device, vk.shaders.irradiancecube_fs, NULL);
-
-#ifdef USE_GBUFFER_COMPOSE
-    qvkDestroyShaderModule(vk.device, vk.shaders.composition_vs, NULL);
-    qvkDestroyShaderModule(vk.device, vk.shaders.composition_fs, NULL);
-#endif
 }

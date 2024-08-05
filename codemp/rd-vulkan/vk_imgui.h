@@ -251,9 +251,6 @@ const char *render_modes[] = {
 	"NdotH - Normal dor Half vector",
 	"VdotH - View direction dot Half vector",
 	"IBL Contribution",
-#ifdef USE_GBUFFER
-	"G-Buffer",
-#endif
 };
 
 #ifdef USE_RTX
