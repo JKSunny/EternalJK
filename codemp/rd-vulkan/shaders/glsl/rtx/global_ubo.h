@@ -311,9 +311,13 @@ STRUCT (
 	VEC3	( center )
 	FLOAT	( radius )
 	VEC3	( color )
-	UINT	( type )
+	UINT	( type )			// Combines type (sphere vs spot) and "style" of light (eg spotlight emission profile)
 	VEC3	( spot_direction )
-	UINT	( spot_falloff ) // packed2x16 with cosTotalWidth, cosFalloffStart
+	/* spot_data depends on spotlight emssion profile:
+	 * DYNLIGHT_SPOT_EMISSION_PROFILE_FALLOFF -> contains packed2x16 with cosTotalWidth, cosFalloffStart
+	 * DYNLIGHT_SPOT_EMISSION_PROFILE_AXIS_ANGLE_TEXTURE -> contains a half with cosTotalWidth and the texture index
+	 */
+	UINT	( spot_data )
 , DynLightData )
 #define DYNLIGHTDATA(n) DynLightData n;
 
