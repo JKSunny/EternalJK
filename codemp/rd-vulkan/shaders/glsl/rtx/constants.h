@@ -251,4 +251,8 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 	#endif
 #endif
 
+// Dynamic light types
+#define DYNLIGHT_SPHERE         0
+#define DYNLIGHT_SPOT           1
+
 #endif // _CONSTANTS_H_

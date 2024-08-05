@@ -385,6 +385,8 @@ VkResult vkpt_light_buffer_upload_to_staging( const uint32_t idx, qboolean rende
 		lbo->light_list_offsets[1] = 0;
 	}
 
+	// add light styles here
+
 	{
 		// moved to vk_rtx_material.cpp
 		vk_rtx_upload_materials( idx, lbo );

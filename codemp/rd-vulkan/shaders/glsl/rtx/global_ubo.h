@@ -126,7 +126,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 	GLOBAL_UBO_VAR_LIST_DO( MAT4,	 shadow_map_VP					) \
 	GLOBAL_UBO_VAR_LIST_DO( MAT4,	 environment_rotation_matrix	) \
 	\
-	GLOBAL_UBO_VAR_LIST_DO( SPHERELIGHTDATA, sphere_light_data[MAX_LIGHT_SOURCES] ) \
+	GLOBAL_UBO_VAR_LIST_DO( DYNLIGHTDATA, dyn_light_data[MAX_LIGHT_SOURCES] ) \
 	GLOBAL_UBO_VAR_LIST_DO( VEC4,	 cam_pos						) \
 	\
 	GLOBAL_UBO_VAR_LIST_DO( VEC4,	 world_center					) \
@@ -310,9 +310,11 @@ STRUCT (
 	VEC3	( center )
 	FLOAT	( radius )
 	VEC3	( color )
-	FLOAT	( pad )
-, SphereLightData )
-#define SPHERELIGHTDATA(n) SphereLightData n;
+	UINT	( type )
+	VEC3	( spot_direction )
+	UINT	( spot_falloff ) // packed2x16 with cosTotalWidth, cosFalloffStart
+, DynLightData )
+#define DYNLIGHTDATA(n) DynLightData n;
 
 #undef VERTEX_BUFFER_LIST_DO
 
