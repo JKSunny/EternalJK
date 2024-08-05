@@ -386,7 +386,7 @@ sample_polygonal_lights(
 
 #if 0
 void
-sample_spherical_lights(
+sample_dynamic_lights(
 		vec3 p,
 		vec3 n,
 		vec3 gn,
@@ -398,16 +398,16 @@ sample_spherical_lights(
 	position_light = vec3(0);
 	light_color = vec3(0);
 
-	if(global_ubo.num_sphere_lights == 0)
+	if(global_ubo.num_dyn_lights == 0)
 		return;
 
-	float random_light = rng.x * global_ubo.num_sphere_lights;
-	uint light_idx = min(global_ubo.num_sphere_lights - 1, uint(random_light));
+	float random_light = rng.x * global_ubo.num_dyn_lights;
+	uint light_idx = min(global_ubo.num_dyn_lights - 1, uint(random_light));
 
-	vec4 light_center_radius = global_ubo.sphere_light_data[light_idx * 2];
+	vec4 light_center_radius = global_ubo.dyn_light_data[light_idx * 2];
 	float sphere_radius = light_center_radius.w;
 
-	light_color = global_ubo.sphere_light_data[light_idx * 2 + 1].rgb;
+	light_color = global_ubo.dyn_light_data[light_idx * 2 + 1].rgb;
 
 	vec3 c = light_center_radius.xyz - p;
 	float dist = length(c);
@@ -416,7 +416,7 @@ sample_spherical_lights(
 
 	float irradiance = 2 * (1 - sqrt(max(0, 1 - square(sphere_radius * rdist))));
 	irradiance = min(irradiance, max_solid_angle);
-	irradiance *= float(global_ubo.num_sphere_lights); // 1 / pdf
+	irradiance *= float(global_ubo.num_dyn_lights); // 1 / pdf
 
 	mat3 onb = construct_ONB_frisvad(L);
 	vec3 diskpt;
