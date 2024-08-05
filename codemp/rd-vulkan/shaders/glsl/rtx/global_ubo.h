@@ -137,9 +137,6 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 	GLOBAL_UBO_VAR_LIST_DO( FLOAT,   prev_adapted_luminance			) \
 	GLOBAL_UBO_VAR_LIST_DO( FLOAT,   temporal_blend_factor			) \
 	\
-	GLOBAL_UBO_VAR_LIST_DO( VEC3,	 pad0							) \
-	GLOBAL_UBO_VAR_LIST_DO( FLOAT,	 tonemap_hdr_clamp_strength		) \
-	\
 	GLOBAL_UBO_VAR_LIST_DO( VEC4,	 fs_blend_color					) \
 	GLOBAL_UBO_VAR_LIST_DO( VEC4,	 fs_colorize					) \
 	\
@@ -187,6 +184,10 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 	GLOBAL_UBO_VAR_LIST_DO( FLOAT,	 shadow_map_depth_scale			) \
 	GLOBAL_UBO_VAR_LIST_DO( FLOAT,	 god_rays_intensity				) \
 	GLOBAL_UBO_VAR_LIST_DO( FLOAT,	 god_rays_eccentricity			) \
+	\
+	GLOBAL_UBO_VAR_LIST_DO( VEC2,	 pad0							) \
+	GLOBAL_UBO_VAR_LIST_DO( FLOAT,	 tonemap_hdr_clamp_strength		) \
+	GLOBAL_UBO_VAR_LIST_DO( INT,	 num_dyn_lights					) \
 	\
 	GLOBAL_UBO_VAR_LIST_DO( INT	,	 num_static_lights				) \
 	GLOBAL_UBO_VAR_LIST_DO( INT	,	 taa_image_width				) \
