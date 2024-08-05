@@ -423,7 +423,7 @@ compute_dynlight_spot(uint light_idx, uint spot_style, vec3 light_center, vec3 p
 	vec3 L_l = -L * onb;
 	float cosTheta = L_l.y; // cosine of angle to spot direction
 	float falloff;
-	
+
 	if(spot_style == DYNLIGHT_SPOT_EMISSION_PROFILE_FALLOFF) {
 		const vec2 spot_falloff = unpackHalf2x16(global_ubo.dyn_light_data[light_idx].spot_data);
 		const float cosTotalWidth = spot_falloff.x;
@@ -439,11 +439,13 @@ compute_dynlight_spot(uint light_idx, uint spot_style, vec3 light_center, vec3 p
 		}
 	} else if(spot_style == DYNLIGHT_SPOT_EMISSION_PROFILE_AXIS_ANGLE_TEXTURE) {
 		const uint spot_data = global_ubo.dyn_light_data[light_idx].spot_data;
-		const float cosTotalWidth = unpackHalf2x16(spot_data).x;
+		const float theta = acos(cosTheta);
+		const float totalWidth = unpackHalf2x16(spot_data).x;
 		const uint texture_num = spot_data >> 16;
 
 		if (cosTheta >= 0) {
-			float tc = clamp((cosTheta - cosTotalWidth) / (1 - cosTotalWidth), 0, 1);
+			// Use the angle directly as texture coordinate for better angular resolution next to the center of the beam
+			float tc = clamp(theta / totalWidth, 0, 1);
 			falloff = global_texture(texture_num, vec2(tc, 0)).r;
 		} else
 			falloff = 0;
@@ -474,13 +476,12 @@ sample_dynamic_lights(
 	uint light_idx = min(global_ubo.num_dyn_lights - 1, uint(random_light));
 
 	vec3 light_center = global_ubo.dyn_light_data[light_idx].center;
-	float sphere_radius = global_ubo.dyn_light_data[light_idx].radius;
 
 	light_color = global_ubo.dyn_light_data[light_idx].color;
 
 	uint light_type = global_ubo.dyn_light_data[light_idx].type & 0xffff;
-	uint light_style = global_ubo.dyn_light_data[light_idx].type >> 16;	
-	
+	uint light_style = global_ubo.dyn_light_data[light_idx].type >> 16;
+
 	float irradiance;
 	if(light_type == DYNLIGHT_SPHERE) {
 		irradiance = compute_dynlight_sphere(light_idx, light_center, p, position_light, rng);
@@ -491,10 +492,11 @@ sample_dynamic_lights(
 	irradiance *= float(global_ubo.num_dyn_lights); // 1 / pdf
 
 	light_color *= irradiance;
-	
+
 	if(dot(position_light - p, gn) <= 0)
 		light_color = vec3(0);
 }
 
 #endif /*_LIGHT_LISTS_*/
+
 // vim: shiftwidth=4 noexpandtab tabstop=4 cindent
