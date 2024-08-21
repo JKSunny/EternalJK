@@ -195,13 +195,26 @@ local function SliceTestCmd(ply, argc, argv)
 			slc:AddProgram("SCANLINE")
 		elseif argv[1] == 'custom' then
 			if argc < 14 then
-				ply:SendPrint("Not enough arguments to create a custom game")
+				ply:SendPrint("Not enough arguments to create a custom game, args: " .. tostring(argc))
 				return
 			end
 			if argc > 14 then
 				ply:SendPrint("Too many arguments to create a custom game")
 				return
 			end
+
+			--check if everything is a number
+			for i = 2,13,1
+			do
+				local placeholder = tonumber(argv[i])
+				if type(placeholder) == "number" then
+					argv[i] = placeholder
+				else
+					ply:SendPrint("Invalid argument, argv[" .. tostring(i) .. "] is not a number.  Contains: " .. tostring(argv[i]))
+					return
+				end
+			end
+
 			slc:SetFieldSize(argv[2],argv[3])
 			slc:SetSecurityLevelCount(argv[4])
 			if argv[5] != 0 then
@@ -234,6 +247,16 @@ local function SliceTestCmd(ply, argc, argv)
 end
 
 cmds.Add("slctest", SliceTestCmd)
+
+
+
+local function PartyManagementCmd(ply, argc, argv)
+
+
+
+end
+
+cmds.Add("partytest", PartyManagementCmd)
 
 local function AddMethod(method, sb, sb2)
 	sb:Append(method .. " ")
