@@ -127,7 +127,9 @@ set(MPVulkanRendererFiles ${MPVulkanRendererFiles} ${MPVulkanRendererVulkanAsset
 set(MPVulkanRendererUtils
 	"${MPDir}/rd-vulkan/utils/stb_dxt.h"
 	"${MPDir}/rd-vulkan/utils/stb_image.h"
-	"${MPDir}/rd-vulkan/utils/legit-profiler/imgui_legit_profiler.h")
+	"${MPDir}/rd-vulkan/utils/legit-profiler/imgui_legit_profiler.h"
+	"${MPDir}/rd-vulkan/utils/ImGuiColorTextEdit/TextEditor.h"
+	"${MPDir}/rd-vulkan/utils/ImGuiColorTextEdit/TextEditor.cpp")
 source_group("renderer\\utils" FILES ${MPVulkanRendererUtils})
 set(MPVulkanRendererFiles ${MPVulkanRendererFiles} ${MPVulkanRendererUtils})
 
