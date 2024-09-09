@@ -10,6 +10,9 @@
 #include <regex>
 #include "imgui.h"
 
+// sunny
+#define USE_AUTOCOMPLETE	
+
 class TextEditor
 {
 public:
@@ -119,6 +122,20 @@ public:
 		}
 	};
 
+#ifdef USE_AUTOCOMPLETE
+	struct Format {
+		std::string key;
+		std::vector<std::string> values{};
+	};
+
+	struct FormatInfo {
+		std::int32_t					depth;
+		std::vector<TextEditor::Format> format;
+	};
+
+	typedef std::vector<FormatInfo> Formats;
+#endif
+
 	struct Identifier
 	{
 		Coordinates mLocation;
@@ -155,6 +172,9 @@ public:
 		typedef bool(*TokenizeCallback)(const char * in_begin, const char * in_end, const char *& out_begin, const char *& out_end, PaletteIndex & paletteIndex);
 
 		std::string mName;
+#ifdef USE_AUTOCOMPLETE
+		Formats			mFormats;
+#endif
 		Keywords mKeywords;
 		Identifiers mIdentifiers;
 		Identifiers mPreprocIdentifiers;
@@ -173,6 +193,7 @@ public:
 		{
 		}
 
+		static const LanguageDefinition& Q3Shader();
 		static const LanguageDefinition& CPlusPlus();
 		static const LanguageDefinition& HLSL();
 		static const LanguageDefinition& GLSL();
@@ -210,6 +231,9 @@ public:
 	void SetReadOnly(bool aValue);
 	bool IsReadOnly() const { return mReadOnly; }
 	bool IsTextChanged() const { return mTextChanged; }
+	void setTextChanged( bool state ) { mTextChanged = state; }
+	bool IsTextChangedExternal() const { return mTextChangedExternal; }
+	void setTextChangedExternal( bool state ) { mTextChangedExternal = state; }
 	bool IsCursorPositionChanged() const { return mCursorPositionChanged; }
 
 	bool IsColorizerEnabled() const { return mColorizerEnabled; }
@@ -244,6 +268,24 @@ public:
 	void MoveBottom(bool aSelect = false);
 	void MoveHome(bool aSelect = false);
 	void MoveEnd(bool aSelect = false);
+
+#ifdef USE_AUTOCOMPLETE
+	#define		RGBA_LE(col) (((col & 0xff000000) >> (3 * 8)) + ((col & 0x00ff0000) >> (1 * 8)) + ((col & 0x0000ff00) << (1 * 8)) + ((col & 0x000000ff) << (3 * 8)))
+	std::vector<std::string> split( std::string text, std::string delim );
+	std::string GetCurrentWord() const { return mAutoCompleteCurrentWord; };
+	int GetCurrentCursorDepth() const { return mAutoCompleteCursorDepth; };
+	void SetCurrentWord( void );
+
+	void FormatInit( void );
+	void AutoComplete( void );
+
+	inline bool AutoCompleteIsOpen( void );
+	void AutoCompleteListClear( void );
+	void AutoCompleteClose( void );
+	void AutoCompleteSelectUp( void );
+	void AutoCompleteSelectDown( void );
+	void AutoCompleteSelect( void );
+#endif
 
 	void SetSelectionStart(const Coordinates& aPosition);
 	void SetSelectionEnd(const Coordinates& aPosition);
@@ -326,7 +368,7 @@ private:
 	int InsertTextAt(Coordinates& aWhere, const char* aValue);
 	void AddUndo(UndoRecord& aValue);
 	Coordinates ScreenPosToCoordinates(const ImVec2& aPosition) const;
-	Coordinates FindWordStart(const Coordinates& aFrom) const;
+	Coordinates FindWordStart(const Coordinates& aFrom, bool ignoreSpace = true) const;
 	Coordinates FindWordEnd(const Coordinates& aFrom) const;
 	Coordinates FindNextWord(const Coordinates& aFrom) const;
 	int GetCharacterIndex(const Coordinates& aCoordinates) const;
@@ -341,7 +383,7 @@ private:
 	void Backspace();
 	void DeleteSelection();
 	std::string GetWordUnderCursor() const;
-	std::string GetWordAt(const Coordinates& aCoords) const;
+	std::string GetWordAt(const Coordinates& aCoords, bool ignoreSpace = true) const;
 	ImU32 GetGlyphColor(const Glyph& aGlyph) const;
 
 	void HandleKeyboardInputs();
@@ -361,6 +403,7 @@ private:
 	bool mScrollToCursor;
 	bool mScrollToTop;
 	bool mTextChanged;
+	bool mTextChangedExternal;
 	bool mColorizerEnabled;
 	float mTextStart;                   // position (in pixels) where a code line starts relative to the left of the TextEditor.
 	int  mLeftMargin;
@@ -386,4 +429,13 @@ private:
 	uint64_t mStartTime;
 
 	float mLastClick;
+
+#ifdef USE_AUTOCOMPLETE
+	std::string					mAutoCompleteCurrentWord;
+	std::vector<std::string>	mAutoCompleteList;
+	int							mAutoCompleteListSelectedIndex;
+	int							mAutoCompleteCursorDepth;
+	int							mAutoCompleteCursorDepthLastLineNum;
+	bool						mTextChangedDelayed; // hack
+#endif
 };

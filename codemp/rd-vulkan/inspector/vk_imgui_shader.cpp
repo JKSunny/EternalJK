@@ -27,6 +27,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include "vk_imgui.h"
 #include <imgui_internal.h>
+#include <utils/ImGuiColorTextEdit/TextEditor.h>
 #include <icons/FontAwesome5/IconsFontAwesome5.h>
 #include "icons/FontAwesome5/fa5solid900.cpp"
 
@@ -38,6 +39,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include <string>
 #include <cmath>
 
+TextEditor editor;
 
 shader_t *hashTable[FILE_HASH_SIZE];
 shader_t *merge_shader_list[MAX_SHADERS];
@@ -45,15 +47,106 @@ shader_t *merge_shader_list[MAX_SHADERS];
 //
 //	shader editor
 //
+static qboolean shader_text_editor_init = qfalse;
+
 void vk_imgui_reload_shader_editor( qboolean close ) 
 {
 	windows.shader.prev = NULL;	// force reload
 	windows.shader.p_open = (bool)close;
 }
+
+static void vk_imgui_shader_text_editor_initialize( void ) 
+{
+	if ( shader_text_editor_init )
+		return;
+
+	auto lang = TextEditor::LanguageDefinition::Q3Shader();
+
+	lang.mFormats.push_back( { 1, g_shaderGeneralFormats } );
+	lang.mFormats.push_back( { 2, g_shaderStageFormats,	 } );
+
+	editor.SetLanguageDefinition( lang );
+	editor.FormatInit();
+
+	shader_text_editor_init = qtrue;
+}
+
+void vk_imgui_draw_shader_editor_text( shader_t *sh, shader_t *sh_remap, shader_t *sh_updated )
+{
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(3.0, 1.0) );
+	ImGui::PushStyleColor( ImGuiCol_Border, RGBA_LE(0x25c076ffu) );
+	ImGui::PushStyleColor( ImGuiCol_Text, RGBA_LE(0x25c076ffu) );
+
+	if ( ImGui::Button( ICON_FA_SYNC_ALT " Update", ImVec2{ 80, 30 } ) )
+		R_UpdateShader( sh->index, editor.GetText().c_str(), (qboolean)inspector.merge_shaders );
+
+	ImGui::SameLine();
+
+	ImGui::PopStyleColor(2);
+	ImGui::PushStyleColor( ImGuiCol_Border, RGBA_LE(0xfe6a41ffu) );
+	ImGui::PushStyleColor( ImGuiCol_Text, RGBA_LE(0xfe6a41ffu) );
+
+	ImDrawList* drawList = ImGui::GetWindowDrawList(); 
+	const ImVec2 region = ImGui::GetContentRegionAvail();
+	const ImVec2 pos = ImGui::GetCursorScreenPos(); 
+	float height = (GImGui->Font->FontSize + GImGui->Style.FramePadding.y * 2.0f) + 15.0f;
+
+	if ( region.x > 350.0f )
+	{
+		drawList->AddRect(
+			ImVec2(pos.x, pos.y), 
+			ImVec2((pos.x + region.x) - (sh_updated ? 80.0f : 0), pos.y + height), 
+			RGBA_LE(0x333436ffu), 2.0f,  ImDrawCornerFlags_Left, 1.0); 
+
+		drawList->AddText( ImVec2( pos.x + 8.0f, pos.y + 8.0f ), RGBA_LE(0x44454effu), sh->name );
+	}
+
+	if( sh_updated ) 
+	{
+		const ImVec2 pos = ImGui::GetCursorScreenPos(); 
+		ImGui::SetCursorScreenPos( ImVec2( (pos.x + region.x) - 70.0f, pos.y ) );
+
+		if ( ImGui::Button( ICON_FA_UNDO " Reset", ImVec2{ 70, 30 } ) ) {
+			// either revert to original or remapped shader
+			char *revert = NULL;
+
+			// if possible, revert to remapped shader
+			if ( sh_remap ) {
+				if ( !sh_remap->shaderText ) // remove remap
+					tr.shaders[ windows.shader.index ]->remappedShader = NULL;
+				else
+					revert = sh_remap->shaderText;
+			} 
+		
+			if( !revert ) // use original shader
+				revert = sh->shaderText;
+
+			R_UpdateShader( sh->index, revert, (qboolean)inspector.merge_shaders );
+			windows.shader.prev = NULL;
+		}
+	} 
+	else
+		ImGui::NewLine();
+
+	ImGui::PopStyleColor(2);
+	ImGui::PopStyleVar(2);
+
+	auto cpos = editor.GetCursorPosition();
+	ImGui::Text("%6d/%-6d %6d lines  | %s | %s | %s | %s | current word: %s | block depth %d", cpos.mLine + 1, cpos.mColumn + 1, editor.GetTotalLines(),
+		editor.IsOverwrite() ? "Ovr" : "Ins",
+		editor.CanUndo() ? "*" : " ",
+		editor.GetLanguageDefinition().mName.c_str(), "filename",  editor.GetCurrentWord().c_str(), editor.GetCurrentCursorDepth());
+
+	editor.Render("TextEditor");
+}
+
 void vk_imgui_draw_shader_editor( void ) 
 {
 	if ( !windows.shader.p_open || !windows.shader.index )
 		return;
+
+	vk_imgui_shader_text_editor_initialize();
 
 	static char shaderText[4069];
 	shader_t *sh = tr.shaders[ windows.shader.index ];
@@ -83,79 +176,15 @@ void vk_imgui_draw_shader_editor( void )
 			windows.shader.index = 0;
 			return;
 		}
+		
+		editor.SetText( shaderText );
 
 		windows.shader.prev = windows.shader.index;
 	}
 
 	ImGui::Begin( "Shader", &windows.shader.p_open );
 
-	ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(3.0, 1.0) );
-	ImGui::PushStyleColor( ImGuiCol_Border, RGBA_LE(0x25c076ffu) );
-	ImGui::PushStyleColor( ImGuiCol_Text, RGBA_LE(0x25c076ffu) );
-
-	if ( ImGui::Button( ICON_FA_SYNC_ALT " Update", ImVec2{ 80, 30 } ) )
-		R_UpdateShader( sh->index, shaderText, (qboolean)inspector.merge_shaders );
-
-	ImGui::SameLine();
-
-	ImGui::PopStyleColor(2);
-	ImGui::PushStyleColor( ImGuiCol_Border, RGBA_LE(0xfe6a41ffu) );
-	ImGui::PushStyleColor( ImGuiCol_Text, RGBA_LE(0xfe6a41ffu) );
-
-	ImDrawList* drawList = ImGui::GetWindowDrawList(); 
-	const ImVec2 region = ImGui::GetContentRegionAvail();
-	const ImVec2 pos = ImGui::GetCursorScreenPos(); 
-	float height = (GImGui->Font->FontSize + GImGui->Style.FramePadding.y * 2.0f) + 15.0f;
-
-	if ( region.x > 350.0f ) {
-		drawList->AddRect(
-			ImVec2(pos.x, pos.y), 
-			ImVec2((pos.x + region.x) - (sh_updated ? 80.0f : 0), pos.y + height), 
-			RGBA_LE(0x333436ffu), 2.0f,  ImDrawCornerFlags_Left, 1.0); 
-
-		drawList->AddText( ImVec2( pos.x + 8.0f, pos.y + 8.0f ), RGBA_LE(0x44454effu), sh->name );
-	}
-
-	if( sh_updated ) {
-		const ImVec2 pos = ImGui::GetCursorScreenPos(); 
-		ImGui::SetCursorScreenPos( ImVec2( (pos.x + region.x) - 70.0f, pos.y ) );
-
-		if ( ImGui::Button( ICON_FA_UNDO " Reset", ImVec2{ 70, 30 } ) ) {
-			// either revert to original or remapped shader
-			char *revert = NULL;
-
-			// if possible, revert to remapped shader
-			if ( sh_remap ) {
-				if ( !sh_remap->shaderText ) // remove remap
-					tr.shaders[ windows.shader.index ]->remappedShader = NULL;
-				else
-					revert = sh_remap->shaderText;
-			} 
-		
-			if( !revert ) // use original shader
-				revert = sh->shaderText;
-
-			R_UpdateShader( sh->index, revert, (qboolean)inspector.merge_shaders );
-			windows.shader.prev = NULL;
-		}
-	} 
-	else
-		ImGui::NewLine();
-
-	ImGui::PopStyleColor(2);
-	ImGui::PopStyleVar(2);
-
-	ImGui::PushStyleColor( ImGuiCol_Text , RGBA_LE(0x550000effu) );
-	ImGui::PushStyleColor( ImGuiCol_FrameBg , ImVec4(0.7f, 0.7f, 0.7f, 1.0f) );
-	ImVec2 size = ImGui::GetWindowSize();
-	size.y -= 75.0f;
-	size.x -= 16.0f;
-
-	ImGui::InputTextMultiline("##source", shaderText, sizeof shaderText, size, 
-		ImGuiInputTextFlags_CallbackAlways );
-
-	ImGui::PopStyleColor(2);
+	vk_imgui_draw_shader_editor_text( sh, sh_remap, sh_updated );
 
 	ImGui::End();
 }
