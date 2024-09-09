@@ -373,7 +373,7 @@ TextEditor::Coordinates TextEditor::ScreenPosToCoordinates(const ImVec2& aPositi
 	return SanitizeCoordinates(Coordinates(lineNo, columnCoord));
 }
 
-TextEditor::Coordinates TextEditor::FindWordStart(const Coordinates & aFrom) const
+TextEditor::Coordinates TextEditor::FindWordStart(const Coordinates & aFrom, bool ignoreSpace) const
 {
 	Coordinates at = aFrom;
 	if (at.mLine >= (int)mLines.size())
@@ -385,8 +385,9 @@ TextEditor::Coordinates TextEditor::FindWordStart(const Coordinates & aFrom) con
 	if (cindex >= (int)line.size())
 		return at;
 
-	while (cindex > 0 && isspace(line[cindex].mChar))
-		--cindex;
+	if ( ignoreSpace )
+		while (cindex > 0 && isspace(line[cindex].mChar))
+			--cindex;
 
 	auto cstart = (PaletteIndex)line[cindex].mColorIndex;
 	while (cindex > 0)
@@ -658,9 +659,9 @@ std::string TextEditor::GetWordUnderCursor() const
 	return GetWordAt(c);
 }
 
-std::string TextEditor::GetWordAt(const Coordinates & aCoords) const
+std::string TextEditor::GetWordAt(const Coordinates & aCoords, bool ignoreSpace ) const
 {
-	auto start = FindWordStart(aCoords);
+	auto start = FindWordStart(aCoords, ignoreSpace);
 	auto end = FindWordEnd(aCoords);
 
 	std::string r;
@@ -695,6 +696,492 @@ ImU32 TextEditor::GetGlyphColor(const Glyph & aGlyph) const
 	return color;
 }
 
+#ifdef USE_AUTOCOMPLETE
+const std::string c_float_regex_str = "[+-]?(?:[0-9]*[.])?[0-9]+";
+const std::string c_int_regex_str = "[+-]?\\d+";
+const std::regex c_float_regex ( c_float_regex_str ); // (?:) - non capturing group
+const std::regex c_int_regex ( c_int_regex_str );
+
+inline bool isSpace( const char in ) 
+{
+    return ( ' ' == in || '\t' == in );
+}
+
+inline void caseFold( std::string &text )
+{
+	std::transform( text.begin(), text.end(), text.begin(), ::tolower );
+}
+
+inline bool startsWithCaseInsensitive( std::string text, std::string match ) 
+{
+	caseFold(text);
+	caseFold(match);
+
+	return !strncmp( text.c_str(), match.c_str(), strlen( match.c_str() ) );
+}
+
+inline bool compareCaseInsensitive( std::string text, std::string match )
+{
+	if ( text.size() != match.size() )
+		return false;
+    
+	caseFold(text);
+	caseFold(match);
+
+	return text.compare( match ) == 0;
+}
+
+/// \brief Returns <0 if [\p string, \p string + \p n) is lexicographically less than [\p other, \p other + \p n).
+/// Returns >0 if [\p string, \p string + \p n) is lexicographically greater than [\p other, \p other + \p n).
+/// Returns 0 if [\p string, \p string + \p n) is lexicographically equal to [\p other, \p other + \p n).
+/// Treats all ascii characters as lower-case during comparisons.
+/// O(n)
+inline int string_compare_nocase_n( const char* string, const char* other, std::size_t n ){
+#ifdef WIN32
+	return _strnicmp( string, other, n );
+#else
+	return strncasecmp( string, other, n );
+#endif
+}
+
+/// \brief Returns true if [\p string, \p string + \p n) is lexicographically equal to [\p other, \p other + \p n).
+/// O(n)
+inline bool string_equal_n( const char* string, const char* other, std::size_t n ){
+	return std::strncmp( string, other, n ) == 0;
+}
+
+/// \brief Returns true if [\p string, \p string + \p n) is lexicographically equal to [\p other, \p other + \p n).
+/// Treats all ascii characters as lower-case during comparisons.
+/// O(n)
+inline bool string_equal_nocase_n( const char* string, const char* other, std::size_t n ){
+	return string_compare_nocase_n( string, other, n ) == 0;
+}
+
+inline std::size_t string_length( const char* string ){
+	return std::strlen( string );
+}
+
+/// \brief Returns true if the beginning of \p string is equal to \p prefix.
+/// O(n)
+inline bool string_equal_prefix( const char* string, const char* prefix ){
+	return string_equal_n( string, prefix, string_length( prefix ) );
+}
+inline bool string_equal_prefix_nocase( const char* string, const char* prefix ){
+	return string_equal_nocase_n( string, prefix, string_length( prefix ) );
+}
+
+std::vector<std::string> TextEditor::split( std::string text, std::string delim ) 
+{
+    std::vector<std::string> vec;
+    std::string last;
+    size_t pos = 0; 
+	size_t pos_prev = 0;
+
+    while ( 1 ) 
+	{
+        pos = text.find( delim, pos_prev );
+
+        if ( pos == std::string::npos ) 
+		{
+			last = text.substr( pos_prev );
+
+			if ( last.length() != 0 )
+				vec.push_back( last );
+
+            return vec;
+        }
+
+		if ( ( pos_prev - pos ) != 0 )
+			vec.push_back(text.substr(pos_prev, pos - pos_prev));
+
+        pos_prev = pos + delim.length();
+    }
+}
+
+static bool	mFormatInitialized = false;
+void TextEditor::FormatInit(void)
+{
+	if ( mFormatInitialized )
+		return;
+
+	const auto format_to_langdef = [&]( const std::vector<TextEditor::Format>& format )
+	{
+		uint32_t i;
+
+		const auto add_keyword = [&]( const char *word )
+		{
+			if ( !startsWithCaseInsensitive( word, "%" ) )
+			{
+				std::string name = std::string( word );
+				std::transform( name.begin(), name.end(), name.begin(), ::toupper );
+
+				mLanguageDefinition.mKeywords.insert( name );
+			}
+		};
+
+		const auto add_identifier = [&]( const char* word )
+		{
+			if ( !startsWithCaseInsensitive( word, "%" ) )
+			{
+				Identifier id;
+				id.mDeclaration = "none";
+
+				std::string name = std::string( word );
+				std::transform( name.begin(), name.end(), name.begin(), ::toupper );
+
+				mLanguageDefinition.mIdentifiers.insert( std::make_pair( name, id ) );
+			}
+		};
+
+		for ( const auto& f : format )
+		{
+			const auto tokens = split(f.key, " ");
+
+			for ( i = 0; i < tokens.size(); ++i )
+				if ( i == 0 )	// first word
+					add_keyword( tokens[i].c_str() );
+				else
+					add_identifier( tokens[i].c_str() );
+
+			for ( const auto value : f.values )
+				add_identifier( value.c_str() );
+		}
+	};
+
+	for ( auto& format : mLanguageDefinition.mFormats )
+	{
+		format_to_langdef( format.format );
+	}
+
+	mFormatInitialized = true;
+}
+
+void TextEditor::AutoComplete( void )
+{
+	// theres a frame delay after textchanged, maybe find a better spot for this whole ordeal ?
+	if ( mTextChangedDelayed ) 
+	{
+		uint32_t i;
+		std::string selectedText = GetCurrentLineText();
+
+		AutoCompleteListClear();
+
+		std::vector<std::string> line = split( selectedText, " " );
+
+		// get block depth of cursor positiion
+		// this will not get an award for the most optimized solution in the world
+		// however shaders are mostly short, plus this only runs on text and line change
+		if ( mState.mCursorPosition.mLine != mAutoCompleteCursorDepthLastLineNum )
+		{
+			auto textStartToCursor = GetText( Coordinates(0, 0), GetCursorPosition() );
+
+			mAutoCompleteCursorDepth = 0;
+			mAutoCompleteCursorDepthLastLineNum = mState.mCursorPosition.mLine;
+
+			for ( char& c : textStartToCursor )
+			{
+				if ( c == '{' )
+					mAutoCompleteCursorDepth++;
+				else if ( c == '}' )
+					mAutoCompleteCursorDepth--;
+			}
+		}
+
+		if ( mAutoCompleteCursorDepth < 1 )
+			goto skipAutoComplete;
+
+		for ( Formats::const_iterator it = mLanguageDefinition.mFormats.begin(); it != mLanguageDefinition.mFormats.end(); ++it ) 
+		{
+			if ( it->depth != mAutoCompleteCursorDepth )
+				continue;
+		
+			for ( const auto& format : it->format )
+			{
+				const auto tokens = split( format.key, " " );
+
+				// holds multi '%s' syntax values. hard-coded size is 4, max used is 2 in: blendFunc
+				// if your intend is a custom shader syntax requiring more, change this.. or make it dynamic
+				std::vector<std::string> values_list[4];
+				uint32_t values_idx = 0;
+
+				// copy values. if multi '%s' syntax, seperate values to multi-vector
+				// using '__next_token__' delimiter
+				{
+					for ( const auto value : format.values ) 
+					{
+						if ( strcmp( value.c_str(), "__next_token__" ) == 0 ) { 
+							values_idx++; continue; 
+						}
+
+						values_list[values_idx].push_back( value );
+					}
+
+					values_idx = 0;
+				}
+
+				if ( line.size() > tokens.size() ) // line too long, nothing to match
+					continue;
+
+				for ( i = 0; i < line.size(); ++i )
+				{
+					const auto& word = line[i];
+					const auto& token = tokens[i];
+
+					const auto l_push_list = [&]( const std::string& token )
+					{
+						bool match = false;
+						for ( auto& item : mAutoCompleteList )
+							if ( item == token )
+								match = true;
+
+						if ( !match )
+							mAutoCompleteList.push_back( token );
+					};
+
+
+					const auto l_push_next_token = [&]( void )
+						{
+							++i; // advance to the next token
+
+							const auto l_push_token = [&]( std::string token ) 
+								{
+									if ( i + 1 < tokens.size() ) // there is next token, add space
+										token.append(" ");
+
+									if ( !selectedText.empty() && !isSpace( selectedText.back() ) ) // no space after matched word, add one
+										token.insert( 0, " ") ;
+
+									l_push_list( token );
+								};
+
+							if ( i < tokens.size() )
+							{ // token is available
+								if ( tokens[i] == "%s" ) {
+									for ( const auto value : values_list[values_idx] )
+										l_push_token( value );
+								}
+								else if ( tokens[i] == "%f" || tokens[i] == "%c" ) {
+									l_push_token( ".0" );
+								}
+								else if ( tokens[i] == "%i" ) {
+									l_push_token( "1" );
+								}
+								else if( tokens[i] == "%t" ) {
+		#if 0
+									complete_tex_path( "" );
+		#else
+									l_push_token("textures/"); // isn't textures/ every time, but mostly
+		#endif
+								}
+								else if ( tokens[i] == "%p" ) {
+									l_push_token( "textures/" ); // isn't textures/ every time, but mostly
+								}
+								else {
+									l_push_token( tokens[i] );
+								}
+							}
+						};
+
+					const auto l_values_contain = []( const std::vector<std::string> &values, const std::string& string )
+						{
+							bool match = false;
+
+							for ( const auto value : values )
+								if ( compareCaseInsensitive( string, value ) )
+									match = true;
+
+							return match;
+						};
+
+					// last word, partial match is okay
+					if ( i == line.size() - 1 )
+					{
+						if ( token == "%s" )
+						{
+							if ( l_values_contain( values_list[values_idx], word ) )
+							{ // exact match, grab next token
+								values_idx++;
+								l_push_next_token();
+							}
+							else 
+							{ // partial match
+								if ( !selectedText.empty() && !isSpace( selectedText.back() ) )
+								{
+									for ( const auto v : values_list[values_idx] )
+									{
+										std::string value( v );
+
+										if ( startsWithCaseInsensitive( value, word) )
+										{
+											if ( i + 1 < tokens.size() ) // there is next token, add space
+												value.append(" ");
+
+											l_push_list( value );
+										}
+									}
+								}
+								values_idx++;
+							}
+						}
+						else if ( token == "%f" || token == "%c" )
+						{
+							if ( std::regex_match( word, c_float_regex )  )
+								l_push_next_token();
+						}
+						else if ( token == "%i" )
+						{
+							if ( std::regex_match( word, c_int_regex )  )	
+								l_push_next_token();
+						}
+						else if ( token == "%t" )
+						{ //any string is fine
+							if ( !selectedText.empty() )
+								if ( isSpace( selectedText.back() ) )
+									l_push_next_token();
+							//else
+							//	complete_tex_path( word.toLatin1().constData() );
+						}
+						else if ( token == "%p" )
+						{ //any string is fine
+							l_push_next_token();
+						}
+						else if ( compareCaseInsensitive( token, word ) )
+						{ // exact match, grab next token
+							l_push_next_token();
+						}
+						else if ( startsWithCaseInsensitive( token, word ) )
+						{ // partial match
+							if ( !selectedText.empty() && !isSpace( selectedText.back() ) ){
+								if ( i + 1 < tokens.size() ) // there is next token, add space
+								{
+									std::string append = token + ' ';
+
+									l_push_list( append );
+								}
+								else
+									l_push_list( token );
+							}
+						}
+					}
+					
+					// midway, want exact match
+					else 
+					{
+						if ( token == "%s" )
+						{
+							if ( l_values_contain( values_list[values_idx], word ) ){ 
+								values_idx++; continue; 
+							}
+						}
+						else if ( token == "%f" || token == "%c" )
+						{
+							if ( std::regex_match( word, c_float_regex )  )
+								continue;
+						}
+						else if ( token == "%i" ){
+							if ( std::regex_match( word, c_int_regex )  )
+								continue;
+						}
+						else if ( token == "%t" || token == "%p" )
+						{
+							continue; //any string is fine
+						}
+						else if ( compareCaseInsensitive( token, word ) )
+						{
+							continue;
+						}
+						break; // no match
+					}
+				}
+			}
+		}
+
+		SetCurrentWord();
+
+		skipAutoComplete:
+		mTextChangedDelayed = false;
+	}
+
+	if ( AutoCompleteIsOpen() )
+	{
+		if ( ImGui::IsKeyPressed( ImGui::GetKeyIndex( ImGuiKey_Escape ) ) )
+			AutoCompleteClose();
+
+		else if ( ImGui::IsKeyPressed( ImGui::GetKeyIndex( ImGuiKey_UpArrow ) ) )
+			AutoCompleteSelectUp();
+
+		else if ( ImGui::IsKeyPressed( ImGui::GetKeyIndex( ImGuiKey_DownArrow ) ) )
+			AutoCompleteSelectDown();
+
+		else if ( ImGui::IsKeyPressed( ImGui::GetKeyIndex( ImGuiKey_Tab ) ) || ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Enter)))
+			AutoCompleteSelect();
+
+		else if ( ImGui::IsKeyPressed( ImGui::GetKeyIndex( ImGuiKey_Backspace ) ) )
+			Backspace();
+	}
+
+	if ( mTextChanged )
+		mTextChangedDelayed = true;
+}
+
+void TextEditor::SetCurrentWord( void )
+{
+	auto last_word_pos = GetCursorPosition();
+	last_word_pos.mColumn -= 1;
+
+	mAutoCompleteCurrentWord = GetWordAt( last_word_pos, false );
+}
+
+inline bool TextEditor::AutoCompleteIsOpen( void )
+{
+	return mAutoCompleteList.size() > 0 ? true : false;
+}
+
+void TextEditor::AutoCompleteListClear( void )
+{
+	mAutoCompleteList.clear();
+	mAutoCompleteListSelectedIndex = 0;
+}
+
+void TextEditor::AutoCompleteClose( void )
+{
+	AutoCompleteListClear();
+
+	mAutoCompleteCurrentWord.clear();	// not required?
+}
+
+void TextEditor::AutoCompleteSelectUp( void )
+{
+	mAutoCompleteListSelectedIndex = std::max<int>(mAutoCompleteListSelectedIndex - 1, 0);
+}
+
+void TextEditor::AutoCompleteSelectDown( void )
+{
+	mAutoCompleteListSelectedIndex = std::min<int>(mAutoCompleteListSelectedIndex + 1, (int)mAutoCompleteList.size()-1);
+}
+
+void TextEditor::AutoCompleteSelect( void )
+{
+	if ( GetCurrentWord().length() > 0 
+		&& startsWithCaseInsensitive( mAutoCompleteList[mAutoCompleteListSelectedIndex], GetCurrentWord() ) )
+	{
+		auto curCoord = GetCursorPosition();
+		curCoord.mColumn = std::max<int>(curCoord.mColumn - 1, 0);
+					
+		auto acStart = FindWordStart(curCoord, false);
+		auto acEnd = FindWordEnd(curCoord);
+			
+
+		SetSelection(acStart, acEnd);
+		Backspace();
+	}
+	
+	InsertText( mAutoCompleteList[mAutoCompleteListSelectedIndex] );
+			
+	AutoCompleteClose();
+}
+#endif
+
 void TextEditor::HandleKeyboardInputs()
 {
 	ImGuiIO& io = ImGui::GetIO();
@@ -710,6 +1197,12 @@ void TextEditor::HandleKeyboardInputs()
 
 		io.WantCaptureKeyboard = true;
 		io.WantTextInput = true;
+
+#ifdef USE_AUTOCOMPLETE
+		// allow characters but skip keyboard shortcuts, use designated auto-complete shortcuts instead
+		if ( AutoCompleteIsOpen() )
+			goto characterHandler;
+#endif
 
 		if (!IsReadOnly() && ctrl && !shift && !alt && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Z)))
 			Undo();
@@ -762,6 +1255,10 @@ void TextEditor::HandleKeyboardInputs()
 		else if (!IsReadOnly() && !ctrl && !alt && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Tab)))
 			EnterCharacter('\t', shift);
 
+#ifdef USE_AUTOCOMPLETE
+		characterHandler:
+#endif
+
 		if (!IsReadOnly() && !io.InputQueueCharacters.empty())
 		{
 			for (int i = 0; i < io.InputQueueCharacters.Size; i++)
@@ -790,6 +1287,11 @@ void TextEditor::HandleMouseInputs()
 			auto doubleClick = ImGui::IsMouseDoubleClicked(0);
 			auto t = ImGui::GetTime();
 			auto tripleClick = click && !doubleClick && (mLastClick != -1.0f && (t - mLastClick) < io.MouseDoubleClickTime);
+
+#ifdef USE_AUTOCOMPLETE
+			if ( click )
+				AutoCompleteClose();
+#endif
 
 			/*
 			Left mouse button triple click
@@ -1081,6 +1583,7 @@ void TextEditor::Render()
 		}
 
 		// Draw a tooltip on known identifiers/preprocessor symbols
+#if 0
 		if (ImGui::IsMousePosValid())
 		{
 			auto id = GetWordAt(ScreenPosToCoordinates(ImGui::GetMousePos()));
@@ -1105,7 +1608,51 @@ void TextEditor::Render()
 				}
 			}
 		}
+#endif
 	}
+
+#ifdef USE_AUTOCOMPLETE
+	if ( AutoCompleteIsOpen() ) 
+	{
+		auto acCoord = GetCursorPosition();
+	
+		ImVec2 lineStartScreenPos = ImVec2 (
+			(cursorScreenPos.x + ( acCoord.mColumn * mCharAdvance.x ) ) + 50, 
+			cursorScreenPos.y + ( acCoord.mLine * mCharAdvance.y )
+		);
+
+		auto start = ImVec2(lineStartScreenPos.x, lineStartScreenPos.y);
+
+		float h = std::min<int>( 6, (int)mAutoCompleteList.size() ) * mCharAdvance.y;
+		float w = 150;
+
+		auto color = ImGui::GetColorU32( ImVec4( 217, 177, 29, 0.21) );
+
+		// 0x90909090
+		drawList->AddLine( ImVec2( start.x - 2, start.y ), ImVec2( start.x - 2, start.y + h ), 0xa2708aff, 2 );
+
+		ImGui::SetNextWindowBgAlpha( 0.70f );
+		ImGui::SetNextWindowPos( start, ImGuiCond_Always );
+		ImGui::PushStyleColor(ImGuiCol_Header, RGBA_LE(0xa2708a75u) );	// selected
+		
+		ImGui::BeginChild("##texteditor_autocompl", ImVec2(w, h), true);
+		
+		for ( uint32_t i = 0; i < mAutoCompleteList.size(); i++ ) 
+		{
+			ImGui::Selectable( 
+				mAutoCompleteList[i].c_str(), 
+				( mAutoCompleteListSelectedIndex == i ? true: false ) 
+			);
+
+			if ( mAutoCompleteListSelectedIndex == i )
+				ImGui::SetScrollHereY();
+		}
+
+		ImGui::EndChild();
+		ImGui::SetWindowFocus();
+		ImGui::PopStyleColor();
+	}
+#endif
 
 
 	ImGui::Dummy(ImVec2((longest + 2), mLines.size() * mCharAdvance.y));
@@ -1121,6 +1668,10 @@ void TextEditor::Render()
 void TextEditor::Render(const char* aTitle, const ImVec2& aSize, bool aBorder)
 {
 	mWithinRender = true;
+
+	if ( mTextChanged )
+		mTextChangedExternal = true;	// reset manually
+
 	mTextChanged = false;
 	mCursorPositionChanged = false;
 
@@ -1137,6 +1688,10 @@ void TextEditor::Render(const char* aTitle, const ImVec2& aSize, bool aBorder)
 
 	if (mHandleMouseInputs)
 		HandleMouseInputs();
+
+#ifdef USE_AUTOCOMPLETE
+	AutoComplete();
+#endif
 
 	ColorizeInternal();
 	Render();
@@ -2733,6 +3288,37 @@ static bool TokenizeCStylePunctuation(const char * in_begin, const char * in_end
 	}
 
 	return false;
+}
+
+const TextEditor::LanguageDefinition& TextEditor::LanguageDefinition::Q3Shader()
+{
+	static bool inited = false;
+	static LanguageDefinition langDef;
+	if (!inited)
+	{
+		langDef.mTokenRegexStrings.push_back(std::make_pair<std::string, PaletteIndex>("[ \\t]*#[ \\t]*[a-zA-Z_]+", PaletteIndex::Preprocessor));
+		langDef.mTokenRegexStrings.push_back(std::make_pair<std::string, PaletteIndex>("L?\\\"(\\\\.|[^\\\"])*\\\"", PaletteIndex::String));
+		langDef.mTokenRegexStrings.push_back(std::make_pair<std::string, PaletteIndex>("\\'\\\\?[^\\']\\'", PaletteIndex::CharLiteral));
+		langDef.mTokenRegexStrings.push_back(std::make_pair<std::string, PaletteIndex>("[+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?[fF]?", PaletteIndex::Number));
+		langDef.mTokenRegexStrings.push_back(std::make_pair<std::string, PaletteIndex>("[+-]?[0-9]+[Uu]?[lL]?[lL]?", PaletteIndex::Number));
+		langDef.mTokenRegexStrings.push_back(std::make_pair<std::string, PaletteIndex>("0[0-7]+[Uu]?[lL]?[lL]?", PaletteIndex::Number));
+		langDef.mTokenRegexStrings.push_back(std::make_pair<std::string, PaletteIndex>("0[xX][0-9a-fA-F]+[uU]?[lL]?[lL]?", PaletteIndex::Number));
+		langDef.mTokenRegexStrings.push_back(std::make_pair<std::string, PaletteIndex>("[a-zA-Z_][a-zA-Z0-9_]*", PaletteIndex::Identifier));
+		langDef.mTokenRegexStrings.push_back(std::make_pair<std::string, PaletteIndex>("[\\[\\]\\{\\}\\!\\%\\^\\&\\*\\(\\)\\-\\+\\=\\~\\|\\<\\>\\?\\/\\;\\,\\.]", PaletteIndex::Punctuation));
+
+
+		langDef.mCommentStart = "/*";
+		langDef.mCommentEnd = "*/";
+		langDef.mSingleLineComment = "//";
+
+		langDef.mCaseSensitive = false;
+		langDef.mAutoIndentation = true;
+
+		langDef.mName = "Q3 Shader";
+
+		inited = true;
+	}
+	return langDef;
 }
 
 const TextEditor::LanguageDefinition& TextEditor::LanguageDefinition::CPlusPlus()
