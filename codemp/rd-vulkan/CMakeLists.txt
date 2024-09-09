@@ -79,8 +79,6 @@ set(MPVulkanRendererFiles
 	"${MPDir}/rd-vulkan/vk_frame.cpp"
 	"${MPDir}/rd-vulkan/vk_image.cpp"
 	"${MPDir}/rd-vulkan/vk_image_process.cpp"
-    "${MPDir}/rd-vulkan/vk_imgui.h"
-    "${MPDir}/rd-vulkan/vk_imgui.cpp"
 	"${MPDir}/rd-vulkan/vk_info.cpp"
 	"${MPDir}/rd-vulkan/vk_init.cpp"
 	"${MPDir}/rd-vulkan/vk_instance.cpp"
@@ -160,6 +158,21 @@ set(MPVulkanRendererRTX
 	"${MPDir}/rd-vulkan/rtx/vk_rtx_image.cpp")
 source_group("renderer\\rtx" FILES ${MPVulkanRendererRTX})
 set(MPVulkanRendererFiles ${MPVulkanRendererFiles} ${MPVulkanRendererRTX})
+
+set(MPVulkanRendererInspector
+	"${MPDir}/rd-vulkan/inspector/vk_imgui.h"
+	"${MPDir}/rd-vulkan/inspector/vk_imgui_context.cpp"
+	"${MPDir}/rd-vulkan/inspector/vk_imgui_cubemaps.cpp"
+	"${MPDir}/rd-vulkan/inspector/vk_imgui_entity.cpp"
+	"${MPDir}/rd-vulkan/inspector/vk_imgui_flares.cpp"
+	"${MPDir}/rd-vulkan/inspector/vk_imgui_globals.cpp"
+	"${MPDir}/rd-vulkan/inspector/vk_imgui_profiler.cpp"
+	"${MPDir}/rd-vulkan/inspector/vk_imgui_shader.h"
+	"${MPDir}/rd-vulkan/inspector/vk_imgui_shader.cpp"
+	"${MPDir}/rd-vulkan/inspector/vk_imgui_world_nodes.cpp"
+	"${MPDir}/rd-vulkan/inspector/vk_imgui.cpp")
+source_group("renderer\\inspector" FILES ${MPVulkanRendererInspector})
+set(MPVulkanRendererFiles ${MPVulkanRendererFiles} ${MPVulkanRendererInspector})
 
 set(MPVulkanRendererCommonFiles
 	"${MPDir}/qcommon/matcomp.cpp"
