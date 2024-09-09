@@ -105,7 +105,7 @@ void vk_texture_mode( const char *string, const qboolean init ) {
 	}
 }
 
-static int generateHashValue( const char *fname )
+int generateHashValue( const char *fname )
 {
     uint32_t i = 0;
     int	hash = 0;

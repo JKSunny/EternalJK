@@ -319,7 +319,135 @@ typedef struct IBO_s
 
 //===============================================================================
 
+#ifdef USE_VK_IMGUI
+
+#define GEN_FUNC_LIST \
+	ENUM_DO( GF_NONE,					none				 ) \
+	\
+	ENUM_DO( GF_SIN,					sin					 ) \
+	ENUM_DO( GF_SQUARE,					square				 ) \
+	ENUM_DO( GF_TRIANGLE,				triangle			 ) \
+	ENUM_DO( GF_SAWTOOTH,				sawtooth			 ) \
+	ENUM_DO( GF_INVERSE_SAWTOOTH,		inversesawtooth		 ) \
+	\
+	ENUM_DO( GF_NOISE,					noise				 ) \
+	ENUM_DO( GF_RAND,					random				 ) \
+
+#define TCGEN_LIST \
+	ENUM_DO( TCGEN_BAD,					bad					 ) \
+	ENUM_DO( TCGEN_IDENTITY,			identity			 ) /* clear to 0,0 */ \
+	ENUM_DO( TCGEN_LIGHTMAP,			lightmap			 ) \
+	ENUM_DO( TCGEN_LIGHTMAP1,			lightmap1			 ) \
+	ENUM_DO( TCGEN_LIGHTMAP2,			lightmap2			 ) \
+	ENUM_DO( TCGEN_LIGHTMAP3,			lightmap3			 ) \
+	ENUM_DO( TCGEN_TEXTURE,				texture				 ) \
+	ENUM_DO( TCGEN_ENVIRONMENT_MAPPED,	environment			 ) \
+	ENUM_DO( TCGEN_FOG,					fog					 ) \
+	ENUM_DO( TCGEN_VECTOR,				vector				 ) /* // S and T from world coordinates */ \
+
+#define SHADER_SORT_LIST \
+	ENUM_DO( SS_BAD,					bad												 ) \
+	ENUM_DO( SS_PORTAL,					portal				 ) /* mirrors, portals, viewscreens  */ \
+	ENUM_DO( SS_ENVIRONMENT,			environment			 ) /* sky box */ \
+	ENUM_DO( SS_OPAQUE,					opaque				 ) /* opaque */ \
+	\
+	ENUM_DO( SS_DECAL,					decal				 ) /* scorch marks, etc */ \
+	ENUM_DO( SS_SEE_THROUGH,			see through			 ) /* ladders, grates, grills that may have small blended edges */ \
+															   /* in addition to alpha test */ \
+	ENUM_DO( SS_BANNER,					banner				 ) \
+	\
+	ENUM_DO( SS_INSIDE,					inside				 ) /* inside body parts (i.e. heart) */ \
+	ENUM_DO( SS_MID_INSIDE,				mid inside			 ) \
+	ENUM_DO( SS_MIDDLE,					middle				 ) \
+	ENUM_DO( SS_MID_OUTSIDE,			mid outside			 ) \
+	ENUM_DO( SS_OUTSIDE,				outside				 ) /* outside body parts (i.e. ribs) */ \
+	\
+	ENUM_DO( SS_FOG,					fog					 ) \
+	\
+	ENUM_DO( SS_UNDERWATER,				underwater			 ) /* for items that should be drawn in front of the water plane */ \
+	\
+	ENUM_DO( SS_BLEND0,					blend 0				 ) /* regular transparency and filters */ \
+	ENUM_DO( SS_BLEND1,					blend 1				 ) /* generally only used for additive type effects */ \
+	ENUM_DO( SS_BLEND2,					blend 2				 ) \
+	ENUM_DO( SS_BLEND3,					blend 3				 ) \
+	\
+	ENUM_DO( SS_BLEND6,					blend 6				 ) \
+	ENUM_DO( SS_STENCIL_SHADOW,			stencil shadow		 ) \
+	ENUM_DO( SS_ALMOST_NEAREST,			almost nearest		 ) /* gun smoke puffs */ \
+	\
+	ENUM_DO( SS_NEAREST,				nearest				 ) /* blood blobs */ \
+
+#define DEFORM_LIST \
+	ENUM_DO( DEFORM_NONE,				none				 ) \
+	ENUM_DO( DEFORM_WAVE,				wave				 ) \
+	ENUM_DO( DEFORM_NORMALS,			normal				 ) \
+	ENUM_DO( DEFORM_BULGE,				bulge				 ) \
+	ENUM_DO( DEFORM_BULGE_UNIFORM,		bulge				 ) /* uniform speed == width == 0.0f */ \
+	ENUM_DO( DEFORM_MOVE,				move				 ) \
+	ENUM_DO( DEFORM_PROJECTION_SHADOW,	projectionShadow	 ) \
+	ENUM_DO( DEFORM_AUTOSPRITE,			autoSprite			 ) \
+	ENUM_DO( DEFORM_AUTOSPRITE2,		autoSprite2			 ) \
+	ENUM_DO( DEFORM_TEXT0,				text				 ) \
+	ENUM_DO( DEFORM_TEXT1,				text 1				 ) \
+	ENUM_DO( DEFORM_TEXT2,				text 2				 ) \
+	ENUM_DO( DEFORM_TEXT3,				text 3				 ) \
+	ENUM_DO( DEFORM_TEXT4,				text 4				 ) \
+	ENUM_DO( DEFORM_TEXT5,				text 5				 ) \
+	ENUM_DO( DEFORM_TEXT6,				text 6				 ) \
+	ENUM_DO( DEFORM_TEXT7,				text 7				 ) \
+	ENUM_DO( DEFORM_DISINTEGRATION,		disintergrate		 ) /* no param */ \
+
+#define TCMOD_LIST \
+	ENUM_DO( TMOD_NONE,					none				 ) \
+	ENUM_DO( TMOD_TRANSFORM,			transform			 ) \
+	ENUM_DO( TMOD_TURBULENT,			turb				 ) \
+	ENUM_DO( TMOD_SCROLL,				scroll				 ) \
+	ENUM_DO( TMOD_SCALE,				scale				 ) \
+	ENUM_DO( TMOD_STRETCH,				stretch				 ) \
+	ENUM_DO( TMOD_ROTATE,				rotate				 ) \
+	ENUM_DO( TMOD_ENTITY_TRANSLATE,		entityTranslate		 ) \
+
+#define ALPHAGEN_LIST \
+	ENUM_DO( AGEN_IDENTITY,				identity			 ) \
+	ENUM_DO( AGEN_SKIP,					skip				 ) \
+	ENUM_DO( AGEN_ENTITY,				entity				 ) \
+	ENUM_DO( AGEN_ONE_MINUS_ENTITY,		oneMinusEntity		 ) \
+	ENUM_DO( AGEN_VERTEX,				vertex				 ) \
+	ENUM_DO( AGEN_ONE_MINUS_VERTEX,		oneMinusVertex		 ) \
+	ENUM_DO( AGEN_LIGHTING_SPECULAR,	lightingSpecular	 ) \
+	ENUM_DO( AGEN_WAVEFORM,				wave				 ) \
+	ENUM_DO( AGEN_PORTAL,				portal				 ) \
+	ENUM_DO( AGEN_BLEND,				blend				 ) \
+	ENUM_DO( AGEN_CONST,				const				 ) \
+	ENUM_DO( AGEN_DOT,					dot					 ) \
+	ENUM_DO( AGEN_ONE_MINUS_DOT,		oneMinusDot			 ) \
+
+#define COLORGEN_LIST \
+	ENUM_DO( CGEN_BAD,					bad					 ) \
+	ENUM_DO( CGEN_IDENTITY_LIGHTING,	identityLighting	 ) \
+	ENUM_DO( CGEN_IDENTITY,				identity			 ) \
+	ENUM_DO( CGEN_ENTITY,				entity				 ) \
+	ENUM_DO( CGEN_ONE_MINUS_ENTITY,		oneMinusEntity		 ) \
+	ENUM_DO( CGEN_EXACT_VERTEX,			exactVertex			 ) \
+	ENUM_DO( CGEN_VERTEX,				vertex				 ) \
+	ENUM_DO( CGEN_ONE_MINUS_VERTEX,		oneMinusVertex		 ) \
+	ENUM_DO( CGEN_WAVEFORM,				wave				 ) \
+	ENUM_DO( CGEN_LIGHTING_DIFFUSE,		lightingDiffuse		 ) \
+	ENUM_DO( CGEN_LIGHTING_DIFFUSE_ENTITY,	lightingDiffuseEntity ) \
+	ENUM_DO( CGEN_FOG,					fog					 ) \
+	ENUM_DO( CGEN_CONST,				const				 ) \
+	ENUM_DO( CGEN_LIGHTMAPSTYLE,		lightmapstyle		 ) \
+	ENUM_DO( CGEN_DISINTEGRATION_1,		disintegration 1	 ) \
+	ENUM_DO( CGEN_DISINTEGRATION_2,		disintegration 2	 ) \
+
+#define ENUM_DO( _enum, ... ) _enum,
+
+#endif
+
 typedef enum {
+#ifdef USE_VK_IMGUI
+	SHADER_SORT_LIST
+#else
 	SS_BAD,
 	SS_PORTAL,			// mirrors, portals, viewscreens
 	SS_ENVIRONMENT,		// sky box
@@ -350,12 +478,15 @@ typedef enum {
 	SS_ALMOST_NEAREST,	// gun smoke puffs
 
 	SS_NEAREST			// blood blobs
+#endif
 } shaderSort_t;
-
 
 #define MAX_SHADER_STAGES 8
 
 typedef enum {
+#ifdef USE_VK_IMGUI
+	GEN_FUNC_LIST
+#else
 	GF_NONE,
 
 	GF_SIN,
@@ -366,11 +497,13 @@ typedef enum {
 
 	GF_NOISE,
 	GF_RAND
-
+#endif
 } genFunc_t;
 
-
 typedef enum {
+#ifdef USE_VK_IMGUI
+	DEFORM_LIST
+#else
 	DEFORM_NONE,
 	DEFORM_WAVE,
 	DEFORM_NORMALS,
@@ -389,9 +522,13 @@ typedef enum {
 	DEFORM_TEXT6,
 	DEFORM_TEXT7,
 	DEFORM_DISINTEGRATION
+#endif
 } deform_t;
 
 typedef enum {
+#ifdef USE_VK_IMGUI
+	ALPHAGEN_LIST
+#else
 	AGEN_IDENTITY,
 	AGEN_SKIP,
 	AGEN_ENTITY,
@@ -405,9 +542,13 @@ typedef enum {
 	AGEN_CONST,
 	AGEN_DOT,
 	AGEN_ONE_MINUS_DOT
+#endif
 } alphaGen_t;
 
 typedef enum {
+#ifdef USE_VK_IMGUI
+	COLORGEN_LIST
+#else
 	CGEN_BAD,
 	CGEN_IDENTITY_LIGHTING,	// tr.identityLight
 	CGEN_IDENTITY,			// always (1,1,1,1)
@@ -424,9 +565,13 @@ typedef enum {
 	CGEN_LIGHTMAPSTYLE,
 	CGEN_DISINTEGRATION_1,
 	CGEN_DISINTEGRATION_2
+#endif
 } colorGen_t;
 
 typedef enum {
+#ifdef USE_VK_IMGUI
+	TCGEN_LIST
+#else
 	TCGEN_BAD,
 	TCGEN_IDENTITY,			// clear to 0,0
 	TCGEN_LIGHTMAP,
@@ -437,6 +582,7 @@ typedef enum {
 	TCGEN_ENVIRONMENT_MAPPED,
 	TCGEN_FOG,
 	TCGEN_VECTOR			// S and T from world coordinates
+#endif
 } texCoordGen_t;
 
 typedef enum {
@@ -466,6 +612,9 @@ typedef struct waveForm_s {
 #define TR_MAX_TEXMODS 4
 
 typedef enum {
+#ifdef USE_VK_IMGUI
+	TCMOD_LIST
+#else
 	TMOD_NONE,
 	TMOD_TRANSFORM,
 	TMOD_TURBULENT,
@@ -474,7 +623,12 @@ typedef enum {
 	TMOD_STRETCH,
 	TMOD_ROTATE,
 	TMOD_ENTITY_TRANSLATE
+#endif
 } texMod_t;
+
+#ifdef USE_VK_IMGUI
+	#undef ENUM_DO
+#endif
 
 #define	MAX_SHADER_DEFORMS	3
 typedef struct deformStage_s {
@@ -513,7 +667,6 @@ typedef struct texModInfo_s {
 #define SURFSPRITE_FACING_UP		1
 #define SURFSPRITE_FACING_DOWN		2
 #define SURFSPRITE_FACING_ANY		3
-
 
 typedef struct surfaceSprite_s
 {
