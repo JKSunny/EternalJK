@@ -50,7 +50,6 @@ JKG.Slicing.Programs.PROBE = {
 		for col=1, state.Width do
 			value = 0
 			alarms = 0
-			local nulls = 0
 			for row=1, state.Height do
 				local nodeid = state.Grid[row][col]
 				if nodeid == 0 then	-- Alarm node
