@@ -149,8 +149,8 @@ local function SliceTestCmd(ply, argc, argv)
 	
 	if argc < 2 then
 		ply:SendPrint("Please select a difficulty level: /slctest ^2easy^7, /slctest ^3medium^7, /slctest ^1hard")
-		ply:SendPrint("To create a custom game: /slctest ^5custom^7 <columns> Number of columns, between 1 - 8")
-		ply:SendPrint("                                         <rows> Number of rows, between 1 - 8")
+		ply:SendPrint("To create a custom game: /slctest ^5custom^7 <columns> Grid width, between 1 - 8")
+		ply:SendPrint("                                         <rows> Grid height, between 1 - 8")
 		ply:SendPrint("                                         <seurity levels> Number of security levels between 1 - 5")
 		ply:SendPrint("                                         <intrusion detection time> (seconds) 0 for no intrusion detection")
 		ply:SendPrint("                                         <alarm nodes> Number of alarm nodes")
@@ -215,9 +215,9 @@ local function SliceTestCmd(ply, argc, argv)
 				end
 			end
 
-			slc:SetFieldSize(argv[2],argv[3])
+			slc:SetFieldSize(argv[2],argv[3]) --width, height
 			slc:SetSecurityLevelCount(argv[4])
-			if argv[5] != 0 then
+			if argv[5] ~= 0 then
 				slc:SetIntrusionDetection(true, argv[5])
 			end
 			--alarm nodes, reset nodes, lvl1, lvl2, lvl3, lvl4, lvl5

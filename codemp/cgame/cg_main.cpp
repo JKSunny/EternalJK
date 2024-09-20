@@ -2439,9 +2439,9 @@ void JKG_WeaponIndicators_Init();
 
 #include "jkg_chatcmds.h"
 
-/*static void CG_OpenPartyManagement( void ) {
-	uiImports->PartyMngtNotify( 10 );
-}*/
+static void CG_OpenPartyManagement( void ) {
+	uiImports->PartyMngtNotify(PARTYNOTIFY_OPEN);
+}
 
 static void CG_OpenInventory ( void )
 {
@@ -2449,7 +2449,7 @@ static void CG_OpenInventory ( void )
 }
 
 void CG_SetupChatCmds() {
-	//CCmd_AddCommand("party", CG_OpenPartyManagement);
+	CCmd_AddCommand("party", CG_OpenPartyManagement);
 	CCmd_AddCommand ("inventory", CG_OpenInventory);
 }
 
