@@ -33,7 +33,7 @@ function InitQuest(ply, name)
     data.title = ""         --display name of the quest
     data.objective = ""     --the current objective of the quest
     data.hidden = false     --if it can be viewed in the datapad/questlog
-    data.complete = false   --false = quest is in progress, true = quest is completed
+    data.status = 0         --0 == quest not started, 1 = in progress, 2 = incomplete, -1 = failed
     data.active = true      --true = set as an active quest / false = not on active quest list (can still be completed, but doesn't show on map/markers etc)
     data.questlog = log     --contains a list of all the completed quest objectives
 
@@ -44,24 +44,58 @@ function InitQuest(ply, name)
     return true
 end
 
+--==============
+--helper functions 
+--==============
+
+--return true if quest system isn't initialized, otherwise return false
+local function isQuestManagerInvalid(ply)
+    if ply.Quests == nil then
+        ply:SendPrint("Quest system not initialized for " .. ply.Name .. "^7. This player has not started any quests.")
+        return true
+    else
+        return false
+    end
+end
+
+--convert status of quest to string and returns value
+local function getQuestStatusString(value)
+    local status
+    if value == -1 then
+        status = "Failed"
+    elseif value == 0 then
+        status = "Not Started."
+    elseif value == 1 then
+        status = "In Progress"
+    elseif value == 2 then
+        status = "Complete"
+    else
+        status = "Unknown"
+    end
+    return status
+end
+
+--==============
+--functions 
+--==============
+
 --lists all the quests in ply.Quests[]
 --usage: /listquests
 local function ListQuests(ply)
-    if ply.Quests == nil then
-        ply:SendPrint("Quest system not initialized for this player.  This player has not started any quests.")
+    if isQuestManagerInvalid(ply) then
         return
     end
-    
-    print(ply.Name .. "^7 has started " .. ply.QstCount .. " quests:")
-    print("|    Quest Title    |   (name)   | stage |")
-    print("------------------------------------------")
+
+    ply:SendPrint(ply.Name .. "^7 has started " .. ply.QstCount .. " quests:")
+    ply:SendPrint("|    Quest Title    |   (name)   | stage |  status  |")
+    ply:SendPrint("-----------------------------------------------------")
     if type(ply.Quests) == 'table' then
         for k,v in pairs(ply.Quests) do
             if type(k) ~= 'number' then
-                if ply.Quests[k].title ~= nil then 
-                    print(ply.Quests[k].title .. " | (" .. ply.Quests[k].name .. ") | " .. ply.Quests[k].stage .. " |")
+                if ply.Quests[k].title ~= nil then
+                    ply:SendPrint("| " .. ply.Quests[k].title .. " | (" .. ply.Quests[k].name .. ") | " .. ply.Quests[k].stage .. " | " .. getQuestStatusString(ply.Quests[k].status) .. " |")
                 else
-                    print("<Untitled Quest> | (" .. ply.Quests[k].name ") | " .. ply.Quests[k].stage .. " |")
+                    ply:SendPrint("| <Untitled Quest> | (" .. ply.Quests[k].name ") | " .. ply.Quests[k].stage .. " | " .. getQuestStatusString(ply.Quests[k].status) .. " |")
                 end
             end
         end
@@ -76,8 +110,7 @@ local function GetQuestObjective(ply, argc, argv)
 		return
 	end
 
-    if ply.Quests == nil then
-        ply:SendPrint("Quest system not initialized for this player.  This player has not started any quests.")
+    if isQuestManagerInvalid(ply) then
         return
     end
 
@@ -108,8 +141,7 @@ local function GetQuestStage(ply, argc, argv)
 		return
 	end
 
-    if ply.Quests == nil then
-        ply:SendPrint("Quest system not initialized for this player.  This player has not started any quests.")
+    if isQuestManagerInvalid(ply) then
         return
     end
 
@@ -137,8 +169,7 @@ local function SetQuestStage(ply, argc, argv)
 		return
 	end
 
-    if ply.Quests == nil then
-        ply:SendPrint("Quest system not initialized for this player.  This player has not started any quests.")
+    if isQuestManagerInvalid(ply) then
         return
     end
 
@@ -166,6 +197,17 @@ local function SetQuestStage(ply, argc, argv)
 end
 
 
+function QuestHelp(ply)
+    ply:SendPrint("The following quest cmds are available:")
+    ply:SendPrint("quest.help - get help with using the quest system.")
+    ply:SendPrint("quest.getstage - check a specified quest's current stage")
+    ply:SendPrint("quest.setstage - manually set a specified quest to a value")
+    ply:SendPrint("quest.getobjective - list a specified quest's current objective")
+    ply:SendPrint("quest.list - list status info about all initialized quests")
+end
+
+cmds.Add("quest", QuestHelp)
+cmds.Add("quest.help", QuestHelp)
 cmds.Add("quest.getstage", GetQuestStage)
 cmds.Add("quest.setstage", SetQuestStage)
 cmds.Add("quest.getobjective", GetQuestObjective)

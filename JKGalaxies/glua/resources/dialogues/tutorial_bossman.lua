@@ -79,9 +79,11 @@ DLG.Nodes = {
 		ScriptFunc = function(owner, ply, data)
 			--update the quest's stage to 1, and notify player
 			ply.Quests["tutorial"].stage = 1
+			ply.Quests["tutorial"].status = 1
 			ply.Quests["tutorial"].objective = "I should talk to the tutorial bossman to get started with my new job."
 			ply:SendCenterPrint("Started: " .. ply.Quests["tutorial"].title)
 			ply:SendPrint("Started " .. ply.Quests["tutorial"].title)
+			ply:SendPrint("Objective: " .. ply.Quests["tutorial"].objective)
 			ply.EntPtr:PlaySound(11, "sound/interface/quest/QuestStartReveal00.mp3")
 		end,
 		HasCondition = false,
@@ -402,9 +404,9 @@ DLG.Nodes = {
 			--update the quest's stage to 2, and notify player
 			ply.Quests["tutorial"].stage = 2
 			table.insert(ply.Quests["tutorial"].questlog, ply.Quests["tutorial"].objective) --put old objective into the table
-			ply.Quests["tutorial"].objective = "Kinnigan Vleet wants me to get my things from the locker. Find the locker and open it." --update objective
+			ply.Quests["tutorial"].objective = "Kinnigan Vleet wants me to find the locker and retrieve my things." --update objective
 			ply:SendCenterPrint("Objective: Get your things from the locker.") --notify of objective
-			ply:SendPrint("Objective: Get your things from the locker.")
+			ply:SendPrint("Objective: " .. ply.Quests["tutorial"].objective)	--send in console
 			ply.EntPtr:PlaySound(11, "sound/interface/quest/notify00.wav")
 		end,
 		HasCondition = false,
