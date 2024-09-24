@@ -195,7 +195,7 @@ local function GetQuestStage(ply, argc, argv)
     return
 end
 
---Broken function, will change quest stage, but still breaks npcs - needs more work --futuza
+--note this may break NPCs if they are doing anything other than checking the quest stage  --futuza
 local function SetQuestStage(ply, argc, argv)
     if (argc < 3 or argc > 3) then
 		ply:SendPrint("/quest.setstage <questname> <stage>")
@@ -216,7 +216,7 @@ local function SetQuestStage(ply, argc, argv)
     if(tonumber(stageval)) then
         if ply.Quests then
             if ply.Quests[questname] then
-                ply.Quests[questname].stage = stageval
+                ply.Quests[questname].stage = tonumber(stageval)
                 ply:SendPrint(ply.Quests[questname].title .. " set to stage " .. ply.Quests[questname].stage)
                 return
             else
