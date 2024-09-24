@@ -26,7 +26,6 @@ function InitQuest(ply, name)
 
     --initialize data
     local data = {}
-    local log = {}          --table of objectives/questlog
     data.stage = 0          --what stage we're on
                             --0==not started, 1==started, 2==1st part done, etc.  Can only use numbers.
     data.name = name        --short reference name
@@ -35,7 +34,7 @@ function InitQuest(ply, name)
     data.hidden = false     --if it can be viewed in the datapad/questlog
     data.status = 0         --0 == quest not started, 1 = in progress, 2 = incomplete, -1 = failed
     data.active = true      --true = set as an active quest / false = not on active quest list (can still be completed, but doesn't show on map/markers etc)
-    data.questlog = log     --contains a list of all the completed quest objectives
+    data.questlog = {}     --contains a list of all the completed quest objectives
 
     --assign to player
     ply.Quests[name] = data
@@ -62,15 +61,15 @@ end
 local function getQuestStatusString(value)
     local status
     if value == -1 then
-        status = "Failed"
+        status = "^1Failed^7"
     elseif value == 0 then
-        status = "Not Started."
+        status = "^3Not Started^7"
     elseif value == 1 then
         status = "In Progress"
     elseif value == 2 then
-        status = "Complete"
+        status = "^2Complete^7"
     else
-        status = "Unknown"
+        status = "^3Unknown^7"
     end
     return status
 end
@@ -87,15 +86,15 @@ local function ListQuests(ply)
     end
 
     ply:SendPrint(ply.Name .. "^7 has started " .. ply.QstCount .. " quests:")
-    ply:SendPrint("|    Quest Title    |   (name)   | stage |  status  |")
+    ply:SendPrint("|   (name)   |    Quest Title    | stage |  status  |")
     ply:SendPrint("-----------------------------------------------------")
     if type(ply.Quests) == 'table' then
         for k,v in pairs(ply.Quests) do
             if type(k) ~= 'number' then
                 if ply.Quests[k].title ~= nil then
-                    ply:SendPrint("| " .. ply.Quests[k].title .. " | (" .. ply.Quests[k].name .. ") | " .. ply.Quests[k].stage .. " | " .. getQuestStatusString(ply.Quests[k].status) .. " |")
+                    ply:SendPrint("| (" .. ply.Quests[k].name .. ") | " .. ply.Quests[k].title .. " | " .. ply.Quests[k].stage .. " | " .. getQuestStatusString(ply.Quests[k].status) .. " |")
                 else
-                    ply:SendPrint("| <Untitled Quest> | (" .. ply.Quests[k].name ") | " .. ply.Quests[k].stage .. " | " .. getQuestStatusString(ply.Quests[k].status) .. " |")
+                    ply:SendPrint("| (" .. ply.Quests[k].name ") | <Untitled Quest> | " .. ply.Quests[k].stage .. " | " .. getQuestStatusString(ply.Quests[k].status) .. " |")
                 end
             end
         end
@@ -132,6 +131,40 @@ local function GetQuestObjective(ply, argc, argv)
     return
 end
 
+local function GetQuestLog(ply, argc, argv)
+    if (argc < 2 or argc > 2) then
+        ply:SendPrint("/quest.questlog <questname>")
+        return
+    end
+
+    if isQuestManagerInvalid(ply) then
+        return
+    end
+
+    local questname = argv[1];
+	if questname ~= nil then
+        if ply.Quests then
+            if ply.Quests[questname] then
+                if next(ply.Quests[questname].questlog) == nil then
+                    ply:SendPrint("Questlog: ^3<empty>^7")
+                else
+                    for i,v in ipairs(ply.Quests[questname].questlog) do
+                        ply:SendPrint("Questlog: ")
+                        ply:SendPrint("[" .. i .. "] " .. ply.Quests[questname].questlog[i])
+                    end
+                end
+                if ply.Quests[questname].status < 0 then
+                    ply:SendPrint("-\n^1Failed Objective^7: " .. ply.Quests[questname].objective)
+                else
+                    ply:SendPrint("-\n^2Current Objective^7: " .. ply.Quests[questname].objective)
+                end
+            else
+                ply:SendPrint("^1Invalid questname specified.")
+                return
+            end
+        end
+    end
+end
 
 --checks the stage of the specified quest
 --usage: /quest.getstage <questshortname>
@@ -202,7 +235,8 @@ function QuestHelp(ply)
     ply:SendPrint("quest.help - get help with using the quest system.")
     ply:SendPrint("quest.getstage - check a specified quest's current stage")
     ply:SendPrint("quest.setstage - manually set a specified quest to a value")
-    ply:SendPrint("quest.getobjective - list a specified quest's current objective")
+    ply:SendPrint("quest.objective - list a specified quest's current objective")
+    ply:SendPrint("quest.questlog - list a specified quest's questlog (history)")
     ply:SendPrint("quest.list - list status info about all initialized quests")
 end
 
@@ -210,5 +244,7 @@ cmds.Add("quest", QuestHelp)
 cmds.Add("quest.help", QuestHelp)
 cmds.Add("quest.getstage", GetQuestStage)
 cmds.Add("quest.setstage", SetQuestStage)
-cmds.Add("quest.getobjective", GetQuestObjective)
+cmds.Add("quest.objective", GetQuestObjective)
+cmds.Add("quest.questlog", GetQuestLog)
 cmds.Add("quest.list", ListQuests)
+
