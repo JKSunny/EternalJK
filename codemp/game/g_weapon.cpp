@@ -623,12 +623,22 @@ void laserTrapExplode( gentity_t *self )
 			JKG_DoSplashDamage(&fireMode->secondary, self->r.currentOrigin, self, self->activator, self, JKG_GetMeansOfDamageIndex("MOD_EXPLOSION"));
 		}
 
-		if( self->enemy && self->enemy->client && self->activator != self->enemy && 
-			(!TeamFriendly(self->activator->s.number, self->enemy->s.number) || !OnSameTeam(self->activator, self->enemy)) )
+		if( self->enemy && self->enemy->client && self->activator != self->enemy)
 		{
-			// Give us some credits, we're a good person etc
-			self->enemy->client->ps.credits += 35;
-			trap->SendServerCommand(self->enemy->s.number, "notify 1 \"Destroyed Enemy Equipment: +35 Credits\"");
+			if(!TeamFriendly(self->activator->s.number, self->enemy->s.number) && !OnSameTeam(self->activator, self->enemy))
+			{
+				// Give us some credits, we're a good person etc
+				self->enemy->client->ps.credits += 35;
+				trap->SendServerCommand(self->enemy->s.number, "notify 1 \"Destroyed Enemy Equipment: +35 Credits\"");
+			}
+
+			//they're a bad dog
+			else
+			{
+				trap->SendServerCommand(self->enemy->s.number, "notify 1 \"Destroyed Friendly Equipment!\""); 
+				//trap->SendServerCommand(self->activator->s.number, va("notify 1 \"%s ^7Destroyed Your Equipment!\"", self->activator->client->pers.netname)); //tattle on them
+			}
+			
 		}
 	}
 
