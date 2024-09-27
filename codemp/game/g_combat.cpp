@@ -1660,7 +1660,7 @@ qboolean JKG_HandleUnclaimedBounties(gentity_t* deadguy)
 {
 	int multiplier = (deadguy->client->numKillsThisLife > jkg_maxKillStreakBounty.integer) ? jkg_maxKillStreakBounty.integer : deadguy->client->numKillsThisLife;
 	gentity_t* player; int reward = jkg_bounty.integer*multiplier;	//set default reward as jkg_bounty
-	int team_amt{ 0 };	//# of players on the team to reward
+	std::vector<int> awards; awards.reserve((MAX_CLIENTS * 0.5)+1);	//which players on the team to award
 
 	int teamToReward = deadguy->client->sess.sessionTeam;	//get dead guy's team
 	if (teamToReward == TEAM_RED)	//if he was red, blue team gets reward
@@ -1673,29 +1673,28 @@ qboolean JKG_HandleUnclaimedBounties(gentity_t* deadguy)
 	for (int i = 0; i < sv_maxclients.integer; i++)
 	{
 		player = &g_entities[i];
-		if (!player->inuse || (player - g_entities >= MAX_CLIENTS) || player == nullptr || player->client == nullptr || player->client->sess.sessionTeam != teamToReward)
+		if (!player->inuse || (player - g_entities >= MAX_CLIENTS) || player == nullptr || player->client == nullptr || player->client->sess.sessionTeam != teamToReward) //don't reward spectators, nonclients, etc
 			continue;
 
-		if(player->client->sess.sessionTeam == teamToReward)
-			team_amt++;
+		if (player->client->sess.sessionTeam == teamToReward)
+		{
+			awards.push_back(i);	//add the client to the award list
+		}
 	}
 
-	if (team_amt < 1)	//nobody there
+	if (awards.size() < 1)	//nobody there
 		return false;
 
 	//calculate team reward split
-	reward = (reward / team_amt);																//equally distribute reward among team
+	reward = (reward / awards.size());															//equally distribute reward among team
 	reward = (reward < jkg_teamKillBonus.integer) ? jkg_teamKillBonus.integer : reward;			//unless its less than teamKillBonus
-	if (team_amt == 1)																			//if only one player, don't give him the whole reward since its not a direct kill
+	if (awards.size() == 1)																		//if only one player, don't give him the whole reward since its not a direct kill
 		reward = reward * 0.5;
 
-	for (int i = 0; i < sv_maxclients.integer; i++)
+	//if we're not on deadguy's team, we deserve a reward!
+	for (int i : awards)
 	{
 		player = &g_entities[i];
-		if (!player->inuse || (player - g_entities >= MAX_CLIENTS) || player == nullptr || player->client == nullptr)	//don't reward spectators, nonclients, etc
-			continue;
-
-		//if we're not on deadguy's team, we deserve a reward!
 		if (player->client->sess.sessionTeam == teamToReward)
 		{
 			trap->SendServerCommand(player->s.number, va("notify 1 \"Team Bounty Claimed: +%i Credits\"", reward));
