@@ -1423,16 +1423,23 @@ int G_ClientNumberFromArg(const char *name)
 /*
 ==================
 Give cheat
+return true if successful, false if unsuccessful
 ==================
 */
 
-void G_Give( gentity_t *ent, const char *name, const char *args, int argc )
+qboolean G_Give( gentity_t *ent, const char *name, const char *args, int argc )
 {
 	gitem_t		*it;
 	int			i;
 	qboolean	give_all = qfalse;
 	gentity_t	*it_ent;
 	trace_t		trace;
+
+	if (!Q_stricmp(name, "give"))
+	{
+		trap->SendServerCommand(ent->s.number, va("print \"Invalid 'give give' command.\nUsage example: 'giveother padawan credits 100'\n\""));
+		return qfalse;
+	}
 
 	if ( !Q_stricmp( name, "all" ) )
 		give_all = qtrue;
@@ -1445,7 +1452,7 @@ void G_Give( gentity_t *ent, const char *name, const char *args, int argc )
 			ent->health = ent->client->ps.stats[STAT_MAX_HEALTH];
 
 		if ( !give_all )
-			return;
+			return qtrue;
 	}
 
 	if ( give_all || !Q_stricmp( name, "shield" ) )
@@ -1456,7 +1463,7 @@ void G_Give( gentity_t *ent, const char *name, const char *args, int argc )
 			ent->client->ps.stats[STAT_SHIELD] = ent->client->ps.stats[STAT_MAX_SHIELD];
 
 		if ( !give_all )
-			return;
+			return qtrue;
 	}
 
 	if ( give_all || !Q_stricmp( name, "stamina" ) )
@@ -1466,8 +1473,8 @@ void G_Give( gentity_t *ent, const char *name, const char *args, int argc )
 		else
 			ent->client->ps.forcePower = ent->client->ps.stats[STAT_MAX_STAMINA];
 
-		if ( !give_all )
-			return;
+		if (!give_all)
+			return qtrue;
 	}
 
 	if ( !give_all && !Q_stricmp( name, "weapon" ) )
@@ -1488,12 +1495,13 @@ void G_Give( gentity_t *ent, const char *name, const char *args, int argc )
 					ent->client->ammoTypes[weaponID][i] = weapon->firemodes[i].ammoDefault->ammoIndex;
 				}
 			}
+			return qtrue;
 	    }
 	    else
 	    {
 	        trap->SendServerCommand (ent->s.number, va ("print \"'%s' does not exist.\n\"", args));
+			return qfalse;
 	    }
-	    return;
 	}
 
 	if ( give_all || !Q_stricmp( name, "ammo" ) )
@@ -1526,20 +1534,22 @@ void G_Give( gentity_t *ent, const char *name, const char *args, int argc )
 			}
 		}
 		ent->client->ps.stats[STAT_TOTALAMMO] = num;
-		if ( !give_all )
-			return;
+
+		if (!give_all)
+			return qtrue;
 	}
 
 	//Inventory items -- eezstreet/JKG
 	if( !give_all && !Q_stricmp( name, "item" ) )
 	{
+		qboolean returnval = qfalse;
 		int itemID = atoi( args );
 		if(itemID)
 		{
 			if(!itemLookupTable[itemID].itemID)
 			{
 				trap->SendServerCommand(ent - g_entities, va("print \"%i refers to an item that does not exist\n\"", itemID));
-				return;
+				return qfalse;
 			}
 			itemInstance_t item = BG_ItemInstance(itemID, 1);
 
@@ -1547,10 +1557,12 @@ void G_Give( gentity_t *ent, const char *name, const char *args, int argc )
 			if (item.id->itemType == ITEM_AMMO)
 			{
 				BG_GiveAmmo(ent, BG_GetAmmo(item.id->ammoData.ammoIndex), qfalse, item.id->ammoData.quantity);
+				returnval = qtrue;
 			}
 			else
 			{
 				BG_GiveItem(ent, item);
+				returnval = qtrue;
 			}
 			
 		}
@@ -1559,21 +1571,22 @@ void G_Give( gentity_t *ent, const char *name, const char *args, int argc )
 			itemInstance_t item = BG_ItemInstance(args, 1);
 			if (!item.id) {
 				trap->SendServerCommand(ent - g_entities, va("print \"%s refers to an item that does not exist\n\"", args));
-				return;
+				return qfalse;
 			}
 
 			// If we gave the player an ammo item, we need to actually give them ammo, not the ammo item itself
 			if (item.id->itemType == ITEM_AMMO)
 			{
 				BG_GiveAmmo(ent, BG_GetAmmo(item.id->ammoData.ammoIndex), qfalse, item.id->ammoData.quantity);
+				returnval = qtrue;
 			}
 			else
 			{
 				BG_GiveItem(ent, item);
+				returnval = qtrue;
 			}
-			
 		}
-		return;
+		return returnval;
 	}
 
 	if ( give_all || !Q_stricmp( name, "credits" ) || !Q_stricmp( name, "credit" ) ) {
@@ -1583,8 +1596,9 @@ void G_Give( gentity_t *ent, const char *name, const char *args, int argc )
 			num = Com_Clampi( 0, INT_MAX-2, atoi( args ) ); // putting a minus 2 here for safety
 		ent->client->ps.credits = Com_Clampi( 0, INT_MAX-2, ent->client->ps.credits+num );
 		trap->SendServerCommand( ent->client->ps.clientNum, va("print \"Your new balance is: %i credits\n\"", ent->client->ps.credits ));
-		if ( !give_all )
-			return;
+
+		if (!give_all)
+			return qtrue;
 	}
 
 	if ( give_all || !Q_stricmp( name, "cloak" ) || !Q_stricmp( name, "cloakFuel" ) ) {
@@ -1592,8 +1606,9 @@ void G_Give( gentity_t *ent, const char *name, const char *args, int argc )
 		if ( argc == 3 )
 			num = Com_Clampi( 0, 100, atoi( args ) );
 		ent->client->ps.cloakFuel = num;
-		if ( !give_all )
-			return;
+
+		if (!give_all)
+			return qtrue;
 	}
 
 	if ( give_all || !Q_stricmp( name, "jetpack" ) || !Q_stricmp( name, "jetpackFuel" ) ) {
@@ -1601,30 +1616,32 @@ void G_Give( gentity_t *ent, const char *name, const char *args, int argc )
 		if ( argc == 3 )
 			num = Com_Clampi( 0, 100, atoi( args ) );
 		ent->client->ps.jetpackFuel = num;
-		if ( !give_all )
-			return;
+
+		if (!give_all)
+			return qtrue;
 	}
 
 	// spawn a specific item right on the player
 	if ( !give_all ) {
 		it = BG_FindItem( name );
-		if ( !it )
-			return;
+		if (!it)
+			return qfalse;
 
 		it_ent = G_Spawn();
 		VectorCopy( ent->r.currentOrigin, it_ent->s.origin );
 		it_ent->classname = it->classname;
 		G_SpawnItem( it_ent, it );
-		if ( !it_ent || !it_ent->inuse )
-			return;
+		if (!it_ent || !it_ent->inuse)
+			return qfalse;
 		FinishSpawningItem( it_ent );
-		if ( !it_ent || !it_ent->inuse )
-			return;
+		if (!it_ent || !it_ent->inuse)
+			return qfalse;
 		memset( &trace, 0, sizeof( trace ) );
 		Touch_Item( it_ent, ent, &trace );
 		if ( it_ent->inuse )
 			G_FreeEntity( it_ent );
 	}
+	return qtrue;
 }
 
 void Cmd_Give_f( gentity_t *ent )
@@ -1671,7 +1688,10 @@ void Cmd_GiveOther_f( gentity_t *ent )
 
 	trap->Argv( 2, name, sizeof( name ) );
 
-	G_Give( otherEnt, name, ConcatArgs( 3 ), trap->Argc()-1 );
+	if(G_Give( otherEnt, name, ConcatArgs( 3 ), trap->Argc()-1 ))
+		trap->SendServerCommand(ent - g_entities, va("print \"Gave %s^7 %s\n", otherEnt->client->pers.netname, name));
+	else
+		trap->SendServerCommand(ent - g_entities, va("print \"^1Giveother cmd failed, check cmd. ^7Attempted to give %s^7 %s\n", otherEnt->client->pers.netname, name));
 }
 
 /*
