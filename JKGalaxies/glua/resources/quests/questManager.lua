@@ -197,6 +197,14 @@ end
 
 --note this may break NPCs if they are doing anything other than checking the quest stage  --futuza
 local function SetQuestStage(ply, argc, argv)
+    if ply.CanUseCheats ~= true then
+        ply:SendPrint("System: ^1You do not have permission to perform this action.^7")
+            if ply.isLoggedIn ~= true then
+                ply:SendPrint("System: ^1You are not logged in.^7")
+            end
+        return
+    end
+
     if (argc < 3 or argc > 3) then
 		ply:SendPrint("/quest.setstage <questname> <stage>")
 		return
@@ -234,7 +242,7 @@ function QuestHelp(ply)
     ply:SendPrint("The following quest cmds are available:")
     ply:SendPrint("quest.help - get help with using the quest system.")
     ply:SendPrint("quest.getstage - check a specified quest's current stage")
-    ply:SendPrint("quest.setstage - manually set a specified quest to a value")
+    ply:SendPrint("quest.setstage - manually set a specified quest to a value ^3(debug)^7")
     ply:SendPrint("quest.objective - list a specified quest's current objective")
     ply:SendPrint("quest.questlog - list a specified quest's questlog (history)")
     ply:SendPrint("quest.list - list status info about all initialized quests")

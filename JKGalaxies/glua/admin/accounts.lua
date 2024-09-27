@@ -65,7 +65,7 @@ end
 -- Communication (Cyan/^5): Talking with clients, and amongst admins. Can be extremely annoying if spoofed.
 -- Structural (Magenta/^6): Alters the structure of administration, such as dealing with ranks. Not necessarily needed on accounts, but they're there for convenience.
 -- Annoying (Orange/^8): While not necessarily harmful, if used, they can be annoying. Stuff like slap, slay, etc falls into this category.
-
+--  (name, permissiondefault, friendly name, color)
 local function InitPermissions( )
 	AddPermission( "can-changedetails", 		1, "admchangedetails", 		"^3" )
 	AddPermission( "can-addaccounts", 			0, "admnewaccount", 		"^6" )
