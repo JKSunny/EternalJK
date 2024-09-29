@@ -64,8 +64,8 @@ IDI_ICON1               ICON                    "icon.ico"
 #include "../qcommon/game_version.h"
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION VERSION_MAJOR_RELEASE,VERSION_MINOR_RELEASE
- PRODUCTVERSION VERSION_MAJOR_RELEASE,VERSION_MINOR_RELEASE
+ FILEVERSION JKG_VERSION_PHASE,JKG_VERSION_MAJOR,JKG_VERSION_MINOR
+ PRODUCTVERSION JKG_VERSION_PHASE,JKG_VERSION_MAJOR,JKG_VERSION_MINOR
  FILEFLAGSMASK 0x17L
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -80,13 +80,15 @@ BEGIN
     BEGIN
         BLOCK "040904b0"
         BEGIN
-            VALUE "Comments", "OpenJK Contributors"
+            VALUE "Comments", "JKG Team / OpenJK Contributors / Raven Software & Activision Inc"
+            VALUE "CompanyName", "Jedi Knight Galaxies Team"
             VALUE "FileDescription", "JKGalaxies Dedicated Server"
-            VALUE "FileVersion", VERSION_STRING
+            VALUE "FileVersion", JKG_VERSION
+            VALUE "ProductVersion", JKG_VERSION
             VALUE "InternalName", "JK MP Ded"
+            VALUE "LegalCopyright", "Copyright (C) 2009 Jedi Knight Galaxies Team"
             VALUE "OriginalFilename", "jkgalaxiesded.exe"
             VALUE "ProductName", "JKG Dedicated Server"
-            VALUE "ProductVersion", VERSION_STRING
         END
     END
     BLOCK "VarFileInfo"

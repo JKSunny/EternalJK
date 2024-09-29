@@ -44,20 +44,24 @@ Major:			This represents large new feature sets, bug fixes, improvements etc tha
 
 Minor:			This represents small new feature sets (if any), but is mostly quality of life, security patches, and bug fixes.
 
-suffix:			This represents a small patch or hotfix on the server.  Used for server-side only changes where clients are not required to update.  
-				Uses a lowercase alphabet "number", eg: a, b, c, etc. These should only be used for hotfixes/emergencies.
+Suffix:			This represents a small patch or hotfix on the server.  Used for server-side only changes where clients are not required to update.  
+				Uses a lowercase alphabet "number", eg: a, b, c, etc. These should only be used for hotfixes/emergencies.  Left empty by default.
 */
 
+#define JKG_VERSION_PHASE		1
+#define JKG_VERSION_MAJOR		3
+#define JKG_VERSION_MINOR		24
+
 // Current version of the multi player game
-#define JKG_VERSION "1.3.24"
+#define JKG_VERSION STR(JKG_VERSION_PHASE) "." STR(JKG_VERSION_MAJOR) "." STR(JKG_VERSION_MINOR)
 
 #ifdef _DEBUG
 	#define JK_VERSION "" GIT_BRANCH " / " GIT_HASH " (debug)"
-	#define JKG_VERSION_SUFFIX ""
+	#define JKG_VERSION_SUFFIX		""
 	
 #elif defined FINAL_BUILD
 	#define JK_VERSION "" GIT_BRANCH " / " GIT_HASH ""
-	#define JKG_VERSION_SUFFIX ""
+	#define JKG_VERSION_SUFFIX		""
 	
 #else
 	#define JK_VERSION "" GIT_BRANCH " / " GIT_HASH " (internal)"

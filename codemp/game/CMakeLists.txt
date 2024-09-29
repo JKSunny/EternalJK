@@ -1,11 +1,13 @@
 #============================================================================
 # Copyright (C) 2013 - 2015, OpenJK contributors
-# 
-# This file is part of the OpenJK source code.
+# Copyright (C) 2009 - 2024, JKG Team
+#
+# This file is part of the OpenJK/JKG source code.
 # 
 # OpenJK is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License version 2 as
-# published by the Free Software Foundation.
+# published by the Free Software Foundation.  JKG is based partially
+# on this project and has the same license terms as OpenJK.
 # 
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -19,9 +21,9 @@
 cmake_minimum_required(VERSION 3.0.0)
 
 # Make sure the user is not executing this script directly
-if(NOT InOpenJK)
+if(NOT InJKG)
 	message(FATAL_ERROR "Use the top-level cmake script!")
-endif(NOT InOpenJK)
+endif(NOT InJKG)
 
 set(MPGameIncludeDirectories "${MPDir}" "${MPDir}/libraries")
 if(WIN32)
@@ -491,7 +493,7 @@ endif()
 set_target_properties(${MPGame} PROPERTIES COMPILE_DEFINITIONS "${MPGameDefines}")
 
 # Hide symbols not explicitly marked public.
-set_property(TARGET ${MPGame} APPEND PROPERTY COMPILE_OPTIONS ${OPENJK_VISIBILITY_FLAGS})
+set_property(TARGET ${MPGame} APPEND PROPERTY COMPILE_OPTIONS ${JKG_VISIBILITY_FLAGS})
 
 set_target_properties(${MPGame} PROPERTIES INCLUDE_DIRECTORIES "${MPGameIncludeDirectories}")
 set_target_properties(${MPGame} PROPERTIES PROJECT_LABEL "Server Game Library (game)")
