@@ -57,11 +57,11 @@ Suffix:			This represents a small patch or hotfix on the server.  Used for serve
 
 #ifdef _DEBUG
 	#define JK_VERSION "" GIT_BRANCH " / " GIT_HASH " (debug)"
-	#define JKG_VERSION_SUFFIX		""
+	#define JKG_VERSION_SUFFIX ""
 	
 #elif defined FINAL_BUILD
 	#define JK_VERSION "" GIT_BRANCH " / " GIT_HASH ""
-	#define JKG_VERSION_SUFFIX		""
+	#define JKG_VERSION_SUFFIX ""
 	
 #else
 	#define JK_VERSION "" GIT_BRANCH " / " GIT_HASH " (internal)"
