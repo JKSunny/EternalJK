@@ -86,8 +86,8 @@ BEGIN
             VALUE "FileVersion", JKG_VERSION
             VALUE "ProductVersion", JKG_VERSION
             VALUE "InternalName", "JK MP Ded"
-            VALUE "LegalCopyright", "Copyright (C) 2009 Jedi Knight Galaxies Team"
-            VALUE "OriginalFilename", "jkgalaxiesded.exe"
+            VALUE "LegalCopyright", JKG_COPYRIGHT
+            VALUE "OriginalFilename", "jkgalaxiesded.x86.exe"
             VALUE "ProductName", "JKG Dedicated Server"
         END
     END

@@ -77,8 +77,8 @@ BEGIN
             VALUE "FileVersion", JKG_VERSION
             VALUE "BuildVersion", JKG_VERSION
             VALUE "InternalName", "game"
-            VALUE "LegalCopyright", "Copyright (C) 2009 Jedi Knight Galaxies Team"
-            VALUE "OriginalFilename", "game.dll"
+            VALUE "LegalCopyright", JKG_COPYRIGHT
+            VALUE "OriginalFilename", "gamex86.dll"
             VALUE "ProductName", "Jedi Knight Galaxies"
         END
     END

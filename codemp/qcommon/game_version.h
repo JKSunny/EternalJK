@@ -29,6 +29,9 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "../win32/AutoVersion.h"
 #include "../git.h"
 
+#define JKG_COPYRIGHT "©Jedi Knight Galaxies 2009-2024" //update the final year regularly, due to macro limitations we can't use something like:
+//#define DATE_YEAR (__DATE__ + sizeof(__DATE__) - 5)
+
 /*
 * =====================
 Versioning Explanation
@@ -47,7 +50,6 @@ Minor:			This represents small new feature sets (if any), but is mostly quality 
 Suffix:			This represents a small patch or hotfix on the server.  Used for server-side only changes where clients are not required to update.  
 				Uses a lowercase alphabet "number", eg: a, b, c, etc. These should only be used for hotfixes/emergencies.  Left empty by default.
 */
-
 #define JKG_VERSION_PHASE		1
 #define JKG_VERSION_MAJOR		3
 #define JKG_VERSION_MINOR		24
