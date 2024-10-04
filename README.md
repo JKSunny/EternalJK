@@ -53,7 +53,7 @@ If you're stuck, you can also watch [this video](https://www.youtube.com/watch?v
 
 * [CMake (3.0.0+)](https://cmake.org/download/) (for build system)
 * [Git (2.22.0+)](https://git-scm.com/download/) (for build system)
-* SDL2 (2.0.14+) (included on Windows)
+* SDL2 (2.30.8+) (included on Windows)
 * OpenGL
 * OpenAL (included on Windows)
 * libpng (included on Windows)
