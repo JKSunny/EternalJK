@@ -4122,9 +4122,6 @@ bool G_LocationBasedDamageModifier(gentity_t *ent, vec3_t point, int mod, int df
 		*damage *= bgConstants.damageModifiers.legModifier;
 		break;
 	case HL_WAIST:
-		armorSlot = ARMSLOT_LEGS;
-		*damage *= bgConstants.damageModifiers.torsoModifier;
-		break;
 	case HL_BACK_RT:
 	case HL_BACK_LT:
 	case HL_BACK:
@@ -4134,6 +4131,7 @@ bool G_LocationBasedDamageModifier(gentity_t *ent, vec3_t point, int mod, int df
 	case HL_CHEST:
 		armorSlot = ARMSLOT_TORSO;
 		*damage *= bgConstants.damageModifiers.torsoModifier;
+		trap->SendServerCommand(ent - g_entities, va("chat 100 \"^1Torso Hit!^7\""));
 		break; //normal damage
 	case HL_ARM_RT:
 	case HL_ARM_LT:
