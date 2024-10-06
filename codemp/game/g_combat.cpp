@@ -4058,6 +4058,7 @@ bool G_LocationBasedDamageModifier(gentity_t *ent, vec3_t point, int mod, int df
 	//
 	//	1. Check the hit location
 	//	2. Adjust damage based on hit location
+	//	3. Adjust damage based on resistances on equipped armor to means of damage
 	//	3. Adjust damage based on equipped armor at hit location
 	//	4. Adjust damage based on durability
 
@@ -4100,7 +4101,7 @@ bool G_LocationBasedDamageModifier(gentity_t *ent, vec3_t point, int mod, int df
 
 		if (hitSurface[0])
 		{
-			G_GetHitLocFromSurfName(ent, hitSurface, &hitLoc, point, vec3_origin, vec3_origin, MOD_UNKNOWN);
+			G_GetHitLocFromSurfName(ent, hitSurface, &hitLoc, point, vec3_origin, vec3_origin, mod);
 		}
 	}
 
@@ -4109,6 +4110,7 @@ bool G_LocationBasedDamageModifier(gentity_t *ent, vec3_t point, int mod, int df
 		hitLoc = G_GetHitLocation( ent, point );
 	}
 
+	//note: neck, robe, implants don't have hit locations assigned (yet) and thus can't offer armor protection (or take durability damage)
 	switch (hitLoc)
 	{
 	case HL_FOOT_RT:
@@ -4131,8 +4133,7 @@ bool G_LocationBasedDamageModifier(gentity_t *ent, vec3_t point, int mod, int df
 	case HL_CHEST:
 		armorSlot = ARMSLOT_TORSO;
 		*damage *= bgConstants.damageModifiers.torsoModifier;
-		trap->SendServerCommand(ent - g_entities, va("chat 100 \"^1Torso Hit!^7\""));
-		break; //normal damage
+		break;
 	case HL_ARM_RT:
 	case HL_ARM_LT:
 		armorSlot = ARMSLOT_SHOULDER;
@@ -4151,20 +4152,30 @@ bool G_LocationBasedDamageModifier(gentity_t *ent, vec3_t point, int mod, int df
 	default:
 		break; //do nothing then
 	}
-
 	
 	//adjust for armor
 	if (ent->client && (ent - g_entities) < MAX_CLIENTS && !means->modifiers.ignoreArmor) 
 	{
-		// Remove damage based on armor
 		int armor = ent->client->ps.armor[armorSlot];
-		if (armor--) {
+		//we wearin armor?
+		if (armor--)
+		{
 			armorData_t* pArm = &armorTable[armor];
-			int armor = pArm->armor;
-			modifier = (ent->client->ps.stats[STAT_MAX_HEALTH] / (float)(ent->client->ps.stats[STAT_MAX_HEALTH] + armor));
+			//remove damaged based on resistances
+			for (auto const& i : pArm->resistances)
+			{
+				//MOD matches our armor's resistance type
+				if (mod == i.first)
+				{
+					modifier = i.second; //resistance to apply, eg 0.5
+					*damage *= modifier;
+					break;
+				}
+			}
 
+			// apply damage reduction based on armor value
+			modifier = (ent->client->ps.stats[STAT_MAX_HEALTH] / (float)(ent->client->ps.stats[STAT_MAX_HEALTH] + pArm->armor));
 			modifier *= means->modifiers.armor;
-
 			*damage *= modifier;
 		}
 
@@ -4946,9 +4957,10 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 //	4. Apply direct damage (from step 2)
 //	5. Modify damage by special debuffs
 //	6. Modify damage by location based modifier
-//	7. Reduce damage by armor reduction
-//	8. Modify damage by client type (eg: organic, droid)
-//	9. Apply EMP Effects (eg: disable jetpack, etc)
+//	7. Check for resistances on armor
+//	8. Reduce damage by armor reduction
+//	9. Modify damage by client type (eg: organic, droid)
+//	10. Apply EMP Effects (eg: disable jetpack, etc)
 //
 
 
@@ -5002,7 +5014,7 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 		if (client &&
 			attacker->inuse)
 		{ //check for location based damage stuff.
-			isHeadShot = G_LocationBasedDamageModifier(targ, point, mod, dflags, &take, means);	//check for headshot, location based modifiers, and armor
+			isHeadShot = G_LocationBasedDamageModifier(targ, point, mod, dflags, &take, means);	//check for headshot, location based modifiers, resistances, and armor
 			if (targ->health < 0)
 				isHeadShot = qfalse;	//don't notify about headshots on corpses
 		}

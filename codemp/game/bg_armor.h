@@ -34,6 +34,7 @@ typedef struct {
 
 	float movemodifier;		// Affects how fast you can move with this piece of equipment
 	// More movement modifiers? (jump height? stamina usage?)
+	std::vector<std::pair<int, float>> resistances;	//resistances.first: MOD; resistances.second: how much to reduce dmg by 0 - 1.0f
 
 	struct {
 		armorG2Reference_t* pGHOUL2;					// Pointer to GHOUL2 data

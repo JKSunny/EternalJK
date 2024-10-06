@@ -409,7 +409,41 @@ static void JKG_ConstructArmorDescription(itemInstance_t* pItem, std::vector<std
 		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ARM_FILTER")));
 	}
 
+	//Resistances: fire(-25%), ice(-20%)
+	if (pArmorData->resistances.size() > 0)
+	{
+		std::string rList = va(UI_GetStringEdString2("@JKG_INVENTORY_ARM_RESISTANCES")); 
+		meansOfDamage_t* means;
+		for (auto it = pArmorData->resistances.begin(); it != pArmorData->resistances.end(); ++it)
+		{
+			std::string sign = "-";
+			means = JKG_GetMeansOfDamage(it->first);
+			rList += va(UI_GetStringEdString2(means->inventoryName));
+			int percent = 100 - (it->second * 100);
 
+			if (percent < 0)
+				sign = "+";
+
+			rList += "(" + sign + std::to_string(percent) + "%)";
+			if (it == pArmorData->resistances.end() - 1)
+				rList += " ";
+			else
+				rList += ", ";
+
+			if (rList.size() < 31) //still room on the line
+			{
+				if (it == pArmorData->resistances.end()-1)
+					vDescLines.push_back(rList);
+				else
+					continue;
+			}
+			else
+			{
+				vDescLines.push_back(rList);
+				rList.clear();
+			}
+		}
+	}
 }
 
 // Convert units into feet
