@@ -33,6 +33,14 @@ ImVector<ImRect> s_GroupPanelLabelStack;
 //
 // Globals
 //
+ImU32 imgui_set_alpha( const ImU32 &color, unsigned char alpha )
+{
+    return IM_COL32(
+		(color >> IM_COL32_R_SHIFT) & 0xFF, 
+		(color >> IM_COL32_G_SHIFT) & 0xFF, 
+		(color >> IM_COL32_B_SHIFT) & 0xFF, 
+		alpha );
+}
 
 int vk_imgui_get_shader_editor_index ( void ) 
 {
@@ -82,6 +90,29 @@ void HelpMarker( const char* desc )
         ImGui::PopTextWrapPos();
         ImGui::EndTooltip();
     }
+}
+
+bool imgui_draw_toggle_button( const char *label, bool *value, const char *l_icon, const char *r_icon, const ImU32 color )
+{
+	const float height = 25.0f, width = height * 2.25f, radius = height * 0.50f;
+	ImVec2 pos = ImGui::GetCursorScreenPos();
+
+	ImGui::InvisibleButton(label, ImVec2(width, height));
+	if ( ImGui::IsItemClicked() ) *value = !*value;
+
+	pos.y += 2.5;
+
+	ImDrawList *drawList = ImGui::GetWindowDrawList();
+	drawList->AddRectFilled( pos, ImVec2(pos.x + width, pos.y + height), RGBA_LE(0x141213ffu), height * 0.50f );
+	drawList->AddRect( pos, ImVec2(pos.x + width, pos.y + height), color, height * 0.50f, ImDrawFlags_None, 1.0f );
+
+	const char *icon = *value ? l_icon : r_icon;
+	drawList->AddText( ImVec2(pos.x + (*value ? 30.0f : 10.0f), pos.y + 8.0f), color, icon );
+	
+	ImU32 circleColor = ImGui::IsItemHovered() ? imgui_set_alpha( color, 120 ) : RGBA_LE(0x292929ffu);
+	drawList->AddCircleFilled(ImVec2(pos.x + radius + (*value ? 0 : 1) * (width - radius * 2.0f), pos.y + radius), radius - 1.5f, circleColor );
+
+	return ImGui::IsItemClicked();
 }
 
 qboolean imgui_draw_vec3_control( const char *label, vec3_t &values, float resetValue, float columnWidth ){

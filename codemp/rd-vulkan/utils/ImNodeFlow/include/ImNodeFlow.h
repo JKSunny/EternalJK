@@ -1,5 +1,15 @@
 #ifndef IM_NODE_FLOW
 #define IM_NODE_FLOW
+
+// sunny
+#define USE_ID3_NODE_EDITOR
+
+#ifdef USE_ID3_NODE_EDITOR
+	#define SHADER_NODES_MODIFIED					( 1 )
+	#define SHADER_NODES_UPDATE_TEXT 				( 2 )
+	#define SHADER_NODES_PARSE_TEXT 				( 4 )
+#endif 
+
 #pragma once
 
 #include <iostream>
@@ -88,7 +98,12 @@ namespace ImFlow
         float link_selected_outline_thickness = 0.5f;
         /// @brief Color of the outline of a selected link
         ImU32 outline_color = IM_COL32(80, 20, 255, 200);
-
+#ifdef USE_ID3_NODE_EDITOR
+        /// @brief color when disabled
+        ImU32 disabled_color = IM_COL32(100,100,100, 175);
+        /// @brief color when disabled
+        ImU32 required_color = IM_COL32(254,106,65, 175);
+#endif
         /// @brief Spacing between pin content and socket
         float socket_padding = 6.6f;
 
@@ -155,7 +170,10 @@ namespace ImFlow
         ImU32 border_color = IM_COL32(30,38,41,140);
         /// @brief Border color when selected
         ImU32 border_selected_color = IM_COL32(170, 190, 205, 230);
-
+#ifdef USE_ID3_NODE_EDITOR
+        /// @brief color when disabled
+        ImU32 disabled_color = IM_COL32(100,100,100, 175);
+#endif
         /// @brief Body's content padding (Left Top Right Bottom)
         ImVec4 padding = ImVec4(13.7f, 6.f, 13.7f, 2.f);
         /// @brief Edges rounding
@@ -173,6 +191,19 @@ namespace ImFlow
         static std::shared_ptr<NodeStyle> red() { return std::make_shared<NodeStyle>(IM_COL32(191,90,90,255), ImColor(233,241,244,255), 11.f); }
         /// @brief <BR>Default brown style
         static std::shared_ptr<NodeStyle> brown() { return std::make_shared<NodeStyle>(IM_COL32(191,134,90,255), ImColor(233,241,244,255), 6.5f); }
+#ifdef USE_ID3_NODE_EDITOR
+        /// @brief <BR> cool gray style
+        static std::shared_ptr<NodeStyle> cool_gray() { return std::make_shared<NodeStyle>(IM_COL32(141,144,155,255), ImColor(233,241,244,255), 6.5f); }
+        /// @brief <BR> ultra violet style
+        static std::shared_ptr<NodeStyle> ultra_violet() { return std::make_shared<NodeStyle>(IM_COL32(82,82,140,255), ImColor(233,241,244,255), 6.5f); }
+        /// @brief <BR> orange style
+        static std::shared_ptr<NodeStyle> orange() { return std::make_shared<NodeStyle>(IM_COL32(199,122,68,255), ImColor(233,241,244,255), 6.5f); }
+        /// @brief <BR> "normal" purple style
+        static std::shared_ptr<NodeStyle> normal_purple() { return std::make_shared<NodeStyle>(IM_COL32(128,127,254,255), ImColor(233,241,244,255), 6.5f); }
+        /// @brief <BR> cambridge blue style
+        static std::shared_ptr<NodeStyle> cambridge_blue() { return std::make_shared<NodeStyle>(IM_COL32(121,180,169,255), ImColor(233,241,244,255), 6.5f); }
+
+#endif
     };
 
     // -----------------------------------------------------------------------------------------------------------------
@@ -480,7 +511,18 @@ namespace ImFlow
          * @return Reference to blacklist
          */
         std::vector<std::string>& get_recursion_blacklist() { return m_pinRecursionBlacklist; }
-    private:
+   
+#ifdef USE_ID3_NODE_EDITOR
+	    inline bool hasFlag( uint32_t flag ) const	{ return ( m_flags & flag ); }
+	    void setFlag( uint32_t flag ) { 
+            if ( !hasFlag( SHADER_NODES_PARSE_TEXT ) )
+                m_flags |= flag; 
+        }
+	    void unsetFlag( void )				{ m_flags = 0; }
+	    void unsetFlag( uint32_t flag )		{ m_flags &= ~(flag); }
+        bool m_rightClickPopUpFocusSearch = false;
+#endif
+     private:
         std::string m_name;
         ContainedContext m_context;
 
@@ -494,6 +536,7 @@ namespace ImFlow
         ImGuiKey m_droppedLinkPupUpComboKey = ImGuiKey_None;
         Pin* m_droppedLinkLeft = nullptr;
         std::function<void(BaseNode* node)> m_rightClickPopUp;
+
         BaseNode* m_hoveredNodeAux = nullptr;
 
         BaseNode* m_hoveredNode = nullptr;
@@ -502,6 +545,10 @@ namespace ImFlow
         Pin* m_dragOut = nullptr;
 
         InfStyler m_style;
+
+#ifdef USE_ID3_NODE_EDITOR
+        uint32_t m_flags;
+#endif
     };
 
     // -----------------------------------------------------------------------------------------------------------------
@@ -530,6 +577,15 @@ namespace ImFlow
          */
         virtual void draw() {}
 
+#ifdef USE_ID3_NODE_EDITOR
+        /**
+         * @brief <BR>Post draw actions
+         * @details Function to be implemented by derived custom nodes.
+         * 
+         * Used to clean up states
+         */
+        virtual void postDraw() {}
+#endif
         /**
          * @brief <BR>Add an Input to the node
          * @details Will add an Input pin to the node with the given name and data type.
@@ -750,8 +806,11 @@ namespace ImFlow
         /**
          * @brief <BR>Delete itself
          */
+#ifdef USE_ID3_NODE_EDITOR
+        void destroy() { if ( m_destroyable ) m_destroyed = true; }
+#else
         void destroy() { m_destroyed = true; }
-
+#endif
         /*
          * @brief <BR>Get if node must be deleted
          */
@@ -853,6 +912,73 @@ namespace ImFlow
          * @brief <BR>Update the isSelected status of the node
          */
         void updatePublicStatus() { m_selected = m_selectedNext; }
+
+#ifdef USE_ID3_NODE_EDITOR
+	    /**
+        * @brief <BR>Determine whether node is disabled, by the connected parent pins state
+	    * only mark disabled if all parent pins are disabled 
+        * 
+        * Changes when parent Pin state or link is updated
+        */
+        virtual void updateNodeState( void ) { };
+
+        /**
+         * @brief <BR>Check if link has changed
+         *
+         * Only updates when manually unlinked or parent / child node is removed
+         */
+        [[nodiscard]] bool isLinkChanged() const { return m_linkChanged; }
+
+        /**
+         * @brief <BR>Internal method used to set the state of m_linkChanged
+         *
+         * Triggers node->setFlag( MODIFIED ), updateNodeState() and isLinkChanged() as event handler
+         */
+        void setLinkChanged() { 
+            m_linkChanged = true; 
+            updateNodeState();
+            m_inf->setFlag( SHADER_NODES_MODIFIED | SHADER_NODES_UPDATE_TEXT ); 
+        }
+
+        /**
+         * @brief <BR>Get node's drawing state
+         */
+        const bool& isDrawActive() { return  m_draw; }
+
+        /**
+         * @brief <BR>Set node's drawing state: hidden/visible
+         */
+		BaseNode* setDrawActive( void ) { m_draw = true; return this; }
+
+        /**
+         * @brief <BR>Get node's disabled state
+         */
+        bool isDisabled( void ) { return m_disabled; } 
+
+        /**
+         * @brief <BR>Get if node is disabled/greyed out
+         * @param state New node's disabled state
+         */
+        void setDisabled( bool state ) { m_disabled = state; }    // recursivly update child too? pin calls this
+
+        //
+        // modifier sub-nodes - for tcmod 'turb' edge case ( typeless waveform )
+        //
+        /**
+         * @brief <BR>Function to be implemented by derived custom nodes
+         */
+	    virtual void setTypeLessModifierSubNode( bool state)	{  }
+
+        /**
+         * @brief <BR>Function to be implemented by derived custom nodes
+         */
+	    virtual bool isTypeLessModifierSubNode( void ) { return false; }
+
+        /**
+         * @brief <BR>Set if node can be destroyed
+         */
+        inline void setDestroyable( bool state ) { m_destroyable = state; }
+#endif
     private:
         NodeUID m_uid = 0;
         std::string m_title;
@@ -863,7 +989,12 @@ namespace ImFlow
         bool m_selected = false, m_selectedNext = false;
         bool m_dragged = false;
         bool m_destroyed = false;
-
+#ifdef USE_ID3_NODE_EDITOR
+        bool m_destroyable = true;
+        bool m_disabled = false; 
+		bool m_draw = false;
+        bool m_linkChanged = false;
+#endif
         std::vector<std::shared_ptr<Pin>> m_ins;
         std::vector<std::pair<int, std::shared_ptr<Pin>>> m_dynamicIns;
         std::vector<std::shared_ptr<Pin>> m_outs;
@@ -1027,6 +1158,44 @@ namespace ImFlow
          * @param pos Position in screen coordinates
          */
         void setPos(ImVec2 pos) { m_pos = pos; }
+
+#ifdef USE_ID3_NODE_EDITOR
+        /**
+         * @brief <BR>Get pin's drawing state
+         */
+		bool isDraw( void ) { return m_draw; }
+
+        /**
+         * @brief <BR>Set pin's drawing state: hidden/visible
+         */
+		void setDraw(bool state) { m_draw = state; }
+
+        /**
+         * @brief <BR>Get pin's disabled state
+         */
+		bool isDisabled( void ) { return m_disabled; }
+
+        /**
+         * @brief <BR>Get if pin is disabled/greyed out
+         * @param state New pin's disabled state
+         */
+		virtual void setDisabled(bool state) { m_disabled = state; }
+
+        /**
+         * @brief <BR>Get pin's connected to this pin
+         */
+        virtual std::vector<Pin*> getConnectedPins( void ) = 0;
+
+        /**
+         * @brief <BR>Get the node of the pin's connected to this pin
+         */
+        virtual std::vector<BaseNode*> getConnectedPinNodes( void ) = 0;
+
+        /**
+         * @brief <BR>Draw red socket when pin not linked
+         */
+		virtual void setRequired(bool state) { m_required = state; }
+#endif
     protected:
         PinUID m_uid;
         std::string m_name;
@@ -1037,7 +1206,12 @@ namespace ImFlow
         ImNodeFlow** m_inf;
         std::shared_ptr<PinStyle> m_style;
         std::function<void(Pin* p)> m_renderer;
-    };
+#ifdef USE_ID3_NODE_EDITOR
+		bool m_disabled = false;
+		bool m_draw = true; 
+        bool m_required = false;
+#endif
+};
 
     /**
      * @brief Collection of Pin's collection filters
@@ -1048,6 +1222,17 @@ namespace ImFlow
         static std::function<bool(Pin*, Pin*)> None() { return [](Pin* out, Pin* in){ return true; }; }
         static std::function<bool(Pin*, Pin*)> SameType() { return [](Pin* out, Pin* in) { return out->getDataType() == in->getDataType(); }; }
         static std::function<bool(Pin*, Pin*)> Numbers() { return [](Pin* out, Pin* in){ return out->getDataType() == typeid(double) || out->getDataType() == typeid(float) || out->getDataType() == typeid(int); }; }
+#ifdef USE_ID3_NODE_EDITOR
+		template<typename T>
+		static std::function<bool(Pin*, Pin*)> isClass( void ) 
+		{ 
+			return []( Pin* out, Pin* in )
+			{ 
+				BaseNode* parentNode = out->getParent();
+				return parentNode && (typeid(*parentNode) == typeid(T));
+			}; 
+		}
+#endif
     };
 
     /**
@@ -1122,6 +1307,60 @@ namespace ImFlow
          * @return Reference to the value of the connected OutPin. Or the default value if not connected
          */
         const T& val();
+
+#ifdef USE_ID3_NODE_EDITOR
+        /**
+         * @brief <BR>Get pin's connected to this pin
+         */
+        std::vector<Pin*> getConnectedPins( void )
+        {
+            std::vector<Pin*> pins;
+
+            //if ( isConnected() && !getLink().expired() && getLink().lock()->right() )
+            //   pins.push_back( getLink().lock()->right() );
+            if ( isConnected() && !getLink().expired() && getLink().lock()->left() )
+               pins.push_back( getLink().lock()->left() );
+
+           return pins;
+        }
+
+        /**
+         * @brief <BR>Get the node of the pin's connected to this pin
+         */
+        std::vector<BaseNode*> getConnectedPinNodes( void )
+        { 
+            std::vector<BaseNode*> nodes;
+
+            for ( auto &p : getConnectedPins() )
+                nodes.push_back( p->getParent() );
+
+            return nodes;
+        }
+
+        /**
+         * @brief <BR>Update node of the pin connected to this pin,
+         *  and update its state
+         * 
+         * Called when a pin's disabled state changes
+         */
+        void updateConnectedPinNodeState( void ) 
+        { 
+            // look at this nested crazyness lol..
+            if ( isConnected() && !getLink().expired() && getLink().lock()->left() )
+                getLink().lock()->left()->getParent()->updateNodeState();
+        }
+
+        /**
+         * @brief <BR>Get if pin is disabled/greyed out
+         * @param state New pin's disabled state
+         */
+        void setDisabled( bool state ) override 
+        { 
+            m_disabled = state; 
+            updateConnectedPinNodeState(); 
+        }
+#endif
+
     private:
         std::shared_ptr<Link> m_link;
         T m_emptyVal;
@@ -1153,7 +1392,13 @@ namespace ImFlow
          */
         ~OutPin() override {
             std::vector<std::weak_ptr<Link>> links = std::move(m_links);
-            for (auto &l: links) if (!l.expired()) l.lock()->right()->deleteLink();
+            for (auto &l: links) if (!l.expired()) 
+            {
+#ifdef USE_ID3_NODE_EDITOR
+                l.lock()->right()->getParent()->setLinkChanged();
+#endif
+                l.lock()->right()->deleteLink();
+            }
         }
 
         /**
@@ -1203,6 +1448,34 @@ namespace ImFlow
          * @return String containing unique information identifying the data type
          */
         [[nodiscard]] const std::type_info& getDataType() const override { return typeid(T); };
+
+#ifdef USE_ID3_NODE_EDITOR
+        /**
+         * @brief <BR>Get pin's connected to this pin
+         */
+        std::vector<Pin*> getConnectedPins( void )
+        {
+            std::vector<Pin*> pins;
+
+            for ( auto &l: m_links ) if ( !l.expired() ) 
+                pins.push_back( l.lock()->right() );
+
+           return pins;
+        }
+
+        /**
+         * @brief <BR>Get the node of the pin's connected to this pin
+         */
+        std::vector<BaseNode*> getConnectedPinNodes( void )
+        { 
+            std::vector<BaseNode*> nodes;
+
+            for ( auto &p : getConnectedPins() )
+                nodes.push_back( p->getParent() );
+
+            return nodes;
+        }
+#endif
     private:
         std::vector<std::weak_ptr<Link>> m_links;
         std::function<T()> m_behaviour;

@@ -13,6 +13,11 @@
 // sunny
 #define USE_AUTOCOMPLETE	
 
+#ifdef USE_AUTOCOMPLETE
+	#define SHADER_TEXT_MODIFIED					( 1 )
+	#define SHADER_TEXT_UPDATE_NODES 				( 2 )
+#endif
+
 class TextEditor
 {
 public:
@@ -125,6 +130,7 @@ public:
 #ifdef USE_AUTOCOMPLETE
 	struct Format {
 		std::string key;
+		std::string node_uid;
 		std::vector<std::string> values{};
 	};
 
@@ -133,7 +139,14 @@ public:
 		std::vector<TextEditor::Format> format;
 	};
 
+	struct FormatRegexInfo {
+		std::regex regex;
+		std::string format;
+		std::string node_uid;
+	};
+
 	typedef std::vector<FormatInfo> Formats;
+	typedef std::vector<FormatRegexInfo> FormatsRegex;
 #endif
 
 	struct Identifier
@@ -174,6 +187,7 @@ public:
 		std::string mName;
 #ifdef USE_AUTOCOMPLETE
 		Formats			mFormats;
+		FormatsRegex	mFormatsRegex;
 #endif
 		Keywords mKeywords;
 		Identifiers mIdentifiers;
@@ -231,9 +245,14 @@ public:
 	void SetReadOnly(bool aValue);
 	bool IsReadOnly() const { return mReadOnly; }
 	bool IsTextChanged() const { return mTextChanged; }
+#ifdef USE_AUTOCOMPLETE
 	void setTextChanged( bool state ) { mTextChanged = state; }
-	bool IsTextChangedExternal() const { return mTextChangedExternal; }
-	void setTextChangedExternal( bool state ) { mTextChangedExternal = state; }
+
+	inline bool hasFlag( uint32_t flag ) const	{ return ( m_flags & flag ); }
+	void setFlag( uint32_t flag )		{ m_flags |= flag; }
+	void unsetFlag( void )				{ m_flags = 0; }
+	void unsetFlag( uint32_t flag )		{ m_flags &= ~(flag); }
+#endif
 	bool IsCursorPositionChanged() const { return mCursorPositionChanged; }
 
 	bool IsColorizerEnabled() const { return mColorizerEnabled; }
@@ -271,7 +290,7 @@ public:
 
 #ifdef USE_AUTOCOMPLETE
 	#define		RGBA_LE(col) (((col & 0xff000000) >> (3 * 8)) + ((col & 0x00ff0000) >> (1 * 8)) + ((col & 0x0000ff00) << (1 * 8)) + ((col & 0x000000ff) << (3 * 8)))
-	std::vector<std::string> split( std::string text, std::string delim );
+	size_t TextEditor::split( const std::string &text, const std::string &delim, std::vector<std::string> &result );
 	std::string GetCurrentWord() const { return mAutoCompleteCurrentWord; };
 	int GetCurrentCursorDepth() const { return mAutoCompleteCursorDepth; };
 	void SetCurrentWord( void );
@@ -403,7 +422,9 @@ private:
 	bool mScrollToCursor;
 	bool mScrollToTop;
 	bool mTextChanged;
-	bool mTextChangedExternal;
+#ifdef USE_AUTOCOMPLETE
+	uint32_t m_flags;
+#endif
 	bool mColorizerEnabled;
 	float mTextStart;                   // position (in pixels) where a code line starts relative to the left of the TextEditor.
 	int  mLeftMargin;

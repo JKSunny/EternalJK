@@ -25,13 +25,27 @@ namespace ImFlow {
         if (m_selected)
             smart_bezier(start, end, m_left->getStyle()->extra.outline_color,
                          thickness + m_left->getStyle()->extra.link_selected_outline_thickness);
-        smart_bezier(start, end, m_left->getStyle()->color, thickness);
+            
+#ifdef USE_ID3_NODE_EDITOR
+        ImU32 color = ( m_left->isDisabled() || m_right->isDisabled() ) 
+            ? m_left->getStyle()->extra.disabled_color : m_left->getStyle()->color;
+
+        smart_bezier(start, end, color, thickness);
+#endif
 
         if (m_selected && ImGui::IsKeyPressed(ImGuiKey_Delete, false))
+        {
+#ifdef USE_ID3_NODE_EDITOR
+            m_right->getParent()->setLinkChanged();
+#endif
             m_right->deleteLink();
+        }
     }
 
     Link::~Link() {
+#ifdef USE_ID3_NODE_EDITOR
+        m_left->getParent()->setLinkChanged();
+#endif
         m_left->deleteLink();
     }
 
@@ -84,7 +98,16 @@ namespace ImFlow {
 
         // Content
         ImGui::BeginGroup();
+#ifdef USE_ID3_NODE_EDITOR
+        if ( isDrawActive() )
+        {
+            //if ( isDisabled() )
+            draw();
+            postDraw();
+        }
+#else
         draw();
+#endif
         ImGui::Dummy(ImVec2(0.f, 0.f));
         ImGui::EndGroup();
         ImGui::SameLine();
@@ -136,9 +159,14 @@ namespace ImFlow {
         draw_list->ChannelsSetCurrent(0);
         draw_list->AddRectFilled(offset + m_pos - paddingTL, offset + m_pos + m_size + paddingBR, m_style->bg,
                                  m_style->radius);
+#ifdef USE_ID3_NODE_EDITOR
+        ImU32 header_bg = ( isDisabled() ) ? m_style->disabled_color : m_style->header_bg;
+        draw_list->AddRectFilled(offset + m_pos - paddingTL, offset + m_pos + headerSize, header_bg,
+                                 m_style->radius, ImDrawFlags_RoundCornersTop);
+#else
         draw_list->AddRectFilled(offset + m_pos - paddingTL, offset + m_pos + headerSize, m_style->header_bg,
                                  m_style->radius, ImDrawFlags_RoundCornersTop);
-
+#endif
         ImU32 col = m_style->border_color;
         float thickness = m_style->border_thickness;
         ImVec2 ptl = paddingTL;
@@ -163,7 +191,11 @@ namespace ImFlow {
 
         if (isHovered()) {
             m_inf->hoveredNode(this);
+#ifdef USE_ID3_NODE_EDITOR
+            if (mouseClickState && !ImGui::IsAnyItemHovered()) {
+#else
             if (mouseClickState) {
+#endif
                 selected(true);
                 m_inf->consumeSingleUseClick();
             }
@@ -191,6 +223,12 @@ namespace ImFlow {
                 m_posTarget = m_pos;
             }
         }
+
+#ifdef USE_ID3_NODE_EDITOR
+        if ( m_linkChanged )
+            m_linkChanged = false;
+#endif
+
         ImGui::PopID();
 
         // Deleting dead pins
@@ -243,6 +281,9 @@ namespace ImFlow {
         m_hoveredNode = nullptr;
         m_draggingNode = m_draggingNodeNext;
         m_singleUseClick = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+#ifdef USE_ID3_NODE_EDITOR
+        m_rightClickPopUpFocusSearch = false;
+#endif
 
         // Create child canvas
         m_context.begin();
@@ -313,6 +354,9 @@ namespace ImFlow {
         if (m_rightClickPopUp && ImGui::IsMouseClicked(ImGuiMouseButton_Right) && ImGui::IsWindowHovered()) {
             m_hoveredNodeAux = m_hoveredNode;
             ImGui::OpenPopup("RightClickPopUp");
+#ifdef USE_ID3_NODE_EDITOR
+            m_rightClickPopUpFocusSearch = true;
+#endif
         }
         if (ImGui::BeginPopup("RightClickPopUp")) {
             m_rightClickPopUp(m_hoveredNodeAux);
