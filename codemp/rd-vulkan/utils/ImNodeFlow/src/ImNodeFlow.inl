@@ -235,14 +235,21 @@ namespace ImFlow
         ImVec2 tl = pinPoint() - ImVec2(m_style->socket_radius, m_style->socket_radius);
         ImVec2 br = pinPoint() + ImVec2(m_style->socket_radius, m_style->socket_radius);
 
-        if (isConnected())
-            draw_list->AddCircleFilled(pinPoint(), m_style->socket_connected_radius, m_style->color, m_style->socket_shape);
+        bool connected = isConnected();
+#ifdef USE_ID3_NODE_EDITOR
+		ImU32 color = isDisabled() ? m_style->extra.disabled_color : 
+            (( !connected && m_required ) ? m_style->extra.required_color : m_style->color );
+#else
+        ImU32 color = m_style->color;
+#endif
+        if ( connected )
+            draw_list->AddCircleFilled(pinPoint(), m_style->socket_connected_radius, color, m_style->socket_shape);
         else
         {
             if (ImGui::IsItemHovered() || ImGui::IsMouseHoveringRect(tl, br))
-                draw_list->AddCircle(pinPoint(), m_style->socket_hovered_radius, m_style->color, m_style->socket_shape, m_style->socket_thickness);
+                draw_list->AddCircle(pinPoint(), m_style->socket_hovered_radius, color, m_style->socket_shape, m_style->socket_thickness);
             else
-                draw_list->AddCircle(pinPoint(), m_style->socket_radius, m_style->color, m_style->socket_shape, m_style->socket_thickness);
+                draw_list->AddCircle(pinPoint(), m_style->socket_radius, color, m_style->socket_shape, m_style->socket_thickness);
         }
 
         if (ImGui::IsMouseHoveringRect(tl, br))
@@ -262,6 +269,10 @@ namespace ImFlow
 
     inline void Pin::update()
     {
+#ifdef USE_ID3_NODE_EDITOR
+		if ( !m_draw )
+			return;
+#endif
         // Custom rendering
         if (m_renderer)
         {
@@ -291,7 +302,7 @@ namespace ImFlow
     template<class T>
     const T& InPin<T>::val()
     {
-        if(!m_link)
+        if ( !m_link || m_disabled )
             return m_emptyVal;
 
         return reinterpret_cast<OutPin<T>*>(m_link->left())->val();
@@ -318,6 +329,11 @@ namespace ImFlow
         m_link = std::make_shared<Link>(other, this, (*m_inf));
         other->setLink(m_link);
         (*m_inf)->addLink(m_link);
+
+#ifdef USE_ID3_NODE_EDITOR
+        m_parent->setLinkChanged();
+        other->getParent()->setLinkChanged();
+#endif
     }
 
     // -----------------------------------------------------------------------------------------------------------------

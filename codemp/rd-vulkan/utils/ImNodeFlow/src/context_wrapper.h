@@ -63,6 +63,9 @@ struct ContainedContextConfig
     float default_zoom = 1.f;
     ImGuiKey reset_zoom_key = ImGuiKey_R;
     ImGuiMouseButton scroll_button = ImGuiMouseButton_Middle;
+#ifdef USE_ID3_NODE_EDITOR
+    bool modified;
+#endif
 };
 
 class ContainedContext

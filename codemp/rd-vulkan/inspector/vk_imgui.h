@@ -96,6 +96,7 @@ typedef struct {
 
 	struct {
 		bool	p_open;
+		bool	text_mode;
 		int		index;
 		int		prev;
 	} shader;
@@ -189,10 +190,12 @@ static const char *render_modes[23] = {
 void		vk_imgui_create_gui( void );
 
 // globals
+ImU32		imgui_set_alpha( const ImU32 &color, unsigned char alpha );
 int			generateHashValue( const char *fname );
 void		ImGuiBeginGroupPanel(const char* name, const ImVec2& size);
 void		ImGuiEndGroupPanel( ImU32 border_color );
 void		HelpMarker( const char* desc );
+bool		imgui_draw_toggle_button( const char *label, bool *value, const char *l_icon, const char *r_icon, const ImU32 color );
 qboolean	imgui_draw_vec3_control( const char *label, vec3_t &values, float resetValue, float columnWidth );
 qboolean	imgui_draw_colorpicker3( const char *label, vec3_t values );
 void		imgui_draw_text_column( const char *label, const char *content, float columnWidth );
@@ -219,6 +222,16 @@ void		vk_imgui_draw_objects_shaders();
 void		vk_imgui_draw_inspector_shader( void );
 void		vk_imgui_draw_shader_editor( void );
 void		vk_imgui_reload_shader_editor( qboolean close );
+
+
+// shader text editor
+void		vk_imgui_shader_text_editor_initialize( void );
+void		vk_imgui_draw_shader_editor_text( void );
+void		vk_imgui_shader_text_editor_set_text( const char *str );
+
+// shader node editor
+void		vk_imgui_draw_shader_editor_node( void );
+void		vk_imgui_parse_shader_nodes_to_text( void );
 
 // world nodes
 void		vk_imgui_draw_inspector_world_node( void );

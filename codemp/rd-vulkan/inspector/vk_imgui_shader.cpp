@@ -22,12 +22,11 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 #include "tr_local.h"
 
-#define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui.h>
 
 #include "vk_imgui.h"
-#include <imgui_internal.h>
 #include <utils/ImGuiColorTextEdit/TextEditor.h>
+#include <utils/ImNodeFlow/include/ImNodeFlow.h>
 #include <icons/FontAwesome5/IconsFontAwesome5.h>
 #include "icons/FontAwesome5/fa5solid900.cpp"
 
@@ -39,15 +38,15 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include <string>
 #include <cmath>
 
-TextEditor editor;
-
 shader_t *hashTable[FILE_HASH_SIZE];
 shader_t *merge_shader_list[MAX_SHADERS];
 
 //
 //	shader editor
 //
-static qboolean shader_text_editor_init = qfalse;
+using namespace ImFlow;
+TextEditor text_editor;
+ImNodeFlow node_editor;
 
 void vk_imgui_reload_shader_editor( qboolean close ) 
 {
@@ -55,31 +54,102 @@ void vk_imgui_reload_shader_editor( qboolean close )
 	windows.shader.p_open = (bool)close;
 }
 
-static void vk_imgui_shader_text_editor_initialize( void ) 
+static void vk_imgui_draw_shader_editor_switch_mode( void ) 
 {
-	if ( shader_text_editor_init )
-		return;
+	// switch to text editor
+	if ( windows.shader.text_mode && node_editor.hasFlag( SHADER_NODES_UPDATE_TEXT ) )
+	{
+#ifdef _DEBUG
+		Com_Printf( S_COLOR_YELLOW "Reload text editor\n" );
+#endif
+		vk_imgui_parse_shader_nodes_to_text();	
+		text_editor.setTextChanged( false );
+		node_editor.unsetFlag( SHADER_NODES_UPDATE_TEXT );
+	}
 
-	auto lang = TextEditor::LanguageDefinition::Q3Shader();
-
-	lang.mFormats.push_back( { 1, g_shaderGeneralFormats } );
-	lang.mFormats.push_back( { 2, g_shaderStageFormats,	 } );
-
-	editor.SetLanguageDefinition( lang );
-	editor.FormatInit();
-
-	shader_text_editor_init = qtrue;
+	// switch to node editor
+	else if ( text_editor.hasFlag( SHADER_TEXT_UPDATE_NODES ) ) 
+	{
+#ifdef _DEBUG
+		Com_Printf( S_COLOR_YELLOW "Reload node editor\n" );
+#endif
+		node_editor.setFlag( SHADER_NODES_PARSE_TEXT );
+		text_editor.unsetFlag( SHADER_TEXT_UPDATE_NODES );
+	}
 }
 
-void vk_imgui_draw_shader_editor_text( shader_t *sh, shader_t *sh_remap, shader_t *sh_updated )
+static void vk_imgui_draw_shader_editor_apply( shader_t *sh )
 {
+	if ( node_editor.hasFlag( SHADER_NODES_MODIFIED ) && 
+		 node_editor.hasFlag( SHADER_NODES_UPDATE_TEXT ) )
+	{
+#ifdef _DEBUG
+		Com_Printf( S_COLOR_YELLOW "Reload text editor\n" );
+#endif
+		vk_imgui_parse_shader_nodes_to_text();
+		text_editor.setTextChanged( false );
+		node_editor.unsetFlag();
+	}
+		
+	R_UpdateShader( sh->index, text_editor.GetText().c_str(), (qboolean)inspector.merge_shaders );
+	text_editor.unsetFlag( SHADER_TEXT_MODIFIED );
+	node_editor.unsetFlag();
+}
+
+static void vk_imgui_draw_shader_editor_reset( shader_t *sh,  shader_t *sh_remap )
+{
+	char *revert = NULL;
+
+	// use remapped shader
+	if ( sh_remap ) {
+		if ( !sh_remap->shaderText ) // remove remap
+			tr.shaders[ windows.shader.index ]->remappedShader = NULL;
+		else
+			revert = sh_remap->shaderText;
+	}
+
+	// use original shader
+	if ( !revert )
+		revert = sh->shaderText;
+
+	R_UpdateShader( sh->index, revert, (qboolean)inspector.merge_shaders );
+
+	windows.shader.prev = NULL;
+}
+
+static void vk_imgui_draw_shader_editor_toolbar( shader_t *sh, shader_t *sh_remap, shader_t *sh_updated )
+{
+	if ( imgui_draw_toggle_button( "##shaderEditorMode", 
+		&windows.shader.text_mode, ICON_FA_SITEMAP, ICON_FA_CODE, RGBA_LE(0x368b94ffu) ) )
+	{
+		vk_imgui_draw_shader_editor_switch_mode();
+	}
+
+	ImGui::SameLine();
+
 	ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
 	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(3.0, 1.0) );
+
+	qboolean modified = (qboolean)( text_editor.hasFlag( SHADER_TEXT_MODIFIED ) 
+		|| node_editor.hasFlag( SHADER_NODES_MODIFIED ) );
+
 	ImGui::PushStyleColor( ImGuiCol_Border, RGBA_LE(0x25c076ffu) );
 	ImGui::PushStyleColor( ImGuiCol_Text, RGBA_LE(0x25c076ffu) );
 
-	if ( ImGui::Button( ICON_FA_SYNC_ALT " Update", ImVec2{ 80, 30 } ) )
-		R_UpdateShader( sh->index, editor.GetText().c_str(), (qboolean)inspector.merge_shaders );
+	if ( !modified )
+	{
+		ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+	}
+
+	if ( ImGui::Button( ICON_FA_SYNC_ALT " Apply", ImVec2{ 80, 30 } ) )
+		vk_imgui_draw_shader_editor_apply( sh);
+
+	if ( !modified )
+	{
+		ImGui::PopItemFlag();
+        ImGui::PopStyleVar();
+	}
 
 	ImGui::SameLine();
 
@@ -99,53 +169,30 @@ void vk_imgui_draw_shader_editor_text( shader_t *sh, shader_t *sh_remap, shader_
 			ImVec2((pos.x + region.x) - (sh_updated ? 80.0f : 0), pos.y + height), 
 			RGBA_LE(0x333436ffu), 2.0f,  ImDrawCornerFlags_Left, 1.0); 
 
-		drawList->AddText( ImVec2( pos.x + 8.0f, pos.y + 8.0f ), RGBA_LE(0x44454effu), sh->name );
+		drawList->AddText( ImVec2( pos.x + 8.0f, pos.y + 8.0f ), RGBA_LE(0x8f909cffu), sh->name );
 	}
 
-	if( sh_updated ) 
+	if ( sh_updated ) 
 	{
 		const ImVec2 pos = ImGui::GetCursorScreenPos(); 
 		ImGui::SetCursorScreenPos( ImVec2( (pos.x + region.x) - 70.0f, pos.y ) );
 
-		if ( ImGui::Button( ICON_FA_UNDO " Reset", ImVec2{ 70, 30 } ) ) {
-			// either revert to original or remapped shader
-			char *revert = NULL;
-
-			// if possible, revert to remapped shader
-			if ( sh_remap ) {
-				if ( !sh_remap->shaderText ) // remove remap
-					tr.shaders[ windows.shader.index ]->remappedShader = NULL;
-				else
-					revert = sh_remap->shaderText;
-			} 
-		
-			if( !revert ) // use original shader
-				revert = sh->shaderText;
-
-			R_UpdateShader( sh->index, revert, (qboolean)inspector.merge_shaders );
-			windows.shader.prev = NULL;
-		}
+		if ( ImGui::Button( ICON_FA_UNDO " Reset", ImVec2{ 70, 30 } ) )
+			vk_imgui_draw_shader_editor_reset( sh, sh_remap );
 	} 
 	else
 		ImGui::NewLine();
 
 	ImGui::PopStyleColor(2);
 	ImGui::PopStyleVar(2);
-
-	auto cpos = editor.GetCursorPosition();
-	ImGui::Text("%6d/%-6d %6d lines  | %s | %s | %s | %s | current word: %s | block depth %d", cpos.mLine + 1, cpos.mColumn + 1, editor.GetTotalLines(),
-		editor.IsOverwrite() ? "Ovr" : "Ins",
-		editor.CanUndo() ? "*" : " ",
-		editor.GetLanguageDefinition().mName.c_str(), "filename",  editor.GetCurrentWord().c_str(), editor.GetCurrentCursorDepth());
-
-	editor.Render("TextEditor");
 }
 
 void vk_imgui_draw_shader_editor( void ) 
 {
 	if ( !windows.shader.p_open || !windows.shader.index )
 		return;
-
+	
+	// always initililze text editor, formats are shared with node editor
 	vk_imgui_shader_text_editor_initialize();
 
 	static char shaderText[4069];
@@ -176,15 +223,35 @@ void vk_imgui_draw_shader_editor( void )
 			windows.shader.index = 0;
 			return;
 		}
-		
-		editor.SetText( shaderText );
 
+		// clear editor states
+		node_editor.unsetFlag();
+		text_editor.unsetFlag();
+
+		vk_imgui_shader_text_editor_set_text( shaderText );	
+		text_editor.setTextChanged( false );
+
+		// trigger text/node update
+		if ( windows.shader.text_mode )
+		{
+			node_editor.setFlag( SHADER_NODES_PARSE_TEXT );
+			node_editor.setFlag( SHADER_NODES_UPDATE_TEXT );
+		}
+		else {
+			text_editor.setFlag( SHADER_TEXT_UPDATE_NODES );
+		}
+			
 		windows.shader.prev = windows.shader.index;
 	}
 
 	ImGui::Begin( "Shader", &windows.shader.p_open );
 
-	vk_imgui_draw_shader_editor_text( sh, sh_remap, sh_updated );
+	vk_imgui_draw_shader_editor_toolbar( sh, sh_remap, sh_updated );
+
+	if ( windows.shader.text_mode )
+		vk_imgui_draw_shader_editor_text();
+	else
+		vk_imgui_draw_shader_editor_node();
 
 	ImGui::End();
 }

@@ -770,32 +770,39 @@ inline bool string_equal_prefix_nocase( const char* string, const char* prefix )
 	return string_equal_nocase_n( string, prefix, string_length( prefix ) );
 }
 
-std::vector<std::string> TextEditor::split( std::string text, std::string delim ) 
+/**
+ * @brief Split string into tokens based on a delimiter. Store in provided vector
+ *
+ * @param text The input string to be split.
+ * @param delim The delimiter string used for splitting the input text.
+ * @param tokens A vector that will store the resulting tokens after the split.
+ * 
+ * @return The number of tokens generated.
+ */
+size_t TextEditor::split( const std::string &text, const std::string &delim, std::vector<std::string> &tokens ) 
 {
-    std::vector<std::string> vec;
-    std::string last;
-    size_t pos = 0; 
-	size_t pos_prev = 0;
+    if ( delim.empty() ) 
+		return 0;
 
-    while ( 1 ) 
-	{
-        pos = text.find( delim, pos_prev );
+    size_t start = 0;
+    size_t end = text.find(delim);
+	size_t count = 0;
 
-        if ( pos == std::string::npos ) 
-		{
-			last = text.substr( pos_prev );
-
-			if ( last.length() != 0 )
-				vec.push_back( last );
-
-            return vec;
-        }
-
-		if ( ( pos_prev - pos ) != 0 )
-			vec.push_back(text.substr(pos_prev, pos - pos_prev));
-
-        pos_prev = pos + delim.length();
+    while ( end != std::string::npos ) {
+        if ( end > start ) {
+            tokens.emplace_back( text, start, end - start );
+			count++;
+		}
+        start = end + delim.length();
+        end = text.find( delim, start );
     }
+
+    if ( start < text.size() ) {
+        tokens.emplace_back( text, start, text.size() - start );
+		count++;
+	}
+
+	return count;
 }
 
 static bool	mFormatInitialized = false;
@@ -835,9 +842,11 @@ void TextEditor::FormatInit(void)
 
 		for ( const auto& f : format )
 		{
-			const auto tokens = split(f.key, " ");
+			std::vector<std::string> tokens;
+			tokens.reserve( 25 );
+			size_t tokens_size = split( f.key, " ", tokens );
 
-			for ( i = 0; i < tokens.size(); ++i )
+			for ( i = 0; i < tokens_size; ++i )
 				if ( i == 0 )	// first word
 					add_keyword( tokens[i].c_str() );
 				else
@@ -848,9 +857,92 @@ void TextEditor::FormatInit(void)
 		}
 	};
 
+	const auto format_to_regex = [&]( const std::vector<TextEditor::Format>& format )
+	{
+		uint32_t i = 0;
+
+		for ( const auto& f : format )
+		{
+			i++;
+
+			std::string pattern = "^\\s*(";
+
+			for ( const char *c = f.key.c_str(); *c; ++c )
+			{
+				if( *c == ' ' ){
+					pattern += "\\s+";
+				}
+				else if( string_equal_prefix( c, "%s" ) ){ // string
+					++c;
+					pattern += ")((?:"; // extra inner non capturing group, as space may be added
+					for( const auto value : f.values ){
+						pattern += value;
+						pattern += '|';
+					}
+					if( f.values.empty() ){  // no predefined list = generic string
+						pattern += "\\S+|";
+					}
+					pattern.back() = ')'; // replace trailing | by non capturing group end
+				}
+				else if( string_equal_prefix( c, "%t" ) ){ // texture path
+					++c;
+					pattern += ")(";
+					pattern += "\\S{1,63}";
+					if( string_equal_prefix_nocase( f.key.c_str(), "animMap" ) ){ // special case... variable num of paths
+						pattern += "(?:\\s+\\S{1,63})+";
+						break;
+					}
+				}
+				else if( string_equal_prefix( c, "%p" ) ){ // generic path
+					++c;
+					pattern += ")(";
+					pattern += "\\S{1,63}";
+				}
+				else if( string_equal_prefix( c, "%f" ) ){ // float
+					++c;
+					pattern += ")(";
+					pattern += c_float_regex_str;
+				}
+				else if( string_equal_prefix( c, "%c %c %c" ) ){ // color3f
+					c += strlen( "%c %c %c" ) - 1;
+					pattern += ")(";
+					pattern.append(  c_float_regex_str ).append( "\\s+" ).append( c_float_regex_str ).append( "\\s+" ).append( c_float_regex_str );
+				}
+				else if( string_equal_prefix( c, "%i" ) ){ // int
+					++c;
+					pattern += ")(";
+					pattern += c_int_regex_str;
+				}
+				else if( *c == '(' ){
+					pattern += ")(";
+					pattern += "\\(";
+				}
+				else if( *c == ')' ){
+					pattern += ")(";
+					pattern += "\\)";
+				}
+				else{
+					pattern += *c;
+				}
+			}
+
+			pattern += ')';
+
+			FormatRegexInfo info;
+			info.regex = std::regex( pattern, std::regex_constants::icase );
+			info.format = f.key;
+			info.node_uid = f.node_uid;
+
+			mLanguageDefinition.mFormatsRegex.push_back( info );
+		}
+	};
+
+	mLanguageDefinition.mFormatsRegex.clear();	// redundant?
+
 	for ( auto& format : mLanguageDefinition.mFormats )
 	{
 		format_to_langdef( format.format );
+		format_to_regex( format.format );
 	}
 
 	mFormatInitialized = true;
@@ -866,26 +958,23 @@ void TextEditor::AutoComplete( void )
 
 		AutoCompleteListClear();
 
-		std::vector<std::string> line = split( selectedText, " " );
+		std::vector<std::string> line;
+		line.reserve( 25 );
+		size_t line_size = split( selectedText, " ", line );
 
 		// get block depth of cursor positiion
 		// this will not get an award for the most optimized solution in the world
-		// however shaders are mostly short, plus this only runs on text and line change
-		if ( mState.mCursorPosition.mLine != mAutoCompleteCursorDepthLastLineNum )
-		{
-			auto textStartToCursor = GetText( Coordinates(0, 0), GetCursorPosition() );
-
+		// however shaders are mostly short, plus this only runs on text change
+		//if ( mState.mCursorPosition.mLine != mAutoCompleteCursorDepthLastLineNum )
+		//{
 			mAutoCompleteCursorDepth = 0;
-			mAutoCompleteCursorDepthLastLineNum = mState.mCursorPosition.mLine;
+			//mAutoCompleteCursorDepthLastLineNum = mState.mCursorPosition.mLine;
 
-			for ( char& c : textStartToCursor )
-			{
-				if ( c == '{' )
-					mAutoCompleteCursorDepth++;
-				else if ( c == '}' )
-					mAutoCompleteCursorDepth--;
+			for ( char& c : GetText( Coordinates(0, 0), GetCursorPosition() ) ) {
+				if ( c == '{' )			mAutoCompleteCursorDepth++;
+				else if ( c == '}' )	mAutoCompleteCursorDepth--;
 			}
-		}
+		//}
 
 		if ( mAutoCompleteCursorDepth < 1 )
 			goto skipAutoComplete;
@@ -897,7 +986,10 @@ void TextEditor::AutoComplete( void )
 		
 			for ( const auto& format : it->format )
 			{
-				const auto tokens = split( format.key, " " );
+
+				std::vector<std::string> tokens;
+				tokens.reserve( 25 );
+				size_t tokens_size = split( format.key, " ", tokens );
 
 				// holds multi '%s' syntax values. hard-coded size is 4, max used is 2 in: blendFunc
 				// if your intend is a custom shader syntax requiring more, change this.. or make it dynamic
@@ -919,10 +1011,10 @@ void TextEditor::AutoComplete( void )
 					values_idx = 0;
 				}
 
-				if ( line.size() > tokens.size() ) // line too long, nothing to match
+				if ( line_size > tokens_size ) // line too long, nothing to match
 					continue;
 
-				for ( i = 0; i < line.size(); ++i )
+				for ( i = 0; i < line_size; ++i )
 				{
 					const auto& word = line[i];
 					const auto& token = tokens[i];
@@ -945,7 +1037,7 @@ void TextEditor::AutoComplete( void )
 
 							const auto l_push_token = [&]( std::string token ) 
 								{
-									if ( i + 1 < tokens.size() ) // there is next token, add space
+									if ( i + 1 < tokens_size ) // there is next token, add space
 										token.append(" ");
 
 									if ( !selectedText.empty() && !isSpace( selectedText.back() ) ) // no space after matched word, add one
@@ -954,7 +1046,7 @@ void TextEditor::AutoComplete( void )
 									l_push_list( token );
 								};
 
-							if ( i < tokens.size() )
+							if ( i < tokens_size )
 							{ // token is available
 								if ( tokens[i] == "%s" ) {
 									for ( const auto value : values_list[values_idx] )
@@ -994,7 +1086,7 @@ void TextEditor::AutoComplete( void )
 						};
 
 					// last word, partial match is okay
-					if ( i == line.size() - 1 )
+					if ( i == line_size - 1 )
 					{
 						if ( token == "%s" )
 						{
@@ -1013,7 +1105,7 @@ void TextEditor::AutoComplete( void )
 
 										if ( startsWithCaseInsensitive( value, word) )
 										{
-											if ( i + 1 < tokens.size() ) // there is next token, add space
+											if ( i + 1 < tokens_size ) // there is next token, add space
 												value.append(" ");
 
 											l_push_list( value );
@@ -1052,7 +1144,7 @@ void TextEditor::AutoComplete( void )
 						else if ( startsWithCaseInsensitive( token, word ) )
 						{ // partial match
 							if ( !selectedText.empty() && !isSpace( selectedText.back() ) ){
-								if ( i + 1 < tokens.size() ) // there is next token, add space
+								if ( i + 1 < tokens_size ) // there is next token, add space
 								{
 									std::string append = token + ' ';
 
@@ -1104,6 +1196,11 @@ void TextEditor::AutoComplete( void )
 
 	if ( AutoCompleteIsOpen() )
 	{
+		ImGuiIO& io = ImGui::GetIO();
+		auto shift = io.KeyShift;
+		auto ctrl = io.ConfigMacOSXBehaviors ? io.KeySuper : io.KeyCtrl;
+		auto alt = io.ConfigMacOSXBehaviors ? io.KeyCtrl : io.KeyAlt;
+
 		if ( ImGui::IsKeyPressed( ImGui::GetKeyIndex( ImGuiKey_Escape ) ) )
 			AutoCompleteClose();
 
@@ -1113,11 +1210,14 @@ void TextEditor::AutoComplete( void )
 		else if ( ImGui::IsKeyPressed( ImGui::GetKeyIndex( ImGuiKey_DownArrow ) ) )
 			AutoCompleteSelectDown();
 
-		else if ( ImGui::IsKeyPressed( ImGui::GetKeyIndex( ImGuiKey_Tab ) ) || ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Enter)))
+		else if ( ImGui::IsKeyPressed( ImGui::GetKeyIndex( ImGuiKey_Tab ) ) || ImGui::IsKeyPressed( ImGui::GetKeyIndex( ImGuiKey_Enter ) ) )
 			AutoCompleteSelect();
 
 		else if ( ImGui::IsKeyPressed( ImGui::GetKeyIndex( ImGuiKey_Backspace ) ) )
 			Backspace();
+
+		else if ( !IsReadOnly() && ctrl && !shift && !alt && ImGui::IsKeyPressed( ImGui::GetKeyIndex( ImGuiKey_V ) ) ) 
+			Paste();
 	}
 
 	if ( mTextChanged )
@@ -1199,7 +1299,8 @@ void TextEditor::HandleKeyboardInputs()
 		io.WantTextInput = true;
 
 #ifdef USE_AUTOCOMPLETE
-		// allow characters but skip keyboard shortcuts, use designated auto-complete shortcuts instead
+		// allow characters but skip keyboard shortcuts, 
+		// use designated auto-complete shortcuts in method: AutoComplete( void ) instead
 		if ( AutoCompleteIsOpen() )
 			goto characterHandler;
 #endif
@@ -1669,8 +1770,10 @@ void TextEditor::Render(const char* aTitle, const ImVec2& aSize, bool aBorder)
 {
 	mWithinRender = true;
 
-	if ( mTextChanged )
-		mTextChangedExternal = true;	// reset manually
+	// trigger node editor update
+	if ( mTextChanged ) {
+		setFlag( SHADER_TEXT_MODIFIED | SHADER_TEXT_UPDATE_NODES );
+	}
 
 	mTextChanged = false;
 	mCursorPositionChanged = false;

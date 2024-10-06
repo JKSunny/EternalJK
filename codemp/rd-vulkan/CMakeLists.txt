@@ -150,6 +150,12 @@ set(MPVulkanRendererInspector
 	"${MPDir}/rd-vulkan/inspector/vk_imgui_profiler.cpp"
 	"${MPDir}/rd-vulkan/inspector/vk_imgui_shader.h"
 	"${MPDir}/rd-vulkan/inspector/vk_imgui_shader.cpp"
+	"${MPDir}/rd-vulkan/inspector/vk_imgui_shader_nodes.cpp"
+	"${MPDir}/rd-vulkan/inspector/vk_imgui_shader_nodes.h"
+	"${MPDir}/rd-vulkan/inspector/vk_imgui_shader_nodes_general.h"
+	"${MPDir}/rd-vulkan/inspector/vk_imgui_shader_nodes_stage.h"
+	"${MPDir}/rd-vulkan/inspector/vk_imgui_shader_nodes_parse.cpp"
+	"${MPDir}/rd-vulkan/inspector/vk_imgui_shader_text.cpp"
 	"${MPDir}/rd-vulkan/inspector/vk_imgui_world_nodes.cpp"
 	"${MPDir}/rd-vulkan/inspector/vk_imgui.cpp")
 source_group("renderer\\inspector" FILES ${MPVulkanRendererInspector})

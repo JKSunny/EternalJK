@@ -95,9 +95,12 @@ static const char *vk_get_dst_blend_strings( const int bits ) {
 }
 
 //
-// shader text-editor
+// shader text-editor and node-editor
 //
-extern TextEditor editor;
+
+extern TextEditor text_editor;
+
+static const char *editor_type[2] = { "node-based", "text-based" };
 
 // general
 #define N_CULL_TYPES \
@@ -179,6 +182,23 @@ extern TextEditor editor;
 	TYPE_DO( N_MATERIAL_ARMOR,				armor				) /* body armor */ \
 	TYPE_DO( N_MATERIAL_COMPUTER,			computer			) /* computers/electronic equipment */ \
 
+#define N_DEFORM_TYPES \
+	TYPE_DO( N_DEFORM_WAVE,					wave 				) \
+	TYPE_DO( N_DEFORM_NORMALS,				normal 				) \
+	TYPE_DO( N_DEFORM_BULGE,				bulge 				) \
+	TYPE_DO( N_DEFORM_MOVE,					move 				) \
+	TYPE_DO( N_DEFORM_PROJECTION_SHADOW,	projectionShadow 	) \
+	TYPE_DO( N_DEFORM_AUTOSPRITE,			autosprite 			) \
+	TYPE_DO( N_DEFORM_AUTOSPRITE2,			autosprite2 		) \
+	TYPE_DO( N_DEFORM_TEXT0,				text 				) \
+	TYPE_DO( N_DEFORM_TEXT1,				text1 				) \
+	TYPE_DO( N_DEFORM_TEXT2,				text2 				) \
+	TYPE_DO( N_DEFORM_TEXT3,				text3 				) \
+	TYPE_DO( N_DEFORM_TEXT4,				text4 				) \
+	TYPE_DO( N_DEFORM_TEXT5,				text5 				) \
+	TYPE_DO( N_DEFORM_TEXT6,				text6 				) \
+	TYPE_DO( N_DEFORM_TEXT7,				text7 				) \
+
 // stage
 #define N_MODIFIER_TYPES \
 	TYPE_DO( N_SIN				, sin				) \
@@ -229,9 +249,12 @@ extern TextEditor editor;
 	TYPE_DO( N_CGEN_EXACT_VERTEX,				exactVertex				) \
 	TYPE_DO( N_CGEN_VERTEX,						vertex					) \
 	TYPE_DO( N_CGEN_ONE_MINUS_VERTEX,			oneMinusVertex			) \
-	TYPE_DO( N_CGEN_WAVEFORM,					wave					) \
 	TYPE_DO( N_CGEN_LIGHTING_DIFFUSE,			lightingDiffuse			) \
 	TYPE_DO( N_CGEN_LIGHTING_DIFFUSE_ENTITY,	lightingDiffuseEntity	) \
+
+// with parameters
+#define N_RGBGEN_TYPES_PARMS \
+	TYPE_DO( N_CGEN_WAVEFORM,					wave					) \
 	TYPE_DO( N_CGEN_CONST,						const					) \
 
 #define N_ALPHAGEN_TYPES \
@@ -242,6 +265,9 @@ extern TextEditor editor;
 	TYPE_DO( N_AGEN_ONE_MINUS_VERTEX,			oneMinusVertex			) \
 	TYPE_DO( N_AGEN_DOT,						dot						) \
 	TYPE_DO( N_AGEN_ONE_MINUS_DOT,				oneMinusDot				) \
+
+// with parameters
+#define N_ALPHAGEN_TYPES_PARMS \
 	TYPE_DO( N_AGEN_WAVEFORM,					wave					) \
 	TYPE_DO( N_AGEN_CONST,						const					) \
 	TYPE_DO( N_AGEN_PORTAL,						portal					) \
@@ -251,7 +277,19 @@ extern TextEditor editor;
 	TYPE_DO( N_TCGEN_LIGHTMAP,					lightmap				) \
 	TYPE_DO( N_TCGEN_BASE,						base					) \
 	TYPE_DO( N_TCGEN_TEXTURE,					texture					) \
+
+// with parameters
+#define N_TCGEN_TYPES_PARMS \
 	TYPE_DO( N_TCGEN_VECTOR,					vector					)  /* S and T from world coordinates */ \
+
+#define N_TCMOD_TYPES \
+	TYPE_DO( N_TMOD_TRANSFORM,					transform				) \
+	TYPE_DO( N_TMOD_TURBULENT,					turb					) \
+	TYPE_DO( N_TMOD_SCROLL,						scroll					) \
+	TYPE_DO( N_TMOD_SCALE,						scale					) \
+	TYPE_DO( N_TMOD_STRETCH,					stretch					) \
+	TYPE_DO( N_TMOD_ROTATE,						rotate					) \
+	TYPE_DO( N_TMOD_ENTITY_TRANSLATE,			entityTranslate			) \
 
 #define N_SORT_TYPES \
 	TYPE_DO( N_SS_PORTAL,						portal					) \
@@ -309,66 +347,100 @@ extern TextEditor editor;
 	// values
 	STRUCT( N_ALPHAFUNC_VALUES,		AlphaFuncValues		)
 	STRUCT( N_DEPTHFUNC_VALUES,		DepthFuncValues		)
-	STRUCT( N_RGBGEN_TYPES,			RGBGenTypes			)
-	STRUCT( N_ALPHAGEN_TYPES,		AlphaGenTypes		)
-	STRUCT( N_TCGEN_TYPES,			TcGenTypes			)
+	STRUCT( N_RGBGEN_TYPES N_RGBGEN_TYPES_PARMS,				RGBGenTypes			)
+	STRUCT( N_ALPHAGEN_TYPES N_ALPHAGEN_TYPES_PARMS,			AlphaGenTypes		)
+	STRUCT( N_TCGEN_TYPES N_TCGEN_TYPES_PARMS,					TcGenTypes			)
+	STRUCT( N_TCMOD_TYPES,			TcModTypes			)
 
 	// general
 	STRUCT( N_CULL_TYPES,			CullTypes			)
 	STRUCT( N_SORT_TYPES,			SortTypes			)
 	STRUCT( N_SURFACEPARAMS_TYPES,	SurfaceParamTypes	)
 	STRUCT( N_MATERIAL_TYPES,		MaterialTypes		)
+	STRUCT( N_DEFORM_TYPES,			DeformTypes			)
 	STRUCT( N_BLENDFUNC_SRC_MACRO_TYPES N_BLENDFUNC_SRC_TYPES,	BlendFuncSrcTypes	)
 	STRUCT( N_BLENDFUNC_DST_TYPES,	BlendFuncDstTypes	)
+#undef TYPE_DO
+
+#define TYPE_DO( _enum, _name ) #_name,
+	// keywords types
+	STRUCT_TO_STRING( N_MAP_TYPES,				n_map_types_string				)
+	STRUCT_TO_STRING( N_NORMAL_MAP_TYPES,		n_normal_map_types_string		)
+	STRUCT_TO_STRING( N_PHYSICAL_MAP_TYPES,		n_physical_map_types_string		)
+
+	// modifiers
+	STRUCT_TO_STRING( N_MODIFIER_TYPES,			n_modifier_string				)
+
+	// values
+	STRUCT_TO_STRING( N_ALPHAFUNC_VALUES,		n_alpha_func_string				)
+	STRUCT_TO_STRING( N_DEPTHFUNC_VALUES,		n_depth_func_string				)
+	STRUCT_TO_STRING( N_RGBGEN_TYPES N_RGBGEN_TYPES_PARMS,					n_rgbgen_type_string			)	/* diffrent from vk_rgbgen_string	!! only user definable types */
+	STRUCT_TO_STRING( N_ALPHAGEN_TYPES N_ALPHAGEN_TYPES_PARMS,				n_alphagen_type_string			)	/* diffrent from vk_alphagen_string !! only user definable types */
+	STRUCT_TO_STRING( N_TCGEN_TYPES N_TCGEN_TYPES_PARMS,					n_tcgen_type_string				)	/* diffrent from vk_tcgen_string	!! only user definable types */
+	STRUCT_TO_STRING( N_TCMOD_TYPES,			n_tcmod_type_string				)	/* diffrent from vk_tcmod_string	!! only user definable types */
+	STRUCT_TO_STRING( N_BLENDFUNC_SRC_MACRO_TYPES N_BLENDFUNC_SRC_TYPES,	n_blend_func_src_type_string	)	/* diffrent from vk_src_blend_func_string	!! only user definable types */
+	STRUCT_TO_STRING( N_BLENDFUNC_DST_TYPES,	n_blend_func_dst_type_string	)	/* diffrent from vk_src_blend_func_string	!! order */
+
+	// general
+	STRUCT_TO_STRING( N_CULL_TYPES,				n_cull_type_string				)
+	STRUCT_TO_STRING( N_SORT_TYPES,				n_sort_type_string				)	/* diffrent from vk_sort_string		!! only user definable types */
+	STRUCT_TO_STRING( N_SURFACEPARAMS_TYPES,	n_surface_params_type_string	)
+	STRUCT_TO_STRING( N_MATERIAL_TYPES,			n_material_type_string			)
+	STRUCT_TO_STRING( N_DEFORM_TYPES,			n_deform_type_string			)	/* diffrent from vk_deform_string		!! only user definable types */
 #undef TYPE_DO
 #undef STRUCT
 #undef STRUCT_TO_STRING
 
 #define TYPE_DO( enum, _name ) #_name,
+
+//	
+// text-editor autocomplete and this shader format is
 // based on netradiant-custom implementation of auto-complete
-// https://github.com/Garux/netradiant-custom
-static const std::vector<TextEditor::Format> g_shaderGeneralFormats {
-	{ "surfaceparm %s",					{ N_SURFACEPARAMS_TYPES } },
-	{ "cull %s",						{ N_CULL_TYPES } },
-	{ "noPicMip"						},
-	{ "noMipMaps"						},
-	{ "noTC"							},	
-	{ "noglfog"							},
-	{ "entityMergable"					},
-	{ "surfacelight %i"					},
+// https://github.com/Garux/netradiant-custom/commit/9c2fbc9d1dd4029c0f76aec2830f991fcb2c259e
+//
+static const std::vector<TextEditor::Format> g_shaderGeneralFormats 
+{
+	{ "surfaceparm %s",					"key type", { N_SURFACEPARAMS_TYPES } },
+	{ "cull %s",						"key type", { N_CULL_TYPES } },
+	{ "noPicMip",						"key" },
+	{ "noMipMaps",						"key" },
+	{ "noTC",							"key" },	
+	{ "noglfog",						"key" },
+	{ "entityMergable",					"key" },
+	{ "surfacelight %i",				"key integer" },
 	// q3map_surfacelight deprecated as of 16 Jul 01
 	//{
 	//	"q3map_surfaceLight %f", "key float"
 	//},
-	{ "polygonOffset"					},
-	{ "portal"							},
-	{ "skyParms %t %i -"				},
-	{ "skyParms %t - -"					},
-	{ "skyParms - %i -"					},
-	{ "skyParms - - -"					},
-	{ "fogParms ( %c %c %c ) %i"		},
+	{ "polygonOffset",					"key" },
+	{ "portal",							"key" },
+	{ "skyParms %t %i -",				"key texture cloudHeight void" },
+	{ "skyParms %t - -",				"key texture cloudHeight void" },
+	{ "skyParms - %i -",				"key texture cloudHeight void" },
+	{ "skyParms - - -",					"key texture cloudHeight void" },
+	{ "fogParms ( %c %c %c ) %f",		"key ( color:0 color:1 color:2 ) depthForOpaque" },
 
-	{ "sun %c %c %c %f %f %f"					},
-	{ "q3map_sun %c %c %c %f %f %f"				},
-	{ "q3map_sunExt %c %c %c %f %f %f %f %i"	},
+	{ "sun %c %c %c %f %f %f",					"key color:0 color:1 color:2 direction:0 direction:1 direction:2" },
+	{ "q3map_sun %c %c %c %f %f %f",			"key color:1 color:2 direction:0 direction:1 direction:2" },
+	{ "q3map_sunExt %c %c %c %f %f %f %f %i",	"key color:1 color:2 direction:0 direction:1 direction:2 void" },
 	
-	{ "sort %s",						{ N_SORT_TYPES } },
-	{ "sort %i"							},	
+	{ "sort %s",						"key type", { N_SORT_TYPES } },
+	{ "sort %i",						"key integer" },	// todo
 
-	{ "deform wave %f %s %f %f %f %f",			{ N_MODIFIER_TYPES } },
-	{ "deform move %f %f %f %s %f %f %f %f",	{ N_MODIFIER_TYPES } },
+	{ "deform wave %f %s %f %f %f %f",			"key type spread modifier base amplitude phase frequency", { N_MODIFIER_TYPES } },
+	{ "deform move %f %f %f %s %f %f %f %f",	"key type displace:0 displace:1 displace:2 modifier base amplitude phase frequency", { N_MODIFIER_TYPES } },
 	{
-		"deform %s %f %f",				{
+		"deform %s %f %f",				"key type amplitude frequency", {
 			"normal",
 		}
 	},
 	{
-		"deform bulge %f %f %f",		{
+		"deform bulge %f %f %f",		"key type bulgeWidth bulgeHeight bulgeSpeed", {
 			"bulge",
 		}
 	},
 	{
-		"deform %s",					{
+		"deform %s",					"key type", {
 			"autosprite2",
 			"autosprite", 
 			"projectionShadow",
@@ -383,20 +455,20 @@ static const std::vector<TextEditor::Format> g_shaderGeneralFormats {
 		}
 	},
 	// same as deform ..
-	{ "deformVertexes wave %f %s %f %f %f %f",			{ N_MODIFIER_TYPES } },
-	{ "deformVertexes move %f %f %f %s %f %f %f %f",	{ N_MODIFIER_TYPES } },
+	{ "deformVertexes wave %f %s %f %f %f %f",			"key type spread modifier base amplitude phase frequency", { N_MODIFIER_TYPES } },
+	{ "deformVertexes move %f %f %f %s %f %f %f %f",	"key type displace:0 displace:1 displace:2 modifier base amplitude phase frequency", { N_MODIFIER_TYPES } },
 	{
-		"deformVertexes %s %f %f",		{
+		"deformVertexes %s %f %f",		"key type amplitude frequency", {
 			"normal",
 		}
 	},
 	{
-		"deformVertexes bulge %f %f %f", {
+		"deformVertexes bulge %f %f %f", "key type bulgeWidth bulgeHeight bulgeSpeed", {
 			"bulge",
 		}
 	},
 	{
-		"deformVertexes %s",			{
+		"deformVertexes %s",			"key type", {
 			"autosprite2",
 			"autosprite", 
 			"projectionShadow",
@@ -410,100 +482,101 @@ static const std::vector<TextEditor::Format> g_shaderGeneralFormats {
 			"text7", //this last, so it doesn't take precendence, while matching longer version
 		}
 	},
-	{ "light %p"						},
-	{ "tessSize %f"						},
-	{ "clampTime %f"					},
-	{ "material %s",					{ N_MATERIAL_TYPES } },
+	{ "light %p",						"key texture" },
+	{ "tessSize %f",					"key float" },
+	{ "clampTime %f",					"key float" },
+	{ "material %s",					"key type", { N_MATERIAL_TYPES } },
 };
 
-static const std::vector<TextEditor::Format> g_shaderStageFormats{
+static const std::vector<TextEditor::Format> g_shaderStageFormats
+{
 	{
-		"map %s",						{
+		"map %s",						"key texture", {
 			"$lightmap",	// these do not work for highlighting, $ is special
 			"$whiteimage",	// next rule highlights and this works for completion - acceptable
 		}
 	},
-	{ "map %t"							},
-	{ "clampMap %t"						},
-	{ "videoMap %p"						},
-	{ "animMap %f %t %t %t %t %t %t %t %t" },	// texture will be split by spaces
-	{ "blendFunc %s",					{ N_BLENDFUNC_SRC_MACRO_TYPES } },
+	{ "map %t",							"key texture" },
+	{ "clampMap %t",					"key texture" },
+	{ "videoMap %p",					"key texture" },
+	{ "animMap %f %t %t %t %t %t %t %t %t", "key speed textures" },	// texture will be split by spaces
+	{ "blendFunc %s",					"key src", { N_BLENDFUNC_SRC_MACRO_TYPES } },
 	{
-		"blendFunc %s %s",				{
+		"blendFunc %s %s",				"key src dst", {
 			N_BLENDFUNC_SRC_TYPES
 			"__next_token__",
 			N_BLENDFUNC_DST_TYPES
 		}
 	},
-	{ "rgbGen %s",						{ N_RGBGEN_TYPES } },
-	{ "rgbGen wave %s %f %f %f %f",		{ N_MODIFIER_TYPES } },
-	{ "rgbGen const ( %c %c %c )"		},
-	{ "alphaGen %s",					{ N_ALPHAGEN_TYPES } },
-	{ "alphaGen wave %s %f %f %f %f",	{ N_MODIFIER_TYPES } },
-	{ "alphaGen const %f"				},
-	{ "alphaGen portal %f"				},
-	{ "tcGen %s",						{ N_TCGEN_TYPES } },
-	{ "tcGen vector ( %f %f %f ) ( %f %f %f )" },
+	{ "rgbGen %s",						"key type", { N_RGBGEN_TYPES } },
+	{ "rgbGen wave %s %f %f %f %f",		"key type modifier base amplitude phase frequency", { N_MODIFIER_TYPES } },
+	{ "rgbGen const ( %c %c %c )",		"key type ( color:0 color:1 color:2 )" },
+	{ "alphaGen %s",					"key type", { N_ALPHAGEN_TYPES } },
+	{ "alphaGen wave %s %f %f %f %f",	"key type modifier base amplitude phase frequency", { N_MODIFIER_TYPES } },
+	{ "alphaGen const %f",				"key type alpha" },
+	{ "alphaGen portal %f",				"key type range" },
+	{ "tcGen %s",						"key type", { N_TCGEN_TYPES } },
+	{ "tcGen vector ( %f %f %f ) ( %f %f %f )", "key type ( axis_s:0 axis_s:1 axis_s:2 ) ( axis_t:0 axis_t:1 axis_t:2 )" },
 	// same as tcGen
-	{ "texgen %s",						{ N_TCGEN_TYPES } },
-	{ "texgen vector ( %f %f %f ) ( %f %f %f )" },
-	{ "tcMod entityTranslate"			},
-	{ "tcMod rotate %f"					},
+	{ "texgen %s",						"key type", { N_TCGEN_TYPES } },
+	{ "texgen vector ( %f %f %f ) ( %f %f %f )", "key type ( axis_s:0 axis_s:1 axis_s:2 ) ( axis_t:0 axis_t:1 axis_t:2 )" },
+	{ "tcMod entityTranslate",			"key type" },
+	{ "tcMod rotate %f",				"key type rotate" },
 	{
-		"tcMod %s %f %f",				{
+		"tcMod %s %f %f",				"key type translate:0 translate:1", {
 			"scale",
 			"scroll",
 		}
 	},
-	{ "tcMod stretch %s %f %f %f %f",	{ N_MODIFIER_TYPES } },
-	{ "tcMod transform %f %f %f %f %f %f"	},
-	{ "tcMod turb %f %f %f %f"			},
-	{ "depthFunc %s",					{ N_DEPTHFUNC_VALUES } },
-	{ "depthWrite"						},
-	{ "detail"							},
-	{ "glow"							},
-	{ "alphaFunc %s",					{ N_ALPHAFUNC_VALUES } },
+	{ "tcMod stretch %s %f %f %f %f",		"key type modifier base amplitude phase frequency", { N_MODIFIER_TYPES } },
+	{ "tcMod transform %f %f %f %f %f %f",	"key type matrix_x:0 matrix_x:1 matrix_y:0 matrix_y:1 translate:0 translate:1" },
+	{ "tcMod turb %f %f %f %f",				"key type base amplitude phase frequency" },
+	{ "depthFunc %s",						"key type", { N_DEPTHFUNC_VALUES } },
+	{ "depthWrite",							"key" },
+	{ "detail",								"key" },
+	{ "glow",								"key" },
+	{ "alphaFunc %s",						"key type", { N_ALPHAFUNC_VALUES } },
 	// ss not implemented
 	{
-		"surfaceSprites %s %f %f %f %f", {
+		"surfaceSprites %s %f %f %f %f",	"key type float_1 float_2 float_3", {
 			"vertical",
 			"oriented",
 			"effect",
 			"flattened",
 		}
 	},
-	{ "ssFademax %f"					},
-	{ "ssFadescale %f"					},
-	{ "ssVariance %f %f"				},
-	{ "ssHangdown"						},
-	{ "ssAnyangle"						},
-	{ "ssFaceup"						},
-	{ "ssWind %f"						},
-	{ "ssWindIdle %f"					},
-	{ "ssDuration %f"					},
-	{ "ssGrow %f %f"					},
-	{ "ssWeather"						},
+	{ "ssFademax %f",					"key float_1" },
+	{ "ssFadescale %f",					"key float_1" },
+	{ "ssVariance %f %f",				"key float_1 float_2" },
+	{ "ssHangdown",						"key" },
+	{ "ssAnyangle",						"key" },
+	{ "ssFaceup",						"key" },
+	{ "ssWind %f",						"key float_1" },
+	{ "ssWindIdle %f",					"key float_1" },
+	{ "ssDuration %f",					"key float_1" },
+	{ "ssGrow %f %f",					"key float_1 float_2" },
+	{ "ssWeather",						"key" },
 
 	// pbr
 #ifdef USE_VK_PBR
-	{ "normalMap %t"					},
-	{ "normalHeightMap %t"				},
-	{ "specMap %t" 						},
-	{ "specularMap %t" 					},
-	{ "rmoMap %t" 						},
-	{ "rmosMap %t" 						},
-	{ "moxrMap %t" 						},
-	{ "mosrMap %t" 						},
-	{ "ormMap %t" 						},
-	{ "ormsMap %t" 						},
-	{ "gloss %f"						},
-	{ "roughness %f"					},
-	{ "specularreflectance %f"			},
-	{ "specularexponent %f"				},
-	{ "parallaxdepth %f"				},
-	{ "parallaxbias %f"					},
-	{ "normalscale %f %f %f"			},
-	{ "specularscale %f %f %f %f"		},
+	{ "normalMap %t",					"key normal_map" },
+	{ "normalHeightMap %t",				"key normal_height_map" },
+	{ "specMap %t", 					"key physical_map" },
+	{ "specularMap %t", 				"key physical_map" },
+	{ "rmoMap %t", 						"key physical_map" },
+	{ "rmosMap %t", 					"key physical_map" },
+	{ "moxrMap %t", 					"key physical_map" },
+	{ "mosrMap %t", 					"key physical_map" },
+	{ "ormMap %t", 						"key physical_map" },
+	{ "ormsMap %t", 					"key physical_map" },
+	{ "gloss %f",						"key float" },
+	{ "roughness %f",					"key float" },
+	{ "specularreflectance %f",			"key float" },
+	{ "specularexponent %f",			"key float" },
+	{ "parallaxdepth %f",				"key float" },
+	{ "parallaxbias %f",				"key float" },
+	{ "normalscale %f %f %f",			"key float1 float2 float3" },
+	{ "specularscale %f %f %f %f",		"key float1 float2 float3 float4" },
 #endif
 };
 #undef TYPEDO
