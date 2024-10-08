@@ -249,6 +249,8 @@ if(BuildMPEngine OR BuildMPDed)
 		"${MPDir}/qcommon/cm_trace.cpp"
 		"${MPDir}/qcommon/cmd.cpp"
 		"${MPDir}/qcommon/common.cpp"
+		"${MPDir}/qcommon/cppStringHelp.cpp"
+		"${MPDir}/qcommon/cppStringHelp.h"
 		"${MPDir}/qcommon/cvar.cpp"
 		"${MPDir}/qcommon/disablewarnings.h"
 		"${MPDir}/qcommon/files.cpp"

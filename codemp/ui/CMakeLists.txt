@@ -57,6 +57,8 @@ source_group("game" FILES ${MPUIGameFiles})
 set(MPUIFiles ${MPUIFiles} ${MPUIGameFiles})
 
 set(MPUICommonFiles
+	"${MPDir}/qcommon/cppStringHelp.cpp"
+	"${MPDir}/qcommon/cppStringHelp.h"
 	"${MPDir}/qcommon/q_math.cpp"
 	"${MPDir}/qcommon/q_shared.cpp"
 	"${MPDir}/qcommon/disablewarnings.h"

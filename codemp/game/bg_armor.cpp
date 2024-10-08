@@ -187,7 +187,7 @@ JKG_ParseArmorResistances
 */
 qboolean JKG_ParseArmorResistances(cJSON* json, armorData_t& armor)
 {
-	qboolean status = qtrue; //if no errors were encountered, return true
+	qboolean status = qtrue; //if no errors encountered
 	if (json)
 	{
 		int resistSize = cJSON_GetArraySize(json);
@@ -217,8 +217,6 @@ qboolean JKG_ParseArmorResistances(cJSON* json, armorData_t& armor)
 			armor.resistances.push_back(std::make_pair(mod, resistance));	//add the pair to the list
 		}
 	}
-	else
-		status = qfalse;
 
 	return status;
 }

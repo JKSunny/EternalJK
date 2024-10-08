@@ -8,6 +8,8 @@ static int nSelected = -1;					// selected item in the list (-1 for no selection
 static std::vector<std::string> vItemDescLines;	// item description
 
 void JKG_ConstructItemDescription(itemInstance_t* pItem, std::vector<std::string>& vDescLines);
+extern int findLastSpaceInString(const std::string& s);
+extern std::string removeExtraSpacesInString(const std::string& s);
 
 void JKG_ConstructInventoryList() {
 	itemInstance_t* pAllItems = nullptr;
@@ -744,50 +746,91 @@ static void JKG_ConstructConsumableDescription(itemInstance_t* pItem, std::vecto
 	}
 }
 
+//todo: move these string helper functions to a more generic place
+
 //a stupid simple line splitter for descriptions
-void JKG_SplitDescriptionLines(const std::string& s, std::vector<std::string>& vDescLines)
+void JKG_SplitDescriptionLines(const std::string& info, std::vector<std::string>& vDescLines)
 {
 	//these 'consts' might need to be calculated based on inventory width of the current screen
 	const int MAXLENGTH = 39; //max length of a line
 	const int MAXFIRSTLINE = 33; //max length with "info: " preceeding the text
 	bool multiline = true;	//for determing if we need to handle multiple lines of description or a single line
+
+	std::string s = removeExtraSpacesInString(info); //clean up extra spaces
 	int length = s.length();
-	
+
 	if (length - MAXFIRSTLINE < MAXLENGTH)
 	{
+		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_DESCRIPTION"), s.c_str()));
 		vDescLines.push_back(s.c_str());
 		multiline = false;
 	}
-	
-	if(multiline)
+
+	if (multiline)
 	{
-		//if the last part of the line is not a alphanumeric, don't add a dash
-		if (!std::isalnum(s[MAXFIRSTLINE - 1]))
-			vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_DESCRIPTION"), s.substr(0, MAXFIRSTLINE).c_str()));
+		//print first line
+		int firstline_space = findLastSpaceInString(s.substr(0, MAXFIRSTLINE));
+		if(firstline_space != -1)
+		{
+			vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_DESCRIPTION"), s.substr(0, firstline_space).c_str()));
+		}
 		else
-			vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_DESCRIPTION"), (s.substr(0, MAXFIRSTLINE) + "-").c_str()));
+		{
+			firstline_space = MAXFIRSTLINE;
+			vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_DESCRIPTION"), (s.substr(0, firstline_space) + "-").c_str()));
+		}
 
-		length = length - MAXFIRSTLINE; //subtrack first line from length
-		int start = MAXFIRSTLINE; //where to start the line
 
-		//loop through the description and break it up into lines
+		length = length - firstline_space+1; //subtrack first line from length
+		int start = firstline_space+1; //where to start the line
+		
+
+		//loop through the rest of the description and break it up into lines on the last space of each line
 		while (length > 0)
 		{
-			if( (length - MAXLENGTH) < 1)
+
+			//if it is the last line
+			if ((length - MAXLENGTH) < 1)
 			{
-				vDescLines.push_back(s.substr(start, MAXLENGTH).c_str()); //if it is the last line
+				vDescLines.push_back(s.substr(start, s.length()).c_str());
+				break;
 			}
 			else
 			{
-				//no dash please, it's not a number or letter
-				if (!std::isalnum(s[start+MAXLENGTH-1]))
-					vDescLines.push_back(s.substr(start, MAXLENGTH).c_str()); 
+				//find the last space in the string
+				std::string line = s.substr(start, MAXLENGTH);
+				int last_space = findLastSpaceInString(line);
+
+				//string ends in a space, put the whole line up
+				if (last_space == line.length() - 1)
+				{
+					vDescLines.push_back(s.substr(start, MAXLENGTH).c_str());
+					start = start + MAXLENGTH;
+					length = length - MAXLENGTH;
+				}
+
+				//no spaces in string, break it up with a dash
+				else if (last_space == -1)
+				{
+					//no dash please, it's not a number or letter
+					if (!std::isalnum(s[start + MAXLENGTH - 1]))
+						vDescLines.push_back(s.substr(start, MAXLENGTH).c_str());
+					else
+						vDescLines.push_back((s.substr(start, MAXLENGTH) + "-").c_str()); //add dash
+
+					start = start + MAXLENGTH;
+					length = length - MAXLENGTH;
+				}
+
+				//go until the last word
 				else
-					vDescLines.push_back((s.substr(start, MAXLENGTH) + "-").c_str()); //add dash
+				{
+					vDescLines.push_back(s.substr(start, last_space).c_str());
+					start = start + last_space+1;
+					length = length - last_space+1;
+				}
 			}
 			
-			start = start + MAXLENGTH;
-			length = length - MAXLENGTH;
 		}
 	}
 }
