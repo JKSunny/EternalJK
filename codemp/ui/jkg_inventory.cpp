@@ -8,8 +8,6 @@ static int nSelected = -1;					// selected item in the list (-1 for no selection
 static std::vector<std::string> vItemDescLines;	// item description
 
 void JKG_ConstructItemDescription(itemInstance_t* pItem, std::vector<std::string>& vDescLines);
-extern int findLastSpaceInString(const std::string& s);
-extern std::string removeExtraSpacesInString(const std::string& s);
 
 void JKG_ConstructInventoryList() {
 	itemInstance_t* pAllItems = nullptr;
@@ -746,9 +744,7 @@ static void JKG_ConstructConsumableDescription(itemInstance_t* pItem, std::vecto
 	}
 }
 
-//todo: move these string helper functions to a more generic place
-
-//a stupid simple line splitter for descriptions
+//simple line splitter for item descriptions (max 250 chars)
 void JKG_SplitDescriptionLines(const std::string& info, std::vector<std::string>& vDescLines)
 {
 	//these 'consts' might need to be calculated based on inventory width of the current screen
@@ -777,11 +773,11 @@ void JKG_SplitDescriptionLines(const std::string& info, std::vector<std::string>
 		else
 		{
 			firstline_space = MAXFIRSTLINE;
-			vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_DESCRIPTION"), (s.substr(0, firstline_space) + "-").c_str()));
+			vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_DESCRIPTION"), (s.substr(0, firstline_space) + "-").c_str())); //break up no space strings with dashes
 		}
 
 
-		length = length - firstline_space+1; //subtrack first line from length
+		length = length - firstline_space+1; //subtract first line from length
 		int start = firstline_space+1; //where to start the line
 		
 
@@ -812,11 +808,7 @@ void JKG_SplitDescriptionLines(const std::string& info, std::vector<std::string>
 				//no spaces in string, break it up with a dash
 				else if (last_space == -1)
 				{
-					//no dash please, it's not a number or letter
-					if (!std::isalnum(s[start + MAXLENGTH - 1]))
-						vDescLines.push_back(s.substr(start, MAXLENGTH).c_str());
-					else
-						vDescLines.push_back((s.substr(start, MAXLENGTH) + "-").c_str()); //add dash
+					vDescLines.push_back((s.substr(start, MAXLENGTH) + "-").c_str());
 
 					start = start + MAXLENGTH;
 					length = length - MAXLENGTH;
