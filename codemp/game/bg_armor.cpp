@@ -187,10 +187,11 @@ JKG_ParseArmorResistances
 */
 qboolean JKG_ParseArmorResistances(cJSON* json, armorData_t& armor)
 {
-	if (json) 
+	qboolean status = qtrue; //if no errors were encountered, return true
+	if (json)
 	{
 		int resistSize = cJSON_GetArraySize(json);
-		for (int i = 0; i < resistSize; i++) 
+		for (int i = 0; i < resistSize; i++)
 		{
 			int mod; float resistance; cJSON* jsonNode;
 			cJSON* arrayObj = cJSON_GetArrayItem(json, i);
@@ -200,9 +201,10 @@ qboolean JKG_ParseArmorResistances(cJSON* json, armorData_t& armor)
 			if (mod == MOD_UNKNOWN)
 			{
 				Com_Printf(S_COLOR_ORANGE "Unrecognized armor resistance means of damage specified: %s\n", cJSON_ToString(jsonNode));
-				return qfalse;
+				status = qfalse;
+				continue;
 			}
-			
+
 			jsonNode = cJSON_GetObjectItem(arrayObj, "resistance");
 			resistance = cJSON_ToNumberOpt(jsonNode, 1.0f);
 			if (resistance < 0)
@@ -213,9 +215,12 @@ qboolean JKG_ParseArmorResistances(cJSON* json, armorData_t& armor)
 				Com_Printf(S_COLOR_YELLOW "Found armor resistance value higher than 1.0, this armor takes EXTRA damage against specified means.\n");
 
 			armor.resistances.push_back(std::make_pair(mod, resistance));	//add the pair to the list
-			return qtrue;
 		}
 	}
+	else
+		status = qfalse;
+
+	return status;
 }
 
 /*
