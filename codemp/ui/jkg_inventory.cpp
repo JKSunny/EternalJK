@@ -758,7 +758,6 @@ void JKG_SplitDescriptionLines(const std::string& info, std::vector<std::string>
 	if (length - MAXFIRSTLINE < MAXLENGTH)
 	{
 		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_DESCRIPTION"), s.c_str()));
-		vDescLines.push_back(s.c_str());
 		multiline = false;
 	}
 
