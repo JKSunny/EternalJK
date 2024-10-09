@@ -81,6 +81,7 @@
 		
 		"damage":
 		{
+			"means": "MOD_STUNNED",
 			"deadly": false
 		},
 
@@ -111,6 +112,7 @@
 		
 		"damage":
 		{
+			"means": "MOD_STUNNED",
 			"deadly": false
 		},
 
@@ -151,6 +153,10 @@
 			"movemodifier" : 0.9,
 			"maxstacks" : 5
 		},
+
+		"damage": {
+			"means": "MOD_STUNNED"
+		},
 		
 		"visuals":
 		{
@@ -180,6 +186,10 @@
 		"passive": {
 			"movemodifier" : 0.8,
 			"maxstacks" : 4
+		},
+
+		"damage": {
+			"means": "MOD_STUNNED"
 		},
 		
 		"visuals":
