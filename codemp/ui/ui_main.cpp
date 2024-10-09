@@ -734,7 +734,7 @@ public:
 
 		return hash ^ (hash >> 10) ^ (hash >> 20);
 	}
-};
+}
 
 #include <unordered_map>
 #include <string>
