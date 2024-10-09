@@ -28,6 +28,7 @@
 		"inventoryName": "@JKG_INVENTORY_MOD_FALLING",
 
 		"modifiers": {
+			"isCC": true,
 			"ignoreArmor": true,
 			"ignoreShield": true
 		},
@@ -68,6 +69,7 @@
 		"inventoryName": "@JKG_INVENTORY_MOD_CRUSH",
 
 		"modifiers": {
+			"isCC": true,
 			"ignoreArmor": true,
 			"ignoreShield": true,
 			"dodgeable": true
@@ -87,6 +89,7 @@
 		"inventoryName": "@JKG_INVENTORY_MOD_WATER",
 
 		"modifiers": {
+			"isCC": true,
 			"ignoreArmor": true,
 			"ignoreShield": true
 		},
@@ -105,6 +108,7 @@
 		"inventoryName": "@JKG_INVENTORY_MOD_SLIME",
 
 		"modifiers": {
+			"isCC": true,
 			"ignoreShield": true
 		},
 
@@ -120,6 +124,7 @@
 		"inventoryName": "@JKG_INVENTORY_MOD_LAVA",
 
 		"modifiers": {
+			"isCC": true,
 			"ignoreShield": true
 		},
 
@@ -303,6 +308,7 @@
 		"modifiers": {
 			"ignoreShield": true,
 			"dodgeable": true,
+			"isCC": true,
 			"armor": 0.5,
 			"organic": 1.5
 		},
@@ -442,6 +448,7 @@
 
 		"modifiers": {
 			"isEMP": true,
+			"isCC": true,
 			"ignoreArmor": true,
 			"dodgeable": true,
 			"organic": 0.5,
@@ -468,6 +475,7 @@
 
 		"modifiers": {
 			"isEMP": true,
+			"isCC": true,
 			"dodgeable": true,
 			"organic": 0.6,
 			"shield": 1.8,
@@ -493,6 +501,7 @@
 
 		"modifiers": {
 			"isEMP": true,
+			"isCC": true,
 			"armor": 0.8,
 			"organic": 1.15,
 			"shield": 1.8,
@@ -518,6 +527,7 @@
 
 		"modifiers": {
 			"isEMP": true,
+			"isCC": true,
 			"dodgeable": true,
 			"armor": 0.8,
 			"organic": 1.0,
@@ -540,6 +550,7 @@
 
 		"modifiers": {
 			"dodgeable": true,
+			"isCC": true,
 			"armor": 0.8,
 			"organic": 1.1,
 			"shield": 1.0,
@@ -651,6 +662,7 @@
 		"inventoryName": "@JKG_INVENTORY_MOD_FROZEN",
 
 		"modifiers": {
+			"isCC": true,
 			"armor": 0.8,
 			"organic": 1.1,
 			"shield": 1.0,
@@ -680,6 +692,7 @@
 			"droid": 0.3,
 			"shield": 0.5,
 			"armor": 0.75,
+			"isCC": true,
 			"shieldBlocks": true
 		},
 
@@ -703,6 +716,7 @@
 
 		"modifiers": {
 			"isEMP": true,
+			"isCC": true,
 			"armor": 0.8,
 			"organic": 1.0,
 			"shield": 1.7,
@@ -756,6 +770,7 @@
 
 		"modifiers": {
 			"isEMP": true,
+			"isCC": true,
 			"shieldBlocks": true
 		},
 
@@ -840,6 +855,7 @@
 		"modifiers": {
 			"ignoreArmor": true,
 			"ignoreShield": true,
+			"isCC": true,
 			"droid": 0.0		//droids are not force sensitive
 		},
 

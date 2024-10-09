@@ -171,10 +171,11 @@ It contains a series of means of damage, each one has the following fields:
  - disintegrate (boolean): If true, this damage type will disintegrate people when it kills them.
 
  - modifiers (object):
-  - dodgeable (boolean): If true, this damage type may be reduced with an evade skill (eg: rolling)
-  - ignoreArmor (boolean): If true, this damage type ignores armor
-  - ignoreShield (boolean): If true, this damage type ignores shields
-  - isEMP (boolean): If true, this damage type can trigger special EMP effects, such as disabling jetpacks.  These effects are defined in game\g_combat.cpp within the G_Damage() function.  These only occur if the target actually takes damage (if a shield protects the target nothing is triggered).
+  - dodgeable (boolean, default: false): If true, this damage type may be reduced with an evade skill (eg: rolling)
+  - ignoreArmor (boolean, default: false): If true, this damage type ignores armor. 
+  - ignoreShield (boolean, default: false): If true, this damage type ignores shields. 
+  - isEMP (boolean, default: false): If true, this damage type can trigger special EMP effects, such as disabling jetpacks.  These effects are defined in game\g_combat.cpp within the G_Damage() function.  These only occur if the target actually takes damage (if a shield protects the target nothing is triggered).
+  - isCC (boolean, default false): If true, this damage type counts as crowd control and will award assists based on applying crowd control. Note: doing knockback will also count as cc.
   - armor (float, default 1.0): Controls how much damage this type does against armor
   - shield (float, default 1.0): Controls how much damage this type does against shields
   - organic (float, default 1.0): Controls how much damage this type does against soft targets
@@ -210,13 +211,13 @@ Each .itm file contains one item, which can have the following fields:
  - id (integer): Assigns a specific internal item ID number to this item. Not recommended to use this except in special circumstances.
  - itemIcon (string): The item icon shader as it appears in the inventory
  - itemtype (special): The type of the item. Can be the following: armor, weapon, clothing, consumable, shield, jetpack, ammo, tool.
- - tier (integer): Which tier of item the item is (0 - scrap, 1 - common, 2 - refined, 3 - elite, 4 - superior, 5 - legendary). Default: Common
- - weight (float): Unused, cannot be less than 0.    Default: 1.0
- - cost (integer): How much the item costs from the vendor.  Default: 100
- - maxStack (integer): How many of this item can be carried in a stack.
- - tradeable (boolean): If true, the item can be traded/sold/etc.  Not yet fully implemented.  Default: true. (Note: defaults to true if tier is 5)
- - segregated (boolean): If true, the item does not show up/take up space in the normal inventory (for things like quest items etc).  Default: false.
- - droppable (boolean): If true, the item can be dropped/destroyed.  Not yet fully implemented.  Default: true ((Note: defaults to true if tier is 5)
+ - tier (integer, default 1): Which tier of item the item is (0 - scrap, 1 - common, 2 - refined, 3 - elite, 4 - superior, 5 - legendary).
+ - weight (float, default 1.0): Unused, cannot be less than 0.
+ - cost (integer, default 100): How much the item costs from the vendor.
+ - maxStack (integer, default true): How many of this item can be carried in a stack.
+ - tradeable (boolean, default true): If true, the item can be traded/sold/etc.  Not yet fully implemented.  Note: defaults to true if tier is 5
+ - segregated (boolean, default false): If true, the item does not show up/take up space in the normal inventory (for things like quest items etc). 
+ - droppable (boolean, default true): If true, the item can be dropped/destroyed.  Not yet fully implemented.  Note: defaults to true if tier is 5
  - itemDescription (string): A description of the item up to 250 characters in length.  Longer descriptions are forcibly truncated.
 
 The following contains information specific to WEAPON items:

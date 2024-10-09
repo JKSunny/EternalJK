@@ -1863,8 +1863,11 @@ void player_die( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, int
 	{
 		if (self->assists) {
 			for (auto it = self->assists->begin(); it != self->assists->end(); ++it) {
-				int awardedCredits;
-				int creditsPerKill;
+				int awardedCredits;		//total credits to award
+				int creditsPerKill;		//how much to pay for a kill/objective
+				int ccAssistCredits;	//assist credits from crowd control
+				int dmgAssistCredits;	//assist credits from dmg
+				const float captureCCRatio = 0.10f; const float killCCRatio = 0.15f;	//% to reward for applying CC
 
 				if (!JKG_CanAwardAssist(self, attacker, *it)) {
 					continue;
@@ -1872,32 +1875,45 @@ void player_die( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, int
 
 				if (g_gametype.integer == GT_CTF) {
 					creditsPerKill = jkg_creditsPerTeamCapture.integer;
+					ccAssistCredits = creditsPerKill * captureCCRatio;
 				}
 				else {
 					creditsPerKill = jkg_creditsPerKill.integer;
+					ccAssistCredits = creditsPerKill * killCCRatio;
 				}
 
 				// One point of damage is worth 1% of total credits earned per kill
-				awardedCredits = (creditsPerKill / 100.0f) * it->damageDealt;
+				awardedCredits = dmgAssistCredits = (creditsPerKill / 100.0f) * it->damageDealt;
+
+				//did we help with cc?
+				if (it->isCC)
+				{
+					awardedCredits += ccAssistCredits;
+				}
 
 				// Don't trigger it if we don't have any credits to award for this assist
 				if (awardedCredits > 0) {
 					int minAssistReward = (creditsPerKill * ( (51 <= jkg_minAssistAwardRatio.integer ? 50 : jkg_minAssistAwardRatio.integer) / 100.0f));		//the minimum bonus added to assist credits, awardRatio cannot exceed 50% of creditsPerKill
 
 					if (minAssistReward)	//only award if greater than 0
-						awardedCredits = ((awardedCredits < minAssistReward) ? minAssistReward : awardedCredits);
+						dmgAssistCredits = ((dmgAssistCredits < minAssistReward) ? minAssistReward : dmgAssistCredits);
 
-					if (awardedCredits >= creditsPerKill) {
+					if (dmgAssistCredits >= creditsPerKill) {
 						// Always award less than a full kill's worth of credits.
-						awardedCredits = creditsPerKill - 1;
+						dmgAssistCredits = creditsPerKill - 1;
 					}
 
+					awardedCredits = dmgAssistCredits + ccAssistCredits;
 					it->entWhoHit->client->ps.credits += awardedCredits;
+					trap->SendServerCommand(it->entWhoHit - g_entities, "hitmarker"); // Do a hitmarker, as a hint that they got a reward
 
-					// Do a hitmarker, as a hint that they got a reward
-					trap->SendServerCommand(it->entWhoHit - g_entities,
-						va("notify 1 \"Assist: +%i Credits\"", awardedCredits));
-					trap->SendServerCommand(it->entWhoHit - g_entities, "hitmarker");
+					if(dmgAssistCredits > 0)
+						trap->SendServerCommand(it->entWhoHit - g_entities,
+							va("notify 1 \"Assist: +%i Credits\"", dmgAssistCredits));
+					
+					if(ccAssistCredits > 0)
+						trap->SendServerCommand(it->entWhoHit - g_entities,
+							va("notify 1 \"Crowd Control Assist: +%i Credits\"", ccAssistCredits));
 				}
 			}
 		}
@@ -4632,6 +4648,7 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 	int			directDmg = 0; //direct damage (bypasses shield from ACP weaponry)
 	int			knockback = 0;
 	qboolean	isHeadShot = false;
+	qboolean	isCC = false;
 	meansOfDamage_t* means = JKG_GetMeansOfDamage(mod);
 
 
@@ -5037,6 +5054,10 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 
 	// note, Force Protect doesn't do anything (eez removed the code)
 
+	//does this count as crowd control?
+	if ( knockback > 32 || (means->modifiers.isCC && take > 0))
+		isCC = qtrue;
+
 #ifndef FINAL_BUILD
 	if ( g_debugDamage.integer ) {
 		trap->Print( "%i: client:%i health:%i damage:%i shield:%i\n", level.time, targ->s.number,
@@ -5305,13 +5326,14 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 		if(targ->client && !targ->NPC && !OnSameTeam(attacker, targ))
 		{
 			// Add an assist to the records
-			entityHitRecord_t hitrecord{ attacker, level.time, take };
+			entityHitRecord_t hitrecord{ attacker, level.time, take, isCC };
 			qboolean bAdded = qfalse;
 
 			// If we have an assist record by this person already, then we need to add the damage
 			for (auto it = targ->assists->begin(); it != targ->assists->end(); ++it) {
 				if (it->entWhoHit == attacker) {
 					it->damageDealt += take;
+					it->isCC = (it->isCC || isCC);	//if they did cc before or now, it still counts as cc
 					bAdded = qtrue;
 					break;
 				}

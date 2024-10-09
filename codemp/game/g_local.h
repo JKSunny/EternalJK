@@ -191,6 +191,7 @@ typedef struct {
 	gentity_t *entWhoHit;
 	int timeHit;
 	int damageDealt;
+	qboolean isCC;	//is the assist crowd control?
 } entityHitRecord_t;
 
 typedef struct {

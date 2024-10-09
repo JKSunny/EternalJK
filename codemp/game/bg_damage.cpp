@@ -72,6 +72,9 @@ static void JKG_ParseSingleMeansOfDamage(const char* name, cJSON* json) {
 		child = cJSON_GetObjectItem(jsonNode, "isEMP");
 		mod.modifiers.isEMP = cJSON_ToBooleanOpt(child, qfalse);
 
+		child = cJSON_GetObjectItem(jsonNode, "isCC");
+		mod.modifiers.isCC = cJSON_ToBooleanOpt(child, qfalse);
+
 		child = cJSON_GetObjectItem(jsonNode, "armor");
 		mod.modifiers.armor = cJSON_ToNumberOpt(child, 1.0);
 
