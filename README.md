@@ -1,10 +1,12 @@
 # Jedi Knight Galaxies #
+
+### Links ###
 [Webpage](https://www.jkgalaxies.net)  
+[Downloads](https://www.jkgalaxies.net/download.html)  
 [Discord](https://discord.gg/YuG8Zks)   
+[Forum]( https://jkhub.org/forum/117-jedi-knight-galaxies/) (hosted by JKHub)  
 
 [FAQ](https://www.jkgalaxies.net/faq.html)  
-[Forum]( https://jkhub.org/forum/117-jedi-knight-galaxies/) (hosted by JKHub)  
-[Forum Announcements](https://jkhub.org/forum/119-jkgalaxies-news/)   
 [YouTube](https://www.youtube.com/channel/UCnnAUSngUk8l3fycYMVXkKQ/featured)  
 [Twitch](https://www.twitch.tv/jkgalaxies)  
 [ModDB Page](http://www.moddb.com/mods/jkgalaxies) (not updated frequently)  
@@ -12,9 +14,7 @@
 
 
 ### Downloads ###
-The most update links are available on the download page on the website, under the [test releases section](https://www.jkgalaxies.net/download.html#testdiv), but you can also use the following direct links (not frequently updated - may be out of date):
-
-[Binaries](https://github.com/JKGDevs/JediKnightGalaxies/releases/) , [Assets](https://uvu.box.com/shared/static/geejtm8xcovvcyt9jra4e6f585beatx1.zip) , 
+The most up to date versions are available on the download page on the website, under the [test releases section](https://www.jkgalaxies.net/download.html#testdiv), but you can also use the following direct links (not frequently updated - may be out of date): [Binaries](https://github.com/JKGDevs/JediKnightGalaxies/releases/) , [Assets](https://uvu.box.com/shared/static/geejtm8xcovvcyt9jra4e6f585beatx1.zip) , 
 [Map Bundle #1](http://jkhub.org/files/file/2652-jedi-knight-galaxies-map-bundle-1/) , [Map Bundle #2](https://jkhub.org/files/file/3778-jedi-knight-galaxies-map-bundle-2/)
 
 
@@ -51,7 +51,7 @@ If you're stuck, you can also watch [this video](https://www.youtube.com/watch?v
 
 ## Dependencies ##
 
-* [CMake (3.0.0+)](https://cmake.org/download/) (for build system)
+* [CMake (3.12.0+)](https://cmake.org/download/) (for build system)
 * [Git (2.22.0+)](https://git-scm.com/download/) (for build system)
 * SDL2 (2.30.8+) (included on Windows)
 * OpenGL
@@ -72,8 +72,11 @@ Please be aware of the implications of the GPLv2 licence. In short, be prepared 
 
 ### If you wish to contribute to JKGalaxies, please do the following ###
 * [Fork](https://github.com/JKGDevs/JediKnightGalaxies/fork) the project on Github.
-* Create a new branch and make your changes.  Please note that master branch represents the current stable release, while the develop branch represents new changes that will be made public during the next release.  It is usually best to start new changes by creating a new branch based on develop.  It's also usually a good idea to check with the developers on [Discord](https://discord.gg/YuG8Zks) before working on something new.
-* Send a [pull request](https://help.github.com/articles/creating-a-pull-request) to upstream (JKGDevs/JediKnightGalaxies)
+* Switch to the `develop` branch on your local copy of your fork. (`git checkout develop`)
+* Create a new branch based on develop and make your changes.  Please note that master branch represents the current stable release, while the develop branch represents new changes that will be made public during the next release, but have not yet been finished.  It is usually best to start new changes by creating a new branch based on `develop`.  It's also usually a good idea to check with the developers on [Discord](https://discord.gg/YuG8Zks) before working on something new.  The #development channel on the Discord is the best place to ask questions about code, or show off things that you are working on.
+* Once you have finished your new feature and tested it, merge it back into your fork's develop branch.
+* Send a [pull request](https://help.github.com/articles/creating-a-pull-request) to upstream (JKGDevs/JediKnightGalaxies).  We will review your request and then approve it if it looks good.  Please note that it is helpful to specify how you would like to be credited in your pull request.  Also make sure that you have permission to use everything you have included in your pull request.  (For example, make sure your code is GPLv2 compliant).
+* Celebrate!  We appreciate every contribution!
 
 ### If you wish to base your work off JKGalaxies (mod or engine) ###
 * [Fork](https://github.com/JKGDevs/JediKnightGalaxies/fork) the project on Github
@@ -85,7 +88,7 @@ Please use discretion when making issue requests on GitHub. The [forum](https://
 
 
 ## Current Project Goals ##
-These are very much subject to change, especially phases later than Versus.
+These are very much subject to change, especially phases later than Versus.  The idea behind the phase system is that by releasing the game into smaller chunks, we can more quickly receive feedback, test it, and continously build upon previous work.  Each phrase brings new systems and functionality to the game, as well as updating the game's core design and gameplay loop in significant ways.  We plan on having a final "legacy" version of each phase available once it is complete, in addition to the current version of the game.
 
 ### Phase 1:  Versus (current iteration). ###
 * The goal here is to have a functioning arena based shooter (similar to games such as Call of Duty or Unreal Tournament) with the beginnings of some later RPG elements such as armor, pazaak card game, etc.  There are three major milestones currently being worked on: [Milestone 3](https://github.com/JKGDevs/JediKnightGalaxies/issues?q=issue+milestone%3A%22Versus+Revision+3%22) and [Milestone 4](https://github.com/JKGDevs/JediKnightGalaxies/issues?q=is%3Aopen+is%3Aissue+milestone%3A%22Versus+Revision+4%22).  Milestone 3 includes new features like better melee, armor, shields, jetpacks, debuff system etc. in addition to some bug fixes not addressed in Milestone 2. Milestone 4 primarily focuses on the all new saber system and related features such as duel mode.  Later on other milestones will be worked on.  In Milestone 5, the Force will be reworked and greatly expanded on.  Later possible milestones will introduce the skill trees and a rudimentary system for spending xp in preparation for the eventual leveling system in Phase 2 and 3.
@@ -102,15 +105,16 @@ These are very much subject to change, especially phases later than Versus.
 
 
 ## Version Information ##
-JKG uses the following version schema: Phase.Major.Minor with an optional suffix (or "patch")letter following the minor version for hotfixes (these are unplanned versions that address server side only fixes and do not require client updates to play).  For example, the current version of the game is v`1.3.23`.  Phases represent collosal changes to the game (these are often called 'expansions' in other games) that include major new features and gameplay changes and even engine changes!  Phases should be considered seperate games.  Major versions represent completions of milestones that include several key new features and bug fixes.  Minor versions represent small incremental changes within a milestone and usually represent a single new feature or small set of features and/or bug fixes.  Other software produced by the developers (such as the launcher) uses its own versioning scheme and is not covered in this readme.
+JKG uses the following version schema: Phase.Major.Minor with an optional suffix (or "patch")letter following the minor version for hotfixes (these are unplanned versions that address server side only fixes and do not require client updates to play).  For example, the current version of the game is v`1.3.23`.  Phases represent collosal changes to the game (these are often called 'expansions' in other games) that include major new features and gameplay changes and even engine changes!  Phases should be considered seperate games.  Major versions represent completions of milestones that include several key new features and bug fixes.  Minor versions represent small incremental changes within a milestone and usually represent a single new feature or small set of features and/or bug fixes.  Other software produced by the developers (such as the launcher) uses its own versioning scheme and is not covered in this readme.  The version information for the game is defined in `codemp/qcommon/game_version.h`.
 
 
 ## How can I help? ##
 If you want to help contribute to JKG there's a lot of ways you can do so, here are some examples:
 * Participate: Joining the [Discord](https://discord.gg/YuG8Zks) and chatting with the developers or community in the #development channel is the most important way to get involved.  You can also find other players here to schedule matches with.
-* Get the word out: Tell your friends about JKG, invite them to join scrimmage matches - the more the merrier.
-* Server Hosting: Host a JKG game server.
-* Coding: Compile the project and get it running on your own machine first (as outlined in this readme), then take a look at the [issues](https://github.com/JKGDevs/JediKnightGalaxies/issues) list for one that interests you.  (The pinned issue for the next patch covers the most critical issues needed for the next patch).
+* Local Play: Host a LAN party with JKG as a featured game.  While JKG works on the internet, it can also be played with your local friends and is a great way to introduce people to the game!
+* Get the word out: Tell your friends about JKG, invite them to join scrimmage matches - the more the merrier.  Star this repo, the visibility helps!
+* Server Hosting: Host a JKG game server (see [hosting guide here](https://github.com/JKGDevs/JediKnightGalaxies/wiki/Server-Guide-(Phase-I))).
+* Coding: Compile the project and get it running on your own machine first (as outlined in this readme), then take a look at the [issues](https://github.com/JKGDevs/JediKnightGalaxies/issues) list for one that interests you.  (The pinned issue for the next patch covers the most critical issues needed for the next patch).  Feel free to ask questions in the #development channel of the [Discord](https://discord.gg/YuG8Zks) if you get stuck or need clarification.
 * Modelling, Mapping etc: Join the [Discord](https://discord.gg/YuG8Zks), and ask in the #development channel if you can help contribute.  Providing us examples of your work is appreciated and we can usually suggest things that we need help with.  One of the best ways to show you can help is to mod JKG and show off the results (ie: make a new weapon or new map for the game).  A video is a good way to showcase something like this.
 * Audio/Music: Offer to help in the Discord and post samples of your work, the developers would love to put your talent to good use!
 
@@ -118,7 +122,7 @@ If you want to help contribute to JKG there's a lot of ways you can do so, here 
 ## Repository Organization ##
 The repo is organized into the following directories.  Not all subdirectories are shown, just those of most significance.
 
-* `root`: (You are here).  Contains tools for automated builds and cmake.  Also includes documentation such as this readme, `LICENSE.txt`, or the `Extended Data.txt` documentation on JSON style data the game uses.  Also includes batch files for generating Microsoft visual studio solution projects.
+* `root`: (You are here).  Contains tools for automated builds and cmake.  Also includes documentation such as this readme, `LICENSE.txt`, or the `Extended Data.txt` documentation on JSON style data the game uses.  Also includes batch files for generating Microsoft Visual Studio solution projects.
 * `CMakeModules`: Contains files needed for configuring CMake builds so you can easily use make to build the project or generate project solutions.
 * `JKGalaxies`: Contains json data files and other configuration settings used by the game (such as .itm files which define items in JKG).  Also contains the games lua scripts.  The contents of this directory are packed into a .pk3 file (zip) named `zz_JKG_Assets5.pk3` when packed for release.  Contains the following sub directories:
   - `ext_data`: Contains most of the game's json style formatted data.  Most people will want to start by playing with the files here to get a good idea of how to create new content for JKG.  Changing the stuff here will not require a new binary compilation and is intended to be human readable so as to make adjusting settings and game content easy for anyone including non-coders.  For example you can go to `ext_data/weapons/carbine_0_E-11_Carbine.wpn` to adjust the E-11 carbine's stats and settings.
@@ -156,6 +160,7 @@ The repo is organized into the following directories.  Not all subdirectories ar
 
 
 ## Contributors ##
+You can find a [full list of contributors/credits here](https://www.jkgalaxies.net/contributors.html).  
 ### Active Developers ###
 * Darth Futuza
 * Noodle
