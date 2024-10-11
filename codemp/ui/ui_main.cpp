@@ -723,18 +723,18 @@ static const int numNetSources = AS_FAVORITES+UI_MAX_MASTER_SERVERS;	// now hard
 class CaseInsensitiveHash
 {
 public:
-	std::size_t operator()( const std::string& s ) const
+	std::size_t operator()(const std::string& s) const
 	{
 		std::size_t hash = 0;
-		for ( std::size_t i = 0; i < s.size(); i++ )
+		for (std::size_t i = 0; i < s.size(); i++)
 		{
-			int c = std::tolower( s[i] );
+			int c = std::tolower(s[i]);
 			hash += c * (i + 119);
 		}
 
 		return hash ^ (hash >> 10) ^ (hash >> 20);
 	}
-}
+};
 
 #include <unordered_map>
 #include <string>
