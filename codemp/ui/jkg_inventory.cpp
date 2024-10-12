@@ -7,7 +7,6 @@ static int nPosition = 0;					// position in the item list (changed with arrow b
 static int nSelected = -1;					// selected item in the list (-1 for no selection)
 static std::vector<std::string> vItemDescLines;	// item description
 
-void JKG_ConstructItemDescription(itemInstance_t* pItem, std::vector<std::string>& vDescLines);
 
 void JKG_ConstructInventoryList() {
 	itemInstance_t* pAllItems = nullptr;
@@ -749,13 +748,13 @@ void JKG_SplitDescriptionLines(const std::string& info, std::vector<std::string>
 {
 	//these 'consts' might need to be calculated based on inventory width of the current screen
 	const int MAXLENGTH = 39; //max length of a line
-	const int MAXFIRSTLINE = 33; //max length with "info: " preceeding the text
+	const int MAXFIRSTLINE = MAXLENGTH - 6; //max length with "info: " preceeding the text
 	bool multiline = true;	//for determing if we need to handle multiple lines of description or a single line
 
 	std::string s = removeExtraSpacesInString(info); //clean up extra spaces
 	int length = s.length();
 
-	if (length - MAXFIRSTLINE < MAXLENGTH)
+	if (length < MAXFIRSTLINE )
 	{
 		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_DESCRIPTION"), s.c_str()));
 		multiline = false;
@@ -1342,9 +1341,11 @@ qboolean JKG_Inventory_HandleKey(int key)
 	switch (key)
 	{
 		case A_MWHEELDOWN:
+		case A_CAP_S:
 			JKG_Inventory_ArrowDown(nullptr);
 			return qtrue;
 		case A_MWHEELUP:
+		case A_CAP_W:
 			JKG_Inventory_ArrowUp(nullptr);
 			return qtrue;
 		case A_0:
