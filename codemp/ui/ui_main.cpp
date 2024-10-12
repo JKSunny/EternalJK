@@ -8388,7 +8388,6 @@ bool IsCursorTouching(rectDef_t *rect)
 
 #include <vector>
 #include <string>
-using namespace std;
 #define NUMBER_CHARS_TOOLTIP_LINE	80
 void RunTooltip(itemDef_t *item, itemDef_t *tooltip) {
 	if(!item) return;
@@ -8401,19 +8400,19 @@ void RunTooltip(itemDef_t *item, itemDef_t *tooltip) {
 	DC->setColor(defaultColor);
 
 	// Render lines
-	vector<string> lines;
-	string stdstringVer = item->tooltip;
+	std::vector<std::string> lines;
+	std::string stdstringVer = item->tooltip;
 
 	size_t previous = 0;
 	while( 1 )
 	{
 		size_t nextLine = stdstringVer.find("\\n", previous);
-		if(nextLine == string::npos) 
+		if(nextLine == std::string::npos) 
 		{ // last line
 			lines.push_back(stdstringVer.substr(previous));
 			break;
 		}
-		string brokenString = stdstringVer.substr(previous, nextLine-1);
+		std::string brokenString = stdstringVer.substr(previous, nextLine-1);
 		previous = nextLine+1;
 		if(brokenString.length() <= NUMBER_CHARS_TOOLTIP_LINE)
 		{
@@ -8430,7 +8429,7 @@ void RunTooltip(itemDef_t *item, itemDef_t *tooltip) {
 				lines.push_back(brokenString.substr(chunk));
 				break;
 			}
-			string chunkStr = brokenString.substr(chunk, chunk + NUMBER_CHARS_TOOLTIP_LINE);
+			std::string chunkStr = brokenString.substr(chunk, chunk + NUMBER_CHARS_TOOLTIP_LINE);
 			chunk += NUMBER_CHARS_TOOLTIP_LINE;
 			lines.push_back(chunkStr);
 		}

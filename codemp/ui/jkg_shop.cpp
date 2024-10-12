@@ -4,9 +4,6 @@
 #include "jkg_inventory.h"
 #include <algorithm>
 
-
-using namespace std;
-
 /* Global variables */
 static bool bLeftSelected = false;		/* Is the left side (or the right side) selected */
 static int nSelected = -1;				/* The currently selected element */
@@ -16,10 +13,10 @@ static size_t nNumberShopItems;			/* The number of shop items */
 static size_t nNumberUnfilteredIItems;	/* The total number of inventory items before filtering */
 static size_t nNumberUnfilteredSItems;	/* The total number of shop items before filtering */
 
-static vector<pair<int, itemInstance_t*>> vInventoryItems;	/* The inventory items, after filtering */
-static vector<pair<int, itemInstance_t*>> vShopItems;		/* The shop items, after filtering */
-static vector<std::string> vShopItemDesc;					/* The description of the currently selected shop item */
-static vector<pair<int, int>> vPriceCheckedAmmo;			/* Price check of ammo on items in inventory */
+static std::vector<std::pair<int, itemInstance_t*>> vInventoryItems;	/* The inventory items, after filtering */
+static std::vector<std::pair<int, itemInstance_t*>> vShopItems;		/* The shop items, after filtering */
+static std::vector<std::string> vShopItemDesc;					/* The description of the currently selected shop item */
+static std::vector<std::pair<int, int>> vPriceCheckedAmmo;			/* Price check of ammo on items in inventory */
 
 static size_t nInventoryScroll = 0;		// How far we've scrolled in the menu
 static size_t nShopScroll = 0;			// How far we've scrolled in the menu
@@ -110,7 +107,7 @@ void JKG_ConstructShopLists() {
 			else if (ui_inventoryFilter.integer == JKGIFILTER_MISC) {
 				continue; // FIXME
 			}
-			vInventoryItems.push_back(make_pair(i, pThisItem));
+			vInventoryItems.push_back(std::make_pair(i, pThisItem));
 		}
 
 		//
@@ -119,7 +116,7 @@ void JKG_ConstructShopLists() {
 		if (ui_inventorySortMode.integer == 0) {
 			// If it's 0, then we're sorting by item name
 			sort(vInventoryItems.begin(), vInventoryItems.end(),
-				[](const pair<int, itemInstance_t*>& a, const pair<int, itemInstance_t*>& b) -> bool {
+				[](const std::pair<int, itemInstance_t*>& a, const std::pair<int, itemInstance_t*>& b) -> bool {
 				if (ui_inventorySortType.integer) {
 					return Q_stricmp(UI_GetStringEdString2(a.second->id->displayName), UI_GetStringEdString3(b.second->id->displayName)) > 0;
 				}
@@ -131,7 +128,7 @@ void JKG_ConstructShopLists() {
 		else if (ui_inventorySortMode.integer == 1) {
 			// If it's 1, then we're sorting by price
 			sort(vInventoryItems.begin(), vInventoryItems.end(),
-				[](const pair<int, itemInstance_t*>& a, const pair<int, itemInstance_t*>& b) -> bool {
+				[](const std::pair<int, itemInstance_t*>& a, const std::pair<int, itemInstance_t*>& b) -> bool {
 				if (ui_inventorySortType.integer) {
 					return a.second->id->baseCost * a.second->quantity > b.second->id->baseCost * b.second->quantity;
 				}
@@ -174,7 +171,7 @@ void JKG_ConstructShopLists() {
 			else if (ui_inventoryFilter.integer == JKGIFILTER_MISC) {
 				continue;
 			}
-			vShopItems.push_back(make_pair(i, pThisItem));
+			vShopItems.push_back(std::make_pair(i, pThisItem));
 		}
 
 		//
@@ -183,7 +180,7 @@ void JKG_ConstructShopLists() {
 		if (ui_shopSortMode.integer == 0) {
 			// If it's 0, then we're sorting by item name
 			sort(vShopItems.begin(), vShopItems.end(),
-				[](const pair<int, itemInstance_t*>& a, const pair<int, itemInstance_t*>& b) -> bool {
+				[](const std::pair<int, itemInstance_t*>& a, const std::pair<int, itemInstance_t*>& b) -> bool {
 				if (ui_shopSortType.integer) {
 					return Q_stricmp(UI_GetStringEdString2(a.second->id->displayName), UI_GetStringEdString3(b.second->id->displayName)) > 0;
 				}
@@ -195,7 +192,7 @@ void JKG_ConstructShopLists() {
 		else if (ui_shopSortMode.integer == 1) {
 			// If it's 1, then we're sorting by price
 			sort(vShopItems.begin(), vShopItems.end(),
-				[](const pair<int, itemInstance_t*>& a, const pair<int, itemInstance_t*>& b) -> bool {
+				[](const std::pair<int, itemInstance_t*>& a, const std::pair<int, itemInstance_t*>& b) -> bool {
 				if (ui_shopSortType.integer) {
 					return a.second->id->baseCost > b.second->id->baseCost;
 				}

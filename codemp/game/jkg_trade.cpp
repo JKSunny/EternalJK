@@ -1,8 +1,6 @@
 #include "g_local.h"
 #include "jkg_treasureclass.h"
 
-using namespace std;
-
 /*
 ====================
 JKG_target_vendor_think
@@ -35,7 +33,7 @@ static void JKG_target_vendor_think(gentity_t* self) {
 	npc->flags |= FL_NO_KNOCKBACK;
 
 	TreasureClass* pTC = nullptr;
-	vector<int> items;
+	std::vector<int> items;
 	auto tc = umTreasureClasses.find(self->treasureclass);
 
 	if (tc == umTreasureClasses.end()) {
@@ -302,7 +300,7 @@ Regenerates the stock of a vendor (generic)
 void JKG_RegenerateStock(gentity_t* ent)
 {
 	TreasureClass* pTC = nullptr;
-	vector<int> items;
+	std::vector<int> items;
 	auto tc = umTreasureClasses.find(ent->treasureclass);
 
 	if (tc == umTreasureClasses.end()) {
