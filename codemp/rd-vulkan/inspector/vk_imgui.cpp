@@ -45,6 +45,8 @@ void vk_imgui_clear_inspector( qboolean reset )
 	Com_Memset( &inspector.entity, 0, sizeof(inspector.entity) );
 	Com_Memset( &inspector.node, 0, sizeof(inspector.node) );
 	Com_Memset( &inspector.surface, 0, sizeof(inspector.surface) );
+
+	windows.shader.text_mode = true;
 }
 
 // handler to set/update ptrs and info for the current object selected

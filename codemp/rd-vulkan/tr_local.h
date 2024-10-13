@@ -2228,7 +2228,11 @@ const char	*RE_ShaderNameFromIndex(int index);
 shader_t	*R_FindShader( const char *name, const int *lightmapIndexes, const byte *styles, qboolean mipRawImage );
 shader_t	*R_GetShaderByHandle( qhandle_t hShader );
 shader_t	*R_FindShaderByName( const char *name );
+#ifdef USE_VK_IMGUI
+shader_t	*FinishShader( qboolean use_pipeline = qfalse );
+#else
 shader_t	*FinishShader( void );
+#endif
 void		R_RemoveRemap( int index, qboolean bulk );
 void		R_UpdateShader( int index, const char *shaderText, qboolean bulk );
 
