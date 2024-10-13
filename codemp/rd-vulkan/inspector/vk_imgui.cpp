@@ -48,6 +48,8 @@ void vk_imgui_clear_inspector( qboolean reset )
 #ifdef USE_RTX
 	Com_Memset( &inspector.rtx_light_poly, 0, sizeof(inspector.rtx_light_poly) );
 #endif
+
+	windows.shader.text_mode = true;
 }
 
 // handler to set/update ptrs and info for the current object selected

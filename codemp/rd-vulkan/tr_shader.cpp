@@ -3479,46 +3479,6 @@ static inline const int *R_FindLightmaps( const int *lightmapIndexes )
 	return lightmapIndexes;
 }
 
-#ifdef USE_VBO
-static void vk_inspector_transfer_world_vbo( const shader_t *in, shader_t *out ) 
-{
-	if ( !vk.vboWorldActive )
-		return;
-
-	uint32_t i;
-
-	out->isStaticShader = in->isStaticShader;
-	out->svarsSize = in->svarsSize;
-	out->iboOffset = in->iboOffset;
-	out->vboOffset = in->vboOffset;
-	out->normalOffset = in->normalOffset;
-	out->numIndexes = in->numIndexes;
-	out->numVertexes = in->numVertexes;
-	out->curVertexes = in->curVertexes;
-	out->curIndexes = in->curIndexes;
-
-	#ifdef USE_VK_PBR
-		out->qtangentOffset = in->qtangentOffset;
-		out->lightdirOffset = in->lightdirOffset;
-	#endif
-	
-	for ( i = 0; i < MAX_SHADER_STAGES; i++ )
-	{
-		shaderStage_t *in_stage = in->stages[i];
-		shaderStage_t *out_stage = out->stages[i];
-
-		if ( !in_stage || !out_stage )
-				break;
-
-		Com_Memcpy( out_stage->rgb_offset+0, in_stage->rgb_offset+0, 
-					( sizeof(uint32_t) * NUM_TEXTURE_BUNDLES ) );
-		
-		Com_Memcpy( out_stage->tex_offset+0, in_stage->tex_offset+0, 
-					( sizeof(uint32_t) * NUM_TEXTURE_BUNDLES ) );
-	}
-}
-#endif
-
 void R_RemoveRemap( int index, qboolean bulk ) {
 	shader_t	*sh;
 	int			hash;
@@ -3590,7 +3550,7 @@ void R_UpdateShader( int index, const char *shaderText, qboolean bulk ) {
 			}
 
 			// clear the global shader
-			InitShader( name, sh->lightmapIndex, sh->styles );
+			InitShader( name, sh->lightmapSearchIndex, sh->styles );
 
 			if ( !ParseShader( &shaderTextPtr ) )
 				setDefaultShader(); // had errors, so use default shader
@@ -3598,13 +3558,10 @@ void R_UpdateShader( int index, const char *shaderText, qboolean bulk ) {
 			shaderTextPtr = shaderText;
 
 			shader.isUpdatedShader = qtrue;
+			shader.isStaticShader = qfalse;	// don't use cached vbo ..
 			shader.index = shader_index;
 
-			sh->updatedShader = FinishShader();
-
-			#ifdef USE_VBO
-			vk_inspector_transfer_world_vbo( sh, sh->updatedShader );
-			#endif
+			sh->updatedShader = FinishShader( qfalse );
 
 #ifdef USE_RTX
 			vk_rtx_update_shader_material( sh, sh->updatedShader );
@@ -4394,7 +4351,11 @@ Returns a freshly allocated shader with all the needed info
 from the current global working shader
 =========================
 */
+#ifdef USE_VK_IMGUI
+shader_t *FinishShader( qboolean use_pipeline /* = qfalse */ )
+#else
 shader_t *FinishShader( void )
+#endif
 {
 	qboolean		hasLightmapStage;
 	int				stage, i, n, m, lmStage, numStyles;
@@ -4888,10 +4849,10 @@ shader_t *FinishShader( void )
 
 			stype = def.shader_type;
 			def.mirror = qfalse;
-			pStage->vk_pipeline[0] = vk_find_pipeline_ext(0, &def, qtrue);
+			pStage->vk_pipeline[0] = vk_find_pipeline_ext( 0, &def, use_pipeline );
 			if (pStage->depthFragment) {
 				def.shader_type = TYPE_SINGLE_TEXTURE_DF;
-				pStage->vk_pipeline_df = vk_find_pipeline_ext(0, &def, qtrue);
+				pStage->vk_pipeline_df = vk_find_pipeline_ext( 0, &def, use_pipeline );
 				def.shader_type = stype;
 			}
 
