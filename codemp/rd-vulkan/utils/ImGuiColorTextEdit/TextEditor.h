@@ -237,7 +237,7 @@ public:
 	std::vector<std::string> GetTextLines() const;
 
 	std::string GetSelectedText() const;
-	std::string GetCurrentLineText()const;
+	std::string GetCurrentLineText( bool ignoreLeadingSpace = false ) const;
 
 	int GetTotalLines() const { return (int)mLines.size(); }
 	bool IsOverwrite() const { return mOverwrite; }
