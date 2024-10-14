@@ -954,7 +954,7 @@ void TextEditor::AutoComplete( void )
 	if ( mTextChangedDelayed ) 
 	{
 		uint32_t i;
-		std::string selectedText = GetCurrentLineText();
+		std::string selectedText = GetCurrentLineText( true );
 
 		AutoCompleteListClear();
 
@@ -2777,11 +2777,27 @@ std::string TextEditor::GetSelectedText() const
 	return GetText(mState.mSelectionStart, mState.mSelectionEnd);
 }
 
-std::string TextEditor::GetCurrentLineText()const
+std::string TextEditor::GetCurrentLineText( bool ignoreLeadingSpace ) const
 {
 	auto lineLength = GetLineMaxColumn(mState.mCursorPosition.mLine);
+
+	int start = 0;
+
+	if ( ignoreLeadingSpace ) 
+	{
+		auto& line = mLines[mState.mCursorPosition.mLine];
+
+		while ( start < line.size() && isspace( line[start].mChar ) )
+			start++;
+
+		if ( start >= line.size() )
+			return "";
+
+		start = GetCharacterColumn( mState.mCursorPosition.mLine, start );
+	}
+
 	return GetText(
-		Coordinates(mState.mCursorPosition.mLine, 0),
+		Coordinates(mState.mCursorPosition.mLine, start ),
 		Coordinates(mState.mCursorPosition.mLine, lineLength));
 }
 
