@@ -44,8 +44,7 @@ public:
 		addValue<bool>( 5, "polygonOffset",		qfalse );
 		addValue<bool>( 6, "entityMergable",	qfalse );
 		addValue<float>( 7, "clampTime",		0.0f );
-		addValue<float>( 8, "tessSize",			0.0f );
-		addValue<int>( 9,	"surfacelight",		0 );
+		addValue<int>( 8,	"surfacelight",		0 );
 
 		// pins
         addIN<std::string>( "cull",		"", ConnectionFilter::isClass<Q3N_cull>() );
