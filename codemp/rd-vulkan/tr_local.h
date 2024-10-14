@@ -797,6 +797,9 @@ typedef struct shader_s {
 	int			lightmapSearchIndex[MAXLIGHTMAPS];	// for a shader to match, both name and lightmapIndex must match
 	int			lightmapIndex[MAXLIGHTMAPS];		// for a shader to match, both name and lightmapIndex must match
 	byte		styles[MAXLIGHTMAPS];
+#ifdef USE_VK_IMGUI
+	byte		stylesPreserved[MAXLIGHTMAPS];		// use original state for updatedShader
+#endif
 
 	int			index;								// this shader == tr.shaders[index]
 	int			sortedIndex;						// this shader == tr.sortedShaders[sortedIndex]
