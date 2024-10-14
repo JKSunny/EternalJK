@@ -3439,6 +3439,12 @@ static void InitShader( const char *name, const int *lightmapIndex, const byte *
 	// because shader search functions expects this
 	// otherwise they will fail and cause massive duplication
 	Com_Memcpy(shader.lightmapSearchIndex, shader.lightmapIndex, sizeof(shader.lightmapSearchIndex));
+#ifdef USE_VK_IMGUI
+	// preserve for updatedShader
+	Com_Memcpy(shader.stylesPreserved, shader.styles, sizeof(shader.stylesPreserved));
+#endif
+	
+
 
 	for (i = 0; i < MAX_SHADER_STAGES; i++) {
 		stages[i].bundle[0].texMods = texMods[i];
@@ -3550,7 +3556,7 @@ void R_UpdateShader( int index, const char *shaderText, qboolean bulk ) {
 			}
 
 			// clear the global shader
-			InitShader( name, sh->lightmapSearchIndex, sh->styles );
+			InitShader( name, sh->lightmapSearchIndex, sh->stylesPreserved );
 
 			if ( !ParseShader( &shaderTextPtr ) )
 				setDefaultShader(); // had errors, so use default shader
