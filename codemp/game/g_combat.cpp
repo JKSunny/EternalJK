@@ -4444,7 +4444,7 @@ JKG_ApplyShieldProtection()
 Shields act as a scapegoat to protect a shielded client from damage before it is applied to the target's hp directly
 ===================================
 */
-void JKG_ApplyShieldProtection(gentity_t* targ, meansOfDamage_t* means, int *ssave, int *take, const int dflags, vec3_t dir)	//ssave and take are pointers to ints in the main combat function so we can modify these values
+void JKG_ApplyShieldProtection(gentity_t* targ, meansOfDamage_t* means, int *ssave, int *take, const int dflags, vec3_t dir, int *knockback, int mod)	//ssave and take are pointers to ints in the main combat function so we can modify these values
 {
 
 	// check if shield nulls damage completely
@@ -4453,26 +4453,47 @@ void JKG_ApplyShieldProtection(gentity_t* targ, meansOfDamage_t* means, int *ssa
 		*ssave = 1;	//setting to 1 for now, to indicate immunity since we can't display 0's or characters with plums yet
 		*take = 0;
 		ShieldHitEffect(targ, dir, *ssave);
-
+		*knockback = 0;
 	}
 	else  //or save some from shield
 	{
 		*ssave = CheckShield(targ, *take, dflags, means);
 		if (*ssave)
 		{
-			if (targ->client) {
-				if (targ->client->ps.stats[STAT_SHIELD] > *ssave) {
-					// absorb all damage by the shield, and don't take any
+			if (targ->client) 
+			{
+				// absorb all damage by the shield, and don't take any, shield protects completely from knockback
+				if (targ->client->ps.stats[STAT_SHIELD] > *ssave) 
+				{
+					
 					targ->client->ps.stats[STAT_SHIELD] -= *ssave;
 					*take = 0;
+
+					//apply knockback anyway if this is acp damage
+					if (mod == JKG_GetMeansOfDamageIndex("MOD_ACP"))
+					{
+						*knockback = static_cast<int>(*knockback * 0.75f);
+					}
+					else
+						*knockback = 0;
 				}
+
+				//special exception for when damage ties shield charge
 				else if (targ->client->ps.stats[STAT_SHIELD] > 0)
 				{
-					//special exception for when damage ties shield charge
+					
 					if (static_cast<int>(*take * means->modifiers.shield) == targ->client->ps.stats[STAT_SHIELD])
 					{
 						targ->client->ps.stats[STAT_SHIELD] = 0;
 						*take = 0;
+						*knockback = 0;
+
+						if (mod == JKG_GetMeansOfDamageIndex("MOD_ACP"))
+						{
+							*knockback = static_cast<int>(*knockback * 0.75f);
+						}
+						else
+							*knockback = 0;
 					}
 
 					// we have some shield charge but some damage will break through
@@ -4483,11 +4504,70 @@ void JKG_ApplyShieldProtection(gentity_t* targ, meansOfDamage_t* means, int *ssa
 
 						if (*take < 1)			//this isn't just safety checking, in the event that the means does extra damage to shields, ssave will be > take, so we'd end up a negative spill over.
 							*take = -*take;	  //eg: 27 shield, 26 take (multipled to 41 shield dmg reduced to 27) == 26-27 == -1, uh oh!  no worries, math is still correct, just reverse the negative
+
+						*knockback = static_cast<int>(*knockback * 0.75f);	//shield reduces knockback by 25%
 					}
 
 				}
 			}
 			ShieldHitEffect(targ, dir, *ssave);
+		}
+	}
+	if (*knockback < 0)
+		*knockback = 0;
+}
+
+
+/*
+===================================
+//apply knockback
+JKG_ApplyKnockback()
+
+Figure momentum add from knockback, even if the damage won't be taken
+===================================
+*/
+void JKG_ApplyKnockback(int knockback, int mod, gentity_t* targ, gentity_t* attacker, vec3_t dir)
+{
+	// figure momentum add, even if the damage won't be taken
+	if (knockback && targ->client && !targ->client->pmfreeze) {
+		vec3_t	kvel;
+		float	mass;
+
+		mass = 200;
+
+		if (mod == MOD_SABER)
+		{
+			float saberKnockbackScale = g_saberDmgVelocityScale.value;
+			VectorScale(dir, (g_knockback.value * (float)knockback / mass) * saberKnockbackScale, kvel);
+		}
+		else
+		{
+			VectorScale(dir, g_knockback.value * (float)knockback / mass, kvel);
+		}
+		VectorAdd(targ->client->ps.velocity, kvel, targ->client->ps.velocity);
+
+		if (attacker && attacker->client && attacker != targ)
+		{
+			float dur = 5000;
+			float dur2 = 100;
+			targ->client->ps.otherKiller = attacker->s.number;
+			targ->client->ps.otherKillerTime = level.time + dur;
+			targ->client->ps.otherKillerDebounceTime = level.time + dur2;
+		}
+		// set the timer so that the other client can't cancel
+		// out the movement immediately
+		if (!targ->client->ps.pm_time && (g_saberDmgVelocityScale.integer || mod != MOD_SABER)) {
+			int		t;
+
+			t = knockback * 2;
+			if (t < 50) {
+				t = 50;
+			}
+			if (t > 200) {
+				t = 200;
+			}
+			targ->client->ps.pm_time = t;
+			targ->client->ps.pm_flags |= PMF_TIME_KNOCKBACK;
 		}
 	}
 }
@@ -4813,49 +4893,8 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 	if ( dflags & DAMAGE_NO_KNOCKBACK ) {
 		knockback = 0;
 	}
+	//knockback will be applied later after we check for other protections (like shields)
 
-	// figure momentum add, even if the damage won't be taken
-	if ( knockback && targ->client && !targ->client->pmfreeze) {
-		vec3_t	kvel;
-		float	mass;
-
-		mass = 200;
-
-		if (mod == MOD_SABER)
-		{
-			float saberKnockbackScale = g_saberDmgVelocityScale.value;
-			VectorScale (dir, (g_knockback.value * (float)knockback / mass)*saberKnockbackScale, kvel);
-		}
-		else
-		{
-			VectorScale (dir, g_knockback.value * (float)knockback / mass, kvel);
-		}
-		VectorAdd (targ->client->ps.velocity, kvel, targ->client->ps.velocity);
-
-		if (attacker && attacker->client && attacker != targ)
-		{
-			float dur = 5000;
-			float dur2 = 100;
-			targ->client->ps.otherKiller = attacker->s.number;
-			targ->client->ps.otherKillerTime = level.time + dur;
-			targ->client->ps.otherKillerDebounceTime = level.time + dur2;
-		}
-		// set the timer so that the other client can't cancel
-		// out the movement immediately
-		if ( !targ->client->ps.pm_time && (g_saberDmgVelocityScale.integer || mod != MOD_SABER ) ) {
-			int		t;
-
-			t = knockback * 2;
-			if ( t < 50 ) {
-				t = 50;
-			}
-			if ( t > 200 ) {
-				t = 200;
-			}
-			targ->client->ps.pm_time = t;
-			targ->client->ps.pm_flags |= PMF_TIME_KNOCKBACK;
-		}
-	}
 
 	// check for completely getting out of the damage
 	if ( !(dflags & DAMAGE_NO_PROTECTION) ) {
@@ -4970,15 +5009,15 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 //	0. Make sure godmode isn't applicable & 1/2 self damage (see above)
 //	1. Check for evasion (roll dodges)
 //	2. Check & calculate direct damage (shield will be bypassed: ACP etc)
-//	3. Reduce damage by shield amount
+//	3. Reduce damage by shield amount (shields can also reduced knockback)
 //	4. Apply direct damage (from step 2)
 //	5. Modify damage by special debuffs
 //	6. Modify damage by location based modifier
 //	7. Check for resistances on armor
-//	8. Reduce damage by armor reduction
-//	9. Modify damage by client type (eg: organic, droid)
-//	10. Apply EMP Effects (eg: disable jetpack, etc)
-//
+//	8. Apply knockback 
+//	9. Reduce damage by armor reduction
+//	10. Modify damage by client type (eg: organic, droid)
+//	11. Apply EMP Effects (eg: disable jetpack, etc)
 
 
 	//calculate roll dodge/evasion reduction
@@ -5012,7 +5051,7 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 
 	//see if shields protect target
 	if(client && client->ps.stats[STAT_SHIELD] > 0)
-		JKG_ApplyShieldProtection(targ, means, &ssave, &take, dflags, dir);	//ssave and take are modified
+		JKG_ApplyShieldProtection(targ, means, &ssave, &take, dflags, dir, &knockback, mod);	//ssave, take, and knockback are modified
 
 	//apply direct damage in case the shield was bypassed
 	take = take + directDmg;	
@@ -5035,6 +5074,12 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 			if (targ->health < 0)
 				isHeadShot = qfalse;	//don't notify about headshots on corpses
 		}
+	}
+
+	// apply knockback
+	if (knockback)
+	{
+		JKG_ApplyKnockback(knockback, mod, targ, attacker, dir);
 	}
 
 	// modify it by the organic or structural modifier for this means
