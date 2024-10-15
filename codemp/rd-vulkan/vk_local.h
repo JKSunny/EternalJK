@@ -690,7 +690,7 @@ typedef struct vk_tess_s {
 
 	VkDescriptorSet		uniform_descriptor;
 
-	VkDeviceSize		buf_offset[9];
+	VkDeviceSize		buf_offset[12];	// 10 is ok, bones & weights are ghoul2 vbo only anyway
 	VkDeviceSize		vbo_offset[12];
 
 	VkBuffer			curr_index_buffer;
