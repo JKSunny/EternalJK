@@ -247,14 +247,17 @@ namespace ImFlow {
 
     bool ImNodeFlow::on_selected_node() {
         return std::any_of(m_nodes.begin(), m_nodes.end(),
-                           [](const auto &n) { return n.second->isSelected() && n.second->isHovered(); });
+                           [](const std::pair<const NodeUID, std::shared_ptr<BaseNode>>& n) 
+            { 
+                return n.second->isSelected() && n.second->isHovered(); 
+            });
     }
 
     bool ImNodeFlow::on_free_space() {
         return std::all_of(m_nodes.begin(), m_nodes.end(),
-                           [](const auto &n) { return !n.second->isHovered(); })
+                           [](const std::pair<const NodeUID, std::shared_ptr<BaseNode>>& n) { return !n.second->isHovered(); })
                && std::all_of(m_links.begin(), m_links.end(),
-                              [](const auto &l) { return !l.lock()->isHovered(); });
+                              [](const std::weak_ptr<Link>& l) { return !l.lock()->isHovered(); });
     }
 
     ImVec2 ImNodeFlow::screen2grid(const ImVec2 &p) {

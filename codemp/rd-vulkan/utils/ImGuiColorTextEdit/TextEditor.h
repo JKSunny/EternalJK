@@ -132,6 +132,13 @@ public:
 		std::string key;
 		std::string node_uid;
 		std::vector<std::string> values{};
+
+		Format(const std::string& k, const std::string& nu, const std::vector<std::string>& vals)
+			: key(k), node_uid(nu), values(vals) {}
+
+		// values not provided
+		Format(const std::string& k, const std::string& nu)
+			: key(k), node_uid(nu), values() {}
 	};
 
 	struct FormatInfo {
@@ -290,7 +297,7 @@ public:
 
 #ifdef USE_AUTOCOMPLETE
 	#define		RGBA_LE(col) (((col & 0xff000000) >> (3 * 8)) + ((col & 0x00ff0000) >> (1 * 8)) + ((col & 0x0000ff00) << (1 * 8)) + ((col & 0x000000ff) << (3 * 8)))
-	size_t TextEditor::split( const std::string &text, const std::string &delim, std::vector<std::string> &result );
+	size_t split( const std::string &text, const std::string &delim, std::vector<std::string> &result );
 	std::string GetCurrentWord() const { return mAutoCompleteCurrentWord; };
 	int GetCurrentCursorDepth() const { return mAutoCompleteCursorDepth; };
 	void SetCurrentWord( void );

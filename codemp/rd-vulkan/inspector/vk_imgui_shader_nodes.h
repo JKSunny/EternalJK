@@ -455,7 +455,7 @@ public:
 	//
 	// values
 	//
-	auto getValues()	{ return values; } // auto valid for constructor?
+	std::map<int, std::shared_ptr<NodeValueBase>> getValues() { return values; }
 	void drawValues()	{ for ( auto &val : values ) val.second->draw(); }
 
 	// rather have local 'bool value_changed' which state can be set from NodeValue class
@@ -605,13 +605,11 @@ public:
 	template<typename T>
 	void setValue( const char *key, const char *value )
 	{
-		auto val = findValue( key );
+		if constexpr ( std::is_integral<T>::value )
+			static_cast<NodeValue<T>*>( findValue( key ) )->set( std::atoi( value ) );
 
-		if constexpr ( std::is_integral_v<T> )
-			static_cast<NodeValue<T>*>( val )->set( std::atoi( value ) );
-
-		else if ( std::is_floating_point_v<T> ) 
-			static_cast<NodeValue<T>*>( val )->set( std::atof( value ) );
+		else if ( std::is_floating_point<T>::value ) 
+			static_cast<NodeValue<T>*>( findValue( key ) )->set( std::atof( value ) );
 	}
 
 	// float & int
