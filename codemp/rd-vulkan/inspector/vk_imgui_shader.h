@@ -117,7 +117,7 @@ static const char *editor_type[2] = { "node-based", "text-based" };
 	TYPE_DO( N_SURFPARM_LAVA,				lava				) \
 	TYPE_DO( N_SURFPARM_SLIME,				slime				) \
 	TYPE_DO( N_SURFPARM_WATER,				water				) \
-	TYPE_DO( N_SURFPARM_FOG,fog,			fog					) \
+	TYPE_DO( N_SURFPARM_FOG,				fog					) \
 	TYPE_DO( N_SURFPARM_SHOTCLIP,			shotclip			) \
 	TYPE_DO( N_SURFPARM_PLAYERCLIP,			playerclip			) \
 	TYPE_DO( N_SURFPARM_MONSTERCLIP,		monsterclip			) \
