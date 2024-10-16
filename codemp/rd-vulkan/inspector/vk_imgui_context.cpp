@@ -42,9 +42,9 @@ static SDL_Window *vk_imgui_get_sdl_window( void )
 	return (SDL_Window*)window.sdl_handle;
 }
 
-void *R_GetImGuiContext( void  )
+void R_GetImGuiContext( void **context  )
 {
-	return ImContext;
+	*context = ImContext;
 }
 
 uint64_t R_GetImGuiTexture( qhandle_t hShader )

@@ -992,11 +992,11 @@ intptr_t CL_CgameSystemCalls( intptr_t *args ) {
 		return 0;
 
 	case CG_R_GETIMGUICONTEXT:
-		re->GetImGuiContext();
+		re->R_GetImGuiContext( (void **)VMA(1) );
 		return 0;
 
 	case CG_R_GETIMGUITEXTURE:
-		return re->GetImGuiTexture( (qhandle_t)args[1] );
+		return re->R_GetImGuiTexture( (qhandle_t)args[1] );
 
 	case CG_CM_LOADMAP:
 		CL_CM_LoadMap( (const char *)VMA(1), (qboolean)args[2] );
@@ -1752,8 +1752,8 @@ void CL_BindCGame( void ) {
 		cgi.FS_Read								= FS_Read;
 		cgi.FS_Write							= FS_Write;
 		cgi.UpdateScreen						= SCR_UpdateScreen;
-		cgi.R_GetImGuiContext					= re->GetImGuiContext;
-		cgi.R_GetImGuiTexture					= re->GetImGuiTexture;
+		cgi.R_GetImGuiContext					= re->R_GetImGuiContext;
+		cgi.R_GetImGuiTexture					= re->R_GetImGuiTexture;
 		cgi.CM_InlineModel						= CM_InlineModel;
 		cgi.CM_LoadMap							= CL_CM_LoadMap;
 		cgi.CM_NumInlineModels					= CM_NumInlineModels;
