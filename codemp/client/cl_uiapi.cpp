@@ -967,11 +967,11 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 		return 0;
 
 	case UI_R_GETIMGUICONTEXT:
-		re->GetImGuiContext();
+		re->R_GetImGuiContext( (void **)VMA(1) );
 		return 0;
 
 	case UI_R_GETIMGUITEXTURE:
-		return re->GetImGuiTexture( (qhandle_t)args[1] );
+		return re->R_GetImGuiTexture( (qhandle_t)args[1] );
 
 	case UI_S_REGISTERSOUND:
 		return S_RegisterSound( (const char *)VMA(1) );
@@ -1428,8 +1428,8 @@ void CL_BindUI( void ) {
 		uii.R_Font_StrLenChars					= re->Font_StrLenChars;
 		uii.R_Font_StrLenPixels					= re->Font_StrLenPixels;
 		uii.R_LerpTag							= re->LerpTag;
-		uii.R_GetImGuiContext					= re->GetImGuiContext;
-		uii.R_GetImGuiTexture					= re->GetImGuiTexture;
+		uii.R_GetImGuiContext					= re->R_GetImGuiContext;
+		uii.R_GetImGuiTexture					= re->R_GetImGuiTexture;
 		uii.R_ModelBounds						= re->ModelBounds;
 		uii.R_RegisterFont						= re->RegisterFont;
 		uii.R_RegisterModel						= re->RegisterModel;

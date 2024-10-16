@@ -35,15 +35,17 @@ USER INTERFACE SABER LOADING & DISPLAY CODE
 static ImGuiContext *igContext;
 
 void CL_ImGuiFrame( void ) {
-	igContext = (ImGuiContext*)re->GetImGuiContext();
+	re->R_GetImGuiContext( (void**)&igContext );
 
+#if 0
 	if ( !igContext || !igContext->Initialized || !igContext->WithinFrameScope )
 		return;
 
-	/*igSetCurrentContext( igContext );
+	igSetCurrentContext( igContext );
 	ImGuiIO *io = igGetIO();
 
 	igBegin("client_module",NULL,ImGuiWindowFlags_NoTitleBar);
     igText("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io->Framerate, io->Framerate);
-	igEnd();*/
+	igEnd();
+#endif
 }

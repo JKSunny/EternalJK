@@ -289,10 +289,10 @@ static uint32_t igChatEmojiPopup( char *buf, const ImVec2 pos ) {
 	return emoji_index;
 }
 
-static void igChatInputCallback( ImGuiInputTextCallbackData* data ) 
+int igChatInputCallback( ImGuiInputTextCallbackData* data ) 
 {
 	if ( data->EventFlag != ImGuiInputTextFlags_CallbackAlways )
-		return;
+		return 0;
 
 	igChatInputData_t *input = data->UserData;
 
@@ -312,6 +312,8 @@ static void igChatInputCallback( ImGuiInputTextCallbackData* data )
 		ImGuiInputTextCallbackData_DeleteChars( data, 0, data->BufTextLen );
 		input->clear = qfalse;
 	} 
+
+	return 0;
 }
 
 // quickly put together chat window for demo purposes
@@ -429,25 +431,29 @@ static void CG_igShowChatInput( void ) {
 //
 
 void CG_ImGuiInit( void ) {
-	igContext = (ImGuiContext*)trap->R_GetImGuiContext();
-
+	trap->R_GetImGuiContext( (void**)&igContext );
+#if 0
 	if ( !igContext || !igContext->Initialized )
 		return;
 
 	igSetCurrentContext( igContext );
+#endif
 }
 
 void CG_ImGuiFrame( void ) {
+#if 0
 	if ( !igContext || !igContext->Initialized || !igContext->WithinFrameScope )
 		return;
 
-	/*ImGuiIO *io = igGetIO();
+	ImGuiIO *io = igGetIO();
 
 	igBegin("cgame_module",NULL,ImGuiWindowFlags_NoTitleBar);
     igText("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io->Framerate, io->Framerate);
 	igEnd();
-	
+
+	/*
 	CG_igDrawEmotes();
 	CG_igShowScoreboard();
 	CG_igShowChatInput();*/
+#endif
 }

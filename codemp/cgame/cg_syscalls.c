@@ -111,8 +111,8 @@ void trap_SendClientCommand( const char *s ) {
 void trap_UpdateScreen( void ) {
 	Q_syscall( CG_UPDATESCREEN );
 }
-void trap_R_GetImGuiContext( void ) {
-	Q_syscall( CG_R_GETIMGUICONTEXT );
+void trap_R_GetImGuiContext( void **context ) {
+	Q_syscall( CG_R_GETIMGUICONTEXT, context );
 }
 uint64_t trap_R_GetImGuiTexture( qhandle_t hShader ) {
 	return Q_syscall( CG_R_GETIMGUITEXTURE );

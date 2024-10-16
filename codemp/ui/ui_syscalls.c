@@ -184,8 +184,8 @@ void trap_UpdateScreen( void ) {
 int trap_CM_LerpTag( orientation_t *tag, clipHandle_t mod, int startFrame, int endFrame, float frac, const char *tagName ) {
 	return Q_syscall( UI_CM_LERPTAG, tag, mod, startFrame, endFrame, PASSFLOAT(frac), tagName );
 }
-void trap_R_GetImGuiContext( void ) {
-	Q_syscall( UI_R_GETIMGUICONTEXT );
+void trap_R_GetImGuiContext( void **context ) {
+	Q_syscall( UI_R_GETIMGUICONTEXT, context );
 }
 uint64_t trap_R_GetImGuiTexture( qhandle_t hShader ) {
 	return Q_syscall( UI_R_GETIMGUITEXTURE, hShader );
