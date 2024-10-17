@@ -2198,7 +2198,8 @@ void RB_AddDrawItemIndexBinding( DrawItem &item )
 			// draw indexed indirect
 			if ( tess.multiDrawPrimitives > 1 ) 
 			{
-				uint32_t j, offset, *index;
+				uint32_t j, offset;
+				size_t *index;
 
 				item.indexedIndirect = qtrue;		// change type
 				item.draw.params.indexedIndirect.numDraws = tess.multiDrawPrimitives;
@@ -2207,11 +2208,10 @@ void RB_AddDrawItemIndexBinding( DrawItem &item )
 				{
 					VkDrawIndexedIndirectCommand indirectCmd = {};
 
-					index = ((uint32_t*)tess.multiDrawFirstIndex) + j;
-
+					index = (size_t*)tess.multiDrawFirstIndex + j;
 					indirectCmd.indexCount = tess.multiDrawNumIndexes[j];
 					indirectCmd.instanceCount = 1;
-					indirectCmd.firstIndex = *index;
+					indirectCmd.firstIndex = (uint32_t)(*index);
 					indirectCmd.vertexOffset = 0;
 					indirectCmd.firstInstance = 0;
 
