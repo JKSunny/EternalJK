@@ -868,17 +868,18 @@ void vk_draw_geometry( Vk_Depth_Range depRg, qboolean indexed )
 	{
 		if ( tess.multiDrawPrimitives && tess.multiDrawPrimitives > 1 ) 
 		{
-			uint32_t j, firstOffset, offset, *index;
+			uint32_t j, firstOffset, offset;
+			size_t *index;
 
 			for ( j = 0; j < tess.multiDrawPrimitives; j++ ) 
 			{
 				VkDrawIndexedIndirectCommand indirectCmd = {};
 
-				index = ((uint32_t*)tess.multiDrawFirstIndex) + j;
+				index = (size_t*)tess.multiDrawFirstIndex + j;
 
 				indirectCmd.indexCount = tess.multiDrawNumIndexes[j];
 				indirectCmd.instanceCount = 1;
-				indirectCmd.firstIndex = *index;
+				indirectCmd.firstIndex = (uint32_t)(*index);
 				indirectCmd.vertexOffset = 0;
 				indirectCmd.firstInstance = 0;
 
