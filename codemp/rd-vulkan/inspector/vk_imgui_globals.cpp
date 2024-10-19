@@ -22,11 +22,13 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 #include "tr_local.h"
 
+#define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui.h>
 #include <imgui_draw.cpp>
 #include <imgui_widgets.cpp>
 #include <imgui_tables.cpp>
-#include <inspector/vk_imgui.h>
+
+#include "vk_imgui.h"
 
 ImVector<ImRect> s_GroupPanelLabelStack;
 
@@ -268,7 +270,7 @@ qboolean imgui_draw_text_with_button( const char *label, const char *value, cons
 	drawList->AddRect(
 		ImVec2(pos.x, pos.y), 
 		ImVec2(pos.x + region.x, pos.y + height), 
-		RGBA_LE(0x333436ffu), 2.0f,  ImDrawCornerFlags_Left, 1.0); 
+		RGBA_LE(0x333436ffu), 2.0f,  ImDrawFlags_RoundCornersLeft, 1.0); 
 
 	drawList->AddText( ImVec2( pos.x + 4.0f, pos.y + 5.0f ), RGBA_LE(0x44454effu), value );
 

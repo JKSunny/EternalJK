@@ -20,12 +20,15 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, see <http://www.gnu.org/licenses/>.
 ===========================================================================
 */
-#include "tr_local.h"
 
+#define VK_NO_PROTOTYPES
+#define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui.h>
 #include <imgui.cpp>
 #include <backends/imgui_impl_vulkan.cpp>
-#include <backends/imgui_impl_sdl.cpp>
+#include <backends/imgui_impl_sdl2.cpp>
+
+#include "tr_local.h"
 #include "vk_imgui.h"
 
 #include <icons/FontAwesome5/IconsFontAwesome5.h>
@@ -225,8 +228,17 @@ void vk_imgui_initialize( void )
 	init_info.MinImageCount = 2;
 	init_info.ImageCount = vk.swapchain_image_count;
 	init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+	init_info.RenderPass = vk.render_pass.inspector;
 
-	ImGui_ImplVulkan_Init( &init_info, vk.render_pass.inspector );
+	ImGui_ImplVulkan_LoadFunctions( []( const char* func, void *instance ) 
+	{
+		Vk_Instance* vk_instance = reinterpret_cast<Vk_Instance*>(instance);
+		PFN_vkVoidFunction instanceAddr = qvkGetInstanceProcAddr( vk_instance->instance, func );
+		PFN_vkVoidFunction deviceAddr = qvkGetDeviceProcAddr( vk_instance->device, func );
+		return deviceAddr ? deviceAddr : instanceAddr;
+	}, &vk );
+
+	ImGui_ImplVulkan_Init( &init_info );
 
 	{
 		command_buffer = vk.cmd->command_buffer;
@@ -238,7 +250,7 @@ void vk_imgui_initialize( void )
 		begin_info.pInheritanceInfo = NULL;
 		VK_CHECK( qvkBeginCommandBuffer( command_buffer, &begin_info ) );
 
-		ImGui_ImplVulkan_CreateFontsTexture( command_buffer );
+		ImGui_ImplVulkan_CreateFontsTexture();
 
 		VK_CHECK(qvkEndCommandBuffer(command_buffer));
 
@@ -249,14 +261,11 @@ void vk_imgui_initialize( void )
 		VK_CHECK( qvkQueueSubmit( vk.queue, 1, &end_info, VK_NULL_HANDLE ) );
 
 		vk_wait_idle();
-
-		ImGui_ImplVulkan_DestroyFontUploadObjects();
 	}
 }
 
 void vk_imgui_shutdown( void )
 {
-	ImGui_ImplVulkan_DestroyFontUploadObjects();
 	qvkDestroyDescriptorPool( vk.device, imguiPool, nullptr );
 	ImGui_ImplVulkan_Shutdown();
     ImGui_ImplSDL2_Shutdown();

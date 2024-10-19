@@ -2,6 +2,7 @@
 #define IM_NODE_FLOW
 
 // sunny
+#define IMGUI_DEFINE_MATH_OPERATORS
 #define USE_ID3_NODE_EDITOR
 
 #ifdef USE_ID3_NODE_EDITOR

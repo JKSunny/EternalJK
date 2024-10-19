@@ -45,8 +45,6 @@ void vk_imgui_clear_inspector( qboolean reset )
 	Com_Memset( &inspector.entity, 0, sizeof(inspector.entity) );
 	Com_Memset( &inspector.node, 0, sizeof(inspector.node) );
 	Com_Memset( &inspector.surface, 0, sizeof(inspector.surface) );
-
-	windows.shader.text_mode = true;
 }
 
 // handler to set/update ptrs and info for the current object selected
@@ -132,7 +130,7 @@ static void vk_imgui_draw_objects( void )
 	ImGui::Dummy( ImVec2( 0.0f, 15.0f ) );
 
 	ImGui::PushStyleColor( ImGuiCol_FrameBg , ImVec4(0.10f, 0.10f, 0.10f, 1.00f) );
-	if( ImGui::ListBoxHeader( "##Objects", ImGui::GetContentRegionAvail() ) )
+	if( ImGui::BeginListBox( "##Objects", ImGui::GetContentRegionAvail() ) )
 	{	
 		if ( tr.registered && tr.world ) {
 			//vk_imgui_draw_objects_cubemaps();
@@ -143,7 +141,7 @@ static void vk_imgui_draw_objects( void )
 
 		vk_imgui_draw_objects_shaders();
 		
-		ImGui::ListBoxFooter();
+		ImGui::EndListBox();
 	}
 	ImGui::PopStyleColor();
 
@@ -416,13 +414,14 @@ void vk_imgui_create_gui( void )
 
 	if ( !inspector.init ) {
 		vk_imgui_clear_inspector( qtrue );
-	
+		
 		inspector.merge_shaders = true;
 		inspector.outline_selected = true;
-
+		
 		// windows
 		Com_Memset( &windows, 0, sizeof(windows) );
 		windows.viewport.p_open = true;
+		windows.shader.text_mode = true;
 
 		// render image
 		vk_imgui_bind_game_color_image();
