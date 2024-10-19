@@ -80,6 +80,9 @@ namespace ImFlow {
         float headerH = ImGui::GetItemRectSize().y;
         float titleW = ImGui::GetItemRectSize().x;
 
+        // patch for: https://github.com/ocornut/imgui/issues/7543#issuecomment-2285935567
+        ImGui::Dummy( ImVec2( 0.0, 0.0 ) );
+
         // Inputs
         ImGui::BeginGroup();
         for (auto &p: m_ins) {
