@@ -22,7 +22,9 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 #include "tr_local.h"
 
+#define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui.h>
+
 #include "vk_imgui.h"
 #include <utils/ImGuiColorTextEdit/TextEditor.h>
 #include <utils/ImNodeFlow/include/ImNodeFlow.h>

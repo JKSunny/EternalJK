@@ -22,6 +22,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 #include "tr_local.h"
 
+#define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui.h>
 
 #include "vk_imgui.h"
@@ -167,7 +168,7 @@ static void vk_imgui_draw_shader_editor_toolbar( shader_t *sh, shader_t *sh_rema
 		drawList->AddRect(
 			ImVec2(pos.x, pos.y), 
 			ImVec2((pos.x + region.x) - (sh_updated ? 80.0f : 0), pos.y + height), 
-			RGBA_LE(0x333436ffu), 2.0f,  ImDrawCornerFlags_Left, 1.0); 
+			RGBA_LE(0x333436ffu), 2.0f,  ImDrawFlags_RoundCornersLeft, 1.0); 
 
 		drawList->AddText( ImVec2( pos.x + 8.0f, pos.y + 8.0f ), RGBA_LE(0x8f909cffu), sh->name );
 	}
@@ -382,7 +383,7 @@ static void vk_imgui_draw_inspector_shader_visualize_surface_params( const char 
 		drawList->AddRect(
 			ImVec2(tag_pos.x, tag_pos.y), 
 			ImVec2(tag_pos.x + textWidth, tag_pos.y + textHeight), 
-			color_palette[ i % MAX_SHADER_STAGES ], 10.0f,  ImDrawCornerFlags_All, 1.0); 
+			color_palette[ i % MAX_SHADER_STAGES ], 10.0f,  ImDrawFlags_RoundCornersAll, 1.0); 
 
 		drawList->AddText( ImVec2( tag_pos.x + 4.0f, tag_pos.y + 3.0f ), color_palette[ i % MAX_SHADER_STAGES ], sh->surfaceParams[i] );
 
@@ -442,7 +443,7 @@ static void vk_imgui_draw_inspector_shader_visualize_deforms( const char *label,
 		drawList->AddRect(
 			ImVec2(tag_pos.x, tag_pos.y), 
 			ImVec2(tag_pos.x + textWidth, tag_pos.y + textHeight), 
-			color_palette[ i % MAX_SHADER_STAGES ], 10.0f,  ImDrawCornerFlags_All, 1.0); 
+			color_palette[ i % MAX_SHADER_STAGES ], 10.0f,  ImDrawFlags_RoundCornersAll, 1.0); 
 
 		drawList->AddText( ImVec2( tag_pos.x + 4.0f, tag_pos.y + 3.0f ), color_palette[ i % MAX_SHADER_STAGES ], vk_deform_string[ (int)sh->deforms[i]->deformation ] );
 
@@ -504,7 +505,7 @@ static void vk_imgui_draw_inspector_shader_visualize_tcmod( const char *label, c
 		drawList->AddRect(
 			ImVec2(tag_pos.x, tag_pos.y), 
 			ImVec2(tag_pos.x + textWidth, tag_pos.y + textHeight), 
-			color_palette[i], 10.0f,  ImDrawCornerFlags_All, 1.0); 
+			color_palette[i], 10.0f,  ImDrawFlags_RoundCornersAll, 1.0); 
 
 		drawList->AddText( ImVec2( tag_pos.x + 4.0f, tag_pos.y + 3.0f ), color_palette[i], name );
 
