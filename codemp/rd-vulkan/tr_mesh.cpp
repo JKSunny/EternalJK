@@ -331,13 +331,6 @@ void R_AddMD3Surfaces( trRefEntity_t *ent, int entityNum ) {
 		return;
 	}
 
-	//
-	// set up lighting now that we know we aren't culled
-	//
-	if ( !personalModel || r_shadows->integer > 1 ) {
-		R_SetupEntityLighting( &tr.refdef, ent );
-	}
-
 #ifdef USE_PMLIGHT
 	numDlights = 0;
 	if (r_dlightMode->integer >= 2 && (!personalModel || tr.viewParms.portalView != PV_NONE)) {
