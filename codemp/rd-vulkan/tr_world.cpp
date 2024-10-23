@@ -615,9 +615,6 @@ void R_AddBrushModelSurfaces ( trRefEntity_t *ent, int entityNum ) {
 	for ( s = 0; s < bmodel->numSurfaces; s++ ) {
 		R_AddWorldSurface( bmodel->firstSurface + s, ent, entityNum, qtrue );
 	}
-
-	R_SetupEntityLighting( &tr.refdef, ent );
-
 	R_TransformDlights( tr.viewParms.num_dlights, tr.viewParms.dlights, &tr.ori );
 
 	for ( i = 0; i < tr.viewParms.num_dlights; i++ ) {
