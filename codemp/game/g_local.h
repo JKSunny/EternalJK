@@ -1358,6 +1358,7 @@ void CCmd_Cleanup();
 void Jetpack_Off(gentity_t *ent);
 void Jetpack_On(gentity_t *ent);
 void ItemUse_Jetpack(gentity_t *ent);
+void ItemUse_Shield(gentity_t* ent);
 
 void G_CheckTeamItems( void );
 void G_RunItem( gentity_t *ent );

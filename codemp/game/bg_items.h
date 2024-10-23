@@ -65,13 +65,14 @@ typedef enum
 
 typedef enum
 {
-	SHIELDTYPE_UNKNOWN,	//undefined shield
-	SHIELDTYPE_STD,		//standard shield: these do not have blockedMODs or allowedMODs, and block standard MODs
-	SHIELDTYPE_ABN,		//NOT a standard shield
-						
-						//consider additional types here such as particle shields, ray shields, bubble, etc
-						//note: officially particle shields == physical, and ray shields == energy
-						//		however, we may do something different as these definitions are sometimes silly in lore
+	SHIELDTYPE_UNKNOWN,
+	SHIELDTYPE_SHELL,		//wraps around the player's shape
+	SHIELDTYPE_BUBBLE,		//bubble around the player (eg: Galakmech style)
+	SHIELDTYPE_HANDHELD,	//a physical shield in player's offhand, eg: gungan riot/kite shields
+
+							//consider additional types here such as particle shields, ray shields, bubble, etc
+							//note: officially particle shields == physical, and ray shields == energy
+							//		however, we may do something different as these definitions are sometimes silly in lore
 	SHIELDTYPE_MAX
 } shieldTypes_t;
 

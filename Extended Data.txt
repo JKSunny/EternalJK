@@ -264,6 +264,8 @@ Each .shield file contains data for one shield.  They may contain the following 
  - malfunctionSoundEffect (string): The sound effect that is played when the shield malfunctions (not yet implemented).
  - blockedMODs (array of strings): List of means of damage (eg: ["MOD_SLUGTHROWER", "MOD_BLEEDING"]) this shield can block in addition to standard means of damage types.
  - allowedMODs (array of strings): List of means of damage (eg: ["MOD_BLASTER", "MOD_ION"]) this shield is no longer able to protect from.
+ - type (string, default "shell"): What type of physical shape the shield takes.  eg: shell, bubble, handheld, unknown
+ - activatable (boolean, default false): If the shield has an effect that can be activated from ACI/use item.
 
 
 ## ARMOR FIELDS

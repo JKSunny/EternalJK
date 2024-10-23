@@ -251,18 +251,22 @@ void G_BuffEntity(gentity_t* ent, gentity_t* buffer, int buffID, float intensity
 			ent->buffData[i].lastDamageTime = level.time;
 
 			//look for shield items
-			shieldData_t* shield = nullptr;
-			for (auto it = ent->inventory->begin(); it != ent->inventory->end(); ++it)
+			qboolean overrides = qfalse;
+			if (ent->client->shieldEquipped)
 			{
-				if (it->equipped && it->id->itemType == ITEM_SHIELD)
+				shieldData_t* shield = nullptr;
+				for (auto it = ent->inventory->begin(); it != ent->inventory->end(); ++it)
 				{
-					shield = it->id->shieldData.pShieldData;
-					break;
+					if (it->equipped && it->id->itemType == ITEM_SHIELD)
+					{
+						shield = it->id->shieldData.pShieldData;
+						break;
+					}
 				}
+				assert(shield);
+				overrides = JKG_IsShieldModOverriden(ent, pBuff->damage.meansOfDeath, shield, shield->blockedMODs);	//check if the shield overrides also cancel this damage type
 			}
-			qboolean overrides = JKG_IsShieldModOverriden(ent, pBuff->damage.meansOfDeath, shield, shield->blockedMODs);	//check if the shield overrides also cancel this damage type
-			shield = nullptr;
-
+				
 			//check if having a shield blocks the buff
 			if ((pBuff->cancel.shieldRemoval || overrides) && ent->client->ps.stats[STAT_SHIELD] > 0)
 			{
@@ -275,6 +279,7 @@ void G_BuffEntity(gentity_t* ent, gentity_t* buffer, int buffID, float intensity
 				G_RemoveBuff(ent, i);  //--futuza: remove it?  could also just not apply the effects, but leave the debuff on the player...
 				return;
 			}
+			
 
 			//****
 			//

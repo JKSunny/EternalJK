@@ -926,6 +926,15 @@ qboolean JKG_ClientAlive(gentity_t* ent)
 	if (ent->client->deathcamTime && level.time > ent->client->deathcamTime) {
 		return qfalse;
 	}
+	
+	if (ent->client->ps.eFlags & EF_DEAD) {
+		return qfalse;
+	}
+
+	//removing since we may want to be able to make living clients ragdoll temporarily but not count as dead?
+	/*if (ent->client->ps.pm_type == PM_DEAD) { 
+		return qfalse;
+	}*/
 
 	return qtrue;
 }

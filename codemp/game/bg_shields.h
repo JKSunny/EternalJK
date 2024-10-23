@@ -27,8 +27,11 @@ struct shieldData_t {
 	char chargedSoundEffect[MAX_QPATH];		// Sound that plays once a shield is finished charging
 	char malfunctionSoundEffect[MAX_QPATH];	// Sound that plays if the shield has malfunctioned --futuza: to be added later
 
+	qboolean standard;						// does this shield offer standard protection?
 	std::vector<int> blockedMODs;			// what MODs the shield is a barrier to, if .size() < 1 then it has default types
 	std::vector<int> allowedMODs;			// what MODs pass through the shield, if .size() < 1 then it has the default types
+	qboolean activatable;					// does the shield have an item activation effect?
+	
 };
 
 extern shieldData_t shieldTable[MAX_SHIELDS];

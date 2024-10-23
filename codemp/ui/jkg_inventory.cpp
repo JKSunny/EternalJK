@@ -277,16 +277,23 @@ const char* JKG_GetArmorSlotString(armorData_t* pData) {
 	return "";
 }
 
+const char* JKG_GetShieldProtection(shieldData_t* pData) {
+	if(pData->standard)
+		return UI_GetStringEdString3("@JKG_INVENTORY_SHIELD_STANDARD");
+	else
+		return UI_GetStringEdString3("@JKG_INVENTORY_SHIELD_ABNORMAL");
+}
+
 const char* JKG_GetShieldTypeString(shieldData_t* pData) {
 	switch (pData->type) {
-	case SHIELDTYPE_UNKNOWN:
-		return UI_GetStringEdString3("@JKG_INVENTORY_SHIELD_UNKNOWN");
-	case SHIELDTYPE_STD:
-		return UI_GetStringEdString3("@JKG_INVENTORY_SHIELD_STANDARD");
-	case SHIELDTYPE_ABN:
-		return UI_GetStringEdString3("@JKG_INVENTORY_SHIELD_ABNORMAL");
+	case SHIELDTYPE_SHELL:
+		return UI_GetStringEdString3("@JKG_INVENTORY_SHIELDTYPE_SHELL");
+	case SHIELDTYPE_BUBBLE:
+		return UI_GetStringEdString3("@JKG_INVENTORY_SHIELDTYPE_BUBBLE");
+	case SHIELDTYPE_HANDHELD:
+		return UI_GetStringEdString3("@JKG_INVENTORY_SHIELDTYPE_HANDHELD");
 	}
-	return "";
+	return UI_GetStringEdString3("@JKG_INVENTORY_SHIELDTYPE_UNKNOWN");;
 }
 
 // Create a jetpack item's description
@@ -317,17 +324,23 @@ static void JKG_ConstructJetpackDescription(itemInstance_t* pItem, std::vector<s
 // Create a shield item's description
 static void JKG_ConstructShieldDescription(itemInstance_t* pItem, std::vector<std::string>& vDescLines) {
 	// Shield Item
+	// Tier:
+	// Protection: standard/abnormal
+	// Shield Type: shell/bubble/etc
 	// Capacity: ###
 	// Recharge Time: ### seconds
 	// Regeneration: # shields per second
 	std::string typeDescription = "";
 	typeDescription = UI_GetStringEdString2("@JKG_INVENTORY_ITEM_TYPE");
-	typeDescription = typeDescription + UI_GetStringEdString2("@JKG_INVENTORY_ITYPE_SHIELD");
+	typeDescription += UI_GetStringEdString2("@JKG_INVENTORY_ITYPE_SHIELD");
+	vDescLines.push_back(typeDescription);
+	JKG_ConstructItemTierDescription(pItem->id->itemTier, vDescLines);
+	typeDescription = va(UI_GetStringEdString2("@JKG_INVENTORY_SHIELD_PROTECTION_TYPE"), JKG_GetShieldProtection(pItem->id->shieldData.pShieldData));
 	vDescLines.push_back(typeDescription);
 	typeDescription = va(UI_GetStringEdString2("@JKG_INVENTORY_SHIELD_TYPE"), JKG_GetShieldTypeString(pItem->id->shieldData.pShieldData));
 	vDescLines.push_back(typeDescription);
+	
 
-	JKG_ConstructItemTierDescription(pItem->id->itemTier, vDescLines);
 	if (pItem->id->weight > 0.0f)
 	{
 		vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_WEIGHT"), pItem->id->weight));
@@ -337,7 +350,7 @@ static void JKG_ConstructShieldDescription(itemInstance_t* pItem, std::vector<st
 	vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_SHIELD_REGEN"), 1000.0f / pItem->id->shieldData.pShieldData->regenrate));
 
 	//we have shield overrides, show them
-	if(pItem->id->shieldData.pShieldData->type == SHIELDTYPE_ABN)
+	if(!pItem->id->shieldData.pShieldData->standard)
 	{ 
 		meansOfDamage_t* means;
 

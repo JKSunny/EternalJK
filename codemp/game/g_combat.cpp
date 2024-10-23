@@ -5118,20 +5118,24 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 			standardShield = qtrue;	//if the shield is normal
 
 		//look for shield items
-		shieldData_t* shield = nullptr;
-		std::string shield_name; //in case we need to report an error
-		for (auto it = targ->inventory->begin(); it != targ->inventory->end(); ++it)
+		std::string shield_name = ""; //in case we need to report an error
+		if(client->shieldEquipped)
 		{
-			if (it->equipped && it->id->itemType == ITEM_SHIELD)
+			shieldData_t* shield = nullptr;
+			for (auto it = targ->inventory->begin(); it != targ->inventory->end(); ++it)
 			{
-				shield = it->id->shieldData.pShieldData;
-				shield_name = it->id->displayName;
-				break;
+				if (it->equipped && it->id->itemType == ITEM_SHIELD)
+				{
+					shield = it->id->shieldData.pShieldData;
+					shield_name = it->id->displayName;
+					break;
+				}
 			}
+			assert(shield);
+			modIsBlocked = JKG_IsShieldModOverriden(targ, mod, shield, shield->blockedMODs);
+			modIsAllowed = JKG_IsShieldModOverriden(targ, mod, shield, shield->allowedMODs);
 		}
 
-		modIsBlocked = JKG_IsShieldModOverriden(targ, mod, shield, shield->blockedMODs);
-		modIsAllowed = JKG_IsShieldModOverriden(targ, mod, shield, shield->allowedMODs);
 		if(modIsAllowed)
 			standardShield = qfalse;
 

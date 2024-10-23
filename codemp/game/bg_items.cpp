@@ -618,6 +618,15 @@ void BG_GiveItem(gentity_t* ent, itemInstance_t item, qboolean ACI) {
 		return;
 	}
 
+	//make sure inventory isn't full
+	if (ent->client && ent->s.eType == ET_PLAYER && ent->inventory->size() >= MAX_INVENTORY_ITEMS)
+	{
+		//notify
+		trap->SendServerCommand(ent - g_entities, va("print \"^1Inventory full! ^7Cannot accept %s item.\n\"", item.id->displayName));
+		trap->SendServerCommand(ent - g_entities, va("notify 1 \"Inventory full!\""));
+		return;
+	}
+
 	BG_GiveItemNonNetworked(ent, item);
 
 	// Network data to the client
@@ -641,6 +650,15 @@ On the server, this is also internally called from BG_GiveItem.
 void BG_GiveItemNonNetworked(gentity_t* ent, itemInstance_t item) {
 	// Basic checks
 	if (!item.id || !item.id->itemID) {	
+		return;
+	}
+
+	//make sure inventory isn't full
+	if (ent->client && ent->s.eType == ET_PLAYER && ent->inventory->size() >= MAX_INVENTORY_ITEMS)
+	{
+		//notify
+		trap->SendServerCommand(ent - g_entities, va("print \"^1Inventory full! ^7Cannot accept %s item.\n\"", item.id->displayName));
+		trap->SendServerCommand(ent - g_entities, va("notify 1 \"Inventory full!\""));
 		return;
 	}
 
@@ -748,6 +766,12 @@ void BG_GiveItemNonNetworked(itemInstance_t item)
 
 	// The player cannot actually acquire ammo items.
 	if (item.id->itemType == ITEM_AMMO)
+	{
+		return;
+	}
+
+	//make sure inventory isn't full
+	if (cg.playerInventory->size() >= MAX_INVENTORY_ITEMS)
 	{
 		return;
 	}

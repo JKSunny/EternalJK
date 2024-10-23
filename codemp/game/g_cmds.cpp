@@ -901,10 +901,20 @@ void Cmd_ItemCheck_f(gentity_t *ent)
 		itemNum = atoi(buffer);
 		if(itemLookupTable[itemNum].itemID)
 		{
-			if(itemLookupTable[itemNum].itemType == ITEM_ARMOR)
+			if(itemLookupTable[itemNum].itemType == ITEM_ARMOR || itemLookupTable[itemNum].itemType == ITEM_CLOTHING)
 			{
 				//Meant to put some sort of check for armor type, but didn't bother.
 				trap->SendServerCommand(ent-g_entities, va("print \"%s (%i) - Armor\n\"", itemLookupTable[itemNum].displayName, itemNum));
+				return;
+			}
+			else if (itemLookupTable[itemNum].itemType == ITEM_SHIELD)
+			{
+				trap->SendServerCommand(ent - g_entities, va("print \"%s (%i) - Shield\n\"", itemLookupTable[itemNum].displayName, itemNum));
+				return;
+			}
+			else if (itemLookupTable[itemNum].itemType == ITEM_JETPACK)
+			{
+				trap->SendServerCommand(ent - g_entities, va("print \"%s (%i) - Jetpack\n\"", itemLookupTable[itemNum].displayName, itemNum));
 				return;
 			}
 			else if(itemLookupTable[itemNum].itemType == ITEM_WEAPON)
@@ -1029,6 +1039,7 @@ void Cmd_BuyItem_f(gentity_t *ent)
 		char* snd;
 
 		trap->SendServerCommand(ent - g_entities, "print \"You do not have enough credits to purchase that item.\n\"");
+		trap->SendServerCommand(ent - g_entities, va("notify 1 \"Not enough credits!\""));
 
 		//select random unhappy vendor sound to play
 		if (CustomVendorSounds(trader, "purchasefail00"))
@@ -1059,6 +1070,14 @@ void Cmd_BuyItem_f(gentity_t *ent)
 				G_Sound(trader, CHAN_AUTO, G_SoundIndex(snd));	//play sound
 			}
 		}
+		return;
+	}
+
+	//no room in inventory to add
+	if (ent->inventory->size() >= MAX_INVENTORY_ITEMS)
+	{
+		trap->SendServerCommand(ent - g_entities, "print \"^1Inventory full! ^7You do not have neough room to purchase that item.\n\"");
+		trap->SendServerCommand(ent - g_entities, va("notify 1 \"Inventory full!\""));
 		return;
 	}
 
@@ -2165,8 +2184,7 @@ void JKG_Cmd_ItemAction_f(gentity_t *ent, int itemNum)
 		return; //NOTENOTE: NPCs can perform item actions. Nifty, eh?
 	}
 
-	if (ent->client->ps.stats[STAT_HEALTH] <= 0 ||
-		ent->client->ps.pm_type == PM_DEAD)
+	if (!JKG_ClientAlive(ent))
 	{
 		// Bugfix: Can no longer use items when dead --eez
 		Com_Printf("Can't use items while dead!\n");
@@ -2178,39 +2196,31 @@ void JKG_Cmd_ItemAction_f(gentity_t *ent, int itemNum)
 		return;
 	}
 
-	if (ent->inventory->size() < 1)
-	{
-		//bugfix: empty inventory == nothing to use  --Futuza
-		return;
-	}
-
-	if (itemNum >= ent->inventory->size())
+	if (ent->inventory->size() < 1 || ent->inventory->size() <= itemNum)
 	{
 		//Nope.
 		return;
 	}
 
-	//if  item is a jetpack
+	//if item is a jetpack
 	if(ent->inventory->at(itemNum).id->itemType == ITEM_JETPACK)
 	{
 		ItemUse_Jetpack(ent);
 		return;
 	}
 
-	//if item is a shield - TODO: add this feature
-	/*if (ent->inventory->at(itemNum).id->itemType == ITEM_SHIELD)
+	//if item is a shield
+	if (ent->inventory->at(itemNum).id->itemType == ITEM_SHIELD)
 	{
-		//call special shield effect
+		ItemUse_Shield(ent);
 		return;
-	}*/
+	}
 
 	//if  item is a consumable
 	if (ent->inventory->at(itemNum).id->itemType == ITEM_CONSUMABLE)
 	{
 		JKG_ConsumeItem_h(ent, itemNum);
 	}
-
-
 }
 
 /*

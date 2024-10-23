@@ -16,11 +16,11 @@ int numLoadedShields;
 
 /*
 ===========================
-JKG_ParseShieldBarrierTypes
+JKG_ParseShieldOverrideTypes
 
 ===========================
 */
-qboolean JKG_ParseShieldBarrierTypes(cJSON* json, shieldData_t &shieldData, std::vector<int>& list)
+qboolean JKG_ParseShieldOverrideTypes(cJSON* json, shieldData_t &shieldData, std::vector<int>& list)
 {
 	qboolean status = qtrue; //if no errors encountered
 	if (json)
@@ -53,7 +53,7 @@ qboolean JKG_ParseShieldBarrierTypes(cJSON* json, shieldData_t &shieldData, std:
 				shieldData.allowedMODs.push_back(mod);
 			else
 			{
-				Com_Printf(S_COLOR_RED "Passed an illegal vector to JKG_ParseShieldBarrierTypes() in %s\n", cJSON_ToString(jsonNode));
+				Com_Printf(S_COLOR_RED "Passed an illegal vector to JKG_ParseShieldOverrideTypes() in %s\n", cJSON_ToString(jsonNode));
 				status = qfalse;
 				break;
 			}
@@ -62,6 +62,31 @@ qboolean JKG_ParseShieldBarrierTypes(cJSON* json, shieldData_t &shieldData, std:
 
 	return status;
 }
+
+// Converts a string into a shield type
+static int JKG_ParseShieldType(const char* str)
+{
+	
+	if (!Q_stricmp("shell", str))
+	{
+		return SHIELDTYPE_SHELL;
+	}
+	else if (!Q_stricmp("bubble", str))
+	{
+		return SHIELDTYPE_BUBBLE;
+	}
+	else if (!Q_stricmp("handheld", str))
+	{
+		return SHIELDTYPE_HANDHELD;
+	}
+	else if (!Q_stricmp("unknown", str))
+	{
+		return SHIELDTYPE_UNKNOWN;
+	}
+	else
+		return SHIELDTYPE_UNKNOWN;
+}
+
 
 /*
 ============================
@@ -126,30 +151,33 @@ static qboolean JKG_ParseShieldData(char* buffer, const char* fileName, shieldDa
 
 	jsonNode = cJSON_GetObjectItem(json, "blockedMODs");
 	if (jsonNode) {
-		if (!JKG_ParseShieldBarrierTypes(jsonNode, shieldData, shieldData.blockedMODs))
+		if (!JKG_ParseShieldOverrideTypes(jsonNode, shieldData, shieldData.blockedMODs))
 			Com_Printf(S_COLOR_ORANGE "%s has invalid blockedMODs data that has been ignored.\n", fileName);
 	}
 
 	jsonNode = cJSON_GetObjectItem(json, "allowedMODs");
 	if (jsonNode) {
-		if (!JKG_ParseShieldBarrierTypes(jsonNode, shieldData, shieldData.allowedMODs))
+		if (!JKG_ParseShieldOverrideTypes(jsonNode, shieldData, shieldData.allowedMODs))
 			Com_Printf(S_COLOR_ORANGE "%s has invalid allowedMODs data that has been ignored.\n", fileName);
 	}
 
 	//if no overrides, we have a standard shield
 	if (shieldData.blockedMODs.size() < 1 && shieldData.allowedMODs.size() < 1)
-	{
-		shieldData.type = SHIELDTYPE_STD;
-	}
-	//abnormal shield
-	else
-	{
-		shieldData.type = SHIELDTYPE_ABN;
+		shieldData.standard = qtrue;
+	else //abnormal shield
+		shieldData.standard = qfalse;
 
-		//todo: add more shield types here based on blocked/allowed configs?
-	}
+	jsonNode = cJSON_GetObjectItem(json, "type");
+	shieldData.type = JKG_ParseShieldType(cJSON_ToStringOpt(jsonNode, "shell"));
 
-	//todo: add visuals and activation powers
+	jsonNode = cJSON_GetObjectItem(json, "activatable");
+	shieldData.activatable = cJSON_ToBooleanOpt(jsonNode, qfalse);
+	if (shieldData.activatable)
+	{
+		//what does the shield do when you use ACI key to activate it?
+	}
+	
+	//todo: add visuals
 
 	cJSON_Delete(json);
 	return qtrue;
@@ -245,3 +273,13 @@ shieldData_t* JKG_FindShieldByName(const char* shieldName) {
 	}
 	return nullptr;
 }
+
+shieldData_t* JKG_FindShieldByNum(int num)
+{
+	if (num < 0 || num >= MAX_SHIELDS || num > numLoadedShields) {
+		return nullptr;
+	}
+
+	return &shieldTable[num];
+}
+

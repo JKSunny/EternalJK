@@ -86,6 +86,117 @@ void Cmd_ShieldUnequipped(gentity_t* ent, unsigned int index)
 
 /*
 ====================================
+ItemUse_Shield
+
+====================================
+*/
+void ItemUse_Shield(gentity_t* ent)
+{
+	trap->SendServerCommand(ent - g_entities, "print \"ItemUse_Shields() not implmented!\n\"");
+	return; //disable this function for now it isn't ready!
+
+	assert(ent && ent->client);
+
+	//shield has to be equipped
+	if (!ent->client->shieldEquipped) 
+		return;
+
+	//gotta be alive
+	if (!JKG_ClientAlive(ent))
+		return;
+	
+	// find out which shield is equipped
+	shieldData_t* shield = nullptr;
+	for (auto it = ent->inventory->begin(); it != ent->inventory->end(); ++it)
+	{
+		if (it->equipped && it->id->itemType == ITEM_SHIELD)
+		{
+			shield = it->id->shieldData.pShieldData;
+			break;
+		}
+	}
+	assert(shield);	//no shield found, wut?
+
+	//if shield has 50% charge
+	if (ent->client->ps.stats[STAT_SHIELD] < ent->client->ps.stats[STAT_MAX_SHIELD] * 0.5)
+	{
+		trap->SendServerCommand(ent - g_entities, "print \"Insufficient charge to activate!\n\"");
+		return;
+	}
+
+	//various shield checks examples, such as regen etc.
+	/*
+	if (ent->client->shieldRechargeLast + ent->client->shieldRechargeTime < level.time)
+	{
+		if (ent->client->shieldRegenLast + ent->client->shieldRegenTime < level.time)
+		{
+			ent->client->ps.stats[STAT_SHIELD]++;
+			ent->client->shieldRegenLast = level.time + ent->client->shieldRegenTime;
+		}
+
+		if (!ent->client->shieldRecharging)
+		{
+			// In the previous frame, our shield was not recharging
+			ent->client->shieldRecharging = qtrue;
+
+			//how to play a shield noise
+			if (shield->rechargeSoundEffect[0])
+			{
+				G_Sound(ent, CHAN_AUTO, G_SoundIndex(shield->rechargeSoundEffect));
+
+				// Play the effect for shield recharging
+				gentity_t* evEnt;
+				evEnt = G_TempEntity(ent->r.currentOrigin, EV_SHIELD_RECHARGE);
+				evEnt->s.otherEntityNum = ent->s.number;
+			}
+		}
+	}
+	else	//if full
+	{
+		if (ent->client->shieldRecharging)
+		{
+			ent->client->shieldRecharging = qfalse; // In the previous frame, our shield was recharging - we need to turn charging off
+			if (shield->rechargeSoundEffect[0])
+			{
+				// Play the sound for 100% charge and effect for shield recharging
+				G_Sound(ent, CHAN_AUTO, G_SoundIndex(shield->chargedSoundEffect));
+				gentity_t* evEnt;
+				evEnt = G_TempEntity(ent->r.currentOrigin, EV_SHIELD_RECHARGE);
+				evEnt->s.otherEntityNum = ent->s.number;
+			}
+		}
+	}
+	*/
+
+	//can't activate shield if empstaggered by debuff
+	if (ent->client->ps.buffsActive)
+	{
+		for (int i = 0; i < PLAYERBUFF_BITS; i++)
+		{
+			if (ent->client->ps.buffsActive & (1 << i))
+			{
+				jkgBuff_t* pBuff = &buffTable[ent->client->ps.buffs[i].buffID];
+				if (pBuff->passive.empstaggered)
+				{
+					vec3_t higher;
+					VectorCopy(ent->client->ps.origin, higher);
+					higher[2] += 20.0f;
+					G_Sound(ent, CHAN_AUTO, G_SoundIndex("sound/effects/energy_crackle.wav"));
+					G_PlayEffectID(G_EffectIndex("effects/Player/electrocute.efx"), higher, ent->client->ps.viewangles);
+					return;
+				}
+			}
+		}
+	}
+
+	//okay we got here, actually activate the shield effect
+
+	//ent->client->jetPackToggleTime = level.time + jet->move.cooldown; //reset cooldown
+}
+
+
+/*
+====================================
 JKG_JetpackEquipped
 
 ====================================
@@ -413,13 +524,9 @@ void ItemUse_Jetpack(gentity_t *ent)
 		return;
 	}
 
-	if (ent->health <= 0 ||
-		ent->client->ps.stats[STAT_HEALTH] <= 0 ||
-		(ent->client->ps.eFlags & EF_DEAD) ||
-		ent->client->ps.pm_type == PM_DEAD)
-	{ //can't use it when dead under any circumstances.
+	//can't use it when dead under any circumstances.
+	if (!JKG_ClientAlive(ent))
 		return;
-	}
 
 	jetpackData_t* jet = &jetpackTable[ent->client->ps.jetpack - 1];	//get jetpack data
 
