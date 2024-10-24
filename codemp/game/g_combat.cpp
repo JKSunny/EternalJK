@@ -4192,8 +4192,19 @@ bool G_LocationBasedDamageModifier(gentity_t *ent, vec3_t point, int mod, int df
 				}
 			}
 
+			
+			//calculate penetration reduction of armor
+			int ehp = pArm->armor;
+			if (means->modifiers.armorPenetration > 0.0f && means->modifiers.armorPenetration <= 1.0f)
+			{
+				ehp = ehp - (means->modifiers.armorPenetration * pArm->armor);	//if penetration is 0.25 (25%), 25 == 19
+
+				if (ehp < 0)
+					ehp = 0;
+			}
+
 			// apply damage reduction based on armor value
-			modifier = (ent->client->ps.stats[STAT_MAX_HEALTH] / (float)(ent->client->ps.stats[STAT_MAX_HEALTH] + pArm->armor));
+			modifier = (ent->client->ps.stats[STAT_MAX_HEALTH] / (float)(ent->client->ps.stats[STAT_MAX_HEALTH] + ehp)); // calculate damage resistance based on value of armor
 			modifier *= means->modifiers.armor;
 			*damage *= modifier;
 		}

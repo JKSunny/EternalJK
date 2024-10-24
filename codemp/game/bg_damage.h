@@ -44,6 +44,8 @@ struct meansOfDamage_t {
 		float shield;
 		float organic;
 		float droid;
+
+		float armorPenetration;	//how much % of total armor is ignored
 	} modifiers;
 
 	struct {

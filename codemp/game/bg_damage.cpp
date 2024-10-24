@@ -86,6 +86,21 @@ static void JKG_ParseSingleMeansOfDamage(const char* name, cJSON* json) {
 
 		child = cJSON_GetObjectItem(jsonNode, "droid");
 		mod.modifiers.droid = cJSON_ToNumberOpt(child, 1.0);
+
+		child = cJSON_GetObjectItem(jsonNode, "armorPenetration");
+		mod.modifiers.armorPenetration = cJSON_ToNumberOpt(child, 0.0);		//1.0 ignores all of the target's armor, 0.5 ignores 50% of the armor, 0.1 ignores 10% of the armor
+
+		if (mod.modifiers.ignoreArmor)	
+		{
+			mod.modifiers.armorPenetration = 0.0f; //if we're ignoring the armor, penetration doesn't matter
+		}
+
+		//validate range
+		if (mod.modifiers.armorPenetration > 0.999f)
+			mod.modifiers.armorPenetration = 0.999f;
+		if (mod.modifiers.armorPenetration < 0.0f)
+			mod.modifiers.armorPenetration = 0.0f;
+		
 	}
 	else {
 		// defaults
