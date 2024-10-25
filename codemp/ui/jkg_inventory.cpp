@@ -281,7 +281,7 @@ const char* JKG_GetShieldProtection(shieldData_t* pData) {
 	if(pData->standard)
 		return UI_GetStringEdString3("@JKG_INVENTORY_SHIELD_STANDARD");
 	else
-		return UI_GetStringEdString3("@JKG_INVENTORY_SHIELD_ABNORMAL");
+		return UI_GetStringEdString3("@JKG_INVENTORY_SHIELD_MODIFIED");
 }
 
 const char* JKG_GetShieldTypeString(shieldData_t* pData) {
