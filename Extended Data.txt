@@ -359,6 +359,7 @@ The .wpn file contains one field for each firing mode, starting with 0.
   - shotsperburst (integer): How many shots are fired per burst. Should be 0 for full automatic weapons, 1 for semi automatic, and higher for more shots in a burst.
   - burstshotdelay (integer): How many milliseconds between firing each round in a burst.
   - firedelay (integer): How long the player waits (in milliseconds) before firing each round.
+  - armorPiercing (float, default 0.0): Overrides the % of armor ignored by this weapon.
   - range (float): How long the projectile shot by the weapon goes (or the hitscan line traces for), in map units.
   - splashrange (float): For non-complex damage areas, this details how far to spread the damage.
   - recoil (float): How much to tilt the camera when a player shoots this firing mode.
@@ -516,6 +517,7 @@ Each object in the ammo file is the linkage name for it, and they can contain th
   - means (string): Sets the means of damage on the weapon.
   - splashmeans (string): Sets the splash means of damage on the weapon.
   - damage (complexAmmoInteger): Overrides the damage done.
+  - armorPiercing (complexAmmoFloat): Overrides the % of armor ignored by this weapon.
   - projectiles (complexAmmoInteger): Overrides the projectile count.
   - splashRange (complexAmmoFloat): Overrides the splash radius.
   - collisionSize (complexAmmoFloat): Overrides the projectile size.
