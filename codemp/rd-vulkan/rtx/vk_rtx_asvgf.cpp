@@ -129,10 +129,10 @@ VkResult vkpt_asvgf_gradient_reproject( VkCommandBuffer cmd_buf )
 		(glConfig.vidHeight + group_size_pixels - 1) / group_size_pixels,
 		1 );
 
-	const int offset = ( idx * RTX_IMG_NUM_A_B );
+	int frame_idx = idx;
 
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_ASVGF_RNG_SEED_A + offset] );
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_ASVGF_GRAD_SMPL_POS_A + offset] ); 
+	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_ASVGF_RNG_SEED_A + frame_idx] );
+	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_ASVGF_GRAD_SMPL_POS_A + frame_idx] ); 
 
 	return VK_SUCCESS;
 }
@@ -209,14 +209,14 @@ VkResult vkpt_asvgf_filter( VkCommandBuffer cmd_buf, qboolean enable_lf )
 			(vk.extent_render.height + 14) / 15,
 			1 );
 
-	const int offset = ( idx * RTX_IMG_NUM_A_B );
+	int frame_idx = idx;
 
 	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_ASVGF_ATROUS_PING_LF_SH] );
 	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_ASVGF_ATROUS_PING_LF_COCG] );
 	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_ASVGF_ATROUS_PING_HF] );
 	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_ASVGF_ATROUS_PING_MOMENTS] );
 
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_ASVGF_FILTERED_SPEC_A + offset] );
+	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_ASVGF_FILTERED_SPEC_A + frame_idx] );
 	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_ASVGF_HIST_MOMENTS_HF_A] );
 	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_ASVGF_HIST_MOMENTS_HF_B] ); // B aka prev
 

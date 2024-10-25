@@ -418,21 +418,6 @@ static void vk_rtx_create_images( const char *name, uint32_t index, uint32_t wid
 {
 	vk_rtx_create_image( name, &vk.rtx_images[index], width, height, format, IMG_FLAGS, 1);
 
-	qboolean linear = qfalse;
-
-	switch ( index )
-	{
-		case RTX_IMG_ASVGF_TAA_A:
-		case RTX_IMG_ASVGF_TAA_B:
-		case RTX_IMG_TAA_OUTPUT:
-			linear = qtrue; break;
-	}
-
-	if ( linear )
-		vk_rtx_create_sampler( &vk.rtx_images[index], VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT );
-	else 
-		vk_rtx_create_sampler( &vk.rtx_images[index], VK_FILTER_NEAREST, VK_FILTER_NEAREST, VK_SAMPLER_MIPMAP_MODE_NEAREST, VK_SAMPLER_ADDRESS_MODE_REPEAT );
-
 	vk_rtx_record_image_layout_transition( &vk.rtx_images[index], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL );
 	VK_SET_OBJECT_NAME( vk.rtx_images[index].handle,	name,	VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT );
 	VK_SET_OBJECT_NAME( vk.rtx_images[index].view,		name,	VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT );
@@ -441,16 +426,227 @@ static void vk_rtx_create_images( const char *name, uint32_t index, uint32_t wid
 
 void vk_rtx_create_images( void ) 
 {
+	// create image
 	#define IMG_DO( _handle, _binding, _format, _glsl_format, _w, _h ) \
 		vk_rtx_create_images( #_handle, RTX_IMG_##_handle, _w, _h, VK_FORMAT_##_format );
 		LIST_IMAGES
-	#undef IMG_DO
-
-	#define IMG_DO( _handle, _binding, _format, _glsl_format, _w, _h ) \
-		vk_rtx_create_images( #_handle, RTX_IMG_##_handle##_A, _w, _h, VK_FORMAT_##_format ); \
-		vk_rtx_create_images( #_handle, RTX_IMG_##_handle##_B, _w, _h, VK_FORMAT_##_format );
 		LIST_IMAGES_A_B
 	#undef IMG_DO
+
+	// bind sampler
+	#define IMG_DO( _handle, _binding, _format, _glsl_format, _w, _h ) \
+		vk.rtx_images[RTX_IMG_##_handle].sampler = vk.tex_sampler_nearest;
+		LIST_IMAGES
+		LIST_IMAGES_A_B
+	#undef IMG_DO
+
+	vk.rtx_images[RTX_IMG_ASVGF_TAA_A].sampler = vk.tex_sampler;
+	vk.rtx_images[RTX_IMG_ASVGF_TAA_B].sampler = vk.tex_sampler;
+	vk.rtx_images[RTX_IMG_TAA_OUTPUT].sampler = vk.tex_sampler;
+}
+
+void vk_rtx_initialize_images( void ) 
+{
+	VkSamplerCreateInfo sampler_info;
+	Com_Memset( &sampler_info, 0, sizeof(VkSamplerCreateInfo) );
+	sampler_info.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	sampler_info.magFilter               = VK_FILTER_LINEAR;
+	sampler_info.minFilter               = VK_FILTER_LINEAR;
+	sampler_info.addressModeU            = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	sampler_info.addressModeV            = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	sampler_info.addressModeW            = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	sampler_info.anisotropyEnable        = VK_TRUE;
+	sampler_info.maxAnisotropy           = 16;
+	sampler_info.borderColor             = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+	sampler_info.unnormalizedCoordinates = VK_FALSE;
+	sampler_info.mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	sampler_info.minLod                  = 0.0f;
+	sampler_info.maxLod                  = 128.0f;
+	VK_CHECK( qvkCreateSampler( vk.device, &sampler_info, NULL, &vk.tex_sampler ) );
+
+	VkSamplerCreateInfo sampler_nearest_info;
+	Com_Memset( &sampler_nearest_info, 0, sizeof(VkSamplerCreateInfo) );
+	sampler_nearest_info.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	sampler_nearest_info.magFilter               = VK_FILTER_NEAREST;
+	sampler_nearest_info.minFilter               = VK_FILTER_NEAREST;
+	sampler_nearest_info.addressModeU            = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	sampler_nearest_info.addressModeV            = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	sampler_nearest_info.addressModeW            = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	sampler_nearest_info.anisotropyEnable        = VK_FALSE;
+	sampler_nearest_info.maxAnisotropy           = 16;
+	sampler_nearest_info.borderColor             = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+	sampler_nearest_info.unnormalizedCoordinates = VK_FALSE;
+	sampler_nearest_info.mipmapMode              = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+	VK_CHECK( qvkCreateSampler( vk.device, &sampler_nearest_info, NULL, &vk.tex_sampler_nearest ) );
+
+	VkSamplerCreateInfo sampler_nearest_mipmap_aniso_info;
+	Com_Memset( &sampler_nearest_mipmap_aniso_info, 0, sizeof(VkSamplerCreateInfo) );
+	sampler_nearest_mipmap_aniso_info.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	sampler_nearest_mipmap_aniso_info.magFilter               = VK_FILTER_NEAREST;
+	sampler_nearest_mipmap_aniso_info.minFilter               = VK_FILTER_LINEAR;
+	sampler_nearest_mipmap_aniso_info.addressModeU            = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	sampler_nearest_mipmap_aniso_info.addressModeV            = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	sampler_nearest_mipmap_aniso_info.addressModeW            = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	sampler_nearest_mipmap_aniso_info.anisotropyEnable        = VK_TRUE;
+	sampler_nearest_mipmap_aniso_info.maxAnisotropy           = 16;
+	sampler_nearest_mipmap_aniso_info.borderColor             = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+	sampler_nearest_mipmap_aniso_info.unnormalizedCoordinates = VK_FALSE;
+	sampler_nearest_mipmap_aniso_info.mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	sampler_nearest_mipmap_aniso_info.minLod                  = 0.0f;
+	sampler_nearest_mipmap_aniso_info.maxLod                  = 128.0f;
+	VK_CHECK( qvkCreateSampler( vk.device, &sampler_nearest_mipmap_aniso_info, NULL, &vk.tex_sampler_nearest_mipmap_aniso ) );
+
+	VkSamplerCreateInfo sampler_linear_clamp_info;
+	Com_Memset( &sampler_linear_clamp_info, 0, sizeof(VkSamplerCreateInfo) );
+	sampler_linear_clamp_info.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	sampler_linear_clamp_info.magFilter               = VK_FILTER_LINEAR;
+	sampler_linear_clamp_info.minFilter               = VK_FILTER_LINEAR;
+	sampler_linear_clamp_info.addressModeU            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	sampler_linear_clamp_info.addressModeV            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	sampler_linear_clamp_info.addressModeW            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	sampler_linear_clamp_info.anisotropyEnable        = VK_FALSE;
+	sampler_linear_clamp_info.maxAnisotropy           = 16;
+	sampler_linear_clamp_info.borderColor             = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+	sampler_linear_clamp_info.unnormalizedCoordinates = VK_FALSE;
+	sampler_linear_clamp_info.mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	VK_CHECK( qvkCreateSampler( vk.device, &sampler_linear_clamp_info, NULL, &vk.tex_sampler_linear_clamp ) );
+
+	VkDescriptorSetLayoutBinding layout_bindings[151];
+	Com_Memset( &layout_bindings, 0, sizeof(VkDescriptorSetLayoutBinding) * 151 );
+
+	int bindings = 0;
+
+	layout_bindings[bindings].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	layout_bindings[bindings].descriptorCount = MAX_RIMAGES;
+	layout_bindings[bindings].binding         = 0;
+	layout_bindings[bindings].stageFlags      = VK_SHADER_STAGE_ALL;
+	bindings++;
+
+#define IMG_DO(_name, _binding, ...) \
+		layout_bindings[1].descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE; \
+		layout_bindings[1].descriptorCount = 1; \
+		layout_bindings[1].binding         = BINDING_OFFSET_IMAGES + _binding; \
+		layout_bindings[1].stageFlags      = VK_SHADER_STAGE_ALL; \
+		bindings++;
+	LIST_IMAGES
+	LIST_IMAGES_A_B
+#undef IMG_DO
+#define IMG_DO(_name, _binding, ...) \
+		layout_bindings[bindings] .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; \
+		layout_bindings[bindings] .descriptorCount = 1; \
+		layout_bindings[bindings] .binding         = BINDING_OFFSET_TEXTURES + _binding; \
+		layout_bindings[bindings] .stageFlags      = VK_SHADER_STAGE_ALL; \
+		bindings++;
+	LIST_IMAGES
+	LIST_IMAGES_A_B
+#undef IMG_DO
+
+	layout_bindings[bindings].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	layout_bindings[bindings].descriptorCount = 1;
+	layout_bindings[bindings].binding         = BINDING_OFFSET_BLUE_NOISE;
+	layout_bindings[bindings].stageFlags      = VK_SHADER_STAGE_ALL;
+	bindings++;
+
+	layout_bindings[bindings].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	layout_bindings[bindings].descriptorCount = 1;
+	layout_bindings[bindings].binding         = BINDING_OFFSET_ENVMAP;
+	layout_bindings[bindings].stageFlags      = VK_SHADER_STAGE_ALL;
+	bindings++;
+
+    layout_bindings[bindings].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    layout_bindings[bindings].descriptorCount = 1;
+    layout_bindings[bindings].binding = BINDING_OFFSET_PHYSICAL_SKY;
+    layout_bindings[bindings].stageFlags = VK_SHADER_STAGE_ALL;
+	bindings++;
+
+    layout_bindings[bindings].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    layout_bindings[bindings].descriptorCount = 1;
+    layout_bindings[bindings].binding = BINDING_OFFSET_PHYSICAL_SKY_IMG;
+    layout_bindings[bindings].stageFlags = VK_SHADER_STAGE_ALL;
+	bindings++;
+
+	layout_bindings[bindings].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	layout_bindings[bindings].descriptorCount = 1;
+	layout_bindings[bindings].binding = BINDING_OFFSET_SKY_TRANSMITTANCE;
+	layout_bindings[bindings].stageFlags = VK_SHADER_STAGE_ALL;
+	bindings++;
+
+	layout_bindings[bindings].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	layout_bindings[bindings].descriptorCount = 1;
+	layout_bindings[bindings].binding = BINDING_OFFSET_SKY_SCATTERING;
+	layout_bindings[bindings].stageFlags = VK_SHADER_STAGE_ALL;
+	bindings++;
+
+	layout_bindings[bindings].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	layout_bindings[bindings].descriptorCount = 1;
+	layout_bindings[bindings].binding = BINDING_OFFSET_SKY_IRRADIANCE;
+	layout_bindings[bindings].stageFlags = VK_SHADER_STAGE_ALL;
+	bindings++;
+
+	layout_bindings[bindings].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	layout_bindings[bindings].descriptorCount = 1;
+	layout_bindings[bindings].binding = BINDING_OFFSET_SKY_CLOUDS;
+	layout_bindings[bindings].stageFlags = VK_SHADER_STAGE_ALL;
+	bindings++;
+
+	layout_bindings[bindings].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	layout_bindings[bindings].descriptorCount = 1;
+	layout_bindings[bindings].binding = BINDING_OFFSET_TERRAIN_ALBEDO;
+	layout_bindings[bindings].stageFlags = VK_SHADER_STAGE_ALL;
+	bindings++;
+
+	layout_bindings[bindings].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	layout_bindings[bindings].descriptorCount = 1;
+	layout_bindings[bindings].binding = BINDING_OFFSET_TERRAIN_NORMALS;
+	layout_bindings[bindings].stageFlags = VK_SHADER_STAGE_ALL;
+	bindings++;
+
+	layout_bindings[bindings].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	layout_bindings[bindings].descriptorCount = 1;
+	layout_bindings[bindings].binding = BINDING_OFFSET_TERRAIN_DEPTH;
+	layout_bindings[bindings].stageFlags = VK_SHADER_STAGE_ALL;
+	bindings++;
+
+	layout_bindings[bindings].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	layout_bindings[bindings].descriptorCount = 1;
+	layout_bindings[bindings].binding = BINDING_OFFSET_TERRAIN_SHADOWMAP;
+	layout_bindings[bindings].stageFlags = VK_SHADER_STAGE_ALL;
+	bindings++;
+
+	VkDescriptorSetLayoutCreateInfo layout_info;
+	Com_Memset( &layout_info, 0, sizeof(VkDescriptorSetLayoutCreateInfo) );
+	layout_info.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	layout_info.bindingCount = ARRAY_LEN(layout_bindings);
+	layout_info.pBindings    = layout_bindings;
+	VK_CHECK( qvkCreateDescriptorSetLayout( vk.device, &layout_info, NULL, &vk.desc_set_layout_textures ) );
+
+	VkDescriptorPoolSize pool_sizes[2];
+	Com_Memset( &pool_sizes, 0, sizeof(VkDescriptorPoolSize) * 2 );
+	pool_sizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	pool_sizes[0].descriptorCount = VK_MAX_SWAPCHAIN_SIZE * (MAX_RIMAGES + 2 * NUM_VKPT_IMAGES) + 128;
+	pool_sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+	pool_sizes[1].descriptorCount = VK_MAX_SWAPCHAIN_SIZE * MAX_RIMAGES;
+
+	VkDescriptorPoolCreateInfo pool_info;
+	Com_Memset( &pool_info, 0, sizeof(VkDescriptorPoolCreateInfo) );
+	pool_info.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	pool_info.poolSizeCount = ARRAY_LEN(pool_sizes);
+	pool_info.pPoolSizes    = pool_sizes;
+	pool_info.maxSets       = VK_MAX_SWAPCHAIN_SIZE * 2;
+	VK_CHECK( qvkCreateDescriptorPool( vk.device, &pool_info, NULL, &vk.desc_pool_textures ) );
+
+	VkDescriptorSetAllocateInfo descriptor_set_alloc_info;
+	Com_Memset( &descriptor_set_alloc_info, 0, sizeof(VkDescriptorSetAllocateInfo) );
+	descriptor_set_alloc_info.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	descriptor_set_alloc_info.descriptorPool     = vk.desc_pool_textures;
+	descriptor_set_alloc_info.descriptorSetCount = 1;
+	descriptor_set_alloc_info.pSetLayouts        = &vk.desc_set_layout_textures;
+
+	// sunny, these are not used yet, just initialized ..
+	VK_CHECK( qvkAllocateDescriptorSets( vk.device, &descriptor_set_alloc_info, &vk.desc_set_textures_even ) );
+	VK_CHECK( qvkAllocateDescriptorSets( vk.device, &descriptor_set_alloc_info, &vk.desc_set_textures_odd ) );
+
+	vk_rtx_create_blue_noise();
 }
 
 void vk_rtx_destroy_image( vkimage_t *image )

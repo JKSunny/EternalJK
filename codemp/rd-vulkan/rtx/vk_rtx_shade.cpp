@@ -873,9 +873,10 @@ static void vk_rtx_trace_primary_rays( VkCommandBuffer cmd_buf, uint32_t idx )
 
 	END_PERF_MARKER( cmd_buf, PROFILER_PRIMARY_RAYS );
 
-	const int offset = ( idx * RTX_IMG_NUM_A_B );
+	int frame_idx = idx;
 
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_VISBUF_A + offset] );
+	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_VISBUF_A + frame_idx] );
+	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_VISBUF_BARY_A + frame_idx] ); // check this
 	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_TRANSPARENT] );
 	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_MOTION] );
 	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_SHADING_POSITION] );
@@ -883,14 +884,14 @@ static void vk_rtx_trace_primary_rays( VkCommandBuffer cmd_buf, uint32_t idx )
 	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_THROUGHPUT] );
 	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_BOUNCE_THROUGHPUT] );
 	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_GODRAYS_THROUGHPUT_DIST] );
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_BASE_COLOR_A + offset] );
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_METALLIC_A + offset] );
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_CLUSTER_A + offset] );
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_VIEW_DEPTH_A + offset] );
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_NORMAL_A + offset] );
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_ASVGF_RNG_SEED_A + offset] );
+	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_BASE_COLOR_A + frame_idx] );
+	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_METALLIC_A + frame_idx] );
+	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_CLUSTER_A + frame_idx] );
+	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_VIEW_DEPTH_A + frame_idx] );
+	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_NORMAL_A + frame_idx] );
+	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_ASVGF_RNG_SEED_A + frame_idx] );
 #ifdef USE_RTX_INSPECT_TANGENTS
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_TANGENT_A + offset] );
+	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_TANGENT_A + frame_idx] );
 #endif
 }
 
@@ -917,7 +918,7 @@ static void vk_rtx_trace_reflections( VkCommandBuffer cmd_buf, uint32_t idx, int
 
 	vk_rtx_trace_rays( cmd_buf, &vk.rt_pipeline, vk.extent_render.height, shader );
 
-	const int offset = ( idx * RTX_IMG_NUM_A_B );
+	int frame_idx = idx;
 
 	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_TRANSPARENT] );
 	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_MOTION] );
@@ -925,13 +926,13 @@ static void vk_rtx_trace_reflections( VkCommandBuffer cmd_buf, uint32_t idx, int
 	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_VIEW_DIRECTION] );
 	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_THROUGHPUT] );
 	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_GODRAYS_THROUGHPUT_DIST] );
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_BASE_COLOR_A + offset] );
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_METALLIC_A + offset] );
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_CLUSTER_A + offset] );
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_VIEW_DEPTH_A + offset] );
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_NORMAL_A + offset] );
+	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_BASE_COLOR_A + frame_idx] );
+	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_METALLIC_A + frame_idx] );
+	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_CLUSTER_A + frame_idx] );
+	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_VIEW_DEPTH_A + frame_idx] );
+	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_NORMAL_A + frame_idx] );
 #ifdef USE_RTX_INSPECT_TANGENTS
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_TANGENT_A + offset] );
+	//BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_TANGENT_A + frame_idx] );
 #endif
 }
 

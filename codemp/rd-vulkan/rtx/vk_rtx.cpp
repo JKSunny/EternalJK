@@ -238,8 +238,8 @@ void vk_rtx_initialize( void )
 	}
 
 	vk_rtx_reset_accel_offsets();
+	vk_rtx_initialize_images();
 	vk_rtx_create_images();
-	vk_rtx_create_blue_noise();
 	vk_rtx_create_buffers();
 	vk_rtx_create_model_vbo_ibo_descriptor();
 

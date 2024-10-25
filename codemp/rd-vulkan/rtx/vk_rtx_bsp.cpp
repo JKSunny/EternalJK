@@ -722,24 +722,17 @@ static void vk_create_rtx_descriptor( uint32_t index, int prev_index )
 	// storage images and *optional samplers
 	#define IMG_DO( _handle, _binding, ... ) \
 		vk_bind_storage_image(	descriptor, BINDING_OFFSET_IMAGES	+ ##_binding,		VK_SHADER_STAGE_ALL, vk.rtx_images[RTX_IMG_##_handle].view ); \
-		/* next is optional for rtx, rtx and compute descriptors differ, try define guard in glsl::constants.h to not bind sampler and B images */ \
 		vk_bind_sampler(		descriptor, BINDING_OFFSET_TEXTURES + ##_binding,		VK_SHADER_STAGE_ALL, vk.rtx_images[RTX_IMG_##_handle].sampler, vk.rtx_images[RTX_IMG_##_handle].view, VK_IMAGE_LAYOUT_GENERAL );
-		LIST_IMAGES
+		LIST_IMAGES;
+		if ( index )  // odd
+		{
+			LIST_IMAGES_B_A;
+		}
+		else 
+		{
+			LIST_IMAGES_A_B
+		}
 	#undef IMG_DO
-
-	const int offset = ( index * RTX_IMG_NUM_A_B );
-	const int offset_prev = ( prev_index * RTX_IMG_NUM_A_B );
-
-	// A_B
-	#define IMG_DO( _handle, _binding, ... ) \
-		vk_bind_storage_image(	descriptor, BINDING_OFFSET_IMAGES	+ RTX_IMG_##_handle##_A, VK_SHADER_STAGE_ALL, vk.rtx_images[RTX_IMG_##_handle##_A + offset].view );			/* A */ \
-		/* next is *optional for rtx, rtx and compute descriptors differ, try define guard in glsl::constants.h to not bind sampler and B images */ \
-		vk_bind_storage_image(	descriptor, BINDING_OFFSET_IMAGES	+ RTX_IMG_##_handle##_B, VK_SHADER_STAGE_ALL, vk.rtx_images[RTX_IMG_##_handle##_A + offset_prev].view );	/* B */ \
-		vk_bind_sampler(		descriptor, BINDING_OFFSET_TEXTURES + RTX_IMG_##_handle##_A, VK_SHADER_STAGE_ALL, vk.rtx_images[RTX_IMG_##_handle##_A + offset].sampler,		vk.rtx_images[RTX_IMG_##_handle##_A + offset].view,			VK_IMAGE_LAYOUT_GENERAL );	/* A */ \
-		vk_bind_sampler(		descriptor, BINDING_OFFSET_TEXTURES + RTX_IMG_##_handle##_B, VK_SHADER_STAGE_ALL, vk.rtx_images[RTX_IMG_##_handle##_A + offset_prev].sampler,	vk.rtx_images[RTX_IMG_##_handle##_A + offset_prev].view,	VK_IMAGE_LAYOUT_GENERAL );	/* B */
-		LIST_IMAGES_A_B
-	#undef IMG_DO
-
 
 	vk_bind_sampler( descriptor, BINDING_OFFSET_ENVMAP,					(VkShaderStageFlagBits)(VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR), vk.envmap.sampler, vk.envmap.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	vk_bind_sampler( descriptor, BINDING_OFFSET_BLUE_NOISE,				VK_SHADER_STAGE_RAYGEN_BIT_KHR, vk.blue_noise.sampler, vk.blue_noise.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
@@ -824,23 +817,18 @@ static void vk_create_compute_descriptor( uint32_t index, int prev_index )
 	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_CLUSTER_WORLD_DYNAMIC_DATA,		flags, vk.geometry.cluster_world_dynamic_data.buffer);
 	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_CLUSTER_WORLD_DYNAMIC_AS,		flags, vk.geometry.cluster_world_dynamic_as.buffer);
 
-	// storage images and samplers
 	#define IMG_DO( _handle, _binding, ... ) \
 		vk_bind_storage_image(	descriptor, BINDING_OFFSET_IMAGES	+ ##_binding,		VK_SHADER_STAGE_ALL, vk.rtx_images[RTX_IMG_##_handle].view ); \
 		vk_bind_sampler(		descriptor, BINDING_OFFSET_TEXTURES + ##_binding,		VK_SHADER_STAGE_ALL, vk.rtx_images[RTX_IMG_##_handle].sampler, vk.rtx_images[RTX_IMG_##_handle].view, VK_IMAGE_LAYOUT_GENERAL );
-		LIST_IMAGES
-	#undef IMG_DO
-
-	const int offset = ( index * RTX_IMG_NUM_A_B );
-	const int offset_prev = ( prev_index * RTX_IMG_NUM_A_B );
-
-	// A_B
-	#define IMG_DO( _handle, _binding, ... ) \
-		vk_bind_storage_image(	descriptor, BINDING_OFFSET_IMAGES	+ RTX_IMG_##_handle##_A, VK_SHADER_STAGE_ALL, vk.rtx_images[RTX_IMG_##_handle##_A + offset].view );			/* A */ \
-		vk_bind_storage_image(	descriptor, BINDING_OFFSET_IMAGES	+ RTX_IMG_##_handle##_B, VK_SHADER_STAGE_ALL, vk.rtx_images[RTX_IMG_##_handle##_A + offset_prev].view );	/* B */ \
-		vk_bind_sampler(		descriptor, BINDING_OFFSET_TEXTURES + RTX_IMG_##_handle##_A, VK_SHADER_STAGE_ALL, vk.rtx_images[RTX_IMG_##_handle##_A + offset].sampler,			vk.rtx_images[RTX_IMG_##_handle##_A + offset].view,		VK_IMAGE_LAYOUT_GENERAL );	/* A */ \
-		vk_bind_sampler(		descriptor, BINDING_OFFSET_TEXTURES + RTX_IMG_##_handle##_B, VK_SHADER_STAGE_ALL, vk.rtx_images[RTX_IMG_##_handle##_A + offset_prev].sampler,	vk.rtx_images[RTX_IMG_##_handle##_A + offset_prev].view,	VK_IMAGE_LAYOUT_GENERAL );	/* B */
-		LIST_IMAGES_A_B
+		LIST_IMAGES;
+		if ( index )  // odd
+		{
+			LIST_IMAGES_B_A;
+		}
+		else 
+		{
+			LIST_IMAGES_A_B
+		}
 	#undef IMG_DO
 
 	vk_bind_sampler( descriptor, BINDING_OFFSET_BLUE_NOISE,								flags, vk.blue_noise.sampler, vk.blue_noise.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);

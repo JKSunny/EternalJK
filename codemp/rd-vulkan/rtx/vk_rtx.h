@@ -49,6 +49,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define DVIS_PHS    1
 #define DVIS_PVS2   16 // Q2RTX : 2nd order PVS
 
+#define MAX_RIMAGES 2048
+
 // maximum size of a PVS row, in bytes
 #define VIS_MAX_BYTES   ( MAX_MAP_LEAFS >> 3 )
 
@@ -470,6 +472,7 @@ void		vk_rtx_create_image( const char *name, vkimage_t *image, uint32_t width, u
 void		vk_rtx_create_cubemap( vkimage_t *image, uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage, uint32_t mipLevels );
 void		vk_rtx_upload_image_data( vkimage_t *image, uint32_t width, uint32_t height, const uint8_t *pixels, uint32_t bytes_per_pixel, uint32_t mipLevel, uint32_t arrayLayer );
 void		vk_rtx_create_images( void );
+void		vk_rtx_initialize_images( void );
 void		vk_rtx_destroy_image( vkimage_t *image );
 void		vk_rtx_create_blue_noise( void );
 

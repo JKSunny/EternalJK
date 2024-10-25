@@ -22,124 +22,161 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 #include "constants.h"
 
-#define IMG_W		            ( vk.extent_screen_images.width )
-#define IMG_H		            ( vk.extent_screen_images.height )
-#define IMG_W_MGPU              ( vk.extent_screen_images.width / vk.device_count )    
-#define IMG_W_UNSCALED			( vk.extent_unscaled.width )
-#define IMG_H_UNSCALED			( vk.extent_unscaled.height )
+#define IMG_WIDTH		            ( vk.extent_screen_images.width )
+#define IMG_HEIGHT		            ( vk.extent_screen_images.height )
+#define IMG_WIDTH_MGPU              ( vk.extent_screen_images.width / vk.device_count )    
+#define IMG_WIDTH_UNSCALED			( vk.extent_unscaled.width )
+#define IMG_HEIGHT_UNSCALED			( vk.extent_unscaled.height )
 
-#define IMG_W_GRAD	            ( ( vk.extent_screen_images.width	+ GRAD_DWN - 1) / GRAD_DWN )
-#define IMG_H_GRAD	            ( ( vk.extent_screen_images.height	+ GRAD_DWN - 1) / GRAD_DWN )
-#define IMG_W_GRAD_MGPU         ( ( vk.extent_screen_images.width	+ GRAD_DWN - 1) / GRAD_DWN / vk.device_count )    // only rendering from one device
+#define IMG_WIDTH_GRAD	            ( ( vk.extent_screen_images.width	+ GRAD_DWN - 1) / GRAD_DWN )
+#define IMG_HEIGHT_GRAD	            ( ( vk.extent_screen_images.height	+ GRAD_DWN - 1) / GRAD_DWN )
+#define IMG_WIDTH_GRAD_MGPU         ( ( vk.extent_screen_images.width	+ GRAD_DWN - 1) / GRAD_DWN / vk.device_count )    // only rendering from one device
 
-#define IMG_W_TAA				( vk.extent_taa_images.width )
-#define IMG_H_TAA				( vk.extent_taa_images.height )
+#define IMG_WIDTH_TAA				( vk.extent_taa_images.width )
+#define IMG_HEIGHT_TAA				( vk.extent_taa_images.height )
 
 /* These are images that are to be used as render targets and buffers, but not textures. */
 // binding = BINDING_OFFSET_IMAGES + _binding
 #define LIST_IMAGES \
-	IMG_DO( PT_MOTION,						0,	R16G16B16A16_SFLOAT, 	rgba16f,	IMG_W,           IMG_H      ) \
-	IMG_DO( PT_TRANSPARENT,					1,	R16G16B16A16_SFLOAT, 	rgba16f,	IMG_W_MGPU,      IMG_H      ) \
-	IMG_DO( ASVGF_HIST_COLOR_HF,			2,	R32_UINT,            	r32ui,		IMG_W_MGPU,      IMG_H      ) \
-	IMG_DO( ASVGF_ATROUS_PING_LF_SH,		3,	R16G16B16A16_SFLOAT, 	rgba16f,	IMG_W_GRAD_MGPU, IMG_H_GRAD ) \
-	IMG_DO( ASVGF_ATROUS_PONG_LF_SH,		4,	R16G16B16A16_SFLOAT, 	rgba16f,	IMG_W_GRAD_MGPU, IMG_H_GRAD ) \
-	IMG_DO( ASVGF_ATROUS_PING_LF_COCG,  	5,	R16G16_SFLOAT,       	rg16f,		IMG_W_GRAD_MGPU, IMG_H_GRAD ) \
-	IMG_DO( ASVGF_ATROUS_PONG_LF_COCG,  	6,	R16G16_SFLOAT,       	rg16f,		IMG_W_GRAD_MGPU, IMG_H_GRAD ) \
-	IMG_DO( ASVGF_ATROUS_PING_HF,       	7,	R32_UINT,            	r32ui,		IMG_W_MGPU,      IMG_H      ) \
-	IMG_DO( ASVGF_ATROUS_PONG_HF,       	8,	R32_UINT,            	r32ui,		IMG_W_MGPU,      IMG_H      ) \
-	IMG_DO( ASVGF_ATROUS_PING_SPEC,    		9, R32_UINT,            	r32ui,		IMG_W_MGPU,      IMG_H      ) \
-	IMG_DO( ASVGF_ATROUS_PONG_SPEC,    		10, R32_UINT,            	r32ui,		IMG_W_MGPU,      IMG_H      ) \
-	IMG_DO( ASVGF_ATROUS_PING_MOMENTS, 		11, R16G16_SFLOAT,       	rg16f,		IMG_W_MGPU,      IMG_H      ) \
-	IMG_DO( ASVGF_ATROUS_PONG_MOMENTS, 		12, R16G16_SFLOAT,       	rg16f,		IMG_W_MGPU,      IMG_H      ) \
-	IMG_DO( ASVGF_COLOR,               		13, R16G16B16A16_SFLOAT, 	rgba16f,	IMG_W,           IMG_H      ) \
-	IMG_DO( ASVGF_GRAD_LF_PING,        		14, R16G16_SFLOAT,       	rg16f,		IMG_W_GRAD_MGPU, IMG_H_GRAD ) \
-	IMG_DO( ASVGF_GRAD_LF_PONG,        		15, R16G16_SFLOAT,       	rg16f,		IMG_W_GRAD_MGPU, IMG_H_GRAD ) \
-	IMG_DO( ASVGF_GRAD_HF_SPEC_PING,   		16, R16G16_SFLOAT,       	rg16f,		IMG_W_GRAD_MGPU, IMG_H_GRAD ) \
-	IMG_DO( ASVGF_GRAD_HF_SPEC_PONG,   		17, R16G16_SFLOAT,       	rg16f,		IMG_W_GRAD_MGPU, IMG_H_GRAD ) \
-	IMG_DO( PT_SHADING_POSITION,       		18, R32G32B32A32_SFLOAT, 	rgba32f,	IMG_W_MGPU,      IMG_H      ) \
-	IMG_DO( FLAT_COLOR,                		19, R16G16B16A16_SFLOAT, 	rgba16f,	IMG_W,           IMG_H      ) \
-	IMG_DO( FLAT_MOTION,               		20, R16G16B16A16_SFLOAT, 	rgba16f,	IMG_W,           IMG_H      ) \
-	IMG_DO( PT_GODRAYS_THROUGHPUT_DIST,		21, R16G16B16A16_SFLOAT, 	rgba16f,	IMG_W_MGPU,      IMG_H      ) \
-	IMG_DO( BLOOM_DOWNSCALE_MIP_1,     		22, R16G16B16A16_SFLOAT, 	rgba16f,	IMG_W_TAA / 2,   IMG_H_TAA / 2  ) \
-	IMG_DO( BLOOM_HBLUR,               		23, R16G16B16A16_SFLOAT, 	rgba16f,	IMG_W_TAA / 4,   IMG_H_TAA / 4  ) \
-	IMG_DO( BLOOM_VBLUR,               		24, R16G16B16A16_SFLOAT, 	rgba16f,	IMG_W_TAA / 4,   IMG_H_TAA / 4  ) \
-	IMG_DO( TAA_OUTPUT,                		25, R16G16B16A16_SFLOAT, 	rgba16f,	IMG_W_TAA,       IMG_H_TAA  ) \
-	IMG_DO( PT_VIEW_DIRECTION,         		26, R16G16B16A16_SFLOAT, 	rgba16f,	IMG_W_MGPU,      IMG_H      ) \
-	IMG_DO( PT_VIEW_DIRECTION2,        		27, R16G16B16A16_SFLOAT, 	rgba16f,	IMG_W_MGPU,      IMG_H      ) \
-	IMG_DO( PT_THROUGHPUT,             		28, R16G16B16A16_SFLOAT, 	rgba16f,	IMG_W_MGPU,      IMG_H      ) \
-	IMG_DO( PT_BOUNCE_THROUGHPUT,      		29, R16G16B16A16_SFLOAT, 	rgba16f,	IMG_W_MGPU,      IMG_H      ) \
-	IMG_DO( HQ_COLOR_INTERLEAVED,      		30, R32G32B32A32_SFLOAT, 	rgba32f,	IMG_W,           IMG_H      ) \
-	IMG_DO( PT_COLOR_LF_SH,            		31, R16G16B16A16_SFLOAT, 	rgba16f,	IMG_W_MGPU,      IMG_H      ) \
-	IMG_DO( PT_COLOR_LF_COCG,          		32, R16G16_SFLOAT,			rg16f,		IMG_W_MGPU,      IMG_H      ) \
-	IMG_DO( PT_COLOR_HF,               		33, R32_UINT,				r32ui,		IMG_W_MGPU,      IMG_H      ) \
-	IMG_DO( PT_COLOR_SPEC,             		34, R32_UINT,				r32ui,		IMG_W_MGPU,      IMG_H      ) \
-	IMG_DO( PT_GEO_NORMAL2,					35, R32_UINT,				r32ui,		IMG_W_MGPU,      IMG_H      ) \
+	IMG_DO(PT_MOTION,                  0, R16G16B16A16_SFLOAT, rgba16f, IMG_WIDTH,           IMG_HEIGHT     ) \
+	IMG_DO(PT_TRANSPARENT,             1, R16G16B16A16_SFLOAT, rgba16f, IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(ASVGF_HIST_COLOR_HF,        2, R32_UINT,            r32ui,   IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(ASVGF_ATROUS_PING_LF_SH,    3, R16G16B16A16_SFLOAT, rgba16f, IMG_WIDTH_GRAD_MGPU, IMG_HEIGHT_GRAD) \
+	IMG_DO(ASVGF_ATROUS_PONG_LF_SH,    4, R16G16B16A16_SFLOAT, rgba16f, IMG_WIDTH_GRAD_MGPU, IMG_HEIGHT_GRAD) \
+	IMG_DO(ASVGF_ATROUS_PING_LF_COCG,  5, R16G16_SFLOAT,       rg16f,   IMG_WIDTH_GRAD_MGPU, IMG_HEIGHT_GRAD) \
+	IMG_DO(ASVGF_ATROUS_PONG_LF_COCG,  6, R16G16_SFLOAT,       rg16f,   IMG_WIDTH_GRAD_MGPU, IMG_HEIGHT_GRAD) \
+	IMG_DO(ASVGF_ATROUS_PING_HF,       7, R32_UINT,            r32ui,   IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(ASVGF_ATROUS_PONG_HF,       8, R32_UINT,            r32ui,   IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(ASVGF_ATROUS_PING_SPEC,     9, R32_UINT,            r32ui,   IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(ASVGF_ATROUS_PONG_SPEC,    10, R32_UINT,            r32ui,   IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(ASVGF_ATROUS_PING_MOMENTS, 11, R16G16_SFLOAT,       rg16f,   IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(ASVGF_ATROUS_PONG_MOMENTS, 12, R16G16_SFLOAT,       rg16f,   IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(ASVGF_COLOR,               13, R16G16B16A16_SFLOAT, rgba16f, IMG_WIDTH,           IMG_HEIGHT     ) \
+	IMG_DO(ASVGF_GRAD_LF_PING,        14, R16G16_SFLOAT,       rg16f,   IMG_WIDTH_GRAD_MGPU, IMG_HEIGHT_GRAD) \
+	IMG_DO(ASVGF_GRAD_LF_PONG,        15, R16G16_SFLOAT,       rg16f,   IMG_WIDTH_GRAD_MGPU, IMG_HEIGHT_GRAD) \
+	IMG_DO(ASVGF_GRAD_HF_SPEC_PING,   16, R16G16_SFLOAT,       rg16f,   IMG_WIDTH_GRAD_MGPU, IMG_HEIGHT_GRAD) \
+	IMG_DO(ASVGF_GRAD_HF_SPEC_PONG,   17, R16G16_SFLOAT,       rg16f,   IMG_WIDTH_GRAD_MGPU, IMG_HEIGHT_GRAD) \
+	IMG_DO(PT_SHADING_POSITION,       18, R32G32B32A32_SFLOAT, rgba32f, IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(FLAT_COLOR,                19, R16G16B16A16_SFLOAT, rgba16f, IMG_WIDTH,           IMG_HEIGHT     ) \
+	IMG_DO(FLAT_MOTION,               20, R16G16B16A16_SFLOAT, rgba16f, IMG_WIDTH,           IMG_HEIGHT     ) \
+	IMG_DO(PT_GODRAYS_THROUGHPUT_DIST,21, R16G16B16A16_SFLOAT, rgba16f, IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(BLOOM_HBLUR,               22, R16G16B16A16_SFLOAT, rgba16f, IMG_WIDTH_TAA / 4,   IMG_HEIGHT_TAA / 4 ) \
+	IMG_DO(BLOOM_VBLUR,               23, R16G16B16A16_SFLOAT, rgba16f, IMG_WIDTH_TAA / 4,   IMG_HEIGHT_TAA / 4 ) \
+	IMG_DO(TAA_OUTPUT,                24, R16G16B16A16_SFLOAT, rgba16f, IMG_WIDTH_TAA,       IMG_HEIGHT_TAA ) \
+	IMG_DO(PT_VIEW_DIRECTION,         25, R16G16B16A16_SFLOAT, rgba16f, IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(PT_VIEW_DIRECTION2,        26, R16G16B16A16_SFLOAT, rgba16f, IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(PT_THROUGHPUT,             27, R16G16B16A16_SFLOAT, rgba16f, IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(PT_BOUNCE_THROUGHPUT,      28, R16G16B16A16_SFLOAT, rgba16f, IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(HQ_COLOR_INTERLEAVED,      29, R32G32B32A32_SFLOAT, rgba32f, IMG_WIDTH,           IMG_HEIGHT     ) \
+	IMG_DO(PT_COLOR_LF_SH,            30, R16G16B16A16_SFLOAT, rgba16f, IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(PT_COLOR_LF_COCG,          31, R16G16_SFLOAT,       rg16f,   IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(PT_COLOR_HF,               32, R32_UINT,            r32ui,   IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(PT_COLOR_SPEC,             33, R32_UINT,            r32ui,   IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(PT_GEO_NORMAL2,            34, R32_UINT,            r32ui,   IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(FSR_EASU_OUTPUT,           35, R16G16B16A16_SFLOAT, rgba16f, IMG_WIDTH,           IMG_HEIGHT     ) \
+	IMG_DO(FSR_RCAS_OUTPUT,           36, R16G16B16A16_SFLOAT, rgba16f, IMG_WIDTH,           IMG_HEIGHT     ) \
 
-#define RTX_IMG_NUM_STATIC 36
-
-// binding (A) = BINDING_OFFSET_IMAGES + RTX_IMG_NUM_STATIC + _binding
-// binding (B) = BINDING_OFFSET_IMAGES + RTX_IMG_NUM_STATIC + _binding + RTX_IMG_NUM_A_B
-//#ifdef USE_RTX_INSPECT_TANGENTS
-// if this isnt used, PT_TANGENT can be removed
-//#endif
+#define RTX_IMG_NUM_STATIC 37
 
 #define LIST_IMAGES_A_B \
-	IMG_DO( PT_VISBUF,						0,	R32G32B32A32_SFLOAT,	rgba32f,	IMG_W_MGPU,      IMG_H ) \
-	IMG_DO( PT_CLUSTER,				        1,	R16_UINT,				r16ui,		IMG_W_MGPU,      IMG_H ) \
-	IMG_DO( PT_BASE_COLOR,					2,	R16G16B16A16_SFLOAT, 	rgba16f,	IMG_W_MGPU,      IMG_H      ) \
-	IMG_DO( PT_METALLIC,					3,	R8G8_UNORM,				rg8,		IMG_W_MGPU,      IMG_H   ) \
-	IMG_DO( PT_VIEW_DEPTH,					4,	R16_SFLOAT,				r32f,		IMG_W,			 IMG_H   ) \
-	IMG_DO( PT_NORMAL,				        5,	R32_UINT,				r32ui,		IMG_W_MGPU,      IMG_H ) \
-	IMG_DO( PT_GEO_NORMAL,				    6,	R32_UINT,				r32ui,		IMG_W_MGPU,      IMG_H ) \
-    IMG_DO( ASVGF_FILTERED_SPEC,            7,	R16G16B16A16_SFLOAT,	rgba16f,	IMG_W_MGPU,      IMG_H ) \
-	IMG_DO( ASVGF_HIST_MOMENTS_HF,          8,	R16G16B16A16_SFLOAT,	rgba16f,	IMG_W_MGPU,      IMG_H ) \
-	IMG_DO( ASVGF_TAA,                      9,	R16G16B16A16_SFLOAT,	rgba16f,	IMG_W_TAA,       IMG_H_TAA ) \
-	IMG_DO( ASVGF_RNG_SEED,                 10,	R32_UINT,				r32ui ,		IMG_W,           IMG_H  ) \
-	IMG_DO( ASVGF_HIST_COLOR_LF_SH,         11,	R16G16B16A16_SFLOAT,	rgba16f,	IMG_W_MGPU,      IMG_H ) \
-	IMG_DO( ASVGF_HIST_COLOR_LF_COCG,       12,	R16G16_SFLOAT,			rg16f,		IMG_W_MGPU,      IMG_H   ) \
-	IMG_DO( ASVGF_GRAD_SMPL_POS,			13,	R32_UINT,			    r32ui,		IMG_W_GRAD_MGPU, IMG_H_GRAD   ) \
-	IMG_DO( PT_TANGENT,				        14,	R32_UINT,				r32ui,		IMG_W_MGPU,      IMG_H ) \
+	IMG_DO( PT_VISBUF_B,			  RTX_IMG_NUM_STATIC + 0,  R32G32B32A32_SFLOAT,	rgba32f, IMG_WIDTH_MGPU,      IMG_HEIGHT ) \
+	IMG_DO( PT_VISBUF_A,			  RTX_IMG_NUM_STATIC + 1,  R32G32B32A32_SFLOAT,	rgba32f, IMG_WIDTH_MGPU,      IMG_HEIGHT ) \
+	/*IMG_DO(PT_VISBUF_PRIM_A,          RTX_IMG_NUM_STATIC + 0,  R32G32_UINT,         rg32ui,  IMG_WIDTH_MGPU,      IMG_HEIGHT     )*/ \
+	/*IMG_DO(PT_VISBUF_PRIM_B,          RTX_IMG_NUM_STATIC + 1,  R32G32_UINT,         rg32ui,  IMG_WIDTH_MGPU,      IMG_HEIGHT     )*/ \
+	IMG_DO(PT_VISBUF_BARY_A,          RTX_IMG_NUM_STATIC + 2,  R16G16_SFLOAT,       rg16f,   IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(PT_VISBUF_BARY_B,          RTX_IMG_NUM_STATIC + 3,  R16G16_SFLOAT,       rg16f,   IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(PT_CLUSTER_A,              RTX_IMG_NUM_STATIC + 4,  R16_UINT,            r16ui,   IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(PT_CLUSTER_B,              RTX_IMG_NUM_STATIC + 5,  R16_UINT,            r16ui,   IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(PT_BASE_COLOR_A,           RTX_IMG_NUM_STATIC + 6,  R16G16B16A16_SFLOAT, rgba16f, IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(PT_BASE_COLOR_B,           RTX_IMG_NUM_STATIC + 7,  R16G16B16A16_SFLOAT, rgba16f, IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(PT_METALLIC_A,             RTX_IMG_NUM_STATIC + 8,  R8G8_UNORM,          rg8,     IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(PT_METALLIC_B,             RTX_IMG_NUM_STATIC + 9,  R8G8_UNORM,          rg8,     IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(PT_VIEW_DEPTH_A,           RTX_IMG_NUM_STATIC + 10, R16_SFLOAT,          r32f,    IMG_WIDTH,           IMG_HEIGHT     ) \
+	IMG_DO(PT_VIEW_DEPTH_B,           RTX_IMG_NUM_STATIC + 11, R16_SFLOAT,          r32f,    IMG_WIDTH,           IMG_HEIGHT     ) \
+	IMG_DO(PT_NORMAL_A,               RTX_IMG_NUM_STATIC + 12, R32_UINT,            r32ui,   IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(PT_NORMAL_B,               RTX_IMG_NUM_STATIC + 13, R32_UINT,            r32ui,   IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(PT_GEO_NORMAL_A,           RTX_IMG_NUM_STATIC + 14, R32_UINT,            r32ui,   IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(PT_GEO_NORMAL_B,           RTX_IMG_NUM_STATIC + 15, R32_UINT,            r32ui,   IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(ASVGF_FILTERED_SPEC_A,     RTX_IMG_NUM_STATIC + 16, R16G16B16A16_SFLOAT, rgba16f, IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(ASVGF_FILTERED_SPEC_B,     RTX_IMG_NUM_STATIC + 17, R16G16B16A16_SFLOAT, rgba16f, IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(ASVGF_HIST_MOMENTS_HF_A,   RTX_IMG_NUM_STATIC + 18, R16G16B16A16_SFLOAT, rgba16f, IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(ASVGF_HIST_MOMENTS_HF_B,   RTX_IMG_NUM_STATIC + 19, R16G16B16A16_SFLOAT, rgba16f, IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(ASVGF_TAA_A,               RTX_IMG_NUM_STATIC + 20, R16G16B16A16_SFLOAT, rgba16f, IMG_WIDTH_TAA,       IMG_HEIGHT_TAA ) \
+	IMG_DO(ASVGF_TAA_B,               RTX_IMG_NUM_STATIC + 21, R16G16B16A16_SFLOAT, rgba16f, IMG_WIDTH_TAA,       IMG_HEIGHT_TAA ) \
+	IMG_DO(ASVGF_RNG_SEED_A,          RTX_IMG_NUM_STATIC + 22, R32_UINT,            r32ui,   IMG_WIDTH,           IMG_HEIGHT     ) \
+	IMG_DO(ASVGF_RNG_SEED_B,          RTX_IMG_NUM_STATIC + 23, R32_UINT,            r32ui,   IMG_WIDTH,           IMG_HEIGHT     ) \
+	IMG_DO(ASVGF_HIST_COLOR_LF_SH_A,  RTX_IMG_NUM_STATIC + 24, R16G16B16A16_SFLOAT, rgba16f, IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(ASVGF_HIST_COLOR_LF_SH_B,  RTX_IMG_NUM_STATIC + 25, R16G16B16A16_SFLOAT, rgba16f, IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(ASVGF_HIST_COLOR_LF_COCG_A,RTX_IMG_NUM_STATIC + 26, R16G16_SFLOAT,       rg16f,   IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(ASVGF_HIST_COLOR_LF_COCG_B,RTX_IMG_NUM_STATIC + 27, R16G16_SFLOAT,       rg16f,   IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(ASVGF_GRAD_SMPL_POS_A,     RTX_IMG_NUM_STATIC + 28, R32_UINT,            r32ui,   IMG_WIDTH_GRAD_MGPU, IMG_HEIGHT_GRAD) \
+	IMG_DO(ASVGF_GRAD_SMPL_POS_B,     RTX_IMG_NUM_STATIC + 29, R32_UINT,            r32ui,   IMG_WIDTH_GRAD_MGPU, IMG_HEIGHT_GRAD) \
+	IMG_DO( PT_TANGENT_A,			  RTX_IMG_NUM_STATIC + 30, R32_UINT,			r32ui,	 IMG_WIDTH_MGPU,      IMG_HEIGHT ) \
+	IMG_DO( PT_TANGENT_B,			  RTX_IMG_NUM_STATIC + 31, R32_UINT,			r32ui,	 IMG_WIDTH_MGPU,      IMG_HEIGHT ) \
 
-#define RTX_IMG_NUM_A_B 15
+#define LIST_IMAGES_B_A \
+	/*IMG_DO(PT_VISBUF_PRIM_B,          RTX_IMG_NUM_STATIC + 0,  R32G32_UINT,         rg32ui,  IMG_WIDTH_MGPU,      IMG_HEIGHT     )*/ \
+	/*IMG_DO(PT_VISBUF_PRIM_A,          RTX_IMG_NUM_STATIC + 1,  R32G32_UINT,         rg32ui,  IMG_WIDTH_MGPU,      IMG_HEIGHT     )*/ \
+	IMG_DO( PT_VISBUF_B,			  RTX_IMG_NUM_STATIC + 0,  R32G32B32A32_SFLOAT,	rgba32f, IMG_WIDTH_MGPU,      IMG_HEIGHT ) \
+	IMG_DO( PT_VISBUF_A,			  RTX_IMG_NUM_STATIC + 1,  R32G32B32A32_SFLOAT,	rgba32f, IMG_WIDTH_MGPU,      IMG_HEIGHT ) \
+	IMG_DO(PT_VISBUF_BARY_B,          RTX_IMG_NUM_STATIC + 2,  R16G16_SFLOAT,       rg16f,   IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(PT_VISBUF_BARY_A,          RTX_IMG_NUM_STATIC + 3,  R16G16_SFLOAT,       rg16f,   IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(PT_CLUSTER_B,              RTX_IMG_NUM_STATIC + 4,  R16_UINT,            r16ui,   IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(PT_CLUSTER_A,              RTX_IMG_NUM_STATIC + 5,  R16_UINT,            r16ui,   IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(PT_BASE_COLOR_B,           RTX_IMG_NUM_STATIC + 6,  R16G16B16A16_SFLOAT, rgba16f, IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(PT_BASE_COLOR_A,           RTX_IMG_NUM_STATIC + 7,  R16G16B16A16_SFLOAT, rgba16f, IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(PT_METALLIC_B,             RTX_IMG_NUM_STATIC + 8,  R8G8_UNORM,          rg8,     IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(PT_METALLIC_A,             RTX_IMG_NUM_STATIC + 9,  R8G8_UNORM,          rg8,     IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(PT_VIEW_DEPTH_B,           RTX_IMG_NUM_STATIC + 10, R16_SFLOAT,          r32f,    IMG_WIDTH,           IMG_HEIGHT     ) \
+	IMG_DO(PT_VIEW_DEPTH_A,           RTX_IMG_NUM_STATIC + 11, R16_SFLOAT,          r32f,    IMG_WIDTH,           IMG_HEIGHT     ) \
+	IMG_DO(PT_NORMAL_B,               RTX_IMG_NUM_STATIC + 12, R32_UINT,            r32ui,   IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(PT_NORMAL_A,               RTX_IMG_NUM_STATIC + 13, R32_UINT,            r32ui,   IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(PT_GEO_NORMAL_B,           RTX_IMG_NUM_STATIC + 14, R32_UINT,            r32ui,   IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(PT_GEO_NORMAL_A,           RTX_IMG_NUM_STATIC + 15, R32_UINT,            r32ui,   IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(ASVGF_FILTERED_SPEC_B,     RTX_IMG_NUM_STATIC + 16, R16G16B16A16_SFLOAT, rgba16f, IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(ASVGF_FILTERED_SPEC_A,     RTX_IMG_NUM_STATIC + 17, R16G16B16A16_SFLOAT, rgba16f, IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(ASVGF_HIST_MOMENTS_HF_B,   RTX_IMG_NUM_STATIC + 18, R16G16B16A16_SFLOAT, rgba16f, IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(ASVGF_HIST_MOMENTS_HF_A,   RTX_IMG_NUM_STATIC + 19, R16G16B16A16_SFLOAT, rgba16f, IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(ASVGF_TAA_B,               RTX_IMG_NUM_STATIC + 20, R16G16B16A16_SFLOAT, rgba16f, IMG_WIDTH_TAA,       IMG_HEIGHT_TAA ) \
+	IMG_DO(ASVGF_TAA_A,               RTX_IMG_NUM_STATIC + 21, R16G16B16A16_SFLOAT, rgba16f, IMG_WIDTH_TAA,       IMG_HEIGHT_TAA ) \
+	IMG_DO(ASVGF_RNG_SEED_B,          RTX_IMG_NUM_STATIC + 22, R32_UINT,            r32ui,   IMG_WIDTH,           IMG_HEIGHT     ) \
+	IMG_DO(ASVGF_RNG_SEED_A,          RTX_IMG_NUM_STATIC + 23, R32_UINT,            r32ui,   IMG_WIDTH,           IMG_HEIGHT     ) \
+	IMG_DO(ASVGF_HIST_COLOR_LF_SH_B,  RTX_IMG_NUM_STATIC + 24, R16G16B16A16_SFLOAT, rgba16f, IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(ASVGF_HIST_COLOR_LF_SH_A,  RTX_IMG_NUM_STATIC + 25, R16G16B16A16_SFLOAT, rgba16f, IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(ASVGF_HIST_COLOR_LF_COCG_B,RTX_IMG_NUM_STATIC + 26, R16G16_SFLOAT,       rg16f,   IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(ASVGF_HIST_COLOR_LF_COCG_A,RTX_IMG_NUM_STATIC + 27, R16G16_SFLOAT,       rg16f,   IMG_WIDTH_MGPU,      IMG_HEIGHT     ) \
+	IMG_DO(ASVGF_GRAD_SMPL_POS_B,     RTX_IMG_NUM_STATIC + 28, R32_UINT,            r32ui,   IMG_WIDTH_GRAD_MGPU, IMG_HEIGHT_GRAD) \
+	IMG_DO(ASVGF_GRAD_SMPL_POS_A,     RTX_IMG_NUM_STATIC + 29, R32_UINT,            r32ui,   IMG_WIDTH_GRAD_MGPU, IMG_HEIGHT_GRAD) \
+	IMG_DO( PT_TANGENT_B,			  RTX_IMG_NUM_STATIC + 30, R32_UINT,			r32ui,	 IMG_WIDTH_MGPU,      IMG_HEIGHT ) \
+	IMG_DO( PT_TANGENT_A,			  RTX_IMG_NUM_STATIC + 31, R32_UINT,			r32ui,	 IMG_WIDTH_MGPU,      IMG_HEIGHT ) \
 
-#if 1
-#define NUM_RTX_IMAGES RTX_IMG_NUM_STATIC + ( RTX_IMG_NUM_A_B * 2 )
-//#define NUM_RTX_IMAGES 63  /* this really sucks but I don't know how to fix it
-//                         counting with enum does not work in GLSL */
-#else	
-// jank ;)
-#define IMG_DO( _handle, _binding, _format, _glsl_format, _w, _h ) + 1
-const int           define_num_images = ( 0 LIST_IMAGES + ( ( 0 LIST_IMAGES_A_B ) * 2 ) );
-#define NUM_RTX_IMAGES  define_num_images
-#undef IMG_DO
-#endif
+#define NUM_RTX_IMAGES (RTX_IMG_NUM_STATIC + 32 ) /* this really sucks but I don't know how to fix it
+													 counting with enum does not work in GLSL */
 
-#define BINDING_OFFSET_IMAGES				NUM_BUFFERS											// storage
-#define BINDING_OFFSET_TEXTURES				( BINDING_OFFSET_IMAGES				+ NUM_RTX_IMAGES )  // sampler
-#define BINDING_OFFSET_PHYSICAL_SKY			( BINDING_OFFSET_TEXTURES			+ NUM_RTX_IMAGES )
-#define BINDING_OFFSET_PHYSICAL_SKY_IMG		( BINDING_OFFSET_PHYSICAL_SKY		+ 1 )
-#define BINDING_OFFSET_SKY_TRANSMITTANCE	( BINDING_OFFSET_PHYSICAL_SKY_IMG	+ 1 )
-#define BINDING_OFFSET_SKY_SCATTERING		( BINDING_OFFSET_SKY_TRANSMITTANCE	+ 1 )
-#define BINDING_OFFSET_SKY_IRRADIANCE		( BINDING_OFFSET_SKY_SCATTERING		+ 1 )
-#define BINDING_OFFSET_SKY_CLOUDS			( BINDING_OFFSET_SKY_IRRADIANCE		+ 1 )
-#define BINDING_OFFSET_TERRAIN_ALBEDO		( BINDING_OFFSET_SKY_CLOUDS			+ 1 )
-#define BINDING_OFFSET_TERRAIN_NORMALS		( BINDING_OFFSET_TERRAIN_ALBEDO		+ 1 )
-#define BINDING_OFFSET_TERRAIN_DEPTH		( BINDING_OFFSET_TERRAIN_NORMALS	+ 1 )
-#define BINDING_OFFSET_TERRAIN_SHADOWMAP	( BINDING_OFFSET_TERRAIN_DEPTH		+ 1 )
-
-#define NUM_PHYSICAL_SKY_IMAGES 10
+#define BINDING_OFFSET_IMAGES				NUM_BUFFERS //1 //(1 + GLOBAL_TEXTURES_TEX_ARR_BINDING_IDX)
+#define BINDING_OFFSET_TEXTURES				(BINDING_OFFSET_IMAGES				+ NUM_RTX_IMAGES)
+//#define BINDING_OFFSET_BLUE_NOISE			(BINDING_OFFSET_TEXTURES			+ NUM_RTX_IMAGES)
+//#define BINDING_OFFSET_ENVMAP				(BINDING_OFFSET_BLUE_NOISE			+ 1)
+#define BINDING_OFFSET_PHYSICAL_SKY			(BINDING_OFFSET_TEXTURES			+ NUM_RTX_IMAGES)
+#define BINDING_OFFSET_PHYSICAL_SKY_IMG		(BINDING_OFFSET_PHYSICAL_SKY		+ 1)
+#define BINDING_OFFSET_SKY_TRANSMITTANCE	(BINDING_OFFSET_PHYSICAL_SKY_IMG	+ 1)
+#define BINDING_OFFSET_SKY_SCATTERING		(BINDING_OFFSET_SKY_TRANSMITTANCE	+ 1)
+#define BINDING_OFFSET_SKY_IRRADIANCE		(BINDING_OFFSET_SKY_SCATTERING		+ 1)
+#define BINDING_OFFSET_SKY_CLOUDS			(BINDING_OFFSET_SKY_IRRADIANCE		+ 1)
+#define BINDING_OFFSET_TERRAIN_ALBEDO		(BINDING_OFFSET_SKY_CLOUDS			+ 1)
+#define BINDING_OFFSET_TERRAIN_NORMALS		(BINDING_OFFSET_TERRAIN_ALBEDO		+ 1)
+#define BINDING_OFFSET_TERRAIN_DEPTH		(BINDING_OFFSET_TERRAIN_NORMALS		+ 1)
+#define BINDING_OFFSET_TERRAIN_SHADOWMAP	(BINDING_OFFSET_TERRAIN_DEPTH		+ 1)
+#define NUM_PHYSICAL_SKY_IMAGES				10
 
 #ifndef GLSL
 enum VK_RTX_IMAGES {
-#define IMG_DO(_handle, ...) RTX_IMG_##_handle,
-    LIST_IMAGES
+#define IMG_DO(_name, ...) \
+	RTX_IMG_##_name,
+	LIST_IMAGES
+	LIST_IMAGES_A_B
 #undef IMG_DO
-#define IMG_DO(_handle, ...) RTX_IMG_##_handle##_A,
-    LIST_IMAGES_A_B
-#undef IMG_DO
-#define IMG_DO(_handle, ...) RTX_IMG_##_handle##_B,
-    LIST_IMAGES_A_B
-#undef IMG_DO
+	NUM_VKPT_IMAGES
 };
 #endif
 
@@ -170,22 +207,20 @@ enum VK_RTX_IMAGES {
 #define IMAGE_r8      image2D
 #define IMAGE_rg8     image2D
 
-// storage images and sampelrs
-#define IMG_DO( _handle, _binding, _format, _glsl_format, _w, _h ) \
-	layout( set = 0, binding = BINDING_OFFSET_IMAGES    + _binding, _glsl_format )  uniform IMAGE_##_glsl_format     IMG_##_handle; \
-    /* next is *optional for rtx, rtx and compute descriptors differ, try define guard in glsl::constants.h to not bind sampler and B images */ \
-	layout( set = 0, binding = BINDING_OFFSET_TEXTURES  + _binding )                uniform SAMPLER_##_glsl_format   TEX_##_handle;
-    LIST_IMAGES
+/* framebuffer images */
+#define IMG_DO(_name, _binding, _vkformat, _glslformat, _w, _h) \
+	layout(set = 0, binding = BINDING_OFFSET_IMAGES + _binding, _glslformat) \
+	uniform IMAGE_##_glslformat IMG_##_name;
+LIST_IMAGES
+LIST_IMAGES_A_B
 #undef IMG_DO
 
-// A_B
-#define IMG_DO( _handle, _binding, _format, _glsl_format, _w, _h ) \
-	layout( set = 0, binding = BINDING_OFFSET_IMAGES    + RTX_IMG_NUM_STATIC + _binding,     _glsl_format )					uniform IMAGE_##_glsl_format     IMG_##_handle##_A; \
-    /* next is *optional for rtx, rtx and compute descriptors differ, try define guard in glsl::constants.h to not bind sampler and B images */ \
-	layout( set = 0, binding = BINDING_OFFSET_IMAGES    + RTX_IMG_NUM_STATIC + _binding + RTX_IMG_NUM_A_B, _glsl_format )	uniform IMAGE_##_glsl_format     IMG_##_handle##_B; \
-	layout( set = 0, binding = BINDING_OFFSET_TEXTURES  + RTX_IMG_NUM_STATIC + _binding      )								uniform SAMPLER_##_glsl_format   TEX_##_handle##_A; \
-	layout( set = 0, binding = BINDING_OFFSET_TEXTURES  + RTX_IMG_NUM_STATIC + _binding + RTX_IMG_NUM_A_B  )				uniform SAMPLER_##_glsl_format   TEX_##_handle##_B;
-    LIST_IMAGES_A_B
+/* framebuffer textures */
+#define IMG_DO(_name, _binding, _vkformat, _glslformat, _w, _h) \
+	layout(set = 0, binding = BINDING_OFFSET_TEXTURES + _binding) \
+	uniform SAMPLER_##_glslformat TEX_##_name;
+LIST_IMAGES
+LIST_IMAGES_A_B
 #undef IMG_DO
 
 // global texture

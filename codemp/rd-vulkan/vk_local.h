@@ -861,6 +861,17 @@ typedef struct {
 	vkimage_t		physicalSkyImages	[NUM_PHYSICAL_SKY_IMAGES];
 	vkimage_t		rtx_images[NUM_RTX_IMAGES];
 
+	VkDescriptorPool desc_pool_textures;
+
+	VkDescriptorSetLayout       desc_set_layout_textures;
+	VkDescriptorSet             desc_set_textures_even;
+	VkDescriptorSet             desc_set_textures_odd;
+
+	VkSampler       tex_sampler, 
+                    tex_sampler_nearest,
+                    tex_sampler_nearest_mipmap_aniso,
+                    tex_sampler_linear_clamp;
+
 	VkDescriptorSetLayout       desc_set_layout_ubo;
 	VkDescriptorSet             desc_set_ubo;
 
