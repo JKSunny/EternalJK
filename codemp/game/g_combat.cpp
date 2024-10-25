@@ -4071,15 +4071,16 @@ int G_ArmorDurabilityModifier(gentity_t* ent, int* damage, const int take, const
  *	Modifies the damage based on the location where it hit and also the armor equipped at that location (if any)
     Returns true if a headshot, false if anything else.
  */
-bool G_LocationBasedDamageModifier(gentity_t *ent, vec3_t point, int mod, int dflags, int *damage, meansOfDamage_t* means)
+bool G_LocationBasedDamageModifier(gentity_t *ent, vec3_t point, int mod, int dflags, int *damage, meansOfDamage_t* means, float penetration)
 {
 	///////////////////////////////////////
 	//
 	//	1. Check the hit location
 	//	2. Adjust damage based on hit location
 	//	3. Adjust damage based on resistances on equipped armor to means of damage
-	//	3. Adjust damage based on equipped armor at hit location
-	//	4. Adjust damage based on durability
+	//	4. Check for armor penetration
+	//	5. Adjust damage based on equipped armor at hit location
+	//	6. Adjust damage based on durability
 
 	int hitLoc = -1;
 	int armorSlot = 0;
@@ -4195,9 +4196,9 @@ bool G_LocationBasedDamageModifier(gentity_t *ent, vec3_t point, int mod, int df
 			
 			//calculate penetration reduction of armor
 			int ehp = pArm->armor;
-			if (means->modifiers.armorPenetration > 0.0f && means->modifiers.armorPenetration <= 1.0f)
+			if (means->modifiers.armorPenetration > 0.0f && means->modifiers.armorPenetration <= 1.0f  || (penetration > 0.0f && penetration <= 1.0f))
 			{
-				ehp = ehp - (means->modifiers.armorPenetration * pArm->armor);	//if penetration is 0.25 (25%), 25 == 19
+				ehp = ehp - ((means->modifiers.armorPenetration+penetration) * pArm->armor);	//if penetration is 0.25 (25%), 25 == 19
 
 				if (ehp < 0)
 					ehp = 0;
@@ -5180,8 +5181,8 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 	{
 		if (client &&
 			attacker->inuse)
-		{ //check for location based damage stuff.
-			isHeadShot = G_LocationBasedDamageModifier(targ, point, mod, dflags, &take, means);	//check for headshot, location based modifiers, resistances, armor, and durability changes
+		{ //check for headshot, location based modifiers, resistances, armor, and durability changes
+			isHeadShot = G_LocationBasedDamageModifier(targ, point, mod, dflags, &take, means, inflictor->armorPenetration);
 			if (targ->health < 0)
 				isHeadShot = qfalse;	//don't notify about headshots on corpses
 		}

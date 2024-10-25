@@ -637,6 +637,14 @@ static void JKG_ConstructFiringModeDescription(weaponData_t* pWP, int firemode, 
 			//todo other complex damage checking, including debuffs, radius damage etc.
 		}
 
+		if (pFM->armorPenetration > 0.0f || JKG_GetMeansOfDamage(pFM->weaponMOD)->modifiers.armorPenetration > 0.0f)
+		{
+			int percent = (pFM->armorPenetration+ JKG_GetMeansOfDamage(pFM->weaponMOD)->modifiers.armorPenetration) * 100;
+			if (percent > 100)
+				percent = 100;
+			vDescLines.push_back(va(UI_GetStringEdString3("@JKG_INVENTORY_WEP_ARMOR_PEN"), percent));
+		}
+
 		// Accuracy rating
 		int nAccuracyBase = pFM->weaponAccuracy.accuracyRating;
 		int nAccuracyMax = pFM->weaponAccuracy.maxAccuracyAdd + nAccuracyBase;
@@ -787,7 +795,7 @@ static void JKG_ConstructWeaponDescription(itemInstance_t* pItem, std::vector<st
 	}
 
 	else
-	{ 
+	{
 		for (int i = 0; i < wp->numFiringModes; i++) {
 			JKG_ConstructFiringModeDescription(wp, i, vDescLines);
 		}

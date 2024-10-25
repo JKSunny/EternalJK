@@ -313,6 +313,9 @@ LANG_ENGLISH	"Handheld"
 REFERENCE		WEP_DAMAGE
 LANG_ENGLISH		"Damage: %i (%s)"
 
+REFERENCE       WEP_ARMOR_PEN
+LANG_ENGLISH        "Armor Penetration: %i%%"
+
 REFERENCE		WEP_DAMAGE_SCATTERGUN
 LANG_ENGLISH		"Damage: %ix%i (%s)"
 

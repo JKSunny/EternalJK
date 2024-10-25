@@ -2251,6 +2251,7 @@ gentity_t *WP_FireGenericMissile( gentity_t *ent, int firemode, vec3_t origin, v
 	float		 fMaxRange			 = WP_GetMaxRangeWithDecay(iDamage, fRange, fDecayRate);
 	float		 fSpeed				 = WP_GetWeaponSpeed( ent, firemode );
 	float		 fSplashRange		 = WP_GetWeaponSplashRange( ent, firemode );
+	float		 fArmorPenetration	 = WP_GetWeaponArmorPenetration(ent, firemode);
 	gentity_t	*missile			 = NULL;
 
 	/* Create the missile, fill in the name weapon, owner, methodOfDeath and such */
@@ -2263,6 +2264,7 @@ gentity_t *WP_FireGenericMissile( gentity_t *ent, int firemode, vec3_t origin, v
 	missile->s.time					 = level.time; /* For client-side prediction */
 	missile->parent					 = ent;
 	missile->methodOfDeath			 = iMOD;
+	missile->armorPenetration		 = fArmorPenetration;
 
 	/* Set the appropriate range for the bullet */
 	if ( fRange >= 0.0f )
@@ -2775,7 +2777,7 @@ static void WP_GetWeaponDirection( gentity_t *ent, int firemode, const vec3_t fo
 		float fSpreadModifiers = 1.0f;
 		double fKnockBack = ( double )fireMode->baseDamage;
 		JKG_ApplyAmmoOverride(fKnockBack, currentAmmo->overrides.knockback);
-		
+
 		/* Client is in air, might be using a jetpack or something, add some slop! */
 		if ( bIsInAir )
 		{
@@ -3052,6 +3054,36 @@ float WP_GetWeaponSpeed( gentity_t *ent, int firemode )
 	}
 
 	return 5125.0f;
+}
+
+
+/**************************************************
+* WP_GetWeaponArmorPenetration
+*
+* Gets the weapon's armor penetration for the currently selected
+* weapon with the appropriate mode. This references
+* the weapon table for this information.
+**************************************************/
+float WP_GetWeaponArmorPenetration(gentity_t* ent, int firemode)
+{
+	weaponData_t* thisWeaponData = GetWeaponData(ent->s.weapon, ent->s.weaponVariation);
+	double penetration;
+
+	if (!thisWeaponData)
+	{
+		// Some additional NULL checking here. You can never be too careful.
+		return 0.0f;
+	}
+
+	penetration = thisWeaponData->firemodes[firemode].armorPenetration;
+	JKG_ApplyAmmoOverride(penetration, ammoTable[ent->s.ammoType].overrides.armorPenetration);
+
+	if (penetration)
+	{
+		return penetration;
+	}
+
+	return 0.0f;
 }
 
 /**************************************************

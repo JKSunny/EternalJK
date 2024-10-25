@@ -411,6 +411,7 @@ struct gentity_s {
 	int			splashRadius;
 	int			methodOfDeath;
 	int			splashMethodOfDeath;
+	float		armorPenetration;		//% of how much armor is ignored
 
 	int			locationDamage[HL_MAX];		// Damage accumulated on different body locations
 
@@ -1554,6 +1555,7 @@ int			 WP_GetWeaponSplashMOD( gentity_t *ent, int firemode );
 float		 WP_GetWeaponRange( gentity_t *ent, int firemode );
 float		 WP_GetWeaponDecayRate(gentity_t* ent, int firemode);
 float		 WP_GetWeaponSpeed( gentity_t *ent, int firemode );
+float		 WP_GetWeaponArmorPenetration(gentity_t* ent, int firemode);
 double		 WP_GetWeaponSplashRange( gentity_t *ent, int firemode );
 
 void SnapVectorTowards( vec3_t v, vec3_t to );
