@@ -671,15 +671,15 @@ static void CG_DrawHealth( menuDef_t *menuHUD )
 
 /*
 ================
-CG_DrawArmor
+CG_DrawShield
 ================
 */
-static void CG_DrawArmor( menuDef_t *menuHUD )
+static void CG_DrawShield( menuDef_t *menuHUD )
 {
 	//vec4_t			calcColor;
 	vec4_t			glowColor;
 	playerState_t	*ps;
-	int				armor, maxArmor;
+	int				shield, maxShield;
 	itemDef_t		*focusItem;
 	double			percentage, factor ; //quarterArmor;
 	//int				i,currValue,inc;
@@ -706,8 +706,8 @@ static void CG_DrawArmor( menuDef_t *menuHUD )
 		return;
 	}
 
-	armor = ps->stats[STAT_SHIELD];
-	maxArmor = ps->stats[STAT_MAX_SHIELD];
+	shield = ps->stats[STAT_SHIELD];
+	maxShield = ps->stats[STAT_MAX_SHIELD];
 
 
 	// TEST: just render the whole thing for now, we'll fix it later
@@ -715,7 +715,7 @@ static void CG_DrawArmor( menuDef_t *menuHUD )
 
 	if (focusItem)
 	{
-		percentage = (double)armor / (double)maxArmor;
+		percentage = (double)shield / (double)maxShield;
 		if (percentage > 1) {
 			percentage = 1;
 		} else if (percentage < 0) {
@@ -770,7 +770,7 @@ static void CG_DrawArmor( menuDef_t *menuHUD )
 	}
 
 
-	if (!armor) {
+	if (!shield) {
 		return;
 	}
 
@@ -787,7 +787,7 @@ static void CG_DrawArmor( menuDef_t *menuHUD )
 		}
 		glowColor[3] *= cg.jkg_HUDOpacity;
 		// Center and draw the text, positioning will be finetuned later on :P
-		text = va("%i / %i", armor, maxArmor);
+		text = va("%i / %i", shield, maxShield);
 		x = ((focusItem->window.rect.w/2) - (trap->R_Font_StrLenPixels(text, cgs.media.hudfont1, 0.6f) / 2)) + focusItem->window.rect.x;
 		trap->R_Font_DrawString(
 			x,
@@ -827,7 +827,7 @@ static void CG_DrawTopLeftHUD ( menuDef_t *menuHUD, vec4_t opacity )
 
 	if (cg.predictedPlayerState.pm_type != PM_SPECTATOR)
 	{
-		CG_DrawArmor(menuHUD);
+		CG_DrawShield(menuHUD);
 		CG_DrawHealth(menuHUD);
 		CG_DrawForcePower(menuHUD);
 		JKG_DrawFiringMode(menuHUD);
