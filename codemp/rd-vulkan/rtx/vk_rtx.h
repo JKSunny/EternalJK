@@ -467,7 +467,6 @@ VkResult	vk_rtx_shader_to_material( shader_t *shader, uint32_t &index, uint32_t 
 VkResult	vk_rtx_upload_materials( const uint32_t idx, LightBuffer *lbo );
 
 // image
-void		vk_rtx_create_sampler( vkimage_t *image, VkFilter magFilter, VkFilter minFilter, VkSamplerMipmapMode mipmapMode, VkSamplerAddressMode addressMode );
 void		vk_rtx_create_image( const char *name, vkimage_t *image, uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage, uint32_t mipLevels );
 void		vk_rtx_create_cubemap( vkimage_t *image, uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage, uint32_t mipLevels );
 void		vk_rtx_upload_image_data( vkimage_t *image, uint32_t width, uint32_t height, const uint8_t *pixels, uint32_t bytes_per_pixel, uint32_t mipLevel, uint32_t arrayLayer );

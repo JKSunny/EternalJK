@@ -1294,7 +1294,8 @@ void R_PreparePT( world_t &worldData )
 				vk_rtx_upload_image_data(&vk.envmap, width, height, pic, 4, 0, 4);
 				vk_rtx_upload_image_data(&vk.envmap, width, height, pic, 4, 0, 5);
 			}
-			vk_rtx_create_sampler(&vk.envmap, VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+
+			vk.envmap.sampler = vk.tex_sampler;
 #endif	
 			cmInit = qtrue;
 			continue;
@@ -1356,7 +1357,7 @@ void R_PreparePT( world_t &worldData )
 		for ( int skyIndex = 0; skyIndex < 5; skyIndex++ )
 			vk_rtx_upload_image_data(&vk.envmap, 1, 1, black, 4, 0, skyIndex);
 
-		vk_rtx_create_sampler( &vk.envmap, VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE );
+		vk.envmap.sampler = vk.tex_sampler;
 	}
 
 	vk.scratch_buffer_ptr = 0;

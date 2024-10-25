@@ -236,43 +236,6 @@ void vk_rtx_create_cubemap( vkimage_t *image, uint32_t width, uint32_t height, V
 	vk_rtx_create_image_array( "cubemap", image, width, height, format, usage, mipLevels, 6, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT );
 }
 
-void vk_rtx_create_sampler(	vkimage_t *image, VkFilter magFilter, VkFilter minFilter, 
-						VkSamplerMipmapMode mipmapMode, VkSamplerAddressMode addressMode)
-{
-    if( image->sampler != NULL ) {
-        qvkDestroySampler( vk.device, image->sampler, NULL );
-        image->sampler = VK_NULL_HANDLE;
-    }
-    
-	qboolean lod25 = qfalse;
-	if ( (minFilter == VK_FILTER_NEAREST || minFilter == VK_FILTER_LINEAR) 
-		&& mipmapMode == VK_SAMPLER_MIPMAP_MODE_NEAREST ) 
-	{
-		lod25 = qtrue;
-	}
-
-	VkSamplerCreateInfo desc;
-	desc.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-	desc.pNext = NULL;
-	desc.flags = 0;
-	desc.magFilter = magFilter;
-	desc.minFilter = minFilter;
-	desc.mipmapMode = mipmapMode;
-	desc.addressModeU = addressMode;
-	desc.addressModeV = addressMode;
-	desc.addressModeW = addressMode;
-	desc.mipLodBias = 0.0f;
-	desc.anisotropyEnable = VK_FALSE;
-	desc.maxAnisotropy = 1;
-	desc.compareEnable = VK_FALSE;
-	desc.compareOp = VK_COMPARE_OP_ALWAYS;
-	desc.minLod = 0.0f;
-	desc.maxLod = lod25 ? 0.25f : 12.0f;
-	desc.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-	desc.unnormalizedCoordinates = VK_FALSE;
-	VK_CHECK( qvkCreateSampler( vk.device, &desc, NULL, &image->sampler ) );
-}
-
 void vk_rtx_upload_image_data( vkimage_t *image, uint32_t width, uint32_t height, const uint8_t *pixels, 
 						 uint32_t bytes_per_pixel, uint32_t mipLevel, uint32_t arrayLayer ) 
 {
@@ -733,5 +696,5 @@ void vk_rtx_create_blue_noise( void )
 		Z_Free( pic );
 	}
 
-	vk_rtx_create_sampler( &vk.blue_noise, VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT );
+	vk.blue_noise.sampler = vk.tex_sampler;
 }

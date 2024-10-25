@@ -334,7 +334,7 @@ void vk_rtx_prepare_envmap( world_t &worldData )
 			vk_rtx_upload_image_data( &vk.envmap, width, height, pic, 4, 0, 5 );
 		}
 
-		vk_rtx_create_sampler( &vk.envmap, VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE );
+		vk.envmap.sampler = vk.tex_sampler;
 
 		has_envmap = true;
 		break;
