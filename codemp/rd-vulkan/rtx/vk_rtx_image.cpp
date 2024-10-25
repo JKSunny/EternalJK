@@ -155,7 +155,8 @@ static void vk_rtx_copy_buffer_to_image(vkimage_t* image, uint32_t width, uint32
 }
 
 static void vk_rtx_create_image_array( const char *name, vkimage_t *image, uint32_t width, uint32_t height, 
-	VkFormat format, VkImageUsageFlags usage, uint32_t mipLevels, uint32_t arrayLayers, VkImageCreateFlags flags ) 
+	VkFormat format, VkImageUsageFlags usage, uint32_t mipLevels, uint32_t arrayLayers, VkImageCreateFlags flags,
+	VkComponentMapping *component_map = NULL ) 
 {
 	image->extent.width = width;
 	image->extent.height = height;
@@ -203,10 +204,16 @@ static void vk_rtx_create_image_array( const char *name, vkimage_t *image, uint3
 			desc.viewType = image->arrayLayers > 1 ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D;
 
 		desc.format = format;
-		desc.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-		desc.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-		desc.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-		desc.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+
+		if ( component_map != NULL )
+			desc.components = *component_map;
+		else {
+			desc.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+			desc.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+			desc.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+			desc.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+		}
+
 		desc.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		desc.subresourceRange.baseMipLevel = 0;
 		desc.subresourceRange.levelCount = image->mipLevels;//VK_REMAINING_MIP_LEVELS;
@@ -692,9 +699,15 @@ void vk_rtx_create_blue_noise( void )
 	const size_t img_size = (size_t)res * (size_t)res;
 	const size_t total_size = img_size * sizeof(uint16_t);
 
+	VkComponentMapping component_map;
+	component_map.r = VK_COMPONENT_SWIZZLE_R;
+	component_map.g = VK_COMPONENT_SWIZZLE_R;
+	component_map.b = VK_COMPONENT_SWIZZLE_R;
+	component_map.a = VK_COMPONENT_SWIZZLE_R;
+
 	vk_rtx_create_image_array( "blue noise array", &vk.blue_noise, res, res, VK_FORMAT_R16_UNORM, 
 		VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 
-		1, NUM_BLUE_NOISE_TEX, 0 );
+		1, NUM_BLUE_NOISE_TEX, 0, &component_map );
 	
 	for ( i = 0; i < num_blue_noise_images; i++ ) 
 	{
