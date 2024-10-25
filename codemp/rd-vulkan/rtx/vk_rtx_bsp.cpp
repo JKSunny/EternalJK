@@ -719,46 +719,6 @@ static void vk_create_rtx_descriptor( uint32_t index, int prev_index )
 	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_XYZ_WORLD_DYNAMIC_AS_PREV,		flags, vk.geometry.xyz_world_dynamic_as[prev_index].buffer );
 	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_IDX_WORLD_DYNAMIC_AS_PREV,		flags, vk.geometry.idx_world_dynamic_as[prev_index].buffer );
 
-	// storage images and *optional samplers
-	#define IMG_DO( _handle, _binding, ... ) \
-		vk_bind_storage_image(	descriptor, BINDING_OFFSET_IMAGES	+ ##_binding,		VK_SHADER_STAGE_ALL, vk.rtx_images[RTX_IMG_##_handle].view ); \
-		vk_bind_sampler(		descriptor, BINDING_OFFSET_TEXTURES + ##_binding,		VK_SHADER_STAGE_ALL, vk.rtx_images[RTX_IMG_##_handle].sampler, vk.rtx_images[RTX_IMG_##_handle].view, VK_IMAGE_LAYOUT_GENERAL );
-		LIST_IMAGES;
-		if ( index )  // odd
-		{
-			LIST_IMAGES_B_A;
-		}
-		else 
-		{
-			LIST_IMAGES_A_B
-		}
-	#undef IMG_DO
-
-	vk_bind_sampler( descriptor, BINDING_OFFSET_ENVMAP,					(VkShaderStageFlagBits)(VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR), vk.envmap.sampler, vk.envmap.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-	vk_bind_sampler( descriptor, BINDING_OFFSET_BLUE_NOISE,				VK_SHADER_STAGE_RAYGEN_BIT_KHR, vk.blue_noise.sampler, vk.blue_noise.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-	// physical sky begin
-	{
-		const int binding_offset_env_tex = ( BINDING_OFFSET_PHYSICAL_SKY - ( BINDING_OFFSET_PHYSICAL_SKY ) );
-		vk_bind_sampler(		descriptor, BINDING_OFFSET_PHYSICAL_SKY,		VK_SHADER_STAGE_ALL, vk.physicalSkyImages[binding_offset_env_tex].sampler, vk.physicalSkyImages[binding_offset_env_tex].view,  VK_IMAGE_LAYOUT_GENERAL );
-		vk_bind_storage_image(	descriptor, BINDING_OFFSET_PHYSICAL_SKY_IMG,	VK_SHADER_STAGE_ALL, vk.physicalSkyImages[binding_offset_env_tex].view );
-	}
-
-	#define VK_BIND_PHYSICAL_SKY_IMAGE( binding ) \
-		{ \
-			int binding_offset = ( binding - ( BINDING_OFFSET_PHYSICAL_SKY ) ); \
-			vk_bind_sampler( descriptor, binding, VK_SHADER_STAGE_ALL, vk.physicalSkyImages[binding_offset].sampler, vk.physicalSkyImages[binding_offset].view,  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL ); \
-		}
-		VK_BIND_PHYSICAL_SKY_IMAGE	( BINDING_OFFSET_SKY_TRANSMITTANCE )
-		VK_BIND_PHYSICAL_SKY_IMAGE	( BINDING_OFFSET_SKY_SCATTERING )
-		VK_BIND_PHYSICAL_SKY_IMAGE	( BINDING_OFFSET_SKY_IRRADIANCE )
-		VK_BIND_PHYSICAL_SKY_IMAGE	( BINDING_OFFSET_SKY_CLOUDS )
-		VK_BIND_PHYSICAL_SKY_IMAGE	( BINDING_OFFSET_TERRAIN_ALBEDO )
-		VK_BIND_PHYSICAL_SKY_IMAGE	( BINDING_OFFSET_TERRAIN_NORMALS )
-		VK_BIND_PHYSICAL_SKY_IMAGE	( BINDING_OFFSET_TERRAIN_DEPTH )
-		VK_BIND_PHYSICAL_SKY_IMAGE	( BINDING_OFFSET_TERRAIN_SHADOWMAP )
-	#undef VK_BIND_PHYSICAL_SKY_IMAGE
-	// physical sky end
 
 	descriptor->lastBindingVariableSizeExt = qtrue;
 	vk_rtx_create_descriptor( descriptor );
@@ -817,46 +777,7 @@ static void vk_create_compute_descriptor( uint32_t index, int prev_index )
 	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_CLUSTER_WORLD_DYNAMIC_DATA,		flags, vk.geometry.cluster_world_dynamic_data.buffer);
 	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_CLUSTER_WORLD_DYNAMIC_AS,		flags, vk.geometry.cluster_world_dynamic_as.buffer);
 
-	#define IMG_DO( _handle, _binding, ... ) \
-		vk_bind_storage_image(	descriptor, BINDING_OFFSET_IMAGES	+ ##_binding,		VK_SHADER_STAGE_ALL, vk.rtx_images[RTX_IMG_##_handle].view ); \
-		vk_bind_sampler(		descriptor, BINDING_OFFSET_TEXTURES + ##_binding,		VK_SHADER_STAGE_ALL, vk.rtx_images[RTX_IMG_##_handle].sampler, vk.rtx_images[RTX_IMG_##_handle].view, VK_IMAGE_LAYOUT_GENERAL );
-		LIST_IMAGES;
-		if ( index )  // odd
-		{
-			LIST_IMAGES_B_A;
-		}
-		else 
-		{
-			LIST_IMAGES_A_B
-		}
-	#undef IMG_DO
-
-	vk_bind_sampler( descriptor, BINDING_OFFSET_BLUE_NOISE,								flags, vk.blue_noise.sampler, vk.blue_noise.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-	
-	// physical sky begin
-	{
-		const int binding_offset_env_tex = ( BINDING_OFFSET_PHYSICAL_SKY - ( BINDING_OFFSET_PHYSICAL_SKY ) );
-		vk_bind_sampler(		descriptor, BINDING_OFFSET_PHYSICAL_SKY,		VK_SHADER_STAGE_ALL, vk.physicalSkyImages[binding_offset_env_tex].sampler, vk.physicalSkyImages[binding_offset_env_tex].view,  VK_IMAGE_LAYOUT_GENERAL );
-		vk_bind_storage_image(	descriptor, BINDING_OFFSET_PHYSICAL_SKY_IMG,	VK_SHADER_STAGE_ALL, vk.physicalSkyImages[binding_offset_env_tex].view );
-	}
-
-	#define VK_BIND_PHYSICAL_SKY_IMAGE( binding ) \
-		{ \
-			int binding_offset = ( binding - ( BINDING_OFFSET_PHYSICAL_SKY ) ); \
-			vk_bind_sampler( descriptor, binding, VK_SHADER_STAGE_ALL, vk.physicalSkyImages[binding_offset].sampler, vk.physicalSkyImages[binding_offset].view,  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL ); \
-		}
-		VK_BIND_PHYSICAL_SKY_IMAGE	( BINDING_OFFSET_SKY_TRANSMITTANCE )
-		VK_BIND_PHYSICAL_SKY_IMAGE	( BINDING_OFFSET_SKY_SCATTERING )
-		VK_BIND_PHYSICAL_SKY_IMAGE	( BINDING_OFFSET_SKY_IRRADIANCE )
-		VK_BIND_PHYSICAL_SKY_IMAGE	( BINDING_OFFSET_SKY_CLOUDS )
-		VK_BIND_PHYSICAL_SKY_IMAGE	( BINDING_OFFSET_TERRAIN_ALBEDO )
-		VK_BIND_PHYSICAL_SKY_IMAGE	( BINDING_OFFSET_TERRAIN_NORMALS )
-		VK_BIND_PHYSICAL_SKY_IMAGE	( BINDING_OFFSET_TERRAIN_DEPTH )
-		VK_BIND_PHYSICAL_SKY_IMAGE	( BINDING_OFFSET_TERRAIN_SHADOWMAP )
-	#undef VK_BIND_PHYSICAL_SKY_IMAGE
-
 	vk_bind_uniform_buffer( descriptor, BINDING_OFFSET_PRECOMPUTED_SKY_UBO,	flags, vk_rtx_get_atmospheric_buffer() ); // bad
-	// physical sky end
 
 	vk_rtx_create_descriptor( descriptor );
 	vk_rtx_update_descriptor( descriptor );
@@ -1295,7 +1216,7 @@ void R_PreparePT( world_t &worldData )
 				vk_rtx_upload_image_data(&vk.envmap, width, height, pic, 4, 0, 5);
 			}
 
-			vk.envmap.sampler = vk.tex_sampler;
+			vk_rtx_set_envmap_descriptor_binding();
 #endif	
 			cmInit = qtrue;
 			continue;
@@ -1357,7 +1278,7 @@ void R_PreparePT( world_t &worldData )
 		for ( int skyIndex = 0; skyIndex < 5; skyIndex++ )
 			vk_rtx_upload_image_data(&vk.envmap, 1, 1, black, 4, 0, skyIndex);
 
-		vk.envmap.sampler = vk.tex_sampler;
+		vk_rtx_set_envmap_descriptor_binding();
 	}
 
 	vk.scratch_buffer_ptr = 0;

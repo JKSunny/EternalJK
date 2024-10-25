@@ -413,6 +413,76 @@ void vk_rtx_create_images( void )
 	vk.rtx_images[RTX_IMG_ASVGF_TAA_A].sampler = vk.tex_sampler;
 	vk.rtx_images[RTX_IMG_ASVGF_TAA_B].sampler = vk.tex_sampler;
 	vk.rtx_images[RTX_IMG_TAA_OUTPUT].sampler = vk.tex_sampler;
+
+
+	// new method
+	
+	#define IMG_DO(_name, ...) \
+		desc_output_img_info[RTX_IMG_##_name] = { \
+			VK_NULL_HANDLE, \
+			vk.rtx_images[RTX_IMG_##_name].view, \
+			VK_IMAGE_LAYOUT_GENERAL \
+		},
+	VkDescriptorImageInfo desc_output_img_info[] = {
+		LIST_IMAGES
+		LIST_IMAGES_A_B
+	};
+	#undef IMG_DO
+
+	VkDescriptorImageInfo img_info[] = {
+	#define IMG_DO(_name, ...) \
+		img_info[RTX_IMG_##_name] = { \
+			vk.tex_sampler_nearest, \
+			vk.rtx_images[RTX_IMG_##_name].view, \
+			VK_IMAGE_LAYOUT_GENERAL \
+		},
+		LIST_IMAGES
+		LIST_IMAGES_A_B
+	};
+	#undef IMG_DO
+
+	VkWriteDescriptorSet output_img_write[NUM_RTX_IMAGES * 2];
+
+	for ( int even_odd = 0; even_odd < 2; even_odd++ )
+	{
+		/* create information to update descriptor sets */
+		#define IMG_DO( _name, _binding, ...) { \
+			VkWriteDescriptorSet elem_image; \
+			Com_Memset( &elem_image, 0, sizeof(VkWriteDescriptorSet) ); \
+			elem_image.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; \
+			elem_image.dstSet          = even_odd ? vk.desc_set_textures_odd : vk.desc_set_textures_even; \
+			elem_image.dstBinding      = BINDING_OFFSET_IMAGES + _binding; \
+			elem_image.dstArrayElement = 0; \
+			elem_image.descriptorCount = 1; \
+			elem_image.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE; \
+			elem_image.pImageInfo      = desc_output_img_info + RTX_IMG_##_name; \
+			\
+			VkWriteDescriptorSet elem_texture; \
+			Com_Memset( &elem_texture, 0, sizeof(VkWriteDescriptorSet) ); \
+			elem_texture.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; \
+			elem_texture.dstSet          = even_odd ? vk.desc_set_textures_odd : vk.desc_set_textures_even; \
+			elem_texture.dstBinding      = BINDING_OFFSET_TEXTURES + _binding; \
+			elem_texture.dstArrayElement = 0; \
+			elem_texture.descriptorCount = 1; \
+			elem_texture.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; \
+			elem_texture.pImageInfo      = img_info + RTX_IMG_##_name; \
+			\
+			output_img_write[RTX_IMG_##_name] = elem_image; \
+			output_img_write[RTX_IMG_##_name + NUM_VKPT_IMAGES] = elem_texture; \
+		}
+		LIST_IMAGES;
+		if ( even_odd )
+		{
+			LIST_IMAGES_B_A;
+		}
+		else
+		{
+			LIST_IMAGES_A_B;
+		}
+		#undef IMG_DO
+
+		qvkUpdateDescriptorSets( vk.device, ARRAY_LEN(output_img_write), output_img_write, 0, NULL );
+	}
 }
 
 void vk_rtx_initialize_images( void ) 
@@ -480,108 +550,122 @@ void vk_rtx_initialize_images( void )
 	sampler_linear_clamp_info.unnormalizedCoordinates = VK_FALSE;
 	sampler_linear_clamp_info.mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR;
 	VK_CHECK( qvkCreateSampler( vk.device, &sampler_linear_clamp_info, NULL, &vk.tex_sampler_linear_clamp ) );
-
-	VkDescriptorSetLayoutBinding layout_bindings[151];
-	Com_Memset( &layout_bindings, 0, sizeof(VkDescriptorSetLayoutBinding) * 151 );
-
-	int bindings = 0;
-
-	layout_bindings[bindings].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	layout_bindings[bindings].descriptorCount = MAX_RIMAGES;
-	layout_bindings[bindings].binding         = 0;
-	layout_bindings[bindings].stageFlags      = VK_SHADER_STAGE_ALL;
-	bindings++;
-
-#define IMG_DO(_name, _binding, ...) \
-		layout_bindings[1].descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE; \
-		layout_bindings[1].descriptorCount = 1; \
-		layout_bindings[1].binding         = BINDING_OFFSET_IMAGES + _binding; \
-		layout_bindings[1].stageFlags      = VK_SHADER_STAGE_ALL; \
-		bindings++;
-	LIST_IMAGES
-	LIST_IMAGES_A_B
-#undef IMG_DO
-#define IMG_DO(_name, _binding, ...) \
-		layout_bindings[bindings] .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; \
-		layout_bindings[bindings] .descriptorCount = 1; \
-		layout_bindings[bindings] .binding         = BINDING_OFFSET_TEXTURES + _binding; \
-		layout_bindings[bindings] .stageFlags      = VK_SHADER_STAGE_ALL; \
-		bindings++;
-	LIST_IMAGES
-	LIST_IMAGES_A_B
-#undef IMG_DO
-
-	layout_bindings[bindings].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	layout_bindings[bindings].descriptorCount = 1;
-	layout_bindings[bindings].binding         = BINDING_OFFSET_BLUE_NOISE;
-	layout_bindings[bindings].stageFlags      = VK_SHADER_STAGE_ALL;
-	bindings++;
-
-	layout_bindings[bindings].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	layout_bindings[bindings].descriptorCount = 1;
-	layout_bindings[bindings].binding         = BINDING_OFFSET_ENVMAP;
-	layout_bindings[bindings].stageFlags      = VK_SHADER_STAGE_ALL;
-	bindings++;
-
-    layout_bindings[bindings].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    layout_bindings[bindings].descriptorCount = 1;
-    layout_bindings[bindings].binding = BINDING_OFFSET_PHYSICAL_SKY;
-    layout_bindings[bindings].stageFlags = VK_SHADER_STAGE_ALL;
-	bindings++;
-
-    layout_bindings[bindings].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-    layout_bindings[bindings].descriptorCount = 1;
-    layout_bindings[bindings].binding = BINDING_OFFSET_PHYSICAL_SKY_IMG;
-    layout_bindings[bindings].stageFlags = VK_SHADER_STAGE_ALL;
-	bindings++;
-
-	layout_bindings[bindings].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	layout_bindings[bindings].descriptorCount = 1;
-	layout_bindings[bindings].binding = BINDING_OFFSET_SKY_TRANSMITTANCE;
-	layout_bindings[bindings].stageFlags = VK_SHADER_STAGE_ALL;
-	bindings++;
-
-	layout_bindings[bindings].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	layout_bindings[bindings].descriptorCount = 1;
-	layout_bindings[bindings].binding = BINDING_OFFSET_SKY_SCATTERING;
-	layout_bindings[bindings].stageFlags = VK_SHADER_STAGE_ALL;
-	bindings++;
-
-	layout_bindings[bindings].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	layout_bindings[bindings].descriptorCount = 1;
-	layout_bindings[bindings].binding = BINDING_OFFSET_SKY_IRRADIANCE;
-	layout_bindings[bindings].stageFlags = VK_SHADER_STAGE_ALL;
-	bindings++;
-
-	layout_bindings[bindings].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	layout_bindings[bindings].descriptorCount = 1;
-	layout_bindings[bindings].binding = BINDING_OFFSET_SKY_CLOUDS;
-	layout_bindings[bindings].stageFlags = VK_SHADER_STAGE_ALL;
-	bindings++;
-
-	layout_bindings[bindings].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	layout_bindings[bindings].descriptorCount = 1;
-	layout_bindings[bindings].binding = BINDING_OFFSET_TERRAIN_ALBEDO;
-	layout_bindings[bindings].stageFlags = VK_SHADER_STAGE_ALL;
-	bindings++;
-
-	layout_bindings[bindings].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	layout_bindings[bindings].descriptorCount = 1;
-	layout_bindings[bindings].binding = BINDING_OFFSET_TERRAIN_NORMALS;
-	layout_bindings[bindings].stageFlags = VK_SHADER_STAGE_ALL;
-	bindings++;
-
-	layout_bindings[bindings].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	layout_bindings[bindings].descriptorCount = 1;
-	layout_bindings[bindings].binding = BINDING_OFFSET_TERRAIN_DEPTH;
-	layout_bindings[bindings].stageFlags = VK_SHADER_STAGE_ALL;
-	bindings++;
-
-	layout_bindings[bindings].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	layout_bindings[bindings].descriptorCount = 1;
-	layout_bindings[bindings].binding = BINDING_OFFSET_TERRAIN_SHADOWMAP;
-	layout_bindings[bindings].stageFlags = VK_SHADER_STAGE_ALL;
-	bindings++;
+	
+	VkDescriptorSetLayoutBinding layout_bindings[] = {
+		{
+			0, // reserve for game textures, currently using seperate descriptor set
+			VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+			MAX_RIMAGES,
+			VK_SHADER_STAGE_ALL,
+			VK_NULL_HANDLE,
+		},
+		#define IMG_DO(_name, _binding, ...) \
+			{ \
+				BINDING_OFFSET_IMAGES + _binding, \
+				VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, \
+				1, \
+				VK_SHADER_STAGE_ALL, \
+				VK_NULL_HANDLE \
+			}, 
+		LIST_IMAGES
+		LIST_IMAGES_A_B
+		#undef IMG_DO
+		#define IMG_DO(_name, _binding, ...) \
+			{ \
+				BINDING_OFFSET_TEXTURES + _binding, \
+				VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, \
+				1, \
+				VK_SHADER_STAGE_ALL, \
+				VK_NULL_HANDLE \
+			},
+		LIST_IMAGES
+		LIST_IMAGES_A_B
+		#undef IMG_DO
+		{
+			BINDING_OFFSET_BLUE_NOISE,
+			VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+			1,
+			VK_SHADER_STAGE_ALL,
+			VK_NULL_HANDLE,
+		},
+		{
+			BINDING_OFFSET_ENVMAP,
+			VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+			1,
+			VK_SHADER_STAGE_ALL,
+			VK_NULL_HANDLE,
+		},
+		{
+			BINDING_OFFSET_PHYSICAL_SKY,
+			VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+			1,
+			VK_SHADER_STAGE_ALL,
+			VK_NULL_HANDLE,
+		},
+		{
+			BINDING_OFFSET_PHYSICAL_SKY_IMG,
+			VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+			1,
+			VK_SHADER_STAGE_ALL,
+			VK_NULL_HANDLE,
+		},
+		{
+			BINDING_OFFSET_SKY_TRANSMITTANCE,
+			VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+			1,
+			VK_SHADER_STAGE_ALL,
+			VK_NULL_HANDLE,
+		},
+		{
+			BINDING_OFFSET_SKY_SCATTERING,
+			VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+			1,
+			VK_SHADER_STAGE_ALL,
+			VK_NULL_HANDLE,
+		},
+		{
+			BINDING_OFFSET_SKY_IRRADIANCE,
+			VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+			1,
+			VK_SHADER_STAGE_ALL,
+			VK_NULL_HANDLE,
+		},
+		{
+			BINDING_OFFSET_SKY_CLOUDS,
+			VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+			1,
+			VK_SHADER_STAGE_ALL,
+			VK_NULL_HANDLE,
+		},
+		{
+			BINDING_OFFSET_TERRAIN_ALBEDO,
+			VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+			1,
+			VK_SHADER_STAGE_ALL,
+			VK_NULL_HANDLE,
+		},
+		{
+			BINDING_OFFSET_TERRAIN_NORMALS,
+			VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+			1,
+			VK_SHADER_STAGE_ALL,
+			VK_NULL_HANDLE,
+		},
+		{
+			BINDING_OFFSET_TERRAIN_DEPTH,
+			VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+			1,
+			VK_SHADER_STAGE_ALL,
+			VK_NULL_HANDLE,
+		},
+		{
+			BINDING_OFFSET_TERRAIN_SHADOWMAP,
+			VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+			1,
+			VK_SHADER_STAGE_ALL,
+			VK_NULL_HANDLE,
+		}
+	};
 
 	VkDescriptorSetLayoutCreateInfo layout_info;
 	Com_Memset( &layout_info, 0, sizeof(VkDescriptorSetLayoutCreateInfo) );
@@ -605,16 +689,15 @@ void vk_rtx_initialize_images( void )
 	pool_info.maxSets       = VK_MAX_SWAPCHAIN_SIZE * 2;
 	VK_CHECK( qvkCreateDescriptorPool( vk.device, &pool_info, NULL, &vk.desc_pool_textures ) );
 
-	VkDescriptorSetAllocateInfo descriptor_set_alloc_info;
-	Com_Memset( &descriptor_set_alloc_info, 0, sizeof(VkDescriptorSetAllocateInfo) );
-	descriptor_set_alloc_info.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	descriptor_set_alloc_info.descriptorPool     = vk.desc_pool_textures;
-	descriptor_set_alloc_info.descriptorSetCount = 1;
-	descriptor_set_alloc_info.pSetLayouts        = &vk.desc_set_layout_textures;
+	VkDescriptorSetAllocateInfo alloc;
+	Com_Memset( &alloc, 0, sizeof(VkDescriptorSetAllocateInfo) );
+	alloc.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	alloc.descriptorPool     = vk.desc_pool_textures;
+	alloc.descriptorSetCount = 1;
+	alloc.pSetLayouts        = &vk.desc_set_layout_textures;
 
-	// sunny, these are not used yet, just initialized ..
-	VK_CHECK( qvkAllocateDescriptorSets( vk.device, &descriptor_set_alloc_info, &vk.desc_set_textures_even ) );
-	VK_CHECK( qvkAllocateDescriptorSets( vk.device, &descriptor_set_alloc_info, &vk.desc_set_textures_odd ) );
+	VK_CHECK( qvkAllocateDescriptorSets( vk.device, &alloc, &vk.desc_set_textures_even ) );
+	VK_CHECK( qvkAllocateDescriptorSets( vk.device, &alloc, &vk.desc_set_textures_odd ) );
 
 	vk_rtx_create_blue_noise();
 }
@@ -697,4 +780,27 @@ void vk_rtx_create_blue_noise( void )
 	}
 
 	vk.blue_noise.sampler = vk.tex_sampler;
+
+	VkDescriptorImageInfo desc_img_info;
+	desc_img_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	desc_img_info.imageView   = vk.blue_noise.view;
+	desc_img_info.sampler     = vk.blue_noise.sampler;
+
+	VkWriteDescriptorSet s;
+	Com_Memset( &s, 0, sizeof(VkWriteDescriptorSet) );
+	s.sType				= VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	s.pNext				= NULL;
+	s.dstSet			= vk.desc_set_textures_even;
+	s.dstBinding		= BINDING_OFFSET_BLUE_NOISE;
+	s.dstArrayElement	= 0;
+	s.descriptorType	= VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	s.descriptorCount	= 1;
+	s.pImageInfo		= &desc_img_info;
+
+	qvkUpdateDescriptorSets( vk.device, 1, &s, 0, NULL );
+
+	s.dstSet = vk.desc_set_textures_odd;
+	qvkUpdateDescriptorSets( vk.device, 1, &s, 0, NULL );
+	
+	qvkQueueWaitIdle( vk.queue );
 }

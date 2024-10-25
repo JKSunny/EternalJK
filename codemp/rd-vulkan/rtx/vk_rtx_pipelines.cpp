@@ -226,8 +226,9 @@ void vk_rtx_create_raytracing_pipelines( void )
 {
 	vkpipeline_t *pipeline = &vk.rt_pipeline;
 
-	VkDescriptorSetLayout set_layouts[3] = {
+	VkDescriptorSetLayout set_layouts[] = {
 		vk.rtxDescriptor[0].layout,
+		vk.desc_set_layout_textures,
 		vk.imageDescriptor.layout,
 		vk.desc_set_layout_ubo
 	};

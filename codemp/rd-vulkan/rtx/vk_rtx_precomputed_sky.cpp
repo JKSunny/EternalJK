@@ -259,6 +259,7 @@ VkResult UploadImage( void *FirstPixel, size_t total_size, unsigned int Width, u
 
 	vk_end_command_buffer( cmd_buf );
 
+	// deprecated?
 	Vk_Sampler_Def sd;
 	Com_Memset( &sd, 0, sizeof(sd) );
 	sd.gl_mag_filter = GL_LINEAR;
@@ -269,20 +270,16 @@ VkResult UploadImage( void *FirstPixel, size_t total_size, unsigned int Width, u
 
 	vk.physicalSkyImages[binding_offset].sampler = vk_find_sampler( &sd );
 
-#if 0
-	const VkSampler tex_sampler = vk_find_sampler( &sd );
-
 	VkDescriptorImageInfo desc_img_info;
 	desc_img_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	desc_img_info.imageView = vk.physicalSkyImages[binding_offset].view;
-	desc_img_info.sampler = tex_sampler;
-
+	desc_img_info.sampler = vk.tex_sampler;
 
 	VkWriteDescriptorSet s;
 	Com_Memset( &s, 0, sizeof(VkWriteDescriptorSet) );
 	s.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	s.pNext = NULL;
-	s.dstSet = vk.computeDescriptor[0].set;	// ??
+	s.dstSet = vk.desc_set_textures_even;
 	s.dstBinding = Binding;
 	s.dstArrayElement = 0;
 	s.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -293,13 +290,13 @@ VkResult UploadImage( void *FirstPixel, size_t total_size, unsigned int Width, u
 
 	qvkUpdateDescriptorSets( vk.device, 1, &s, 0, NULL );
 
-	//s.dstSet = vk.computeDescriptor[1].set;	// ??
-	//qvkUpdateDescriptorSets( vk.device, 1, &s, 0, NULL );
+	s.dstSet = vk.desc_set_textures_odd;
+	qvkUpdateDescriptorSets( vk.device, 1, &s, 0, NULL );
 
-	vk_wait_idle();
-	//qvkQueueWaitIdle( qvk.queue_graphics );
-#endif
-	vk_rtx_buffer_destroy(&buf_img_upload);
+	//vk_wait_idle();
+	qvkQueueWaitIdle( vk.queue );
+
+	vk_rtx_buffer_destroy( &buf_img_upload );
 
 	return VK_SUCCESS;
 }
@@ -1010,22 +1007,16 @@ void CreateShadowMap( struct Shadowmap *InOutShadowmap )
 	sd.max_lod_1_0 = qtrue;
 	sd.noAnisotropy = qtrue;
 
-	vk.physicalSkyImages[binding_offset].sampler = vk_find_sampler( &sd );
-
-#if 0
-	const VkSampler tex_sampler = vk_find_sampler( &sd );
-
 	VkDescriptorImageInfo desc_img_info;
 	desc_img_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	desc_img_info.imageView = InOutShadowmap->DepthView;
-	desc_img_info.sampler = tex_sampler;
-
+	desc_img_info.imageView = vk.physicalSkyImages[binding_offset].view;
+	desc_img_info.sampler = vk.tex_sampler;
 
 	VkWriteDescriptorSet s;
 	Com_Memset( &s, 0, sizeof(VkWriteDescriptorSet) );
 	s.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	s.pNext = NULL;
-	s.dstSet = vk.computeDescriptor[0].set;	// ??
+	s.dstSet = vk.desc_set_textures_even,
 	s.dstBinding = BINDING_OFFSET_TERRAIN_SHADOWMAP;
 	s.dstArrayElement = 0;
 	s.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -1036,9 +1027,8 @@ void CreateShadowMap( struct Shadowmap *InOutShadowmap )
 
 	qvkUpdateDescriptorSets( vk.device, 1, &s, 0, NULL );
 
-	s.dstSet = vk.computeDescriptor[1].set;	// ??
+	s.dstSet = vk.desc_set_textures_odd;
 	qvkUpdateDescriptorSets( vk.device, 1, &s, 0, NULL );
-#endif 
 
 #if 0
 	// seems deprecated ?

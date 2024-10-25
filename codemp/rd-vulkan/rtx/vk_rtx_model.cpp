@@ -131,8 +131,9 @@ VkResult vk_rtx_model_vbo_create_pipelines( void )
 	assert(!pipeline_animate_materials);
 	assert(!pipeline_layout_instance_geometry);
 
-	VkDescriptorSetLayout desc_set_layouts[4] = {
+	VkDescriptorSetLayout set_layouts[] = {
 		vk.computeDescriptor[0].layout,
+		vk.desc_set_layout_textures,
 		vk.model_instance.layout,	// vbo
 		vk.desc_set_layout_ubo,
 		vk.model_instance.layout,	// ibo ( USE_RTX_GLOBAL_MODEL_VBO )
@@ -142,8 +143,8 @@ VkResult vk_rtx_model_vbo_create_pipelines( void )
 	Com_Memset( &layout_create_info, 0, sizeof(VkPipelineLayoutCreateInfo) );
 	layout_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	layout_create_info.pNext = NULL;
-	layout_create_info.pSetLayouts = desc_set_layouts;
-	layout_create_info.setLayoutCount = ARRAY_LEN(desc_set_layouts);
+	layout_create_info.pSetLayouts = set_layouts;
+	layout_create_info.setLayoutCount = ARRAY_LEN(set_layouts);
 	layout_create_info.pushConstantRangeCount = 0;
 	layout_create_info.pPushConstantRanges = NULL;
 
@@ -189,11 +190,13 @@ void vkpt_instance_geometry( VkCommandBuffer cmd_buf, uint32_t num_instances, qb
 	uint32_t idx, prev_idx;
 	vk_rtx_get_descriptor_index( idx, prev_idx );
 
-	VkDescriptorSet desc_sets[4];
-	desc_sets[0] = vk.computeDescriptor[idx].set;
-	desc_sets[1] = vk.model_instance.descriptor.vbos;
-	desc_sets[2] = vk.desc_set_ubo;
-	desc_sets[3] = vk.model_instance.descriptor.ibos;
+	VkDescriptorSet desc_sets[] = {
+		vk.computeDescriptor[idx].set,
+		vk_rtx_get_current_desc_set_textures(),
+		vk.model_instance.descriptor.vbos,
+		vk.desc_set_ubo,
+		vk.model_instance.descriptor.ibos
+	};
 
 	qvkCmdBindPipeline( cmd_buf, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_instance_geometry );
 	qvkCmdBindDescriptorSets( cmd_buf, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_instance_geometry, 0, ARRAY_LEN(desc_sets),

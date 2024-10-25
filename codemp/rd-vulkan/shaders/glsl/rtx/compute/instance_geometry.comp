@@ -30,12 +30,12 @@
 	#define MODEL_VERTEX_SIZE		12
 #endif
 
-layout(set = 1,	binding = 0) readonly buffer MODEL_VBO {
+layout(set = 2,	binding = 0) readonly buffer MODEL_VBO {
 	uint data[];
 } model_vbos[];
 
 #ifdef USE_RTX_GLOBAL_MODEL_VBO
-	layout(set = 3,	binding = 0) readonly buffer MODEL_IBO {
+	layout(set = 4,	binding = 0) readonly buffer MODEL_IBO {
 		uint data[];
 	} model_ibos[];
 #endif

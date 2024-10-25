@@ -348,8 +348,10 @@ void		vk_rtx_begin_registration( void );
 void		vk_rtx_initialize( void );
 void		vk_rtx_shutdown( void );
 void		vk_rtx_begin_frame( void );
-void		vk_rtx_get_descriptor_index( uint32_t &idx, uint32_t &prev_idx);
 void		vk_rtx_show_pvs_f( void );
+
+VkDescriptorSet vk_rtx_get_current_desc_set_textures( void);
+void			vk_rtx_get_descriptor_index( uint32_t &idx, uint32_t &prev_idx);
 
 void		R_PreparePT( world_t &worldData ) ;
 
@@ -487,6 +489,7 @@ void		vk_rtx_begin_blit( void );
 // phyiscal sky
 void		vk_rtx_init_sky_scatter( void );
 void		vk_rtx_prepare_envmap( world_t &worldData );
+void		vk_rtx_set_envmap_descriptor_binding( void );
 void		prepare_sky_matrix( float time, vec3_t sky_matrix[3] );
 void		vk_rtx_evaluate_sun_light( sun_light_t *light, const vec3_t sky_matrix[3], float time );
 VkResult	vk_rtx_physical_sky_update_ubo( vkUniformRTX_t *ubo, const sun_light_t *light, qboolean render_world );

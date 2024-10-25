@@ -153,11 +153,12 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define NUM_RTX_IMAGES (RTX_IMG_NUM_STATIC + 32 ) /* this really sucks but I don't know how to fix it
 													 counting with enum does not work in GLSL */
 
-#define BINDING_OFFSET_IMAGES				NUM_BUFFERS //1 //(1 + GLOBAL_TEXTURES_TEX_ARR_BINDING_IDX)
+#define GLOBAL_TEXTURES_TEX_ARR_BINDING_IDX  0
+#define BINDING_OFFSET_IMAGES				(1 + GLOBAL_TEXTURES_TEX_ARR_BINDING_IDX)
 #define BINDING_OFFSET_TEXTURES				(BINDING_OFFSET_IMAGES				+ NUM_RTX_IMAGES)
-//#define BINDING_OFFSET_BLUE_NOISE			(BINDING_OFFSET_TEXTURES			+ NUM_RTX_IMAGES)
-//#define BINDING_OFFSET_ENVMAP				(BINDING_OFFSET_BLUE_NOISE			+ 1)
-#define BINDING_OFFSET_PHYSICAL_SKY			(BINDING_OFFSET_TEXTURES			+ NUM_RTX_IMAGES)
+#define BINDING_OFFSET_BLUE_NOISE			(BINDING_OFFSET_TEXTURES			+ NUM_RTX_IMAGES)
+#define BINDING_OFFSET_ENVMAP				(BINDING_OFFSET_BLUE_NOISE			+ 1)
+#define BINDING_OFFSET_PHYSICAL_SKY			(BINDING_OFFSET_ENVMAP				+ 1)
 #define BINDING_OFFSET_PHYSICAL_SKY_IMG		(BINDING_OFFSET_PHYSICAL_SKY		+ 1)
 #define BINDING_OFFSET_SKY_TRANSMITTANCE	(BINDING_OFFSET_PHYSICAL_SKY_IMG	+ 1)
 #define BINDING_OFFSET_SKY_SCATTERING		(BINDING_OFFSET_SKY_TRANSMITTANCE	+ 1)
@@ -181,6 +182,10 @@ enum VK_RTX_IMAGES {
 #endif
 
 #ifdef GLSL
+
+// global texture
+layout( binding = 0, set = 2 ) uniform sampler2D texure_array[];
+
 #define SAMPLER_r16ui   usampler2D
 #define SAMPLER_r32ui   usampler2D
 #define SAMPLER_rg32ui  usampler2D
@@ -209,7 +214,7 @@ enum VK_RTX_IMAGES {
 
 /* framebuffer images */
 #define IMG_DO(_name, _binding, _vkformat, _glslformat, _w, _h) \
-	layout(set = 0, binding = BINDING_OFFSET_IMAGES + _binding, _glslformat) \
+	layout(set = 1, binding = BINDING_OFFSET_IMAGES + _binding, _glslformat) \
 	uniform IMAGE_##_glslformat IMG_##_name;
 LIST_IMAGES
 LIST_IMAGES_A_B
@@ -217,30 +222,27 @@ LIST_IMAGES_A_B
 
 /* framebuffer textures */
 #define IMG_DO(_name, _binding, _vkformat, _glslformat, _w, _h) \
-	layout(set = 0, binding = BINDING_OFFSET_TEXTURES + _binding) \
+	layout(set = 1, binding = BINDING_OFFSET_TEXTURES + _binding) \
 	uniform SAMPLER_##_glslformat TEX_##_name;
 LIST_IMAGES
 LIST_IMAGES_A_B
 #undef IMG_DO
 
-// global texture
-layout( binding = 0, set = 1 ) uniform sampler2D texure_array[];
-
 // blue noise
-layout( binding = BINDING_OFFSET_BLUE_NOISE,		set = 0 ) uniform sampler2DArray TEX_BLUE_NOISE;
-layout( binding = BINDING_OFFSET_ENVMAP,			set = 0 ) uniform samplerCube TEX_ENVMAP;
-layout( binding = BINDING_OFFSET_PHYSICAL_SKY,		set = 0 ) uniform samplerCube TEX_PHYSICAL_SKY;
-layout( binding = BINDING_OFFSET_PHYSICAL_SKY_IMG,	set = 0, rgba16f ) uniform imageCube IMG_PHYSICAL_SKY;
+layout( binding = BINDING_OFFSET_BLUE_NOISE,		set = 1 ) uniform sampler2DArray TEX_BLUE_NOISE;
+layout( binding = BINDING_OFFSET_ENVMAP,			set = 1 ) uniform samplerCube TEX_ENVMAP;
+layout( binding = BINDING_OFFSET_PHYSICAL_SKY,		set = 1 ) uniform samplerCube TEX_PHYSICAL_SKY;
+layout( binding = BINDING_OFFSET_PHYSICAL_SKY_IMG,	set = 1, rgba16f ) uniform imageCube IMG_PHYSICAL_SKY;
 
 // precomputed_sky begin
-layout( binding = BINDING_OFFSET_SKY_TRANSMITTANCE, set = 0 ) uniform sampler2D TEX_SKY_TRANSMITTANCE;
-layout( binding = BINDING_OFFSET_SKY_SCATTERING,	set = 0 ) uniform sampler3D TEX_SKY_SCATTERING;
-layout( binding = BINDING_OFFSET_SKY_IRRADIANCE,	set = 0 ) uniform sampler2D TEX_SKY_IRRADIANCE;
-layout( binding = BINDING_OFFSET_SKY_CLOUDS,		set = 0 ) uniform sampler3D TEX_SKY_CLOUDS;
-layout( binding = BINDING_OFFSET_TERRAIN_ALBEDO,	set = 0 ) uniform samplerCube IMG_TERRAIN_ALBEDO;
-layout( binding = BINDING_OFFSET_TERRAIN_NORMALS,	set = 0 ) uniform samplerCube IMG_TERRAIN_NORMALS;
-layout( binding = BINDING_OFFSET_TERRAIN_DEPTH,		set = 0 ) uniform samplerCube IMG_TERRAIN_DEPTH;
-layout( binding = BINDING_OFFSET_TERRAIN_SHADOWMAP,	set = 0 ) uniform sampler2D TEX_TERRAIN_SHADOWMAP;
+layout( binding = BINDING_OFFSET_SKY_TRANSMITTANCE, set = 1 ) uniform sampler2D TEX_SKY_TRANSMITTANCE;
+layout( binding = BINDING_OFFSET_SKY_SCATTERING,	set = 1 ) uniform sampler3D TEX_SKY_SCATTERING;
+layout( binding = BINDING_OFFSET_SKY_IRRADIANCE,	set = 1 ) uniform sampler2D TEX_SKY_IRRADIANCE;
+layout( binding = BINDING_OFFSET_SKY_CLOUDS,		set = 1 ) uniform sampler3D TEX_SKY_CLOUDS;
+layout( binding = BINDING_OFFSET_TERRAIN_ALBEDO,	set = 1 ) uniform samplerCube IMG_TERRAIN_ALBEDO;
+layout( binding = BINDING_OFFSET_TERRAIN_NORMALS,	set = 1 ) uniform samplerCube IMG_TERRAIN_NORMALS;
+layout( binding = BINDING_OFFSET_TERRAIN_DEPTH,		set = 1 ) uniform samplerCube IMG_TERRAIN_DEPTH;
+layout( binding = BINDING_OFFSET_TERRAIN_SHADOWMAP,	set = 1 ) uniform sampler2D TEX_TERRAIN_SHADOWMAP;
 // precomputed_sky end
 
 vec4 global_texture( in uint idx, in vec2 tex_coord )

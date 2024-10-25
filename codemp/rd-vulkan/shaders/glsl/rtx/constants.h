@@ -139,57 +139,51 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 // top level acceleration structure
 #define BINDING_OFFSET_AS							        0
 
-// environment map
-#define BINDING_OFFSET_ENVMAP						        1
-
-// blue noise textures
-#define BINDING_OFFSET_BLUE_NOISE					        2
-
 // vertex data
-#define BINDING_OFFSET_XYZ_WORLD_STATIC                     3
-#define BINDING_OFFSET_IDX_WORLD_STATIC                     4
-#define BINDING_OFFSET_INSTANCE_PREV_TO_CURR                5
-#define BINDING_OFFSET_INSTANCE_DATA						6
-#define BINDING_OFFSET_INSTANCE_DATA_PREV		            7
+#define BINDING_OFFSET_XYZ_WORLD_STATIC                     1
+#define BINDING_OFFSET_IDX_WORLD_STATIC                     2
+#define BINDING_OFFSET_INSTANCE_PREV_TO_CURR                3
+#define BINDING_OFFSET_INSTANCE_DATA						4
+#define BINDING_OFFSET_INSTANCE_DATA_PREV		            5
 
 // bottom level acceleration structure
-#define BINDING_OFFSET_XYZ_WORLD_DYNAMIC_DATA		        8
-#define BINDING_OFFSET_XYZ_WORLD_DYNAMIC_DATA_PREV          9
-#define BINDING_OFFSET_IDX_WORLD_DYNAMIC_DATA		        10
-#define BINDING_OFFSET_IDX_WORLD_DYNAMIC_DATA_PREV          11
-#define BINDING_OFFSET_XYZ_WORLD_DYNAMIC_AS		            12
-#define BINDING_OFFSET_XYZ_WORLD_DYNAMIC_AS_PREV            13
-#define BINDING_OFFSET_IDX_WORLD_DYNAMIC_AS		            14
-#define BINDING_OFFSET_IDX_WORLD_DYNAMIC_AS_PREV            15
+#define BINDING_OFFSET_XYZ_WORLD_DYNAMIC_DATA		        6
+#define BINDING_OFFSET_XYZ_WORLD_DYNAMIC_DATA_PREV          7
+#define BINDING_OFFSET_IDX_WORLD_DYNAMIC_DATA		        8
+#define BINDING_OFFSET_IDX_WORLD_DYNAMIC_DATA_PREV          9
+#define BINDING_OFFSET_XYZ_WORLD_DYNAMIC_AS		            10
+#define BINDING_OFFSET_XYZ_WORLD_DYNAMIC_AS_PREV            11
+#define BINDING_OFFSET_IDX_WORLD_DYNAMIC_AS		            12
+#define BINDING_OFFSET_IDX_WORLD_DYNAMIC_AS_PREV            13
 
 // cluster data
-#define BINDING_OFFSET_CLUSTER_WORLD_STATIC                 16
-#define BINDING_OFFSET_CLUSTER_WORLD_DYNAMIC_DATA           17
-#define BINDING_OFFSET_CLUSTER_WORLD_DYNAMIC_AS             18
+#define BINDING_OFFSET_CLUSTER_WORLD_STATIC                 14
+#define BINDING_OFFSET_CLUSTER_WORLD_DYNAMIC_DATA           15
+#define BINDING_OFFSET_CLUSTER_WORLD_DYNAMIC_AS             16
 
 // readback
-#define BINDING_OFFSET_READBACK_BUFFER						19
+#define BINDING_OFFSET_READBACK_BUFFER						17
 
 // dynamic vertex
-#define BINDING_OFFSET_DYNAMIC_VERTEX						20
+#define BINDING_OFFSET_DYNAMIC_VERTEX						18
 
 // light and material
-#define BINDING_OFFSET_LIGHT_BUFFER							21
-#define BINDING_LIGHT_COUNTS_HISTORY_BUFFER					22
+#define BINDING_OFFSET_LIGHT_BUFFER							19
+#define BINDING_LIGHT_COUNTS_HISTORY_BUFFER					20
 
 // tonemap
-#define BINDING_OFFSET_TONEMAP_BUFFER						23
+#define BINDING_OFFSET_TONEMAP_BUFFER						21
 
 // sky
-#define BINDING_OFFSET_SUN_COLOR_BUFFER						24
+#define BINDING_OFFSET_SUN_COLOR_BUFFER						22
 
 // light stats
-#define BINDING_OFFSET_LIGHT_STATS_BUFFER					25
+#define BINDING_OFFSET_LIGHT_STATS_BUFFER					23
 
 // precomputed sky
-#define BINDING_OFFSET_PRECOMPUTED_SKY_UBO					26
+#define BINDING_OFFSET_PRECOMPUTED_SKY_UBO					24
 
-#define NUM_BUFFERS											27	// used as offset for image buffers
+#define NUM_BUFFERS											25	// used as offset for image buffers
 
 // shader groups
 #define SBT_RGEN_PRIMARY_RAYS				0

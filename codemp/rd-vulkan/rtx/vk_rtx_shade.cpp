@@ -850,10 +850,11 @@ static void vk_rtx_trace_primary_rays( VkCommandBuffer cmd_buf, uint32_t idx )
 		VK_WHOLE_SIZE
 	);
 
-	VkDescriptorSet desc_sets[3] = {
+	VkDescriptorSet desc_sets[] = {
 		vk.rtxDescriptor[idx].set,
+        vk_rtx_get_current_desc_set_textures(),
 		vk.imageDescriptor.set,
-		vk.desc_set_ubo
+        vk.desc_set_ubo
 	};
 
 	BEGIN_PERF_MARKER( cmd_buf, PROFILER_PRIMARY_RAYS );
@@ -897,10 +898,12 @@ static void vk_rtx_trace_primary_rays( VkCommandBuffer cmd_buf, uint32_t idx )
 
 static void vk_rtx_trace_reflections( VkCommandBuffer cmd_buf, uint32_t idx, int bounce ) 
 {
-	VkDescriptorSet desc_sets[3] = {
+
+	VkDescriptorSet desc_sets[] = {
 		vk.rtxDescriptor[idx].set,
+        vk_rtx_get_current_desc_set_textures(),
 		vk.imageDescriptor.set,
-		vk.desc_set_ubo
+        vk.desc_set_ubo
 	};
 
 	// reflections/refractions
@@ -938,10 +941,11 @@ static void vk_rtx_trace_reflections( VkCommandBuffer cmd_buf, uint32_t idx, int
 
 static void vk_rxt_trace_lighting( VkCommandBuffer cmd_buf, uint32_t idx, float num_bounce_rays )
 {
-	VkDescriptorSet desc_sets[3] = {
+	VkDescriptorSet desc_sets[] = {
 		vk.rtxDescriptor[idx].set,
+        vk_rtx_get_current_desc_set_textures(),
 		vk.imageDescriptor.set,
-		vk.desc_set_ubo
+        vk.desc_set_ubo
 	};
 
 	// direct lighting
@@ -1020,9 +1024,6 @@ static void vk_rxt_trace_lighting( VkCommandBuffer cmd_buf, uint32_t idx, float 
 
 static VkResult vkpt_final_blit_simple( VkCommandBuffer cmd_buf )
 {
-	uint32_t idx, prev_idx;
-	vk_rtx_get_descriptor_index( idx, prev_idx );
-
 	VkImageSubresourceRange subresource_range;
 	subresource_range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 	subresource_range.baseMipLevel = 0;

@@ -181,6 +181,7 @@ static VkResult vk_rtx_init_env_texture( int width, int height )
     VK_CHECK( qvkCreateImageView( vk.device, &img_view_info, NULL, &vk.physicalSkyImages[binding_offset].view ) );
     //ATTACH_LABEL_VARIABLE(imv_envmap, IMAGE_VIEW);
 
+	// deprecated?
 	Vk_Sampler_Def sd;
 	Com_Memset( &sd, 0, sizeof(sd) );
 	sd.gl_mag_filter = sd.gl_min_filter = GL_NEAREST;
@@ -190,6 +191,56 @@ static VkResult vk_rtx_init_env_texture( int width, int height )
 
 	vk.physicalSkyImages[binding_offset].sampler = vk_find_sampler( &sd );
 
+
+	int binding_offset_env_tex = ( BINDING_OFFSET_PHYSICAL_SKY - ( BINDING_OFFSET_PHYSICAL_SKY ) );
+
+    // cube descriptor layout
+    {
+        VkDescriptorImageInfo desc_img_info;
+        desc_img_info.imageLayout	= VK_IMAGE_LAYOUT_GENERAL;
+        desc_img_info.imageView		= vk.physicalSkyImages[binding_offset_env_tex].view;
+        desc_img_info.sampler		= vk.tex_sampler;
+
+        VkWriteDescriptorSet s;
+		Com_Memset( &s, 0, sizeof(VkWriteDescriptorSet) );
+        s.sType				= VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		s.pNext				= NULL;
+        s.dstSet			= vk.desc_set_textures_even;
+        s.dstBinding		= BINDING_OFFSET_PHYSICAL_SKY;
+        s.dstArrayElement	= 0;
+        s.descriptorType	= VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        s.descriptorCount	= 1;
+        s.pImageInfo		= &desc_img_info;
+
+        qvkUpdateDescriptorSets( vk.device, 1, &s, 0, NULL );
+
+        s.dstSet = vk.desc_set_textures_odd;
+        qvkUpdateDescriptorSets( vk.device, 1, &s, 0, NULL );
+    }
+
+    // image descriptor
+    {
+        VkDescriptorImageInfo desc_img_info;
+        desc_img_info.imageLayout	= VK_IMAGE_LAYOUT_GENERAL;
+        desc_img_info.imageView		= vk.physicalSkyImages[binding_offset_env_tex].view;
+		desc_img_info.sampler		= VK_NULL_HANDLE;
+
+        VkWriteDescriptorSet s;
+		Com_Memset( &s, 0, sizeof(VkWriteDescriptorSet) );
+        s.sType				= VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		s.pNext				= NULL;
+        s.dstSet			= vk.desc_set_textures_even;
+        s.dstBinding		= BINDING_OFFSET_PHYSICAL_SKY_IMG;
+        s.dstArrayElement	= 0;
+        s.descriptorType	= VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        s.descriptorCount	= 1;
+        s.pImageInfo		= &desc_img_info;
+
+        qvkUpdateDescriptorSets( vk.device, 1, &s, 0, NULL );
+
+        s.dstSet = vk.desc_set_textures_odd;
+        qvkUpdateDescriptorSets( vk.device, 1, &s, 0, NULL );
+    }
 	return VK_SUCCESS;
 }
 
@@ -225,8 +276,9 @@ static void vk_create_physical_sky_pipeline( uint32_t pipeline_index, uint32_t s
 {
 	vkpipeline_t *pipeline = &vk.physical_sky_pipeline[pipeline_index];
 
-	VkDescriptorSetLayout set_layouts[3] = {
+	VkDescriptorSetLayout set_layouts[4] = {
 		vk.computeDescriptor[0].layout,
+		vk.desc_set_layout_textures,
 		vk.imageDescriptor.layout,
 		vk.desc_set_layout_ubo
 	};
@@ -261,6 +313,30 @@ void vk_rtx_reset_envmap( void )
 {
 	vk_rtx_destroy_image( &vk.envmap );
 	has_envmap = false;
+}
+
+void vk_rtx_set_envmap_descriptor_binding( void )
+{
+	VkDescriptorImageInfo desc_img_info;
+	desc_img_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	desc_img_info.imageView   = vk.envmap.view;
+	desc_img_info.sampler     = vk.tex_sampler;
+
+	VkWriteDescriptorSet s;
+	Com_Memset( &s, 0, sizeof(VkWriteDescriptorSet) );
+	s.sType				= VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	s.pNext				= NULL;
+	s.dstSet			= vk.desc_set_textures_even;
+	s.dstBinding		= BINDING_OFFSET_ENVMAP;
+	s.dstArrayElement	= 0;
+	s.descriptorType	= VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	s.descriptorCount	= 1;
+	s.pImageInfo		= &desc_img_info;
+
+	qvkUpdateDescriptorSets( vk.device, 1, &s, 0, NULL );
+
+	s.dstSet = vk.desc_set_textures_odd;
+	qvkUpdateDescriptorSets( vk.device, 1, &s, 0, NULL );
 }
 
 void vk_rtx_prepare_envmap( world_t &worldData ) 
@@ -334,7 +410,7 @@ void vk_rtx_prepare_envmap( world_t &worldData )
 			vk_rtx_upload_image_data( &vk.envmap, width, height, pic, 4, 0, 5 );
 		}
 
-		vk.envmap.sampler = vk.tex_sampler;
+		vk_rtx_set_envmap_descriptor_binding();
 
 		has_envmap = true;
 		break;
@@ -400,6 +476,7 @@ VkResult vkpt_physical_sky_record_cmd_buffer( VkCommandBuffer cmd_buf )
 
 	VkDescriptorSet desc_sets[] = {
 		vk.computeDescriptor[idx].set,
+		vk_rtx_get_current_desc_set_textures(),
 		vk.imageDescriptor.set,
 		vk.desc_set_ubo
 	};

@@ -23,6 +23,10 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include "tr_local.h"
 
+VkDescriptorSet vk_rtx_get_current_desc_set_textures()
+{
+	return vk.swapchain_image_index ? vk.desc_set_textures_odd : vk.desc_set_textures_even;
+}
 
 void vk_rtx_get_descriptor_index( uint32_t &idx, uint32_t &prev_idx ) 
 {
