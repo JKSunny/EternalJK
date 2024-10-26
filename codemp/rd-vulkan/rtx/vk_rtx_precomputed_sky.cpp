@@ -259,17 +259,6 @@ VkResult UploadImage( void *FirstPixel, size_t total_size, unsigned int Width, u
 
 	vk_end_command_buffer( cmd_buf );
 
-	// deprecated?
-	Vk_Sampler_Def sd;
-	Com_Memset( &sd, 0, sizeof(sd) );
-	sd.gl_mag_filter = GL_LINEAR;
-	sd.gl_min_filter = GL_LINEAR_MIPMAP_LINEAR;
-	sd.address_mode = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	sd.max_lod_1_0 = qtrue;
-	sd.noAnisotropy = qfalse;
-
-	vk.physicalSkyImages[binding_offset].sampler = vk_find_sampler( &sd );
-
 	VkDescriptorImageInfo desc_img_info;
 	desc_img_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	desc_img_info.imageView = vk.physicalSkyImages[binding_offset].view;
@@ -889,7 +878,7 @@ struct ShadowmapGeometry FillVertexAndIndexBuffers( const char* FileName, unsign
 	qvkQueueWaitIdle(qvk.queue_transfer);
 #else
 	vk_end_command_buffer( cmd_buf );
-	vk_wait_idle();
+	qvkQueueWaitIdle( vk.queue );
 #endif
 
 	vk_rtx_buffer_destroy(&upload_buffer);
@@ -907,9 +896,6 @@ done:
 void ReleaseShadowmap( struct Shadowmap *InOutShadowmap )
 {
 	const int binding_offset = ( BINDING_OFFSET_TERRAIN_SHADOWMAP - ( BINDING_OFFSET_PHYSICAL_SKY ) );
-
-	if ( vk.physicalSkyImages[binding_offset].sampler )
-		qvkDestroySampler( vk.device,  vk.physicalSkyImages[binding_offset].sampler, NULL );
 
 	if ( vk.physicalSkyImages[binding_offset].view )
 		qvkDestroyImageView( vk.device, vk.physicalSkyImages[binding_offset].view, NULL );

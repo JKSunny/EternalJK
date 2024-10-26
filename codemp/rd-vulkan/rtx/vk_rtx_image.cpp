@@ -403,20 +403,7 @@ void vk_rtx_create_images( void )
 		LIST_IMAGES_A_B
 	#undef IMG_DO
 
-	// bind sampler
-	#define IMG_DO( _handle, _binding, _format, _glsl_format, _w, _h ) \
-		vk.rtx_images[RTX_IMG_##_handle].sampler = vk.tex_sampler_nearest;
-		LIST_IMAGES
-		LIST_IMAGES_A_B
-	#undef IMG_DO
-
-	vk.rtx_images[RTX_IMG_ASVGF_TAA_A].sampler = vk.tex_sampler;
-	vk.rtx_images[RTX_IMG_ASVGF_TAA_B].sampler = vk.tex_sampler;
-	vk.rtx_images[RTX_IMG_TAA_OUTPUT].sampler = vk.tex_sampler;
-
-
-	// new method
-	
+	// create view
 	#define IMG_DO(_name, ...) \
 		desc_output_img_info[RTX_IMG_##_name] = { \
 			VK_NULL_HANDLE, \
@@ -429,6 +416,7 @@ void vk_rtx_create_images( void )
 	};
 	#undef IMG_DO
 
+	// bind sampler
 	VkDescriptorImageInfo img_info[] = {
 	#define IMG_DO(_name, ...) \
 		img_info[RTX_IMG_##_name] = { \
@@ -440,6 +428,10 @@ void vk_rtx_create_images( void )
 		LIST_IMAGES_A_B
 	};
 	#undef IMG_DO
+
+	img_info[RTX_IMG_ASVGF_TAA_A].sampler = vk.tex_sampler;
+	img_info[RTX_IMG_ASVGF_TAA_B].sampler = vk.tex_sampler;
+	img_info[RTX_IMG_TAA_OUTPUT].sampler = vk.tex_sampler;
 
 	VkWriteDescriptorSet output_img_write[NUM_RTX_IMAGES * 2];
 
@@ -718,12 +710,6 @@ void vk_rtx_destroy_image( vkimage_t *image )
         image->view = VK_NULL_HANDLE;
     }
 
-    if ( image->sampler != NULL ) 
-	{
-        qvkDestroySampler( vk.device, image->sampler, NULL );
-        image->sampler = VK_NULL_HANDLE;
-    }
-
 	if ( image->memory != NULL ) 
 	{
 		qvkFreeMemory( vk.device, image->memory, NULL );
@@ -779,12 +765,10 @@ void vk_rtx_create_blue_noise( void )
 		Z_Free( pic );
 	}
 
-	vk.blue_noise.sampler = vk.tex_sampler;
-
 	VkDescriptorImageInfo desc_img_info;
 	desc_img_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	desc_img_info.imageView   = vk.blue_noise.view;
-	desc_img_info.sampler     = vk.blue_noise.sampler;
+	desc_img_info.sampler     = vk.tex_sampler;
 
 	VkWriteDescriptorSet s;
 	Com_Memset( &s, 0, sizeof(VkWriteDescriptorSet) );

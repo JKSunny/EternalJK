@@ -181,17 +181,6 @@ static VkResult vk_rtx_init_env_texture( int width, int height )
     VK_CHECK( qvkCreateImageView( vk.device, &img_view_info, NULL, &vk.physicalSkyImages[binding_offset].view ) );
     //ATTACH_LABEL_VARIABLE(imv_envmap, IMAGE_VIEW);
 
-	// deprecated?
-	Vk_Sampler_Def sd;
-	Com_Memset( &sd, 0, sizeof(sd) );
-	sd.gl_mag_filter = sd.gl_min_filter = GL_NEAREST;
-	sd.address_mode = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	sd.max_lod_1_0 = qtrue;
-	sd.noAnisotropy = qtrue;
-
-	vk.physicalSkyImages[binding_offset].sampler = vk_find_sampler( &sd );
-
-
 	int binding_offset_env_tex = ( BINDING_OFFSET_PHYSICAL_SKY - ( BINDING_OFFSET_PHYSICAL_SKY ) );
 
     // cube descriptor layout

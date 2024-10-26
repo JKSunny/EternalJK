@@ -269,7 +269,6 @@ typedef struct {
 
 	VkImage			handle;
 	VkImageView		view;
-	VkSampler		sampler;
 	VkDeviceMemory	memory;
 } vkimage_t;
 
