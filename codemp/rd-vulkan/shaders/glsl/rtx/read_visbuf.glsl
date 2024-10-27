@@ -20,9 +20,9 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define VISBUF_INSTANCE_ID_MASK     0x000003FF
 #define VISBUF_INSTANCE_PRIM_MASK   0x3FFFFC00
 #define VISBUF_INSTANCE_PRIM_SHIFT  10
-#define VISBUF_STATIC_PRIM_MASK     0x3FFFFFFF
+#define VISBUF_STATIC_INSTANCE_MASK     0x3FFFFFFF
 #define VISBUF_WORLD_INSTANCE_FLAG  0x40000000
-#define VISBUF_STATIC_PRIM_FLAG 	0x80000000
+#define VISBUF_STATIC_INSTANCE_FLAG 	0x80000000
 
 uint visbuf_pack_instance(uint instance_id, uint primitive_id, bool is_world_instance)
 {
@@ -31,10 +31,10 @@ uint visbuf_pack_instance(uint instance_id, uint primitive_id, bool is_world_ins
 		| (is_world_instance ? VISBUF_WORLD_INSTANCE_FLAG : 0);
 }
 
-uint visbuf_pack_static_prim(uint primitive_id)
+uint visbuf_pack_static_instance(uint instance_id)
 {
-	return (primitive_id & VISBUF_STATIC_PRIM_MASK)
-		| VISBUF_STATIC_PRIM_FLAG;
+	return (instance_id & VISBUF_STATIC_INSTANCE_MASK)
+		| VISBUF_STATIC_INSTANCE_FLAG;
 }
 
 uint visbuf_get_instance_id(uint u)
@@ -47,9 +47,9 @@ uint visbuf_get_instance_prim(uint u)
 	return (u & VISBUF_INSTANCE_PRIM_MASK) >> VISBUF_INSTANCE_PRIM_SHIFT;
 }
 
-uint visbuf_get_static_prim(uint u)
+uint visbuf_get_static_instance_id(uint u)
 {
-	return u & VISBUF_STATIC_PRIM_MASK;
+	return u & VISBUF_STATIC_INSTANCE_MASK;
 }
 
 bool visbuf_is_world_instance(uint u)
@@ -57,23 +57,7 @@ bool visbuf_is_world_instance(uint u)
 	return (u & VISBUF_WORLD_INSTANCE_FLAG) != 0; 
 }
 
-bool visbuf_is_static_prim(uint u)
+bool visbuf_is_static_instance(uint u)
 {
-	return (u & VISBUF_STATIC_PRIM_FLAG) != 0;
-}
-
-uint visbuf_pack_barycentrics(vec3 bary)
-{
-	uvec2 encoded = uvec2(round(clamp(bary.yz, vec2(0), vec2(1)) * 0xFFFF));
-	return encoded.x | (encoded.y << 16);
-}
-
-vec3 visbuf_unpack_barycentrics(uint u)
-{
-	uvec2 encoded = uvec2(u & 0xFFFF, u >> 16);
-	vec3 bary;
-	bary.yz = vec2(encoded) / 0xFFFF;
-	bary.x = clamp(1.0 - (bary.y + bary.z), 0.0, 1.0);
-	
-	return bary;
+	return (u & VISBUF_STATIC_INSTANCE_FLAG) != 0;
 }

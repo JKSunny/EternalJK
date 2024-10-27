@@ -153,14 +153,20 @@ static void vkpt_pt_create_toplevel( VkCommandBuffer cmd_buf, uint32_t idx, draw
 	vk_geometry_instance_t instances[1000];
 	int num_instances = 0;
 
+	//
+	// world instances ( static & dynamic, no model/entity )
+	//
 	append_blas( instances, &num_instances, BAS_WORLD_STATIC,		&vk.blas_static.world, 0, 0, 0, 0 );
 	
 	append_blas( instances, &num_instances, BAS_WORLD_DYNAMIC_DATA,	&vk.blas_dynamic.data_world, 0, 0, 0, 0 );
-	append_blas( instances, &num_instances, BAS_WORLD_DYNAMIC_AS,	&vk.blas_dynamic.data_world_transparent, 0, 0, 0, 0 );
+	//append_blas( instances, &num_instances, BAS_WORLD_DYNAMIC_AS,	&vk.blas_dynamic.data_world_transparent, 0, 0, 0, 0 );
 	
 	append_blas( instances, &num_instances, BAS_WORLD_DYNAMIC_AS,	&vk.blas_dynamic.as_world[idx], 0, 0, 0, 0 );
-	append_blas( instances, &num_instances, BAS_WORLD_DYNAMIC_AS,	&vk.blas_dynamic.as_world_transparent[idx], 0, 0, 0, 0 );
+	//append_blas( instances, &num_instances, BAS_WORLD_DYNAMIC_AS,	&vk.blas_dynamic.as_world_transparent[idx], 0, 0, 0, 0 );
 	
+	//
+	// model/entity instances
+	//
 	append_blas( instances, &num_instances, BAS_ENTITY_DYNAMIC,		&vk.model_instance.blas.dynamic[idx], AS_INSTANCE_FLAG_DYNAMIC, 0, 0, 0 );
 
 #if 0
@@ -876,8 +882,8 @@ static void vk_rtx_trace_primary_rays( VkCommandBuffer cmd_buf, uint32_t idx )
 
 	int frame_idx = idx;
 
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_VISBUF_A + frame_idx] );
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_VISBUF_BARY_A + frame_idx] ); // check this
+	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_VISBUF_PRIM_A + frame_idx] );
+	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_VISBUF_BARY_A + frame_idx] );
 	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_TRANSPARENT] );
 	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_MOTION] );
 	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_SHADING_POSITION] );

@@ -208,8 +208,9 @@ main()
 		imageStore( IMG_PT_VIEW_DIRECTION,		ipos, vec4(direction, 0) );
 		imageStore( IMG_PT_SHADING_POSITION,	ipos, vec4(global_ubo.cam_pos.xyz + direction * PRIMARY_RAY_T_MAX, 0) );
 		imageStore( IMG_PT_MOTION,				ipos, vec4(motion, 0, 0) );
-		imageStore( IMG_PT_VISBUF_A,			ipos, uvec4(0) );
-		imageStore( IMG_PT_BASE_COLOR_A,				ipos, vec4(0.0) );
+		imageStore( IMG_PT_VISBUF_PRIM_A,		ipos, uvec4(0));
+		imageStore( IMG_PT_VISBUF_BARY_A,		ipos, vec4(0));
+		imageStore( IMG_PT_BASE_COLOR_A,		ipos, vec4(0.0) );
 		imageStore( IMG_PT_TRANSPARENT,			ipos, transparent );
 #ifdef USE_RTX_INSPECT_TANGENTS
 		imageStore( IMG_PT_TANGENT_A,			ipos, uvec4(0) );
@@ -223,12 +224,12 @@ main()
 
 	{
 		uvec2 vis_buf;
-		vis_buf.x = is_dynamic_primitive
-			? get_instance_id_instanced(primitive_id)
-			: visbuf_pack_static_prim(primitive_id);
-		vis_buf.y = visbuf_pack_barycentrics(bary);
-
-		imageStore(IMG_PT_VISBUF_A, ipos, uvec4(vis_buf, 0, 0) );
+		vis_buf.x = is_dynamic_primitive ? 
+			get_instance_id_instanced( primitive_id ) : 
+			visbuf_pack_static_instance( ray_payload_brdf.instanceID );
+		vis_buf.y = primitive_id;
+		imageStore(IMG_PT_VISBUF_PRIM_A, ipos, uvec4(vis_buf, 0, 0));
+		imageStore(IMG_PT_VISBUF_BARY_A, ipos, vec4(bary.yz, 0, 0));
 	}
 
 	if(is_readback_pixel)
@@ -442,7 +443,7 @@ main()
 	imageStore( IMG_PT_METALLIC_A,			ipos, vec4 ( primary_metallic, primary_roughness, 0,  0) );
 	imageStore( IMG_PT_GODRAYS_THROUGHPUT_DIST, ipos, vec4(1, 1, 1, distance_curr));
 #ifdef USE_RTX_INSPECT_TANGENTS
-	imageStore( IMG_PT_TANGENT_A,		ipos, uvec4( encode_normal( geo_tangent ) ) );
+	imageStore( IMG_PT_TANGENT_A,			ipos, uvec4( encode_normal( geo_tangent ) ) );
 #endif
 
 	// Debug visualization of the PVS (Potentially Visible Set)

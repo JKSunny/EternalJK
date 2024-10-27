@@ -748,12 +748,12 @@ main()
 	bool is_dynamic_primitive = is_dynamic_instance(ray_payload_brdf);
 
 	uvec2 vis_buf;
-	vis_buf.x = is_dynamic_primitive
-		? get_instance_id_instanced(primitive_id)
-		: visbuf_pack_static_prim(primitive_id);
-	vis_buf.y = visbuf_pack_barycentrics(bary);
-	
-	imageStore(IMG_PT_VISBUF_A, ipos, uvec4(vis_buf, 0, 0));
+	vis_buf.x = is_dynamic_primitive ? 
+		get_instance_id_instanced( primitive_id ) : 
+		visbuf_pack_static_instance( ray_payload_brdf.instanceID );
+	vis_buf.y = primitive_id;
+	imageStore(IMG_PT_VISBUF_PRIM_A, ipos, uvec4(vis_buf, 0, 0));
+	imageStore(IMG_PT_VISBUF_BARY_A, ipos, vec4(bary.yz, 0, 0));
 
 #if 0
 	// Store the surface parameters into the G-buffer for the indirect lighting shader
