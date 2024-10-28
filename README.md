@@ -49,14 +49,14 @@ I can highly recommend you to give their great effort a try if you have not done
 > I did a quick mockup of that, I have not added multistage support yet.
 
 > Ghoul2 support is added *(No MD3 yet)*, and uses the same IBO's and VBO's used for **Beta** and **PBR** branch with minor tweaks. \
-> Q2RTX uses a single buffer for the IBO and VBO and does have Ghoul2 support. \
+> Q2RTX uses a single buffer for the IBO and VBO and does not have Ghoul2 support. \
 > I did port this method, but it is define guarded and can safely be removed.
 
 > BSP level loading and buffers differ. \
 > This should however be looked at and transitioned to Q2RTX method of tlas and blas creation *(top/bottom level accel structure)*
 
 > **GETTING STARTED** \
-> Set cvar r_normalMapping 1, r_specularMapping 1, r_hdr 0, r_fullscreen 1 and r_vertexLight 2 
+> Set cvar r_normalMapping 1, r_specularMapping 1, r_cubeMapping 0, r_hdr 0, r_fullscreen 1 and r_vertexLight 2 
 > Everything is define guarded using **USE_RTX** in the codebase
 
 > **IMPORTANT** Requires assets from [Q2RTX on Steam](https://store.steampowered.com/app/1089130/Quake_II_RTX/) \
