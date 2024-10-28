@@ -394,21 +394,9 @@ STRUCT (
 	FLOAT	( sky_luminance )
 , SunColorBuffer )
 
-// holds material/offset/etc data for each AS Instance
+// holds blas instance type .. for now
 STRUCT ( 
-    MAT4    ( modelmat )
-    UINT    ( currInstanceID )
-    UINT    ( prevInstanceID )
-    UINT    ( type )
-	UINT    ( offsetIDX )
-	UINT    ( offsetXYZ )
-    UINT    ( texIdx0 )
-    UINT    ( texIdx1 )
-	BOOL    ( isBrushModel )
-	BOOL    ( isPlayer )
-	UINT    ( cluster )
-    UINT    ( buff0 )
-    UINT    ( buff1 )
+	UINT    ( type )
 , ASInstanceData )
 
 // holds all bsp vertex data
@@ -436,6 +424,7 @@ STRUCT (
 
 // model instance
 STRUCT ( 
+	UINT			( tlas_instance_type		[1000]						)	// could probably pack this in ray_payload_brdf
 	INT				( model_indices				[SHADER_MAX_ENTITIES + SHADER_MAX_BSP_ENTITIES] )
 	UINT			( model_current_to_prev		[SHADER_MAX_ENTITIES]		)
 	UINT			( model_prev_to_current		[SHADER_MAX_ENTITIES]		)

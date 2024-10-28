@@ -126,6 +126,7 @@ void append_blas( vk_geometry_instance_t *instances, int *num_instances, uint32_
 
 	//assert(*num_instances < INSTANCE_MAX_NUM);
 	memcpy(instances + *num_instances, &instance, sizeof(instance));
+	vk.buffer_uniform_instance.tlas_instance_type[*num_instances] = type;
 	++*num_instances;
 }
 
