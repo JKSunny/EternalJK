@@ -278,12 +278,8 @@ main()
 	}
 
 	vec3 pos_ws_curr = position;
-	vec3 pos_ws_prev;
-	if(is_dynamic_primitive)
-		pos_ws_prev = triangle.positions_prev * bary;
-	else
-		pos_ws_prev = get_position_prev( ray_payload_brdf.instanceID, primitive_id ) * bary;
-		
+	vec3 pos_ws_prev = triangle.positions_prev * bary;
+
 	vec2 screen_pos_curr, screen_pos_prev;
 	float distance_curr, distance_prev;
 	projection_view_to_screen((global_ubo.V * vec4(pos_ws_curr, 1)).xyz, screen_pos_curr, distance_curr, false);

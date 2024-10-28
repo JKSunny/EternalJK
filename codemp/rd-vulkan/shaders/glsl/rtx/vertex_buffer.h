@@ -402,6 +402,58 @@ ivec3 getVertexData( in uint instance_id, in uint prim_id, out VertexBuffer vDat
 	return index;
 }
 
+ivec3 getVertexDataPrev( in uint instance_id, in uint prim_id, out VertexBuffer vData[3] )
+{
+	uint customIndex = uint(iDataPrev.data[instance_id].offsetIDX) + (prim_id * 3);
+	
+	ivec3 index;
+	if ( iDataPrev.data[instance_id].type == BAS_WORLD_STATIC )
+		index = (ivec3(indices_world_static.i[customIndex], indices_world_static.i[customIndex + 1], indices_world_static.i[customIndex + 2])) + int(iDataPrev.data[instance_id].offsetXYZ);
+	
+	else if ( iDataPrev.data[instance_id].type == BAS_WORLD_DYNAMIC_DATA )
+		index = (ivec3(indices_dynamic_data_prev.i[customIndex], indices_dynamic_data_prev.i[customIndex + 1], indices_dynamic_data_prev.i[customIndex + 2])) + int(iDataPrev.data[instance_id].offsetXYZ);
+	
+	else if ( iDataPrev.data[instance_id].type == BAS_WORLD_DYNAMIC_AS)
+		index = (ivec3(indices_dynamic_as_prev.i[customIndex], indices_dynamic_as_prev.i[customIndex + 1], indices_dynamic_as_prev.i[customIndex + 2])) + int(iDataPrev.data[instance_id].offsetXYZ);
+
+	if ( iDataPrev.data[instance_id].type == BAS_WORLD_STATIC )
+	{	
+		vData[0] = vertices_world_static.v[index.x];
+		vData[1] = vertices_world_static.v[index.y];
+		vData[2] = vertices_world_static.v[index.z];
+	}
+	
+	else if ( iDataPrev.data[instance_id].type == BAS_WORLD_DYNAMIC_DATA )
+	{
+		vData[0] = vertices_dynamic_data_prev.v[index.x];
+		vData[1] = vertices_dynamic_data_prev.v[index.y];
+		vData[2] = vertices_dynamic_data_prev.v[index.z];
+	}
+	
+	else if ( iDataPrev.data[instance_id].type == BAS_WORLD_DYNAMIC_AS )
+	{
+		vData[0] = vertices_dynamic_as_prev.v[index.x];
+		vData[1] = vertices_dynamic_as_prev.v[index.y];
+		vData[2] = vertices_dynamic_as_prev.v[index.z];
+	}
+	
+	return index;
+}
+
+mat3x3 get_bsp_position_prev( in uint instance_id, in uint prim_id  )
+{
+	VertexBuffer vData[3];
+	ivec3 index = getVertexDataPrev( instance_id, prim_id, vData );
+
+	mat3x3 position;
+	
+	position[0] = ( vec4(vData[0].pos.xyz, 1) * iDataPrev.data[instance_id].modelmat ).xyz;
+	position[1] = ( vec4(vData[1].pos.xyz, 1) * iDataPrev.data[instance_id].modelmat ).xyz;
+	position[2] = ( vec4(vData[2].pos.xyz, 1) * iDataPrev.data[instance_id].modelmat ).xyz;
+
+	return position;
+}
+
 Triangle get_bsp_triangle( in uint instance_id, in uint prim_id )
 {
 	VertexBuffer vData[3];
@@ -413,6 +465,11 @@ Triangle get_bsp_triangle( in uint instance_id, in uint prim_id )
 	t.positions[1] = (vec4(vData[1].pos.xyz, 1) * iData.data[instance_id].modelmat).xyz;
 	t.positions[2] = (vec4(vData[2].pos.xyz, 1) * iData.data[instance_id].modelmat).xyz;
 	
+	if ( iData.data[instance_id].type == BAS_WORLD_STATIC )
+		t.positions_prev = t.positions;
+	else 
+		t.positions_prev = get_bsp_position_prev( instance_id, prim_id ); 
+
 	t.color0[0] = unpackColor(vData[0].color[0]);
 	t.color0[1] = unpackColor(vData[1].color[0]);
 	t.color0[2] = unpackColor(vData[2].color[0]);
@@ -510,82 +567,4 @@ Triangle get_bsp_triangle( in uint instance_id, in uint prim_id )
 
 	return t;
 }
-
-ivec3 getVertexDataPrev( in uint instance_id, in uint prim_id, out VertexBuffer vData[3]){
-	uint customIndex = uint(iDataPrev.data[instance_id].offsetIDX) + (prim_id * 3);
-	
-	ivec3 index;
-	if ( iDataPrev.data[instance_id].type == BAS_WORLD_STATIC )
-		index = (ivec3(indices_world_static.i[customIndex], indices_world_static.i[customIndex + 1], indices_world_static.i[customIndex + 2])) + int(iDataPrev.data[instance_id].offsetXYZ);
-	
-	else if ( iDataPrev.data[instance_id].type == BAS_WORLD_DYNAMIC_DATA )
-		index = (ivec3(indices_dynamic_data_prev.i[customIndex], indices_dynamic_data_prev.i[customIndex + 1], indices_dynamic_data_prev.i[customIndex + 2])) + int(iDataPrev.data[instance_id].offsetXYZ);
-	
-	else if ( iDataPrev.data[instance_id].type == BAS_WORLD_DYNAMIC_AS)
-		index = (ivec3(indices_dynamic_as_prev.i[customIndex], indices_dynamic_as_prev.i[customIndex + 1], indices_dynamic_as_prev.i[customIndex + 2])) + int(iDataPrev.data[instance_id].offsetXYZ);
-
-	if ( iDataPrev.data[instance_id].type == BAS_WORLD_STATIC )
-	{	
-		vData[0] = vertices_world_static.v[index.x];
-		vData[1] = vertices_world_static.v[index.y];
-		vData[2] = vertices_world_static.v[index.z];
-	}
-	
-	else if ( iDataPrev.data[instance_id].type == BAS_WORLD_DYNAMIC_DATA )
-	{
-		vData[0] = vertices_dynamic_data_prev.v[index.x];
-		vData[1] = vertices_dynamic_data_prev.v[index.y];
-		vData[2] = vertices_dynamic_data_prev.v[index.z];
-	}
-	
-	else if ( iDataPrev.data[instance_id].type == BAS_WORLD_DYNAMIC_AS )
-	{
-		vData[0] = vertices_dynamic_as_prev.v[index.x];
-		vData[1] = vertices_dynamic_as_prev.v[index.y];
-		vData[2] = vertices_dynamic_as_prev.v[index.z];
-	}
-	
-	return index;
-}
-
-// unused?
-uint getPrevCluster( in uint instance_id, in uint prim_id )
-{
-	uint prev_instance_id = iData.data[instance_id].prevInstanceID;
-
-	VertexBuffer vData[3];
-	ivec3 index = getVertexDataPrev( prev_instance_id, prim_id, vData );
-
-	uint idx_c;
-	switch(iDataPrev.data[prev_instance_id].type){
-		case BAS_WORLD_STATIC:
-			idx_c = uint(iDataPrev.data[prev_instance_id].offsetIDX) + (prim_id);
-			return cluster_world_static.c[idx_c];
-		case BAS_WORLD_DYNAMIC_DATA:
-			idx_c = uint(iDataPrev.data[prev_instance_id].offsetIDX) + (prim_id);
-			return cluster_world_dynamic_data.c[idx_c];
-		case BAS_WORLD_DYNAMIC_AS:
-			idx_c = uint(iDataPrev.data[prev_instance_id].offsetIDX) + (prim_id);
-			return cluster_world_dynamic_as.c[idx_c];
-		default:
-			return vData[1].cluster;
-	}
-}
-
-mat3x3 get_position_prev( in uint instance_id, in uint prim_id  )
-{
-	uint prev_instance_id = iData.data[instance_id].prevInstanceID;
-
-	VertexBuffer vData[3];
-	ivec3 index = getVertexDataPrev( prev_instance_id, prim_id, vData );
-
-	mat3x3 position;
-	
-	position[0] = ( vec4(vData[0].pos.xyz, 1) * iDataPrev.data[prev_instance_id].modelmat ).xyz;
-	position[1] = ( vec4(vData[1].pos.xyz, 1) * iDataPrev.data[prev_instance_id].modelmat ).xyz;
-	position[2] = ( vec4(vData[2].pos.xyz, 1) * iDataPrev.data[prev_instance_id].modelmat ).xyz;
-
-	return position;
-}
-
 #endif
