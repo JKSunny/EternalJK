@@ -941,8 +941,7 @@ typedef struct {
 	uint32_t		updateASOffsetXYZCount;
 
 	// Top AS (Buffers) for each swapchain image
-	vk_tlas_t		tlas[VK_MAX_SWAPCHAIN_SIZE];
-	vkbuffer_t		tlas_buffer[VK_MAX_SWAPCHAIN_SIZE];
+	vk_tlas_t		tlas_geometry[VK_MAX_SWAPCHAIN_SIZE];
 
 	// stores offset and stuff for in shader lookup
 	vkbuffer_t		buffer_blas_instance[VK_MAX_SWAPCHAIN_SIZE];

@@ -209,33 +209,9 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 	\
 	UBO_CVAR_LIST // WARNING: Do not put any other members into global_ubo after this: the CVAR list is not vec4-aligned
 
-#define INSTANCE_BUFFER_VAR_LIST \
-	INSTANCE_BUFFER_VAR_LIST_DO( INT,				model_indices				[SHADER_MAX_ENTITIES + SHADER_MAX_BSP_ENTITIES]) \
-	INSTANCE_BUFFER_VAR_LIST_DO( UINT,				model_current_to_prev		[SHADER_MAX_ENTITIES]		) \
-	INSTANCE_BUFFER_VAR_LIST_DO( UINT,				model_prev_to_current		[SHADER_MAX_ENTITIES]		) \
-	INSTANCE_BUFFER_VAR_LIST_DO( UINT,				world_current_to_prev		[SHADER_MAX_BSP_ENTITIES]	) \
-	INSTANCE_BUFFER_VAR_LIST_DO( UINT,				world_prev_to_current		[SHADER_MAX_BSP_ENTITIES]	) \
-	INSTANCE_BUFFER_VAR_LIST_DO( UINT,				bsp_prim_offset				[SHADER_MAX_BSP_ENTITIES]	) \
-	INSTANCE_BUFFER_VAR_LIST_DO( UINT,				model_idx_offset			[SHADER_MAX_ENTITIES]		) \
-	INSTANCE_BUFFER_VAR_LIST_DO( UINT,				model_cluster_id			[SHADER_MAX_ENTITIES]		) \
-	INSTANCE_BUFFER_VAR_LIST_DO( UINT,				model_cluster_id_prev		[SHADER_MAX_ENTITIES]		) \
-	INSTANCE_BUFFER_VAR_LIST_DO( UINT,				bsp_cluster_id				[SHADER_MAX_BSP_ENTITIES]	) \
-	INSTANCE_BUFFER_VAR_LIST_DO( UINT,				bsp_cluster_id_prev			[SHADER_MAX_BSP_ENTITIES]	) \
-	INSTANCE_BUFFER_VAR_LIST_DO( MODELINSTANCE,		model_instances				[SHADER_MAX_ENTITIES]		) \
-	INSTANCE_BUFFER_VAR_LIST_DO( MODELINSTANCE,		model_instances_prev		[SHADER_MAX_ENTITIES]		) \
-	INSTANCE_BUFFER_VAR_LIST_DO( BSPMESHINSTANCE,	bsp_mesh_instances			[SHADER_MAX_BSP_ENTITIES]	) \
-	INSTANCE_BUFFER_VAR_LIST_DO( BSPMESHINSTANCE,	bsp_mesh_instances_prev		[SHADER_MAX_BSP_ENTITIES]	) \
-	/* stores the offset into the instance buffer in numberof primitives */ \
-	INSTANCE_BUFFER_VAR_LIST_DO( UINT,				model_instance_buf_offset	[SHADER_MAX_ENTITIES]		) \
-	INSTANCE_BUFFER_VAR_LIST_DO( UINT,				model_instance_buf_size		[SHADER_MAX_ENTITIES]		) \
-	INSTANCE_BUFFER_VAR_LIST_DO( UINT,				bsp_instance_buf_offset		[SHADER_MAX_BSP_ENTITIES]	) \
-	INSTANCE_BUFFER_VAR_LIST_DO( UINT,				bsp_instance_buf_size		[SHADER_MAX_BSP_ENTITIES]	) \
-	INSTANCE_BUFFER_VAR_LIST_DO( BONESREF,			model_mdxm_bones			[SHADER_MAX_ENTITIES]	) \
-
 // shared structures between GLSL and C
 #define UBO_CVAR_DO( name, default_value ) GLOBAL_UBO_VAR_LIST_DO( FLOAT, name )
 #define GLOBAL_UBO_VAR_LIST_DO( type, name ) type(name)
-#define INSTANCE_BUFFER_VAR_LIST_DO( type, name ) type(name)
 
 #ifdef GLSL
     #define STRUCT(content, name) struct name { content };
@@ -460,7 +436,28 @@ STRUCT (
 
 // model instance
 STRUCT ( 
-	INSTANCE_BUFFER_VAR_LIST
+	INT				( model_indices				[SHADER_MAX_ENTITIES + SHADER_MAX_BSP_ENTITIES] )
+	UINT			( model_current_to_prev		[SHADER_MAX_ENTITIES]		)
+	UINT			( model_prev_to_current		[SHADER_MAX_ENTITIES]		)
+	UINT			( world_current_to_prev		[SHADER_MAX_BSP_ENTITIES]	)
+	UINT			( world_prev_to_current		[SHADER_MAX_BSP_ENTITIES]	)
+	UINT			( bsp_prim_offset			[SHADER_MAX_BSP_ENTITIES]	)
+	UINT			( model_idx_offset			[SHADER_MAX_ENTITIES]		)
+	UINT			( model_cluster_id			[SHADER_MAX_ENTITIES]		)
+	UINT			( model_cluster_id_prev		[SHADER_MAX_ENTITIES]		)
+	UINT			( bsp_cluster_id			[SHADER_MAX_BSP_ENTITIES]	)
+	UINT			( bsp_cluster_id_prev		[SHADER_MAX_BSP_ENTITIES]	)
+	MODELINSTANCE	( model_instances			[SHADER_MAX_ENTITIES]		)
+	MODELINSTANCE	( model_instances_prev		[SHADER_MAX_ENTITIES]		)
+	BSPMESHINSTANCE	( bsp_mesh_instances		[SHADER_MAX_BSP_ENTITIES]	)
+	BSPMESHINSTANCE	( bsp_mesh_instances_prev	[SHADER_MAX_BSP_ENTITIES]	)
+
+ 	//instance buffer in numberof primitives					  
+	UINT			( model_instance_buf_offset	[SHADER_MAX_ENTITIES]		)
+	UINT			( model_instance_buf_size	[SHADER_MAX_ENTITIES]		)
+	UINT			( bsp_instance_buf_offset	[SHADER_MAX_BSP_ENTITIES]	)
+	UINT			( bsp_instance_buf_size		[SHADER_MAX_BSP_ENTITIES]	)
+	BONESREF		( model_mdxm_bones			[SHADER_MAX_ENTITIES]		)
 , vkInstanceRTX_t )
 
 #undef UBO_CVAR_DO

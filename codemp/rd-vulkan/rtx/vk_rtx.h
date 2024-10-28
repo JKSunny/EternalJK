@@ -299,6 +299,7 @@ typedef struct {
 	VkAccelerationStructureKHR	accel_khr;
 	uint64_t					handle;
 	VkDeviceSize				offset;
+	vkbuffer_t					mem;
 } vk_tlas_t;
 
 typedef struct accel_bottom_match_info_s {
@@ -429,10 +430,9 @@ void		vk_rtx_create_blas( VkCommandBuffer cmd_buf,
 void		vk_rtx_update_blas( VkCommandBuffer cmd_buf, 
 								vk_blas_t* oldBas, vk_blas_t* newBas, 
 								VkDeviceSize* offset, VkBuildAccelerationStructureFlagsKHR flag);
-void		vk_rtx_create_tlas	( VkCommandBuffer cmd_buf, int idx, uint32_t num_instances,
-								  VkBuildAccelerationStructureFlagsKHR flag );
+void		vk_rtx_create_tlas( VkCommandBuffer cmd_buf, vk_tlas_t *as, VkDeviceAddress instance_data, uint32_t num_instances );
 void		vk_rtx_destroy_accel_all( void );
-void		vk_rtx_destroy_tlas( int idx );
+void		vk_rtx_destroy_tlas( vk_tlas_t *as );
 void		vk_rtx_destroy_blas( vk_blas_t *blas );
 
 

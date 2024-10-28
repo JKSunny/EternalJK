@@ -169,19 +169,14 @@ static void vkpt_pt_create_toplevel( VkCommandBuffer cmd_buf, uint32_t idx, draw
 	//
 	append_blas( instances, &num_instances, BAS_ENTITY_DYNAMIC,		&vk.model_instance.blas.dynamic[idx], AS_INSTANCE_FLAG_DYNAMIC, 0, 0, 0 );
 
-#if 0
-	vkbuffer_t *instance_buffer = &vk.buffer_blas_instance[vk.swapchain_image_index];
-	vk_rtx_upload_buffer_data_offset( instance_buffer, 0, sizeof(vk_geometry_instance_t) * num_instances, (const byte*)&instances );
-#else
 	void *instance_data = buffer_map(vk.buffer_blas_instance + idx);
 	memcpy(instance_data, &instances, sizeof(vk_geometry_instance_t) * num_instances);
 
 	buffer_unmap(vk.buffer_blas_instance + idx);
 	instance_data = NULL;
-#endif
 
-	vk_rtx_destroy_tlas( idx );
-	vk_rtx_create_tlas( cmd_buf, idx, num_instances, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);
+	vk_rtx_destroy_tlas( &vk.tlas_geometry[idx] );
+	vk_rtx_create_tlas( cmd_buf, &vk.tlas_geometry[idx], vk.buffer_blas_instance[idx].address, num_instances);
 }
 
 static inline uint32_t fill_mdxm_instance( const trRefEntity_t* entity, const mdxmVBOMesh_t* mesh, shader_t *shader,
@@ -1244,7 +1239,7 @@ static void vk_begin_trace_rays( trRefdef_t *refdef, reference_mode_t *ref_mode,
 		BEGIN_PERF_MARKER( trace_cmd_buf, PROFILER_BVH_UPDATE );
 		vkpt_pt_create_all_dynamic( trace_cmd_buf, idx, upload_info );
 		vkpt_pt_create_toplevel( trace_cmd_buf, idx, drawSurfs, numDrawSurfs );
-		vk_rtx_bind_descriptor_as( &vk.rtxDescriptor[idx], BINDING_OFFSET_AS,VK_SHADER_STAGE_RAYGEN_BIT_KHR, &vk.tlas[idx].accel_khr );
+		vk_rtx_bind_descriptor_as( &vk.rtxDescriptor[idx], BINDING_OFFSET_AS,VK_SHADER_STAGE_RAYGEN_BIT_KHR, &vk.tlas_geometry[idx].accel_khr );
 		vk_rtx_update_descriptor( &vk.rtxDescriptor[idx] );
 		END_PERF_MARKER( trace_cmd_buf, PROFILER_BVH_UPDATE );
 
