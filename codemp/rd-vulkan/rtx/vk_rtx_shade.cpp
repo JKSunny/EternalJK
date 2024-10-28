@@ -118,7 +118,7 @@ void append_blas( vk_geometry_instance_t *instances, int *num_instances, uint32_
 	{
 		blas->data.type = type;
 
-		Com_Memcpy( &blas->data.modelmat, &transform, sizeof(mat3x4_t) );
+		//Com_Memcpy( &blas->data.modelmat, &transform, sizeof(mat3x4_t) );
 
 		vkbuffer_t *instance_buffer_data	= &vk.buffer_blas_instance_data[vk.swapchain_image_index];
 		vk_rtx_upload_buffer_data_offset( instance_buffer_data, *num_instances * sizeof(ASInstanceData), sizeof(ASInstanceData), (const byte*)&blas->data );

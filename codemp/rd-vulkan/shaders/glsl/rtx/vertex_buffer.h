@@ -425,9 +425,9 @@ mat3x3 get_dynamic_bsp_positions_prev( in uint instance_id, in uint prim_id  )
 			indices_dynamic_data_prev.i[prim + 1], 
 			indices_dynamic_data_prev.i[prim + 2] );
 		
-		position[0] = ( vec4(vertices_dynamic_data_prev.v[indices.x].pos.xyz, 1) * iDataPrev.data[instance_id].modelmat ).xyz;
-		position[1] = ( vec4(vertices_dynamic_data_prev.v[indices.y].pos.xyz, 1) * iDataPrev.data[instance_id].modelmat ).xyz;
-		position[2] = ( vec4(vertices_dynamic_data_prev.v[indices.z].pos.xyz, 1) * iDataPrev.data[instance_id].modelmat ).xyz;
+		position[0] = vertices_dynamic_data_prev.v[indices.x].pos.xyz;
+		position[1] = vertices_dynamic_data_prev.v[indices.y].pos.xyz;
+		position[2] = vertices_dynamic_data_prev.v[indices.z].pos.xyz;
 	}
 	
 	else if ( iDataPrev.data[instance_id].type == BAS_WORLD_DYNAMIC_AS )
@@ -437,9 +437,9 @@ mat3x3 get_dynamic_bsp_positions_prev( in uint instance_id, in uint prim_id  )
 			indices_dynamic_as_prev.i[prim + 1], 
 			indices_dynamic_as_prev.i[prim + 2]);
 		
-		position[0] = ( vec4(vertices_dynamic_as_prev.v[indices.x].pos.xyz, 1) * iDataPrev.data[instance_id].modelmat ).xyz;
-		position[1] = ( vec4(vertices_dynamic_as_prev.v[indices.y].pos.xyz, 1) * iDataPrev.data[instance_id].modelmat ).xyz;
-		position[2] = ( vec4(vertices_dynamic_as_prev.v[indices.z].pos.xyz, 1) * iDataPrev.data[instance_id].modelmat ).xyz;
+		position[0] = vertices_dynamic_as_prev.v[indices.x].pos.xyz;
+		position[1] = vertices_dynamic_as_prev.v[indices.y].pos.xyz;
+		position[2] = vertices_dynamic_as_prev.v[indices.z].pos.xyz;
 	}
 
 	return position;
@@ -452,9 +452,9 @@ Triangle get_bsp_triangle( in uint instance_id, in uint prim_id )
 
 	Triangle t;
 
-	t.positions[0] = ( vec4(triangle[0].pos.xyz, 1) * iData.data[instance_id].modelmat ).xyz;
-	t.positions[1] = ( vec4(triangle[1].pos.xyz, 1) * iData.data[instance_id].modelmat ).xyz;
-	t.positions[2] = ( vec4(triangle[2].pos.xyz, 1) * iData.data[instance_id].modelmat ).xyz;
+	t.positions[0] = triangle[0].pos.xyz;
+	t.positions[1] = triangle[1].pos.xyz;
+	t.positions[2] = triangle[2].pos.xyz;
 	
 	if ( iData.data[instance_id].type == BAS_WORLD_STATIC )
 		t.positions_prev = t.positions;
@@ -495,9 +495,9 @@ Triangle get_bsp_triangle( in uint instance_id, in uint prim_id )
 
 #if 0
 	// using packed qtangent instead, this can be removed or commented for now
-	t.normals[0] = ( vec4(triangle[0].normal.xyz, 0) * iData.data[instance_id].modelmat ).xyz;
-	t.normals[1] = ( vec4(triangle[1].normal.xyz, 0) * iData.data[instance_id].modelmat ).xyz;
-	t.normals[2] = ( vec4(triangle[2].normal.xyz, 0) * iData.data[instance_id].modelmat ).xyz;
+	t.normals[0] = triangle[0].normal.xyz, 0;
+	t.normals[1] = triangle[1].normal.xyz, 0;
+	t.normals[2] = triangle[2].normal.xyz, 0;
 #else
 	NTB ntb[3];
 
@@ -505,17 +505,17 @@ Triangle get_bsp_triangle( in uint instance_id, in uint prim_id )
 	QTangentToNTB( triangle[1].qtangent, ntb[1] );
 	QTangentToNTB( triangle[2].qtangent, ntb[2] );
 	
-	t.normals[0] = ( vec4(ntb[0].normal.xyz, 0) * iData.data[instance_id].modelmat ).xyz;
-	t.normals[1] = ( vec4(ntb[1].normal.xyz, 0) * iData.data[instance_id].modelmat ).xyz;
-	t.normals[2] = ( vec4(ntb[2].normal.xyz, 0) * iData.data[instance_id].modelmat ).xyz;
+	t.normals[0] = ntb[0].normal.xyz;
+	t.normals[1] = ntb[1].normal.xyz;
+	t.normals[2] = ntb[2].normal.xyz;
 	
-	t.tangents[0] = ( vec4(ntb[0].tangent.xyz, 0) * iData.data[instance_id].modelmat ).xyz;
-	t.tangents[1] = ( vec4(ntb[1].tangent.xyz, 0) * iData.data[instance_id].modelmat ).xyz;
-	t.tangents[2] = ( vec4(ntb[2].tangent.xyz, 0) * iData.data[instance_id].modelmat ).xyz;
+	t.tangents[0] = ntb[0].tangent.xyz;
+	t.tangents[1] = ntb[1].tangent.xyz;
+	t.tangents[2] = ntb[2].tangent.xyz;
 
-	//t.binormal[0] = ( vec4(ntb[0].binormal.xyz, 0) * iData.data[instance_id].modelmat ).xyz;
-	//t.binormal[1] = ( vec4(ntb[1].binormal.xyz, 0) * iData.data[instance_id].modelmat ).xyz;
-	//t.binormal[2] = ( vec4(ntb[2].binormal.xyz, 0) * iData.data[instance_id].modelmat ).xyz;	
+	//t.binormal[0] = ntb[0].binormal.xyz;
+	//t.binormal[1] = ntb[1].binormal.xyz;
+	//t.binormal[2] = ntb[2].binormal.xyz;	
 #endif
 
 	switch( iData.data[instance_id].type )
