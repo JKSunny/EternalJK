@@ -369,199 +369,183 @@ vec4 unpackColor(in uint color) {
 	);
 }
 
-ivec3 getVertexData( in uint instance_id, in uint prim_id, out VertexBuffer vData[3] )
+ivec3 get_bsp_triangle_indices_and_data( in uint instance_id, in uint prim_id, out VertexBuffer triangle[3] )
 {
-	uint customIndex = uint(iData.data[instance_id].offsetIDX) + (prim_id * 3);
-	
-	ivec3 index;
-	if(iData.data[instance_id].type == BAS_WORLD_STATIC) index = (ivec3(indices_world_static.i[customIndex], indices_world_static.i[customIndex + 1], indices_world_static.i[customIndex + 2])) + int(iData.data[instance_id].offsetXYZ);
-	else if(iData.data[instance_id].type == BAS_WORLD_DYNAMIC_DATA)  index = (ivec3(indices_dynamic_data.i[customIndex], indices_dynamic_data.i[customIndex + 1], indices_dynamic_data.i[customIndex + 2])) + int(iData.data[instance_id].offsetXYZ);
-	else if(iData.data[instance_id].type == BAS_WORLD_DYNAMIC_AS)  index = (ivec3(indices_dynamic_as.i[customIndex], indices_dynamic_as.i[customIndex + 1], indices_dynamic_as.i[customIndex + 2])) + int(iData.data[instance_id].offsetXYZ);
+	uint prim = prim_id * 3;
+	ivec3 indices;
 
 	if ( iData.data[instance_id].type == BAS_WORLD_STATIC )
 	{
-		vData[0] = vertices_world_static.v[index.x];
-		vData[1] = vertices_world_static.v[index.y];
-		vData[2] = vertices_world_static.v[index.z];
+		indices = ivec3(	
+			indices_world_static.i[prim + 0], 
+			indices_world_static.i[prim + 1], 
+			indices_world_static.i[prim + 2] );
+
+		triangle[0] = vertices_world_static.v[indices.x];
+		triangle[1] = vertices_world_static.v[indices.y];
+		triangle[2] = vertices_world_static.v[indices.z];
 	}
 	
 	else if ( iData.data[instance_id].type == BAS_WORLD_DYNAMIC_DATA )
 	{
-		vData[0] = vertices_dynamic_data.v[index.x];
-		vData[1] = vertices_dynamic_data.v[index.y];
-		vData[2] = vertices_dynamic_data.v[index.z];
+		indices = ivec3(	
+			indices_dynamic_data.i[prim + 0], 
+			indices_dynamic_data.i[prim + 1], 
+			indices_dynamic_data.i[prim + 2] );
+		
+		triangle[0] = vertices_dynamic_data.v[indices.x];
+		triangle[1] = vertices_dynamic_data.v[indices.y];
+		triangle[2] = vertices_dynamic_data.v[indices.z];
 	}
 	
 	else if ( iData.data[instance_id].type == BAS_WORLD_DYNAMIC_AS )
 	{
-		vData[0] = vertices_dynamic_as.v[index.x];
-		vData[1] = vertices_dynamic_as.v[index.y];
-		vData[2] = vertices_dynamic_as.v[index.z];
+		indices = ivec3(	
+			indices_dynamic_as.i[prim + 0], 
+			indices_dynamic_as.i[prim + 1], 
+			indices_dynamic_as.i[prim + 2] );
+
+		triangle[0] = vertices_dynamic_as.v[indices.x];
+		triangle[1] = vertices_dynamic_as.v[indices.y];
+		triangle[2] = vertices_dynamic_as.v[indices.z];
 	}
 	
-	return index;
+	return indices;
 }
 
-ivec3 getVertexDataPrev( in uint instance_id, in uint prim_id, out VertexBuffer vData[3] )
+mat3x3 get_dynamic_bsp_positions_prev( in uint instance_id, in uint prim_id  )
 {
-	uint customIndex = uint(iDataPrev.data[instance_id].offsetIDX) + (prim_id * 3);
-	
-	ivec3 index;
-	if ( iDataPrev.data[instance_id].type == BAS_WORLD_STATIC )
-		index = (ivec3(indices_world_static.i[customIndex], indices_world_static.i[customIndex + 1], indices_world_static.i[customIndex + 2])) + int(iDataPrev.data[instance_id].offsetXYZ);
-	
-	else if ( iDataPrev.data[instance_id].type == BAS_WORLD_DYNAMIC_DATA )
-		index = (ivec3(indices_dynamic_data_prev.i[customIndex], indices_dynamic_data_prev.i[customIndex + 1], indices_dynamic_data_prev.i[customIndex + 2])) + int(iDataPrev.data[instance_id].offsetXYZ);
-	
-	else if ( iDataPrev.data[instance_id].type == BAS_WORLD_DYNAMIC_AS)
-		index = (ivec3(indices_dynamic_as_prev.i[customIndex], indices_dynamic_as_prev.i[customIndex + 1], indices_dynamic_as_prev.i[customIndex + 2])) + int(iDataPrev.data[instance_id].offsetXYZ);
+	uint prim = prim_id * 3;
+	mat3x3 position;
 
-	if ( iDataPrev.data[instance_id].type == BAS_WORLD_STATIC )
-	{	
-		vData[0] = vertices_world_static.v[index.x];
-		vData[1] = vertices_world_static.v[index.y];
-		vData[2] = vertices_world_static.v[index.z];
-	}
-	
-	else if ( iDataPrev.data[instance_id].type == BAS_WORLD_DYNAMIC_DATA )
+	if ( iDataPrev.data[instance_id].type == BAS_WORLD_DYNAMIC_DATA )
 	{
-		vData[0] = vertices_dynamic_data_prev.v[index.x];
-		vData[1] = vertices_dynamic_data_prev.v[index.y];
-		vData[2] = vertices_dynamic_data_prev.v[index.z];
+		ivec3 indices = ivec3( 
+			indices_dynamic_data_prev.i[prim + 0], 
+			indices_dynamic_data_prev.i[prim + 1], 
+			indices_dynamic_data_prev.i[prim + 2] );
+		
+		position[0] = ( vec4(vertices_dynamic_data_prev.v[indices.x].pos.xyz, 1) * iDataPrev.data[instance_id].modelmat ).xyz;
+		position[1] = ( vec4(vertices_dynamic_data_prev.v[indices.y].pos.xyz, 1) * iDataPrev.data[instance_id].modelmat ).xyz;
+		position[2] = ( vec4(vertices_dynamic_data_prev.v[indices.z].pos.xyz, 1) * iDataPrev.data[instance_id].modelmat ).xyz;
 	}
 	
 	else if ( iDataPrev.data[instance_id].type == BAS_WORLD_DYNAMIC_AS )
 	{
-		vData[0] = vertices_dynamic_as_prev.v[index.x];
-		vData[1] = vertices_dynamic_as_prev.v[index.y];
-		vData[2] = vertices_dynamic_as_prev.v[index.z];
+		ivec3 indices = ivec3(
+			indices_dynamic_as_prev.i[prim + 0], 
+			indices_dynamic_as_prev.i[prim + 1], 
+			indices_dynamic_as_prev.i[prim + 2]);
+		
+		position[0] = ( vec4(vertices_dynamic_as_prev.v[indices.x].pos.xyz, 1) * iDataPrev.data[instance_id].modelmat ).xyz;
+		position[1] = ( vec4(vertices_dynamic_as_prev.v[indices.y].pos.xyz, 1) * iDataPrev.data[instance_id].modelmat ).xyz;
+		position[2] = ( vec4(vertices_dynamic_as_prev.v[indices.z].pos.xyz, 1) * iDataPrev.data[instance_id].modelmat ).xyz;
 	}
-	
-	return index;
-}
-
-mat3x3 get_bsp_position_prev( in uint instance_id, in uint prim_id  )
-{
-	VertexBuffer vData[3];
-	ivec3 index = getVertexDataPrev( instance_id, prim_id, vData );
-
-	mat3x3 position;
-	
-	position[0] = ( vec4(vData[0].pos.xyz, 1) * iDataPrev.data[instance_id].modelmat ).xyz;
-	position[1] = ( vec4(vData[1].pos.xyz, 1) * iDataPrev.data[instance_id].modelmat ).xyz;
-	position[2] = ( vec4(vData[2].pos.xyz, 1) * iDataPrev.data[instance_id].modelmat ).xyz;
 
 	return position;
 }
 
 Triangle get_bsp_triangle( in uint instance_id, in uint prim_id )
 {
-	VertexBuffer vData[3];
-	ivec3 index = getVertexData( instance_id, prim_id, vData );
+	VertexBuffer triangle[3];
+	ivec3 indices = get_bsp_triangle_indices_and_data( instance_id, prim_id, triangle );
 
 	Triangle t;
 
-	t.positions[0] = (vec4(vData[0].pos.xyz, 1) * iData.data[instance_id].modelmat).xyz;
-	t.positions[1] = (vec4(vData[1].pos.xyz, 1) * iData.data[instance_id].modelmat).xyz;
-	t.positions[2] = (vec4(vData[2].pos.xyz, 1) * iData.data[instance_id].modelmat).xyz;
+	t.positions[0] = ( vec4(triangle[0].pos.xyz, 1) * iData.data[instance_id].modelmat ).xyz;
+	t.positions[1] = ( vec4(triangle[1].pos.xyz, 1) * iData.data[instance_id].modelmat ).xyz;
+	t.positions[2] = ( vec4(triangle[2].pos.xyz, 1) * iData.data[instance_id].modelmat ).xyz;
 	
 	if ( iData.data[instance_id].type == BAS_WORLD_STATIC )
 		t.positions_prev = t.positions;
 	else 
-		t.positions_prev = get_bsp_position_prev( instance_id, prim_id ); 
+		t.positions_prev = get_dynamic_bsp_positions_prev( instance_id, prim_id ); 
 
-	t.color0[0] = unpackColor(vData[0].color[0]);
-	t.color0[1] = unpackColor(vData[1].color[0]);
-	t.color0[2] = unpackColor(vData[2].color[0]);
+	t.color0[0] = unpackColor(triangle[0].color[0]);
+	t.color0[1] = unpackColor(triangle[1].color[0]);
+	t.color0[2] = unpackColor(triangle[2].color[0]);
 
-	t.color1[0] = unpackColor(vData[0].color[1]);
-	t.color1[1] = unpackColor(vData[1].color[1]);
-	t.color1[2] = unpackColor(vData[2].color[1]);
+	t.color1[0] = unpackColor(triangle[0].color[1]);
+	t.color1[1] = unpackColor(triangle[1].color[1]);
+	t.color1[2] = unpackColor(triangle[2].color[1]);
 
-	t.color2[0] = unpackColor(vData[0].color[2]);
-	t.color2[1] = unpackColor(vData[1].color[2]);
-	t.color2[2] = unpackColor(vData[2].color[2]);
+	t.color2[0] = unpackColor(triangle[0].color[2]);
+	t.color2[1] = unpackColor(triangle[1].color[2]);
+	t.color2[2] = unpackColor(triangle[2].color[2]);
 	
-	t.color3[0] = unpackColor(vData[0].color[3]);
-	t.color3[1] = unpackColor(vData[1].color[3]);
-	t.color3[2] = unpackColor(vData[2].color[3]);
+	t.color3[0] = unpackColor(triangle[0].color[3]);
+	t.color3[1] = unpackColor(triangle[1].color[3]);
+	t.color3[2] = unpackColor(triangle[2].color[3]);
 
-	t.tex_coords0[0] = vData[0].uv[0].xy;
-	t.tex_coords0[1] = vData[1].uv[0].xy;
-	t.tex_coords0[2] = vData[2].uv[0].xy;
+	t.tex_coords0[0] = triangle[0].uv[0].xy;
+	t.tex_coords0[1] = triangle[1].uv[0].xy;
+	t.tex_coords0[2] = triangle[2].uv[0].xy;
 
-	t.tex_coords1[0] = vData[0].uv[1].xy;
-	t.tex_coords1[1] = vData[1].uv[1].xy;
-	t.tex_coords1[2] = vData[2].uv[1].xy;
+	t.tex_coords1[0] = triangle[0].uv[1].xy;
+	t.tex_coords1[1] = triangle[1].uv[1].xy;
+	t.tex_coords1[2] = triangle[2].uv[1].xy;
 
-	t.tex_coords2[0] = vData[0].uv[2].xy;
-	t.tex_coords2[1] = vData[1].uv[2].xy;
-	t.tex_coords2[2] = vData[2].uv[2].xy;
+	t.tex_coords2[0] = triangle[0].uv[2].xy;
+	t.tex_coords2[1] = triangle[1].uv[2].xy;
+	t.tex_coords2[2] = triangle[2].uv[2].xy;
 
-	t.tex_coords3[0] = vData[0].uv[3].xy;
-	t.tex_coords3[1] = vData[1].uv[3].xy;
-	t.tex_coords3[2] = vData[2].uv[3].xy;
+	t.tex_coords3[0] = triangle[0].uv[3].xy;
+	t.tex_coords3[1] = triangle[1].uv[3].xy;
+	t.tex_coords3[2] = triangle[2].uv[3].xy;
 
 #if 0
 	// using packed qtangent instead, this can be removed or commented for now
-	t.normals[0] = (vec4(vData[0].normal.xyz, 0) * iData.data[instance_id].modelmat).xyz;
-	t.normals[1] = (vec4(vData[1].normal.xyz, 0) * iData.data[instance_id].modelmat).xyz;
-	t.normals[2] = (vec4(vData[2].normal.xyz, 0) * iData.data[instance_id].modelmat).xyz;
+	t.normals[0] = ( vec4(triangle[0].normal.xyz, 0) * iData.data[instance_id].modelmat ).xyz;
+	t.normals[1] = ( vec4(triangle[1].normal.xyz, 0) * iData.data[instance_id].modelmat ).xyz;
+	t.normals[2] = ( vec4(triangle[2].normal.xyz, 0) * iData.data[instance_id].modelmat ).xyz;
 #else
 	NTB ntb[3];
 
-	QTangentToNTB( vData[0].qtangent, ntb[0] );
-	QTangentToNTB( vData[1].qtangent, ntb[1] );
-	QTangentToNTB( vData[2].qtangent, ntb[2] );
+	QTangentToNTB( triangle[0].qtangent, ntb[0] );
+	QTangentToNTB( triangle[1].qtangent, ntb[1] );
+	QTangentToNTB( triangle[2].qtangent, ntb[2] );
 	
-	t.normals[0] = (vec4(ntb[0].normal.xyz, 0) * iData.data[instance_id].modelmat).xyz;
-	t.normals[1] = (vec4(ntb[1].normal.xyz, 0) * iData.data[instance_id].modelmat).xyz;
-	t.normals[2] = (vec4(ntb[2].normal.xyz, 0) * iData.data[instance_id].modelmat).xyz;
+	t.normals[0] = ( vec4(ntb[0].normal.xyz, 0) * iData.data[instance_id].modelmat ).xyz;
+	t.normals[1] = ( vec4(ntb[1].normal.xyz, 0) * iData.data[instance_id].modelmat ).xyz;
+	t.normals[2] = ( vec4(ntb[2].normal.xyz, 0) * iData.data[instance_id].modelmat ).xyz;
 	
-	t.tangents[0] = (vec4(ntb[0].tangent.xyz, 0) * iData.data[instance_id].modelmat).xyz;
-	t.tangents[1] = (vec4(ntb[1].tangent.xyz, 0) * iData.data[instance_id].modelmat).xyz;
-	t.tangents[2] = (vec4(ntb[2].tangent.xyz, 0) * iData.data[instance_id].modelmat).xyz;
+	t.tangents[0] = ( vec4(ntb[0].tangent.xyz, 0) * iData.data[instance_id].modelmat ).xyz;
+	t.tangents[1] = ( vec4(ntb[1].tangent.xyz, 0) * iData.data[instance_id].modelmat ).xyz;
+	t.tangents[2] = ( vec4(ntb[2].tangent.xyz, 0) * iData.data[instance_id].modelmat ).xyz;
 
-	//t.binormal[0] = (vec4(ntb[0].binormal.xyz, 0) * iData.data[instance_id].modelmat).xyz;
-	//t.binormal[1] = (vec4(ntb[1].binormal.xyz, 0) * iData.data[instance_id].modelmat).xyz;
-	//t.binormal[2] = (vec4(ntb[2].binormal.xyz, 0) * iData.data[instance_id].modelmat).xyz;	
+	//t.binormal[0] = ( vec4(ntb[0].binormal.xyz, 0) * iData.data[instance_id].modelmat ).xyz;
+	//t.binormal[1] = ( vec4(ntb[1].binormal.xyz, 0) * iData.data[instance_id].modelmat ).xyz;
+	//t.binormal[2] = ( vec4(ntb[2].binormal.xyz, 0) * iData.data[instance_id].modelmat ).xyz;	
 #endif
 
-	uint idx_c;
-	switch(iData.data[instance_id].type){
+	switch( iData.data[instance_id].type )
+	{
 		case BAS_WORLD_STATIC:
-			t.tex0 = (vertices_world_static.v[index.x].texIdx0);
-			t.tex1 = (vertices_world_static.v[index.x].texIdx1);
-			// cluster
-			idx_c = uint(iData.data[instance_id].offsetIDX) + (prim_id);
-			t.cluster = cluster_world_static.c[idx_c];
-			// material
-			t.material_id = vertices_world_static.v[index.x].material;	// same as vData[0].material ?
+			t.tex0 = vertices_world_static.v[indices.x].texIdx0;
+			t.tex1 = vertices_world_static.v[indices.x].texIdx1;
+
+			t.cluster = cluster_world_static.c[prim_id];
+			t.material_id = vertices_world_static.v[indices.x].material;	// same as triangle[0].material ?
 			break;
 		case BAS_WORLD_DYNAMIC_DATA:
-			t.tex0 = (vertices_dynamic_data.v[index.x].texIdx0);
-			t.tex1 = (vertices_dynamic_data.v[index.x].texIdx1);
-			// cluster
-			idx_c = uint(iData.data[instance_id].offsetIDX) + (prim_id);
-			t.cluster = cluster_world_dynamic_data.c[idx_c];
-			// material
-			t.material_id = vertices_dynamic_data.v[index.x].material;
+			t.tex0 = vertices_dynamic_data.v[indices.x].texIdx0;
+			t.tex1 = vertices_dynamic_data.v[indices.x].texIdx1;
+
+			t.cluster = cluster_world_dynamic_data.c[prim_id];
+			t.material_id = vertices_dynamic_data.v[indices.x].material;
 			break;
 		case BAS_WORLD_DYNAMIC_AS:
-			t.tex0 = (vertices_dynamic_as.v[index.x].texIdx0);
-			t.tex1 = (vertices_dynamic_as.v[index.x].texIdx1);
-			// cluster
-			idx_c = uint(iData.data[instance_id].offsetIDX) + (prim_id);
-			t.cluster = cluster_world_dynamic_as.c[idx_c];
-			// material
-			t.material_id = vertices_dynamic_as.v[index.x].material;
+			t.tex0 = vertices_dynamic_as.v[indices.x].texIdx0;
+			t.tex1 = vertices_dynamic_as.v[indices.x].texIdx1;
+
+			t.cluster = cluster_world_dynamic_as.c[prim_id];
+			t.material_id = vertices_dynamic_as.v[indices.x].material;
 			break;
 		default:
-			t.tex0 = (iData.data[instance_id].texIdx0);
-			t.tex1 = (iData.data[instance_id].texIdx1);
-			// cluster
-			t.cluster = vData[1].cluster;
-			// material
+			t.tex0 = iData.data[instance_id].texIdx0;
+			t.tex1 = iData.data[instance_id].texIdx1;
+
+			t.cluster = triangle[1].cluster;
 			t.material_id = 0;
 	}
 

@@ -573,12 +573,7 @@ main()
 		tex_coord[0]    = triangle.tex_coords0 * bary;
 	}
 	vec3 new_position	= triangle.positions * bary;
-#if 1
-	uint primitive_id	= get_primitive(ray_payload_brdf);
-	vec3 new_pos_prev	= get_position_prev( ray_payload_brdf.instanceID, primitive_id ) * bary;
-#else
 	vec3 new_pos_prev	= triangle.positions_prev * bary;
-#endif
 	vec3 new_geo_normal	= normalize(triangle.normals * bary);
 	vec3 geo_tangent;
 	material_id			= triangle.material_id;
@@ -746,6 +741,7 @@ main()
 	}
 
 	bool is_dynamic_primitive = is_dynamic_instance(ray_payload_brdf);
+	uint primitive_id = get_primitive(ray_payload_brdf);
 
 	uvec2 vis_buf;
 	vis_buf.x = is_dynamic_primitive ? 
