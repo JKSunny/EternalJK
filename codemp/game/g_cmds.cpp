@@ -1504,7 +1504,7 @@ qboolean G_Give( gentity_t *ent, const char *name, const char *args, int argc )
 			int weaponID = BG_GetWeaponIndex(weapon->weaponBaseIndex, weapon->weaponModIndex);
 			int itemID = BG_GetItemByWeaponIndex(weaponID)->itemID;
 
-			itemInstance_t item = BG_ItemInstance(itemID, 1);
+			itemInstance_t item = BG_ItemInstance(itemID, 1, MAX_DEFAULT_DURABILITY);
 			BG_GiveItem(ent, item);
 			trap->SendServerCommand (ent->s.number, va ("print \"'%s' was added to your inventory.\n\"", itemLookupTable[itemID].displayName));
 			
@@ -1570,7 +1570,7 @@ qboolean G_Give( gentity_t *ent, const char *name, const char *args, int argc )
 				trap->SendServerCommand(ent - g_entities, va("print \"%i refers to an item that does not exist\n\"", itemID));
 				return qfalse;
 			}
-			itemInstance_t item = BG_ItemInstance(itemID, 1);
+			itemInstance_t item = BG_ItemInstance(itemID, 1, MAX_DEFAULT_DURABILITY);
 
 			// If we gave the player an ammo item, we need to actually give them ammo, not the ammo item itself
 			if (item.id->itemType == ITEM_AMMO)
@@ -1587,7 +1587,7 @@ qboolean G_Give( gentity_t *ent, const char *name, const char *args, int argc )
 		}
 		else
 		{
-			itemInstance_t item = BG_ItemInstance(args, 1);
+			itemInstance_t item = BG_ItemInstance(args, 1, MAX_DEFAULT_DURABILITY);
 			if (!item.id) {
 				trap->SendServerCommand(ent - g_entities, va("print \"%s refers to an item that does not exist\n\"", args));
 				return qfalse;
@@ -2271,6 +2271,20 @@ void Cmd_SetItemDurability_f(gentity_t* ent)
 	int slot = atoi(arg);
 	trap->Argv(2, arg, sizeof(arg));
 	int durability = atoi(arg);
+
+	//check we're valid
+	if (slot < ent->inventory->size() || slot < 0 )
+	{
+		if (ent->inventory->at(slot).id->maxDurability < durability)
+		{
+			durability = ent->inventory->at(slot).id->maxDurability;
+		}
+	}
+	else
+	{
+		trap->SendServerCommand(ent->s.number, va("print \"Requested item num (%i) is not in your inventory.\n\"", slot));
+		return;
+	}
 
 	BG_UpdateItemDurability(ent, slot, durability);
 	trap->SendServerCommand(ent - g_entities, va("durability_update %i %i", slot, durability));

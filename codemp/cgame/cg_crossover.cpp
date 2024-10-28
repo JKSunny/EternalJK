@@ -92,6 +92,13 @@ static void *CO_InventoryDataRequest ( jkgInventoryRequest_e data, int extra )
 		case INVENTORYREQUEST_ICONSHADER:
 			return (*cg.playerInventory)[extra].id->visuals.itemIcon;
 		case INVENTORYREQUEST_DURABILITY:
+			//do a sanity check
+			if(extra > cg.playerInventory->size() || extra < 0)
+			{
+				Com_Printf(va("print \"Requested item (%i) is not in your inventory.\n\"", extra));
+				tempSize = MAX_DEFAULT_DURABILITY;
+				return &tempSize;
+			}
 			tempSize = (*cg.playerInventory)[extra].durability;
 			return &tempSize;
         default:

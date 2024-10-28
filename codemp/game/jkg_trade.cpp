@@ -56,7 +56,7 @@ static void JKG_target_vendor_think(gentity_t* self) {
 	// Add the items that we've picked to the vendor's inventory
 	npc->inventory->clear();
 	for (auto it = items.begin(); it != items.end(); ++it) {
-		itemInstance_t item = BG_ItemInstance(*it, 1);
+		itemInstance_t item = BG_ItemInstance(*it, 1, MAX_DEFAULT_DURABILITY);
 		BG_GiveItemNonNetworked(npc, item);
 	}
 	
@@ -316,7 +316,7 @@ void JKG_RegenerateStock(gentity_t* ent)
 
 	// Add the items that we've picked to the vendor's inventory
 	for (auto it = items.begin(); it != items.end(); ++it) {
-		itemInstance_t item = BG_ItemInstance(*it, 1);
+		itemInstance_t item = BG_ItemInstance(*it, 1, MAX_DEFAULT_DURABILITY);
 		BG_GiveItemNonNetworked(ent, item);
 	}
 

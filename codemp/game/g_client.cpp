@@ -3150,7 +3150,7 @@ void ClientSpawn(gentity_t *ent, qboolean respawn) {
 					// Don't have any sort of item in our inventory
 					if(ent->client->ps.credits < jkg_startingCredits.integer)
 					{
-						itemInstance_t item = BG_ItemInstance(itemID, 1);
+						itemInstance_t item = BG_ItemInstance(itemID, 1, MAX_DEFAULT_DURABILITY);
 						ent->client->ps.credits = jkg_startingCredits.integer;
 						//ent->client->ps.spent = 0;
 

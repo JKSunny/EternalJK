@@ -21,6 +21,7 @@ typedef struct gentity_s gentity_t;
 
 #define MAX_ACI_SLOTS			(10)
 #define MAX_ARMOR_PIECES		(512)		//unused
+#define MAX_DEFAULT_DURABILITY	(50)
 
 /*
  * Enumerations
@@ -235,9 +236,9 @@ itemData_t *BG_GetItemByWeaponIndex(int weaponIndex);
 int BG_FindItemByInternal(const char *internalName);
 qboolean BG_HasWeaponItem(int clientNum, int weaponId);
 itemData_t* BG_FindItemDataByName(const char* internalName);
-itemInstance_t BG_ItemInstance(itemData_t* pItemData, const int quantity);
-itemInstance_t BG_ItemInstance(const char* internalName, const int quantity);
-itemInstance_t BG_ItemInstance(const int itemID, const int quantity);
+itemInstance_t BG_ItemInstance(itemData_t* pItemData, const int quantity, const int durability);
+itemInstance_t BG_ItemInstance(const char* internalName, const int quantity, const int durability);
+itemInstance_t BG_ItemInstance(const int itemID, const int quantity, const int durability);
 int BG_FirstStack(const std::vector<itemInstance_t>& container, const int itemID);
 int BG_NextStack(const std::vector<itemInstance_t>& container, const int itemID, const int prevStack);
 void BG_LoadDefaultWeaponItems(void);
