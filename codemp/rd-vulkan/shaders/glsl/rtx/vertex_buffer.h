@@ -26,9 +26,6 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define BUFFER_T buffer
 #endif
 
-// buffer with instance data
-//layout( set = 0, binding = BINDING_OFFSET_INSTANCE_DATA )				BUFFER_T Instance { ASInstanceData data[]; } iData;
-
 // Buffer with indices and vertices
 layout( set = 0, binding = BINDING_OFFSET_IDX_WORLD_STATIC )			BUFFER_T Indices_World_static { uint i[]; } indices_world_static;
 layout( set = 0, binding = BINDING_OFFSET_XYZ_WORLD_STATIC )			BUFFER_T Vertices_World_static { VertexBuffer v[]; } vertices_world_static;
@@ -65,7 +62,6 @@ layout( set = 0, binding = BINDING_OFFSET_SUN_COLOR_BUFFER )			buffer SUN_COLOR_
 layout( set = 0, binding = BINDING_OFFSET_LIGHT_STATS_BUFFER )			buffer LIGHT_STATS_BUFFERS { uint stats[]; } light_stats_bufers[3];
 
 //prev
-//layout( set = 0, binding = BINDING_OFFSET_INSTANCE_DATA_PREV )			BUFFER_T InstancePrev { ASInstanceData data[]; } iDataPrev;
 layout( set = 0, binding = BINDING_OFFSET_IDX_WORLD_DYNAMIC_DATA_PREV ) BUFFER_T Indices_dynamic_data_prev { uint i[]; } indices_dynamic_data_prev;
 layout( set = 0, binding = BINDING_OFFSET_XYZ_WORLD_DYNAMIC_DATA_PREV ) BUFFER_T Vertices_dynamic_data_prev { VertexBuffer v[]; } vertices_dynamic_data_prev;
 layout( set = 0, binding = BINDING_OFFSET_IDX_WORLD_DYNAMIC_AS_PREV )	BUFFER_T Indices_dynamic_as_prev { uint i[]; } indices_dynamic_as_prev;

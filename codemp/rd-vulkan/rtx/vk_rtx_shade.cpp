@@ -113,17 +113,6 @@ void append_blas( vk_geometry_instance_t *instances, int *num_instances, uint32_
 
 	Com_Memcpy( &instance.transform, &transform, sizeof(mat3x4_t) );
 
-	// additional instance data
-	// rework this
-	{
-		blas->data.type = type;
-
-		//Com_Memcpy( &blas->data.modelmat, &transform, sizeof(mat3x4_t) );
-
-		vkbuffer_t *instance_buffer_data	= &vk.buffer_blas_instance_data[vk.swapchain_image_index];
-		vk_rtx_upload_buffer_data_offset( instance_buffer_data, *num_instances * sizeof(ASInstanceData), sizeof(ASInstanceData), (const byte*)&blas->data );
-	}
-
 	//assert(*num_instances < INSTANCE_MAX_NUM);
 	memcpy(instances + *num_instances, &instance, sizeof(instance));
 	vk.buffer_uniform_instance.tlas_instance_type[*num_instances] = type;
@@ -255,7 +244,7 @@ static void process_regular_entity(
 	if ( !vk_rtx_find_mdxm_meshes_for_entity( entityNum, entity ) )
 		return;
 
-	vkInstanceRTX_t *uniform_instance_buffer = &vk.buffer_uniform_instance;
+	InstanceBuffer *uniform_instance_buffer = &vk.buffer_uniform_instance;
 	uint32_t *ubo_instance_buf_offset	= (uint32_t*)uniform_instance_buffer->model_instance_buf_offset;
 	uint32_t *ubo_instance_buf_size		= (uint32_t*)uniform_instance_buffer->model_instance_buf_size;
 	uint32_t *ubo_model_idx_offset		= (uint32_t*)uniform_instance_buffer->model_idx_offset;
@@ -336,7 +325,7 @@ static void prepare_entities( EntityUploadInfo *upload_info, const trRefdef_t *r
 
 	entity_frame_num = !entity_frame_num;
 
-	vkInstanceRTX_t *instance_buffer = &vk.buffer_uniform_instance;
+	InstanceBuffer *instance_buffer = &vk.buffer_uniform_instance;
 
 	memcpy( instance_buffer->bsp_mesh_instances_prev, instance_buffer->bsp_mesh_instances,
 		sizeof(instance_buffer->bsp_mesh_instances_prev) );

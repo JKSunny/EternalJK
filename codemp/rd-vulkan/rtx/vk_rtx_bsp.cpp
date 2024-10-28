@@ -667,7 +667,6 @@ static void vk_bind_sampler( vkdescriptor_t *descriptor, uint32_t binding, VkSha
 
 static void vk_bind_common_descriptor_data( vkdescriptor_t *descriptor, VkShaderStageFlagBits flags, uint32_t index, VkShaderStageFlagBits stage, int prev_index )
 {
-	vk_bind_storage_buffer(descriptor, BINDING_OFFSET_INSTANCE_DATA, flags, vk.buffer_blas_instance_data[index].buffer);
 	vk_bind_storage_buffer(descriptor, BINDING_OFFSET_XYZ_WORLD_STATIC, flags, vk.geometry.xyz_world_static.buffer);
 	vk_bind_storage_buffer(descriptor, BINDING_OFFSET_IDX_WORLD_STATIC, flags, vk.geometry.idx_world_static.buffer);
 	vk_bind_storage_buffer(descriptor, BINDING_OFFSET_XYZ_WORLD_DYNAMIC_DATA, flags, vk.geometry.xyz_world_dynamic_data[index].buffer);
@@ -706,7 +705,6 @@ static void vk_bind_common_descriptor_data( vkdescriptor_t *descriptor, VkShader
 	}
 
 	// previous
-	vk_bind_storage_buffer(descriptor, BINDING_OFFSET_INSTANCE_DATA_PREV, flags, vk.buffer_blas_instance_data[prev_index].buffer);
 	vk_bind_storage_buffer(descriptor, BINDING_OFFSET_XYZ_WORLD_DYNAMIC_DATA_PREV, flags, vk.geometry.xyz_world_dynamic_data[prev_index].buffer);
 	vk_bind_storage_buffer(descriptor, BINDING_OFFSET_IDX_WORLD_DYNAMIC_DATA_PREV, flags, vk.geometry.idx_world_dynamic_data[prev_index].buffer);
 	vk_bind_storage_buffer(descriptor, BINDING_OFFSET_XYZ_WORLD_DYNAMIC_AS_PREV, flags, vk.geometry.xyz_world_dynamic_as[prev_index].buffer);
@@ -734,8 +732,6 @@ static void vk_create_compute_descriptor( uint32_t index, int prev_index )
 	VkShaderStageFlagBits flags = (VkShaderStageFlagBits)( VK_SHADER_STAGE_COMPUTE_BIT );
 	vkdescriptor_t *descriptor = &vk.computeDescriptor[index];
 	VkShaderStageFlagBits stage = VK_SHADER_STAGE_COMPUTE_BIT;
-
-	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_INSTANCE_PREV_TO_CURR,			flags, vk.prevToCurrInstanceBuffer[index].buffer );
 
 	vk_bind_common_descriptor_data( descriptor, flags, index, stage, prev_index );
 

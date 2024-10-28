@@ -394,11 +394,6 @@ STRUCT (
 	FLOAT	( sky_luminance )
 , SunColorBuffer )
 
-// holds blas instance type .. for now
-STRUCT ( 
-	UINT    ( type )
-, ASInstanceData )
-
 // holds all bsp vertex data
 STRUCT ( 
     VEC3    ( pos )
@@ -447,7 +442,7 @@ STRUCT (
 	UINT			( bsp_instance_buf_offset	[SHADER_MAX_BSP_ENTITIES]	)
 	UINT			( bsp_instance_buf_size		[SHADER_MAX_BSP_ENTITIES]	)
 	BONESREF		( model_mdxm_bones			[SHADER_MAX_ENTITIES]		)
-, vkInstanceRTX_t )
+, InstanceBuffer ) 
 
 #undef UBO_CVAR_DO
 
@@ -462,7 +457,7 @@ STRUCT (
 #ifdef GLSL
 // bindings
 layout( binding = GLOBAL_UBO_BINDING_IDX, set = 3 ) uniform UBO { vkUniformRTX_t global_ubo; };
-layout( binding = GLOBAL_INSTANCE_BUFFER_BINDING_IDX, set = 3 ) readonly buffer InstanceUBO { vkInstanceRTX_t instance_buffer; };
+layout( binding = GLOBAL_INSTANCE_BUFFER_BINDING_IDX, set = 3 ) readonly buffer InstanceUBO { InstanceBuffer instance_buffer; };
 #endif
 
 #endif /*_GLOBAL_UBO_DESCRIPTOR_SET_LAYOUT_H_*/

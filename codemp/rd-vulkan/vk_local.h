@@ -945,7 +945,6 @@ typedef struct {
 
 	// stores offset and stuff for in shader lookup
 	vkbuffer_t		buffer_blas_instance[VK_MAX_SWAPCHAIN_SIZE];
-	vkbuffer_t		buffer_blas_instance_data[VK_MAX_SWAPCHAIN_SIZE];		// extended data
 	
 	vkbuffer_t		buffer_readback;
 	vkbuffer_t		buffer_readback_staging[VK_MAX_SWAPCHAIN_SIZE];
@@ -963,10 +962,7 @@ typedef struct {
 	VkDeviceSize	scratch_buffer_ptr;
 
 	vkUniformRTX_t	buffer_uniform;
-	vkInstanceRTX_t buffer_uniform_instance;
-
-	int				prevToCurrInstance[300];
-	vkbuffer_t		prevToCurrInstanceBuffer[VK_MAX_SWAPCHAIN_SIZE];
+	InstanceBuffer	buffer_uniform_instance;
 #endif
 
 	VkSwapchainKHR	swapchain;

@@ -310,14 +310,11 @@ typedef struct accel_bottom_match_info_s {
 
 typedef struct {
 	VkAccelerationStructureKHR			accel_khr;
-	vk_blas_match_info_t				match;
-	vkbuffer_t							mem;
 	uint64_t							handle;
-	VkAccelerationStructureGeometryKHR	geometries;
-
-	ASInstanceData						data;
 	VkDeviceSize						offset;			// offset in static or dynamic buffer
-	qboolean							isWorldSurface;	// just for entity bas which are from world surfaces
+	vkbuffer_t							mem;
+	vk_blas_match_info_t				match;
+	VkAccelerationStructureGeometryKHR	geometries;
 
 	// revisit this
 	uint32_t	create_num_vertices;

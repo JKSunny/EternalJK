@@ -65,7 +65,7 @@ VkResult vkpt_uniform_buffer_create( void )
 	qvkGetPhysicalDeviceProperties( vk.physical_device, &properties );
 	ubo_alignment = properties.limits.minUniformBufferOffsetAlignment;
 
-	const size_t buffer_size = align(sizeof(vkUniformRTX_t), ubo_alignment) + sizeof(vkInstanceRTX_t);
+	const size_t buffer_size = align(sizeof(vkUniformRTX_t), ubo_alignment) + sizeof(InstanceBuffer);
 	for ( int i = 0; i < VK_MAX_SWAPCHAIN_SIZE; i++ )
 		vk_rtx_buffer_create( host_uniform_buffers + i, buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, host_memory_flags );
 	
@@ -105,7 +105,7 @@ VkResult vkpt_uniform_buffer_create( void )
 	VkDescriptorBufferInfo buf1_info;
 	buf1_info.buffer = device_uniform_buffer.buffer;
 	buf1_info.offset = align(sizeof(vkUniformRTX_t), ubo_alignment);
-	buf1_info.range  = sizeof(vkInstanceRTX_t);
+	buf1_info.range  = sizeof(InstanceBuffer);
 
 	VkWriteDescriptorSet writes[2];
 	Com_Memset( writes + 0, 0, sizeof(VkWriteDescriptorSet) * 2 );
@@ -160,13 +160,13 @@ VkResult vkpt_uniform_buffer_update( VkCommandBuffer command_buffer, uint32_t id
 	memcpy( mapped_ubo, &vk.buffer_uniform, sizeof(vkUniformRTX_t) );
 
 	const size_t offset = align( sizeof(vkUniformRTX_t), ubo_alignment );
-	memcpy((uint8_t*)mapped_ubo + offset, &vk.buffer_uniform_instance, sizeof(vkInstanceRTX_t));
+	memcpy((uint8_t*)mapped_ubo + offset, &vk.buffer_uniform_instance, sizeof(InstanceBuffer));
 
 	buffer_unmap( ubo );
 	mapped_ubo = NULL;
 
 	VkBufferCopy copy = { 0 };
-	copy.size = align(sizeof(vkUniformRTX_t), ubo_alignment) + sizeof(vkInstanceRTX_t);
+	copy.size = align(sizeof(vkUniformRTX_t), ubo_alignment) + sizeof(InstanceBuffer);
 	qvkCmdCopyBuffer( command_buffer, ubo->buffer, device_uniform_buffer.buffer, 1, &copy );
 
 	VkBufferMemoryBarrier barrier;

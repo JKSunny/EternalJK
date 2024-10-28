@@ -644,7 +644,6 @@ void vk_rtx_create_buffers( void )
 	{
 		// blas instances in tlas
 		vk_rtx_buffer_create(		&vk.buffer_blas_instance[i],		VK_MAX_BOTTOM_AS_INSTANCES * sizeof(vk_geometry_instance_t), VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT );	
-		VK_CreateAttributeBuffer(	&vk.buffer_blas_instance_data[i],	VK_MAX_BOTTOM_AS_INSTANCES * sizeof(ASInstanceData), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT );
 	}
 
 	// world static
@@ -652,17 +651,13 @@ void vk_rtx_create_buffers( void )
 	// using vkCmdDrawIndexed
 	VK_CreateAttributeBuffer( &vk.geometry.idx_world_static, RTX_WORLD_STATIC_IDX_SIZE * sizeof(uint32_t), VkBufferUsageFlagBits( AS_BUFFER_FLAGS | VK_BUFFER_USAGE_INDEX_BUFFER_BIT ) );
 	VK_CreateAttributeBuffer( &vk.geometry.xyz_world_static, RTX_WORLD_STATIC_XYZ_SIZE * sizeof(VertexBuffer), AS_BUFFER_FLAGS );
-	VK_CreateAttributeBuffer( &vk.geometry.cluster_world_static, RTX_WORLD_STATIC_IDX_SIZE/3 * sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT );
 	
 	// world dynamic data
 	for ( i = 0; i < vk.swapchain_image_count; i++ ) 
 	{
-		VK_CreateAttributeBuffer( &vk.prevToCurrInstanceBuffer[i], sizeof(vk.prevToCurrInstance), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT );
-
 		VK_CreateAttributeBuffer( &vk.geometry.idx_world_dynamic_data[i], RTX_WORLD_DYNAMIC_DATA_IDX_SIZE * sizeof(uint32_t), AS_BUFFER_FLAGS );
 		VK_CreateAttributeBuffer( &vk.geometry.xyz_world_dynamic_data[i], RTX_WORLD_DYNAMIC_DATA_XYZ_SIZE * sizeof(VertexBuffer), AS_BUFFER_FLAGS );
 	}
-	VK_CreateAttributeBuffer( &vk.geometry.cluster_world_dynamic_data, RTX_WORLD_DYNAMIC_DATA_IDX_SIZE / 3 * sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT );	
 	
 	// world dynamic as
 	for ( i = 0; i < vk.swapchain_image_count; i++ ) 
@@ -670,6 +665,9 @@ void vk_rtx_create_buffers( void )
 		VK_CreateAttributeBuffer( &vk.geometry.idx_world_dynamic_as[i], RTX_WORLD_DYNAMIC_AS_IDX_SIZE * sizeof(uint32_t), AS_BUFFER_FLAGS );
 		VK_CreateAttributeBuffer( &vk.geometry.xyz_world_dynamic_as[i], RTX_WORLD_DYNAMIC_AS_XYZ_SIZE * sizeof(VertexBuffer), AS_BUFFER_FLAGS );
 	}
+
+	VK_CreateAttributeBuffer( &vk.geometry.cluster_world_static, RTX_WORLD_STATIC_IDX_SIZE/3 * sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT );
+	VK_CreateAttributeBuffer( &vk.geometry.cluster_world_dynamic_data, RTX_WORLD_DYNAMIC_DATA_IDX_SIZE / 3 * sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT );	
 	VK_CreateAttributeBuffer( &vk.geometry.cluster_world_dynamic_as, RTX_WORLD_DYNAMIC_AS_IDX_SIZE / 3 * sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT );
 
 	// readback
