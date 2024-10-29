@@ -1040,9 +1040,12 @@ void R_PreparePT( world_t &worldData )
 	
 	const qboolean instanced = qfalse;
 
+	accel_build_batch_t batch;
+	Com_Memset( &batch, 0, sizeof(accel_build_batch_t) );
+
 	// world static
 	{	
-		vk_rtx_create_blas( cmd_buf, 
+		vk_rtx_create_blas( &batch, 
 			&vk.geometry.xyz_world_static, 0, &vk.geometry.idx_world_static, 0, 
 			num_vertices_static, num_indices_static,
 			&vk.blas_static.world,
@@ -1051,7 +1054,7 @@ void R_PreparePT( world_t &worldData )
 
 	// world dynamic data
 	{
-		vk_rtx_create_blas( cmd_buf,  
+		vk_rtx_create_blas( &batch,  
 			&vk.geometry.xyz_world_dynamic_data[0], 0, &vk.geometry.idx_world_dynamic_data[0], 0, 
 			num_vertices_dynamic_data, num_indices_dynamic_data,
 			&vk.blas_dynamic.data_world,
@@ -1062,7 +1065,7 @@ void R_PreparePT( world_t &worldData )
 	{
 		for ( i = 0; i < vk.swapchain_image_count; i++) 
 		{
-			vk_rtx_create_blas( cmd_buf, 
+			vk_rtx_create_blas( &batch, 
 				&vk.geometry.xyz_world_dynamic_as[i], 0, &vk.geometry.idx_world_dynamic_as[i], 0,  
 				num_vertices_dynamic_as, num_indices_dynamic_as,
 				&vk.blas_dynamic.as_world[i],
@@ -1078,7 +1081,7 @@ void R_PreparePT( world_t &worldData )
 	
 	// world static trans
 	{
-		vk_rtx_create_blas( cmd_buf, 			
+		vk_rtx_create_blas( &batch, 			
 			&vk.geometry.xyz_world_static, vk.geometry.xyz_world_static_offset, &vk.geometry.idx_world_static, vk.geometry.idx_world_static_offset,
 			num_vertices_static, num_indices_static,
 			&vk.blas_static.world_transparent, 
@@ -1087,7 +1090,7 @@ void R_PreparePT( world_t &worldData )
 
 	// world dynamic data trans
 	{
-		vk_rtx_create_blas( cmd_buf,  
+		vk_rtx_create_blas( &batch,  
 			&vk.geometry.xyz_world_dynamic_data[0], vk.geometry.xyz_world_dynamic_data_offset, &vk.geometry.idx_world_dynamic_data[0], vk.geometry.idx_world_dynamic_data_offset,
 			num_vertices_dynamic_data, num_indices_dynamic_data,
 			&vk.blas_dynamic.data_world_transparent,
@@ -1098,13 +1101,16 @@ void R_PreparePT( world_t &worldData )
 	{
 		for ( i = 0; i < vk.swapchain_image_count; i++ ) 
 		{
-			vk_rtx_create_blas( cmd_buf, 
+			vk_rtx_create_blas( &batch, 
 				&vk.geometry.xyz_world_dynamic_as[i], vk.geometry.xyz_world_dynamic_as_offset[0], &vk.geometry.idx_world_dynamic_as[i], vk.geometry.idx_world_dynamic_as_offset[0],
 				num_vertices_dynamic_as, num_indices_dynamic_as,
 				&vk.blas_dynamic.as_world_transparent[i],
 				qtrue, qfalse, qtrue, instanced );
 		}
 	}
+
+	qvkCmdBuildAccelerationStructuresKHR( cmd_buf, batch.numBuilds, batch.buildInfos, batch.rangeInfoPtrs );
+	MEM_BARRIER_BUILD_ACCEL(cmd_buf); /* probably not needed here but doesn't matter */
 
 	vk_end_command_buffer( cmd_buf );
 

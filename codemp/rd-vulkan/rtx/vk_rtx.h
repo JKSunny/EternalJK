@@ -295,6 +295,16 @@ typedef struct {
 	vkbuffer_t	cluster_world_dynamic_as;
 } vkgeometry_t;
 
+#define MAX_BATCH_ACCEL_BUILDS 16
+
+typedef struct {
+	uint32_t numBuilds;
+	VkAccelerationStructureGeometryKHR				geometries[MAX_BATCH_ACCEL_BUILDS];
+	VkAccelerationStructureBuildGeometryInfoKHR		buildInfos[MAX_BATCH_ACCEL_BUILDS];
+	VkAccelerationStructureBuildRangeInfoKHR		rangeInfos[MAX_BATCH_ACCEL_BUILDS];
+	const VkAccelerationStructureBuildRangeInfoKHR	*rangeInfoPtrs[MAX_BATCH_ACCEL_BUILDS];
+} accel_build_batch_t;
+
 typedef struct {
 	VkAccelerationStructureKHR	accel;
 	uint64_t					handle;
@@ -418,7 +428,7 @@ qboolean	RB_ASDataDynamic( shader_t *shader );
 qboolean	RB_ASDynamic( shader_t *shader );
 void		vk_rtx_reset_accel_offsets( void );
 //void		vk_rtx_append_blas( vk_blas_t *blas, int instance_id, uint32_t type, uint32_t offset, uint32_t flags );
-void		vk_rtx_create_blas( VkCommandBuffer cmd_buf,  
+void		vk_rtx_create_blas( accel_build_batch_t *batch,  
 								 vkbuffer_t *vertex_buffer, VkDeviceAddress vertex_offset,
 								 vkbuffer_t *index_buffer, VkDeviceAddress index_offset,
 								 uint32_t num_vertices, uint32_t num_indices,
@@ -427,7 +437,7 @@ void		vk_rtx_create_blas( VkCommandBuffer cmd_buf,
 void		vk_rtx_update_blas( VkCommandBuffer cmd_buf, 
 								vk_blas_t* oldBas, vk_blas_t* newBas, 
 								VkDeviceSize* offset, VkBuildAccelerationStructureFlagsKHR flag);
-void		vk_rtx_create_tlas( VkCommandBuffer cmd_buf, vk_tlas_t *as, VkDeviceAddress instance_data, uint32_t num_instances );
+void		vk_rtx_create_tlas( accel_build_batch_t *batch, vk_tlas_t *as, VkDeviceAddress instance_data, uint32_t num_instances );
 void		vk_rtx_destroy_accel_all( void );
 void		vk_rtx_destroy_tlas( vk_tlas_t *as );
 void		vk_rtx_destroy_blas( vk_blas_t *blas );

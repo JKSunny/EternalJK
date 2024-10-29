@@ -126,13 +126,18 @@ void vkpt_pt_create_all_dynamic( VkCommandBuffer cmd_buf, int idx, const EntityU
 	uint64_t offset_vertex = offset_vertex_base;
 	uint64_t offset_index = 0;
 
+	accel_build_batch_t batch;
+	Com_Memset( &batch, 0, sizeof(accel_build_batch_t) );
+
 	const qboolean instanced = qtrue;
 
-	vk_rtx_create_blas( cmd_buf, 
+	vk_rtx_create_blas( &batch, 
 		&vk.model_instance.buffer_vertex, offset_vertex, NULL, offset_index, 		
 		upload_info->dynamic_vertex_num, 0,
 		&vk.model_instance.blas.dynamic[idx], 
 		qtrue, qtrue, qfalse, instanced );
+
+	qvkCmdBuildAccelerationStructuresKHR( cmd_buf, batch.numBuilds, batch.buildInfos, batch.rangeInfoPtrs );
 
 	MEM_BARRIER_BUILD_ACCEL(cmd_buf);
 	vk.scratch_buf_ptr = 0;
@@ -165,8 +170,15 @@ static void vkpt_pt_create_toplevel( VkCommandBuffer cmd_buf, uint32_t idx, draw
 	buffer_unmap(vk.buf_instances + idx);
 	instance_data = NULL;
 
+	accel_build_batch_t batch;
+	Com_Memset( &batch, 0, sizeof(accel_build_batch_t) );
+
 	vk_rtx_destroy_tlas( &vk.tlas_geometry[idx] );
-	vk_rtx_create_tlas( cmd_buf, &vk.tlas_geometry[idx], vk.buf_instances[idx].address, num_instances);
+	vk_rtx_create_tlas( &batch, &vk.tlas_geometry[idx], vk.buf_instances[idx].address, num_instances);
+
+	qvkCmdBuildAccelerationStructuresKHR( cmd_buf, batch.numBuilds, batch.buildInfos, batch.rangeInfoPtrs );
+
+	MEM_BARRIER_BUILD_ACCEL(cmd_buf); /* probably not needed here but doesn't matter */
 }
 
 static inline uint32_t fill_mdxm_instance( const trRefEntity_t* entity, const mdxmVBOMesh_t* mesh, shader_t *shader,
