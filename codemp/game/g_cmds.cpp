@@ -2486,7 +2486,7 @@ void Cmd_SellItem_f(gentity_t *ent)
 		Cmd_JetpackUnequipped(ent);
 	}
 
-	else if (item.id->itemType == ITEM_ARMOR && item.equipped) {
+	else if ((item.id->itemType == ITEM_ARMOR || item.id->itemType == ITEM_CLOTHING) && item.equipped) {
 		JKG_ArmorChanged(ent);
 	}
 
@@ -4730,7 +4730,7 @@ static void Cmd_DuraPriceCheck_f(gentity_t* ent)
 	}
 
 	item = &(*ent->inventory)[invID];
-	if (item->id->itemType != ITEM_ARMOR)	//--futuza: for now check the item type, however eventually we'll do this for most item types
+	if (item->id->itemType != ITEM_ARMOR && item->id->itemType != ITEM_CLOTHING)	//--futuza: for now check the item type, however eventually we'll do this for most item types
 	{
 		trap->SendServerCommand(ent - g_entities, "print \"That is not an armor item.\n\"");
 		return;
@@ -4980,7 +4980,7 @@ void Cmd_BuyRepair_f(gentity_t* ent)
 	itemInstance_t& item = ent->inventory->at(itemSlot);
 
 	//--futuza: for now check the item type, however eventually we'll do this for most item types
-	if (item.id->itemType != ITEM_ARMOR) {	
+	if (item.id->itemType != ITEM_ARMOR && item.id->itemType != ITEM_CLOTHING) {
 		trap->SendServerCommand(ent - g_entities, "print \"That is not an armor item.\n\"");
 		return;
 	}
@@ -4997,29 +4997,28 @@ void Cmd_BuyRepair_f(gentity_t* ent)
 		costPerDura *= 0.10;	//it only costs 1/10th to repair, otherwise we'll have to pay a lot more
 	else
 	{
-		int multiplier = 0.5;
+		costPerDura = 0.5;
 		switch (item.id->itemTier)	//item tier determines cost
 		{
 			case TIER_SCRAP:
-				multiplier = 0.4f;
+				costPerDura = 0.4f;
 				break;
 			case TIER_COMMON:
-				multiplier = 0.5f;
+				costPerDura = 0.5f;
 				break;
 			case TIER_REFINED:
-				multiplier = 0.65f;
+				costPerDura = 0.65f;
 				break;
 			case TIER_ELITE:
-				multiplier = 0.75f;
+				costPerDura = 0.75f;
 				break;
 			case TIER_SUPERIOR:
-				multiplier = 0.9f;
+				costPerDura = 0.9f;
 				break;
 			default:
-				multiplier = 0.5f;
+				costPerDura = 0.5f;
 				break;
 		}
-		costPerDura *= multiplier;
 	}
 
 	

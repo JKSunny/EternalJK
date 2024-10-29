@@ -1181,29 +1181,28 @@ int BG_GetRepairDuraCost(itemInstance_t* item)
 		costPerDura *= 0.10;	//it only costs 1/10th to repair, otherwise we'll have to pay a lot more
 	else
 	{
-		int multiplier = 0.5;
+		costPerDura = 0.5;
 		switch (item->id->itemTier) //item tier determines cost
 		{
 		case TIER_SCRAP:
-			multiplier = 0.4f;	
+			costPerDura = 0.4f;
 			break;
 		case TIER_COMMON:
-			multiplier = 0.5f;
+			costPerDura = 0.5f;
 			break;
 		case TIER_REFINED:
-			multiplier = 0.65f;
+			costPerDura = 0.65f;
 			break;
 		case TIER_ELITE:
-			multiplier = 0.75f;
+			costPerDura = 0.75f;
 			break;
 		case TIER_SUPERIOR:
-			multiplier = 0.9f;
+			costPerDura = 0.9f;
 			break;
 		default:
-			multiplier = 0.5f;
+			costPerDura = 0.5f;
 			break;
 		}
-		costPerDura *= multiplier;
 	}
 
 	totalCost = costPerDura * missingDura;

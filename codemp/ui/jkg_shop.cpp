@@ -60,7 +60,7 @@ void JKG_Shop_UpdatePriceCheck(int type)
 		}
 	}
 
-	if (type == ITEM_ARMOR)
+	if (type == ITEM_ARMOR || type == ITEM_CLOTHING)
 	{
 		for (auto it = vPriceCheckedDurability.begin(); it != vPriceCheckedDurability.end(); ++it)
 		{
@@ -523,7 +523,7 @@ void JKG_Shop_ShopDuraCost(itemDef_t* item)
 	}
 
 	itemInstance_t* pItem = vInventoryItems[nSelected].second;
-	if (pItem->id->itemType != ITEM_ARMOR)		//--futuza: for now check if its armor, but eventually all items will be able to be repaired
+	if (pItem->id->itemType != ITEM_ARMOR && pItem->id->itemType != ITEM_CLOTHING)		//--futuza: for now check if its armor, but eventually all items will be able to be repaired
 	{
 		return;
 	}
@@ -604,7 +604,7 @@ char* JKG_ShopDuraPriceText() {
 		return nullptr;
 	}
 	itemInstance_t* pItem = vInventoryItems[nSelected].second;
-	if (pItem->id->itemType != ITEM_ARMOR) {
+	if (pItem->id->itemType != ITEM_ARMOR && pItem->id->itemType != ITEM_CLOTHING) {
 		return nullptr;
 	}
 
@@ -676,7 +676,7 @@ void JKG_Shop_SelectLeft(char** args) {
 		// Perform a price check on this item
 		cgImports->SendClientCommand(va("ammopricecheck %i silent", vInventoryItems[nSelected].first));
 	}
-	if (vInventoryItems[nSelected].second->id->itemType == ITEM_ARMOR)
+	if (vInventoryItems[nSelected].second->id->itemType == ITEM_ARMOR || vInventoryItems[nSelected].second->id->itemType == ITEM_CLOTHING)
 	{
 		Menu_ShowGroup(Menus_FindByName("jkg_shop"), "shop_repairbuttons", qtrue);
 

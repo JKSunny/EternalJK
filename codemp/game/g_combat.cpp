@@ -3887,6 +3887,9 @@ int G_ArmorDurabilityModifier(gentity_t* ent, int* damage, const int take, const
 	if (jkg_durability.integer < 1)
 		return 0;
 
+	if (*damage < 1)
+		return 0;
+
 	int playDurabilitySnd = 0; //default: return 0/false if no durability damage, return 1+ if durability damage or the item hit is already at 0 durability
 	int index = -1; //stupid hack so I can check the inventory's index
 	for (auto it = ent->inventory->begin(); it != ent->inventory->end(); ++it)
@@ -3918,7 +3921,7 @@ int G_ArmorDurabilityModifier(gentity_t* ent, int* damage, const int take, const
 					//efx+snd for armor crumble is in cg_event.cpp, see: EV_DURABILITY_DMG
 					++playDurabilitySnd;
 					*damage = take; //0 durability makes armor do nothing
-					trap->SendServerCommand(ent - g_entities, va("notify 1 \"Low durability!\"")); //warn the player they're wearing something with 0 durability!
+					trap->SendServerCommand(ent - g_entities, va("notify 1 \"Armor damaged!\"")); //warn the player they're wearing something with 0 durability!
 					break;
 				}
 
@@ -3992,7 +3995,7 @@ int G_ArmorDurabilityModifier(gentity_t* ent, int* damage, const int take, const
 					//1-25% durability
 					if (it->durability > 0 && it->durability <= it->id->maxDurability * 0.25f)
 					{
-						trap->SendServerCommand(ent - g_entities, va("chat 100 \"^3Warning:^7 %s is damaged, repair soon (^3%d/%d^7)!\"", it->id->displayName, it->durability, it->id->maxDurability));
+						trap->SendServerCommand(ent - g_entities, va("chat 100 \"^3Warning:^7 %s is damaged, repair immediately (^3%d/%d^7)!\"", it->id->displayName, it->durability, it->id->maxDurability));
 						//1-10%
 						if (it->durability == 1 || it->durability < it->id->maxDurability * 0.10f) 
 						{
@@ -4009,7 +4012,7 @@ int G_ArmorDurabilityModifier(gentity_t* ent, int* damage, const int take, const
 					}
 					else if (it->durability < 1)
 					{
-						trap->SendServerCommand(ent - g_entities, va("chat 100 \"^1Warning:^7 %s is severely damaged, repair immediately (^10/%d^7)!\"", it->id->displayName, it->id->maxDurability));
+						trap->SendServerCommand(ent - g_entities, va("chat 100 \"^1Warning:^7 %s is severely damaged, and needs repairs to offer protection (^10/%d^7)!\"", it->id->displayName, it->id->maxDurability));
 					}
 
 					/* Don't bother with breaking/unequipping at 0 for now, feels bad.
@@ -4061,6 +4064,7 @@ int G_ArmorDurabilityModifier(gentity_t* ent, int* damage, const int take, const
 					break;	//terminate loop early, no durability damage
 				
 			}
+			break;
 		}
 	}
 	return playDurabilitySnd;
@@ -4174,51 +4178,75 @@ bool G_LocationBasedDamageModifier(gentity_t *ent, vec3_t point, int mod, int df
 	}
 	
 	//adjust for armor
-	if (ent->client && (ent - g_entities) < MAX_CLIENTS && !means->modifiers.ignoreArmor) 
+	if (ent->client && (ent - g_entities) < MAX_CLIENTS) 
 	{
 		int armor = ent->client->ps.armor[armorSlot];
-		//we wearin armor?
-		if (armor--)
+
+		if (!means->modifiers.ignoreArmor)
 		{
-			armorData_t* pArm = &armorTable[armor];
-			//remove damaged based on resistances
-			for (auto const& i : pArm->resistances)
+			qboolean hasDurability = qfalse;
+			if (jkg_durability.integer > 0)
 			{
-				//MOD matches our armor's resistance type
-				if (mod == i.first)
+				//check if we have armor equipped that has durability left
+				for (auto it = ent->inventory->begin(); it != ent->inventory->end(); ++it)
 				{
-					modifier = i.second; //resistance to apply, eg 0.5
-					*damage *= modifier;
-					break;
+					if (it->equipped && it->id->armorData.pArm->slot == armorSlot)
+					{
+						if (it->durability > 0)
+						{
+							hasDurability = qtrue;
+							break;
+						}
+					}
 				}
 			}
+			else
+				hasDurability = qtrue;
 
-			
-			//calculate penetration reduction of armor
-			int ehp = pArm->armor;
-			if (means->modifiers.armorPenetration > 0.0f && means->modifiers.armorPenetration <= 1.0f  || (penetration > 0.0f && penetration <= 1.0f))
+			if (hasDurability)
 			{
-				ehp = ehp - ((means->modifiers.armorPenetration+penetration) * pArm->armor);	//if penetration is 0.25 (25%), 25 == 19
+				//we wearin armor?
+				if (armor--)
+				{
+					armorData_t* pArm = &armorTable[armor];
+					//remove damage based on resistances
+					for (auto const& i : pArm->resistances)
+					{
+						//MOD matches our armor's resistance type
+						if (mod == i.first)
+						{
+							modifier = i.second; //resistance to apply, eg 0.5
+							*damage *= modifier;
+							break;
+						}
+					}
 
-				if (ehp < 0)
-					ehp = 0;
+					//calculate penetration (reduction of armor)
+					int ehp = pArm->armor;
+					if (means->modifiers.armorPenetration > 0.0f && means->modifiers.armorPenetration <= 1.0f || (penetration > 0.0f && penetration <= 1.0f))
+					{
+						ehp = ehp - ((means->modifiers.armorPenetration + penetration) * pArm->armor);	//if penetration is 0.25 (25%), 25 == 19
+
+						if (ehp < 0)
+							ehp = 0;
+					}
+
+					// apply damage reduction based on armor value
+					modifier = (ent->client->ps.stats[STAT_MAX_HEALTH] / (float)(ent->client->ps.stats[STAT_MAX_HEALTH] + ehp)); // calculate damage resistance based on value of armor
+					modifier *= means->modifiers.armor;
+					*damage *= modifier;
+				}
 			}
-
-			// apply damage reduction based on armor value
-			modifier = (ent->client->ps.stats[STAT_MAX_HEALTH] / (float)(ent->client->ps.stats[STAT_MAX_HEALTH] + ehp)); // calculate damage resistance based on value of armor
-			modifier *= means->modifiers.armor;
-			*damage *= modifier;
+			//calculate durability
+			if (G_ArmorDurabilityModifier(ent, damage, take, armorSlot))
+			{
+				// Play the effect for durability damage
+				gentity_t* durEvent;
+				durEvent = G_TempEntity(point, EV_DURABILITY_DMG);
+				durEvent->s.clientNum = ent->s.clientNum;
+				VectorCopy(ent->s.origin, durEvent->s.origin);
+			}
 		}
-
-		if (G_ArmorDurabilityModifier(ent, damage, take, armorSlot))	//calculate durability stuff
-		{
-			// Play the effect for durability damage
-			gentity_t* durEvent;
-			durEvent = G_TempEntity(point, EV_DURABILITY_DMG);
-			durEvent->s.clientNum = ent->s.clientNum;
-			VectorCopy(ent->s.origin, durEvent->s.origin);	
-		}
-
 	}
 
 	if (headshot)

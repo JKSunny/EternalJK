@@ -30,7 +30,6 @@ typedef struct {
 	int stamina;			// Stamina/fp to add by equipping this piece of armor
 	qboolean filter;		// If true, the armor has a filter that prevents toxin debuffs from being applied while worn
 	qboolean antitoxin;		// If true, the armor has a mechanism for actively removing toxins AND preventing them (better version of filter)
-	int durability_rating;	// 0 == broken, will not reduce damage; > 1 still works
 
 	float movemodifier;		// Affects how fast you can move with this piece of equipment
 	// More movement modifiers? (jump height? stamina usage?)
