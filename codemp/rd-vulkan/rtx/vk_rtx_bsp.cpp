@@ -718,7 +718,7 @@ static void vk_create_rtx_descriptor( uint32_t index, int prev_index )
 	VkShaderStageFlagBits stage = VK_SHADER_STAGE_ALL;
 
 	vk_rtx_add_descriptor_as(descriptor, BINDING_OFFSET_AS, flags);
-	vk_rtx_bind_descriptor_as(descriptor, BINDING_OFFSET_AS, flags, &vk.tlas_geometry[index].accel_khr);
+	vk_rtx_bind_descriptor_as(descriptor, BINDING_OFFSET_AS, flags, &vk.tlas_geometry[index].accel);
 
 	vk_bind_common_descriptor_data( descriptor, flags, index, stage, prev_index );
 

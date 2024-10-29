@@ -296,7 +296,7 @@ typedef struct {
 } vkgeometry_t;
 
 typedef struct {
-	VkAccelerationStructureKHR	accel_khr;
+	VkAccelerationStructureKHR	accel;
 	uint64_t					handle;
 	VkDeviceSize				offset;
 	vkbuffer_t					mem;
@@ -309,7 +309,7 @@ typedef struct accel_bottom_match_info_s {
 } vk_blas_match_info_t;
 
 typedef struct {
-	VkAccelerationStructureKHR			accel_khr;
+	VkAccelerationStructureKHR			accel;
 	uint64_t							handle;
 	VkDeviceSize						offset;			// offset in static or dynamic buffer
 	vkbuffer_t							mem;

@@ -97,9 +97,9 @@ void vk_rtx_create_blas( VkCommandBuffer cmd_buf,
 	bool doFree = qfalse;
 	bool doAlloc = qfalse;
 
-	if ( !is_dynamic || !accel_matches(&blas->match, fast_build, num_vertices, num_indices) || blas->accel_khr == VK_NULL_HANDLE ) {
+	if ( !is_dynamic || !accel_matches(&blas->match, fast_build, num_vertices, num_indices) || blas->accel == VK_NULL_HANDLE ) {
 		doAlloc = qtrue;
-		doFree = (blas->accel_khr != VK_NULL_HANDLE);
+		doFree = (blas->accel != VK_NULL_HANDLE);
 	}
 
 	if ( doFree ) 
@@ -193,7 +193,7 @@ void vk_rtx_create_blas( VkCommandBuffer cmd_buf,
 		createInfo.buffer = blas->mem.buffer;
 
 		// Create the acceleration structure
-		qvkCreateAccelerationStructureKHR( vk.device, &createInfo, NULL, &blas->accel_khr );
+		qvkCreateAccelerationStructureKHR( vk.device, &createInfo, NULL, &blas->accel );
 
 		blas->match.fast_build = fast_build;
 		blas->match.vertex_count = num_vertices_to_allocate;
@@ -201,7 +201,7 @@ void vk_rtx_create_blas( VkCommandBuffer cmd_buf,
 	}
 
 	// set where the build lands
-	buildInfo.dstAccelerationStructure = blas->accel_khr;
+	buildInfo.dstAccelerationStructure = blas->accel;
 
 	buildInfo.scratchData.deviceAddress = vk.scratch_buffer.address + vk.scratch_buffer_ptr;
 	assert(vk.scratch_buffer.address);
@@ -255,8 +255,8 @@ void vk_rtx_update_blas( VkCommandBuffer cmd_buf,
 		// do this here for now
 		{
 			// set where the build lands
-			buildInfo.dstAccelerationStructure = newBas->accel_khr;
-			buildInfo.srcAccelerationStructure = oldBas->accel_khr;
+			buildInfo.dstAccelerationStructure = newBas->accel;
+			buildInfo.srcAccelerationStructure = oldBas->accel;
 			buildInfo.scratchData.deviceAddress = vk.scratch_buffer.address + vk.scratch_buffer_ptr;
 
 			vk.scratch_buffer_ptr += sizeInfo.buildScratchSize;
@@ -331,18 +331,18 @@ void vk_rtx_create_tlas( VkCommandBuffer cmd_buf, vk_tlas_t *as, VkDeviceAddress
 		createInfo.buffer = as->mem.buffer;
 
 		// Create the acceleration structure
-		qvkCreateAccelerationStructureKHR( vk.device, &createInfo, NULL, &as->accel_khr );
+		qvkCreateAccelerationStructureKHR( vk.device, &createInfo, NULL, &as->accel );
 
 		// Get handle
 		VkAccelerationStructureDeviceAddressInfoKHR  as_device_address_info;
 		as_device_address_info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR;
 		as_device_address_info.pNext = NULL;
-		as_device_address_info.accelerationStructure = as->accel_khr;
+		as_device_address_info.accelerationStructure = as->accel;
 		as->handle = qvkGetAccelerationStructureDeviceAddressKHR(vk.device, &as_device_address_info);
 	//}
 
 	// Update build information
-	buildInfo.dstAccelerationStructure = as->accel_khr;
+	buildInfo.dstAccelerationStructure = as->accel;
 	buildInfo.scratchData.deviceAddress = vk.scratch_buffer.address;
 	assert(vk.scratch_buffer.address);
 
@@ -364,13 +364,13 @@ void vk_rtx_destroy_tlas( vk_tlas_t *as )
 {
 	VK_DestroyBuffer( &as->mem );
 
-	if ( as->accel_khr != VK_NULL_HANDLE ) 
+	if ( as->accel != VK_NULL_HANDLE ) 
 	{
-		qvkDestroyAccelerationStructureKHR( vk.device, as->accel_khr, NULL );
-		as->accel_khr = VK_NULL_HANDLE;
+		qvkDestroyAccelerationStructureKHR( vk.device, as->accel, NULL );
+		as->accel = VK_NULL_HANDLE;
 	}
 
-	memset( &as->accel_khr, 0, sizeof(vk_tlas_t) );
+	memset( &as->accel, 0, sizeof(vk_tlas_t) );
 
 }
 
@@ -378,10 +378,10 @@ void vk_rtx_destroy_blas( vk_blas_t *blas )
 {
 	VK_DestroyBuffer( &blas->mem );
 
-	if ( blas->accel_khr != VK_NULL_HANDLE ) 
+	if ( blas->accel != VK_NULL_HANDLE ) 
 	{
-		qvkDestroyAccelerationStructureKHR( vk.device, blas->accel_khr, NULL );
-		blas->accel_khr = VK_NULL_HANDLE;
+		qvkDestroyAccelerationStructureKHR( vk.device, blas->accel, NULL );
+		blas->accel = VK_NULL_HANDLE;
 	}
 
 	memset( blas, 0, sizeof(vk_blas_t) );

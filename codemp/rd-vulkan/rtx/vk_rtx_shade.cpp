@@ -103,7 +103,7 @@ void append_blas( vk_geometry_instance_t *instances, int *num_instances, uint32_
 	VkAccelerationStructureDeviceAddressInfoKHR  info;
 	info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR;
 	info.pNext = NULL;
-	info.accelerationStructure = blas->accel_khr;
+	info.accelerationStructure = blas->accel;
 	instance.acceleration_structure = qvkGetAccelerationStructureDeviceAddressKHR(vk.device, &info);
 
 	mat3x4_t transform = {
@@ -1229,7 +1229,7 @@ static void vk_begin_trace_rays( trRefdef_t *refdef, reference_mode_t *ref_mode,
 		BEGIN_PERF_MARKER( trace_cmd_buf, PROFILER_BVH_UPDATE );
 		vkpt_pt_create_all_dynamic( trace_cmd_buf, idx, upload_info );
 		vkpt_pt_create_toplevel( trace_cmd_buf, idx, drawSurfs, numDrawSurfs );
-		vk_rtx_bind_descriptor_as( &vk.rtxDescriptor[idx], BINDING_OFFSET_AS,VK_SHADER_STAGE_RAYGEN_BIT_KHR, &vk.tlas_geometry[idx].accel_khr );
+		vk_rtx_bind_descriptor_as( &vk.rtxDescriptor[idx], BINDING_OFFSET_AS,VK_SHADER_STAGE_RAYGEN_BIT_KHR, &vk.tlas_geometry[idx].accel );
 		vk_rtx_update_descriptor( &vk.rtxDescriptor[idx] );
 		END_PERF_MARKER( trace_cmd_buf, PROFILER_BVH_UPDATE );
 
