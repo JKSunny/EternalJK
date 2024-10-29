@@ -35,6 +35,7 @@ static inline size_t align(size_t x, size_t alignment)
 
 VkResult vkpt_uniform_buffer_create( void )
 {
+	VkDescriptorPoolSize pool_sizes[2] = { };
 	VkDescriptorSetLayoutBinding ubo_layout_bindings[2] = { 0 };
 
 	ubo_layout_bindings[0].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -42,10 +43,16 @@ VkResult vkpt_uniform_buffer_create( void )
 	ubo_layout_bindings[0].binding  = GLOBAL_UBO_BINDING_IDX;
 	ubo_layout_bindings[0].stageFlags  = VK_SHADER_STAGE_ALL;
 
+	pool_sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	pool_sizes[0].descriptorCount = 1;
+
 	ubo_layout_bindings[1].descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 	ubo_layout_bindings[1].descriptorCount  = 1;
 	ubo_layout_bindings[1].binding  = GLOBAL_INSTANCE_BUFFER_BINDING_IDX;
 	ubo_layout_bindings[1].stageFlags  = VK_SHADER_STAGE_ALL;
+
+	pool_sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	pool_sizes[1].descriptorCount = 1;
 
 	VkDescriptorSetLayoutCreateInfo layout_info;
 	Com_Memset( &layout_info, 0, sizeof(VkDescriptorSetLayoutCreateInfo) );
@@ -72,18 +79,13 @@ VkResult vkpt_uniform_buffer_create( void )
 	vk_rtx_buffer_create( &device_uniform_buffer, buffer_size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 		device_memory_flags );
 
-	VkDescriptorPoolSize pool_size;
-	pool_size.type            = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	pool_size.descriptorCount = VK_MAX_SWAPCHAIN_SIZE;
-
-
 	VkDescriptorPoolCreateInfo pool_info;
 	Com_Memset( &pool_info, 0, sizeof(VkDescriptorPoolCreateInfo) );
 	pool_info.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	pool_info.pNext         = NULL;
-	pool_info.poolSizeCount = 1;
-	pool_info.pPoolSizes    = &pool_size;
-	pool_info.maxSets       = VK_MAX_SWAPCHAIN_SIZE;
+	pool_info.poolSizeCount = ARRAY_LEN(pool_sizes);
+	pool_info.pPoolSizes    = pool_sizes;
+	pool_info.maxSets       = 1;
 
 	VK_CHECK( qvkCreateDescriptorPool( vk.device, &pool_info, NULL, &desc_pool_ubo ) );
 
