@@ -1166,6 +1166,55 @@ int BG_ConsumeItem(gentity_t* ent, int itemStackNum) {
 }
 #endif
 
+int BG_GetRepairDuraCost(itemInstance_t* item)
+{
+	int totalCost = 0;
+
+	if (item->durability >= item->id->maxDurability)
+		return totalCost;
+
+	int missingDura = item->id->maxDurability - item->durability;
+	float costPerDura =  static_cast<float>(item->id->baseCost) / static_cast<float>(item->id->maxDurability);
+	
+	//if our item wasn't broken
+	if (item->durability > 0)
+		costPerDura *= 0.10;	//it only costs 1/10th to repair, otherwise we'll have to pay a lot more
+	else
+	{
+		int multiplier = 0.5;
+		switch (item->id->itemTier) //item tier determines cost
+		{
+		case TIER_SCRAP:
+			multiplier = 0.4f;	
+			break;
+		case TIER_COMMON:
+			multiplier = 0.5f;
+			break;
+		case TIER_REFINED:
+			multiplier = 0.65f;
+			break;
+		case TIER_ELITE:
+			multiplier = 0.75f;
+			break;
+		case TIER_SUPERIOR:
+			multiplier = 0.9f;
+			break;
+		default:
+			multiplier = 0.5f;
+			break;
+		}
+		costPerDura *= multiplier;
+	}
+
+	totalCost = costPerDura * missingDura;
+
+	//if our price is between 0 and 1, just make it cost 1 credit - so players can't scam us out of free repairs
+	if (0 < totalCost && totalCost < 1)
+		totalCost = 1;
+
+	return totalCost;
+}
+
 /*
 ====================
 BG_LoadDefaultWeaponItems

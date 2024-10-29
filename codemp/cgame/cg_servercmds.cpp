@@ -1967,7 +1967,14 @@ static void CG_ServerCommand( void ) {
 	if (!strcmp(cmd, "apc"))
 	{
 		// Ammo price check response
-		uiImports->InventoryPriceCheckResult(atoi(CG_Argv(1)), atoi(CG_Argv(2)));
+		uiImports->InventoryPriceCheckResult(atoi(CG_Argv(1)), atoi(CG_Argv(2)), PRICECHECK_APC);
+		return;
+	}
+
+	if (!strcmp(cmd, "dpc"))
+	{
+		// Durability price check response
+		uiImports->InventoryPriceCheckResult(atoi(CG_Argv(1)), atoi(CG_Argv(2)), PRICECHECK_DPC);
 		return;
 	}
 

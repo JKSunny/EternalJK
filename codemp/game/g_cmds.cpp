@@ -2286,6 +2286,12 @@ void Cmd_SetItemDurability_f(gentity_t* ent)
 		return;
 	}
 
+	if (ent->inventory->at(slot).id->itemTier == TIER_LEGENDARY)
+	{
+		trap->SendServerCommand(ent->s.number, va("print \"Durability cannot be adjusted for legendary items.\n\"", slot));
+		return;
+	}
+
 	BG_UpdateItemDurability(ent, slot, durability);
 	trap->SendServerCommand(ent - g_entities, va("durability_update %i %i", slot, durability));
 }
@@ -4689,6 +4695,61 @@ void Cmd_SaberAttackCycle_f(gentity_t *ent)
 
 /*
 ==================
+Cmd_DuraPriceCheck_f
+
+Checks the price of repairing armor.
+==================
+*/
+static void Cmd_DuraPriceCheck_f(gentity_t* ent)
+{
+	qboolean silent = trap->Argc() > 2;
+	int cost;
+	int invID;
+	char buffer[1024]{ 0 };
+	itemInstance_t* item;
+
+	if (trap->Argc() < 2)
+	{
+		trap->SendServerCommand(ent - g_entities, "print \"usage: /durapricecheck <inventory ID>\n\"");
+		return;
+	}
+
+	trap->Argv(1, buffer, 1024);
+	invID = atoi(buffer);
+
+	if (ent->inventory == nullptr)
+	{
+		trap->SendServerCommand(ent - g_entities, "print \"Your inventory is invalid (null?)\n\"");
+		return;
+	}
+
+	if (invID < 0 || invID >= ent->inventory->size())
+	{
+		trap->SendServerCommand(ent - g_entities, "print \"Invalid item ID.\n\"");
+		return;
+	}
+
+	item = &(*ent->inventory)[invID];
+	if (item->id->itemType != ITEM_ARMOR)	//--futuza: for now check the item type, however eventually we'll do this for most item types
+	{
+		trap->SendServerCommand(ent - g_entities, "print \"That is not an armor item.\n\"");
+		return;
+	}
+
+	cost = BG_GetRepairDuraCost(item);
+
+	if (!silent)
+	{
+		trap->SendServerCommand(ent - g_entities, va("print \"It will take %i credits to fully repair that item.\n\"", cost));
+		return;
+	}
+
+	trap->SendServerCommand(ent - g_entities, va("dpc %i %i", invID, cost));
+}
+
+
+/*
+==================
 Cmd_AmmoPriceCheck_f
 
 Checks the price of refilling ammo.
@@ -4890,6 +4951,118 @@ void Cmd_BuyAmmo_f(gentity_t* ent) {
 	trap->SendServerCommand(ent - g_entities, va("apc %i %i", itemSlot, newCost));
 }
 
+void Cmd_BuyRepair_f(gentity_t* ent) 
+{
+	int itemSlot;
+	char argBuffer[MAX_TOKEN_CHARS]{ 0 };
+	float cost = 0, costPerDura = 0;
+	int totalCost = 0, missingDura = 0, unitsRequested = 0;
+
+	gentity_t* trader = ent->client->currentTrader;
+	if (trader == nullptr)
+	{
+		trap->SendServerCommand(ent - g_entities, "print \"You need to be at a vendor in order to buy ammo.\n\"");
+		return;
+	}
+
+	if (trap->Argc() != 2) {
+		trap->SendServerCommand(ent - g_entities, "print \"You need to select an item to buy ammo for.\n\"");
+		return;
+	}
+
+	trap->Argv(1, argBuffer, MAX_TOKEN_CHARS);
+	itemSlot = atoi(argBuffer);
+
+	if (itemSlot < 0 || itemSlot >= ent->inventory->size()) {
+		trap->SendServerCommand(ent - g_entities, "print \"Invalid item selected.\n\"");
+		return;
+	}
+	itemInstance_t& item = ent->inventory->at(itemSlot);
+
+	//--futuza: for now check the item type, however eventually we'll do this for most item types
+	if (item.id->itemType != ITEM_ARMOR) {	
+		trap->SendServerCommand(ent - g_entities, "print \"That is not an armor item.\n\"");
+		return;
+	}
+
+	if (item.durability >= item.id->maxDurability)
+	{
+		trap->SendServerCommand(ent - g_entities, "print \"This item is already at max durabilty and cannot be repaired further.\n\"");
+		return;
+	}
+	
+	costPerDura =  static_cast<float>(item.id->baseCost) / static_cast<float>(item.id->maxDurability);
+	//if our item wasn't broken
+	if (item.durability > 0)
+		costPerDura *= 0.10;	//it only costs 1/10th to repair, otherwise we'll have to pay a lot more
+	else
+	{
+		int multiplier = 0.5;
+		switch (item.id->itemTier)	//item tier determines cost
+		{
+			case TIER_SCRAP:
+				multiplier = 0.4f;
+				break;
+			case TIER_COMMON:
+				multiplier = 0.5f;
+				break;
+			case TIER_REFINED:
+				multiplier = 0.65f;
+				break;
+			case TIER_ELITE:
+				multiplier = 0.75f;
+				break;
+			case TIER_SUPERIOR:
+				multiplier = 0.9f;
+				break;
+			default:
+				multiplier = 0.5f;
+				break;
+		}
+		costPerDura *= multiplier;
+	}
+
+	
+
+	if (ent->client->ps.credits < costPerDura) // we don't have enough money to afford one unit of repair
+	{
+		trap->SendServerCommand(ent - g_entities, "print \"You cannot afford repairs for that item.\n\"");
+		return;
+	}
+
+	unitsRequested = missingDura = item.id->maxDurability - item.durability;	//how much durability is damaged, and how much we want to repair
+	cost = costPerDura * static_cast<float>(missingDura);	//the cost to repair it all
+
+	// We can't repair it all the way, so repair as much as we have credits for
+	if (cost > ent->client->ps.credits)
+	{
+		cost = ent->client->ps.credits;
+		unitsRequested = floor(cost / costPerDura);
+		cost = unitsRequested * costPerDura;
+	}
+
+	//if our price is between 0 and 1, just make it cost 1 credit - so players can't scam us out of free repairs
+	if (0 < cost && cost < 1)
+		cost = 1;
+
+	totalCost = floor(cost); //credits are int only, time to act like it
+
+	// Buy the credits and update stats
+	//ent->client->ps.spent += cost;
+	ent->client->ps.credits -= totalCost;
+	ent->inventory->at(itemSlot).durability += unitsRequested;
+	trap->SendServerCommand(ent - g_entities, va("durability_update %i %i", itemSlot, ent->inventory->at(itemSlot).durability));
+	
+	trap->SendServerCommand(ent - g_entities,
+		va("print \"Repaired %i durability, spent %i credits total.\n\"", unitsRequested, totalCost));
+
+
+	G_PreDefSound(ent->r.currentOrigin, PDSOUND_VENDORPURCHASE);
+
+	int newCost = BG_GetRepairDuraCost(&ent->inventory->at(itemSlot));
+	trap->SendServerCommand(ent - g_entities, va("dpc %i %i", itemSlot, newCost));
+}
+
 
 qboolean G_OtherPlayersDueling(void)
 {
@@ -5065,6 +5238,7 @@ static const command_t commands[] = {
 	{ "arbitraryprint",			Cmd_ArbitraryPrint_f,		CMD_NEEDCHEATS },
 	{ "butterfingers",			Cmd_Butterfingers_f,		CMD_NEEDCHEATS | CMD_NOINTERMISSION | CMD_NOSPECTATOR | CMD_ONLYALIVE },
 	{ "buyammo",				Cmd_BuyAmmo_f,				CMD_NOINTERMISSION | CMD_NOSPECTATOR | CMD_ONLYALIVE },
+	{ "buyrepair",				Cmd_BuyRepair_f,				CMD_NOINTERMISSION | CMD_NOSPECTATOR | CMD_ONLYALIVE },
 	{ "buyvendor",				Cmd_BuyItem_f,				CMD_NOINTERMISSION | CMD_NOSPECTATOR | CMD_ONLYALIVE },
 	{ "callvote",				Cmd_CallVote_f,				CMD_NOINTERMISSION },
 	{ "callteamvote",			Cmd_CallTeamVote_f,			CMD_NOINTERMISSION | CMD_NOSPECTATOR },
@@ -5078,6 +5252,7 @@ static const command_t commands[] = {
 	{ "debuginventory",			Cmd_ShowInv_f,				CMD_NOINTERMISSION | CMD_NOSPECTATOR },
 	{ "dismember",				Cmd_Dismember_f,			CMD_NEEDCHEATS | CMD_NOINTERMISSION | CMD_NOSPECTATOR | CMD_ONLYALIVE },
 	{ "dumpweaponlist_sv",		Cmd_DumpWeaponList_f,		0 },
+	{ "durapricecheck",			Cmd_DuraPriceCheck_f,		CMD_NOINTERMISSION },
 	{ "equip",					Cmd_EquipItem_f,			CMD_NOINTERMISSION | CMD_NOSPECTATOR | CMD_ONLYALIVE },
 	{ "equipjetpack",			Cmd_EquipJetpack_f,			CMD_NOINTERMISSION | CMD_NOSPECTATOR | CMD_ONLYALIVE },
 	{ "equipshield",			Cmd_EquipShield_f,			CMD_NOINTERMISSION | CMD_NOSPECTATOR | CMD_ONLYALIVE },

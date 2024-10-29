@@ -241,6 +241,7 @@ itemInstance_t BG_ItemInstance(const char* internalName, const int quantity, con
 itemInstance_t BG_ItemInstance(const int itemID, const int quantity, const int durability);
 int BG_FirstStack(const std::vector<itemInstance_t>& container, const int itemID);
 int BG_NextStack(const std::vector<itemInstance_t>& container, const int itemID, const int prevStack);
+int BG_GetRepairDuraCost(itemInstance_t* item);
 void BG_LoadDefaultWeaponItems(void);
 void BG_InitItems();
 void BG_ShutdownItems();

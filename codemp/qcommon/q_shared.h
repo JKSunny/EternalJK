@@ -362,6 +362,15 @@ void *Hunk_Alloc( int size, ha_pref preference );
 #define CIN_shader	16
 #define CIN_aspect  32	// JKG specific
 
+//what types of inventory price checks we can do (using InventoryPriceCheckResult in cg_servercmds and jkg_shop)
+typedef enum
+{
+	PRICECHECK_APC,		//ammo price check
+	PRICECHECK_DPC,		//durability price check
+
+	PRICECHECK_MAX
+} PriceCheckTypes_t;
+
 /*
 ==============================================================
 

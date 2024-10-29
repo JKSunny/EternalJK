@@ -17,42 +17,62 @@ static std::vector<std::pair<int, itemInstance_t*>> vInventoryItems;	/* The inve
 static std::vector<std::pair<int, itemInstance_t*>> vShopItems;		/* The shop items, after filtering */
 static std::vector<std::string> vShopItemDesc;					/* The description of the currently selected shop item */
 static std::vector<std::pair<int, int>> vPriceCheckedAmmo;			/* Price check of ammo on items in inventory */
+static std::vector<std::pair<int, int>> vPriceCheckedDurability;	/* Price check the cost of durability repairs on armor in inventory */
 
 static size_t nInventoryScroll = 0;		// How far we've scrolled in the menu
 static size_t nShopScroll = 0;			// How far we've scrolled in the menu
 static bool bPriceCheckComplete = false;// Whether or not we've completed the ammo price check
+static bool bPriceCheckDurComplete = false;	//Whether or not we've completed the armor durability price check
 static int nPriceCheckCost = -1;
+static int nPriceCheckDurCost = -1;
 static bool bExamineMenuOpen = false;	// Whether we are examining things
 
-// This function updates the status of price checking. Only called when bPriceCheckComplete is false.
-void JKG_Shop_UpdatePriceCheck()
+// This function updates the status of price checking. Only called when bPriceCheckComplete or bPriceCheckDurComplete is false.
+void JKG_Shop_UpdatePriceCheck(int type)
 {
 	int id = vInventoryItems[nSelected].first;
 
-	if (vInventoryItems[nSelected].second->id->itemType != ITEM_WEAPON)
+	if (vInventoryItems[nSelected].second->id->itemType != type)
 	{
-		return;	// don't worry about price checking something that isn't a weapon
+		return;	// don't worry about price checking something that isn't the specified type
 	}
 
-	//check if the gun we're getting ammo for is the starting weapon
-	char info[MAX_INFO_VALUE];
-	trap->GetConfigString(CS_SERVERINFO, info, sizeof(info));
-	if (!Q_stricmp(vInventoryItems[nSelected].second->id->internalName, Info_ValueForKey(info, "jkg_startingGun")))
+	if (type == ITEM_WEAPON)
 	{
-		bPriceCheckComplete = true;
-		nPriceCheckCost = 0;	//its free!
-		return;
-	}
-
-	for (auto it = vPriceCheckedAmmo.begin(); it != vPriceCheckedAmmo.end(); ++it)
-	{
-		if (it->first == id)
+		//check if the gun we're getting ammo for is the starting weapon
+		char info[MAX_INFO_VALUE];
+		trap->GetConfigString(CS_SERVERINFO, info, sizeof(info));
+		if (!Q_stricmp(vInventoryItems[nSelected].second->id->internalName, Info_ValueForKey(info, "jkg_startingGun")))
 		{
 			bPriceCheckComplete = true;
-			nPriceCheckCost = it->second;
+			nPriceCheckCost = 0;	//its free!
 			return;
 		}
+
+		for (auto it = vPriceCheckedAmmo.begin(); it != vPriceCheckedAmmo.end(); ++it)
+		{
+			if (it->first == id)
+			{
+				bPriceCheckComplete = true;
+				nPriceCheckCost = it->second;
+				return;
+			}
+		}
 	}
+
+	if (type == ITEM_ARMOR)
+	{
+		for (auto it = vPriceCheckedDurability.begin(); it != vPriceCheckedDurability.end(); ++it)
+		{
+			if (it->first == id)
+			{
+				bPriceCheckDurComplete = true;
+				nPriceCheckDurCost = it->second;
+				return;
+			}
+		}
+	}
+
 }
 
 // This function constructs both the inventory and shop lists
@@ -61,8 +81,11 @@ void JKG_ConstructShopLists() {
 	vShopItems.clear();
 	vShopItemDesc.clear();
 	vPriceCheckedAmmo.clear();
+	vPriceCheckedDurability.clear();
 	bPriceCheckComplete = false;
 	nPriceCheckCost = -1;
+	bPriceCheckDurComplete = false;
+	nPriceCheckDurCost = -1;
 
 	if (cgImports == nullptr) {
 		// This gets called when the game starts, because ui_inventoryFilter gets modified
@@ -475,10 +498,40 @@ void JKG_Shop_ShopAmmoCost(itemDef_t* item)
 		return;
 	}
 
-	JKG_Shop_UpdatePriceCheck();
+	JKG_Shop_UpdatePriceCheck(ITEM_WEAPON);
 	if (bPriceCheckComplete)
 	{
 		sprintf(item->text, "%i", nPriceCheckCost);
+	}
+	else
+	{
+		sprintf(item->text, "...");
+	}
+
+	Item_Text_Paint(item);
+}
+
+void JKG_Shop_ShopDuraCost(itemDef_t* item)
+{
+	if (!bLeftSelected)
+	{
+		return;
+	}
+	else if (nSelected < 0 || nSelected >= nNumberInventoryItems)
+	{
+		return;
+	}
+
+	itemInstance_t* pItem = vInventoryItems[nSelected].second;
+	if (pItem->id->itemType != ITEM_ARMOR)		//--futuza: for now check if its armor, but eventually all items will be able to be repaired
+	{
+		return;
+	}
+
+	JKG_Shop_UpdatePriceCheck(pItem->id->itemType);
+	if (bPriceCheckDurComplete)
+	{
+		sprintf(item->text, "%i", nPriceCheckDurCost);
 	}
 	else
 	{
@@ -535,10 +588,30 @@ char* JKG_ShopAmmoPriceText() {
 		return nullptr;
 	}
 
-	JKG_Shop_UpdatePriceCheck();
+	JKG_Shop_UpdatePriceCheck(ITEM_WEAPON);
 	if (bPriceCheckComplete)
 	{
 		return va("%i", nPriceCheckCost);
+	}
+	else
+	{
+		return "...";
+	}
+}
+
+char* JKG_ShopDuraPriceText() {
+	if (nSelected < 0 || nSelected >= nNumberInventoryItems || !bLeftSelected) {
+		return nullptr;
+	}
+	itemInstance_t* pItem = vInventoryItems[nSelected].second;
+	if (pItem->id->itemType != ITEM_ARMOR) {
+		return nullptr;
+	}
+
+	JKG_Shop_UpdatePriceCheck(pItem->id->itemType);
+	if (bPriceCheckComplete)
+	{
+		return va("%i", nPriceCheckDurCost);
 	}
 	else
 	{
@@ -582,6 +655,9 @@ void JKG_Shop_SelectLeft(char** args) {
 		return;
 	}
 
+	Menu_ShowGroup(Menus_FindByName("jkg_shop"), "shop_ammobuttons", qfalse);
+	Menu_ShowGroup(Menus_FindByName("jkg_shop"), "shop_repairbuttons", qfalse);
+
 	if (vInventoryItems[nSelected].second->id->itemType == ITEM_WEAPON)
 	{
 		Menu_ShowGroup(Menus_FindByName("jkg_shop"), "shop_ammobuttons", qtrue);
@@ -600,9 +676,23 @@ void JKG_Shop_SelectLeft(char** args) {
 		// Perform a price check on this item
 		cgImports->SendClientCommand(va("ammopricecheck %i silent", vInventoryItems[nSelected].first));
 	}
-	else
+	if (vInventoryItems[nSelected].second->id->itemType == ITEM_ARMOR)
 	{
-		Menu_ShowGroup(Menus_FindByName("jkg_shop"), "shop_ammobuttons", qfalse);
+		Menu_ShowGroup(Menus_FindByName("jkg_shop"), "shop_repairbuttons", qtrue);
+
+		// Do a price check if we haven't cached one yet
+		for (auto it = vPriceCheckedDurability.begin(); it != vPriceCheckedDurability.end(); ++it)
+		{
+			if (it->first == vInventoryItems[nSelected].first)
+			{
+				bPriceCheckDurComplete = true;
+				nPriceCheckDurCost = it->second;
+				break;
+			}
+		}
+
+		// Perform a price check on this item
+		cgImports->SendClientCommand(va("durapricecheck %i silent", vInventoryItems[nSelected].first));
 	}
 }
 
@@ -734,6 +824,16 @@ void JKG_Shop_BuyAmmo(char** args) {
 	cgImports->SendClientCommand(va("buyammo %i", vInventoryItems[nSelected].first));
 }
 
+void JKG_Shop_BuyRepair(char** args) {
+	if (!bLeftSelected) {
+		return; // Can't buy ammo for something that we don't own
+	}
+	if (nSelected < 0 || nSelected >= nNumberInventoryItems) {
+		return; // Invalid selection
+	}
+	cgImports->SendClientCommand(va("buyrepair %i", vInventoryItems[nSelected].first));
+}
+
 void JKG_Shop_Closed(char** args) {
 	cgImports->SendClientCommand("closeVendor");
 }
@@ -750,22 +850,38 @@ void JKG_ShopNotify(jkgShopNotify_e msg)
 }
 
 // Performed when a price check is returned by the server
-void JKG_Shop_PriceCheckComplete(int nInventoryID, int nPrice)
+void JKG_Shop_PriceCheckComplete(int nInventoryID, int nPrice, int type)
 {
 	std::pair<int, int> pair = std::make_pair(nInventoryID, nPrice);
 
-	// Remove the old cost record, if it exists
-	for (auto it = vPriceCheckedAmmo.begin(); it != vPriceCheckedAmmo.end(); ++it)
+	if (type == PRICECHECK_APC)
 	{
-		if (it->first == nInventoryID)
+		// Remove the old cost record, if it exists
+		for (auto it = vPriceCheckedAmmo.begin(); it != vPriceCheckedAmmo.end(); ++it)
 		{
-			it = vPriceCheckedAmmo.erase(it);
-			bPriceCheckComplete = false;
-			break;
+			if (it->first == nInventoryID)
+			{
+				it = vPriceCheckedAmmo.erase(it);
+				bPriceCheckComplete = false;
+				break;
+			}
 		}
+		vPriceCheckedAmmo.push_back(pair);
 	}
 
-	vPriceCheckedAmmo.push_back(pair);
+	if (type == PRICECHECK_DPC)
+	{
+		for (auto it = vPriceCheckedDurability.begin(); it != vPriceCheckedDurability.end(); ++it)
+		{
+			if (it->first == nInventoryID)
+			{
+				it = vPriceCheckedDurability.erase(it);
+				bPriceCheckDurComplete = false;
+				break;
+			}
+		}
+		vPriceCheckedDurability.push_back(pair);
+	}
 }
 
 // Ownerdraw: Draw the shop description line indicated

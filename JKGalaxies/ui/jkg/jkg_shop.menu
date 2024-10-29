@@ -2408,6 +2408,74 @@
 
 			text		""
 		}
+		
+		// Buy Repair Button
+		itemDef
+		{
+			name		shopCenter_BuyRepairBN
+			group		shop_repairbuttons
+			type		ITEM_TYPE_BUTTON
+			rect		306 155 36 36
+			forecolor	1 1 1 1
+			visible		0
+
+			mouseEnter
+			{
+				show		shopCenter_BuyRepairHL
+			}
+
+			mouseExit
+			{
+				hide		shopCenter_BuyRepairHL
+				clearfocus
+			}
+
+			action
+			{
+				jkgscript	shop_buyrepair
+			}
+		}
+
+		itemDef
+		{
+			name		shopCenter_BuyRepairHL
+			style		WINDOW_STYLE_SHADER
+			group		shop_repairbuttons
+			rect		302 158 45 45
+			background	"gfx/ui/shop_repair"
+			forecolor	1 1 1 1
+			visible		0
+		}
+
+		itemDef
+		{
+			name		shopCenter_BuyRepairBG
+			style		WINDOW_STYLE_SHADER
+			forecolor	1 1 1 1
+			rect		302 158 45 45
+			background	"gfx/ui/shop_repair"
+			group		shop_repairbuttons
+			visible		0
+		}
+
+		// Buy repair credit cost
+		itemDef
+		{
+			name		shopCenter_BuyRepairCredits
+			group		shop_repairbuttons
+			rect		302 202 50 23
+			font		5
+			textscale	0.4
+			textalign	ITEM_ALIGN_CENTER
+			textalignx	25
+			forecolor	1 1 1 1
+			decoration
+			visible		0
+
+			ownerdraw	2000
+
+			text		""
+		}
 
 		// Buy Button
 		itemDef

@@ -2046,6 +2046,9 @@ static int UI_OwnerDrawWidth(int ownerDraw, int ownerDrawID, float scale) {
 		case UI_JKG_SHOP_REFRESHTIME:
 			s = JKG_ShopRefreshTimeText();
 			break;
+		case UI_JKG_SHOP_DURAPRICE:
+			s = JKG_ShopDuraPriceText();
+			break;
     default:
       break;
   }
@@ -2521,6 +2524,9 @@ static void UI_OwnerDraw(itemDef_t *item, float x, float y, float w, float h, fl
 		break;
 	case UI_JKG_SHOP_AMMOPRICE:
 		JKG_Shop_ShopAmmoCost(item);
+		break;
+	case UI_JKG_SHOP_DURAPRICE:
+		JKG_Shop_ShopDuraCost(item);
 		break;
 	case UI_JKG_SHOP_ITEMDESC:
 		JKG_Shop_DrawShopDescriptionLine(item, ownerDrawID);
