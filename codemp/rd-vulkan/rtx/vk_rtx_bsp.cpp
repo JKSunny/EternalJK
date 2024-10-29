@@ -678,11 +678,11 @@ static void vk_bind_common_descriptor_data( vkdescriptor_t *descriptor, VkShader
 	vk_bind_storage_buffer(descriptor, BINDING_OFFSET_CLUSTER_WORLD_DYNAMIC_AS, flags, vk.geometry.cluster_world_dynamic_as.buffer);
 
 	// miscellaneous
-	vk_bind_storage_buffer(descriptor, BINDING_OFFSET_READBACK_BUFFER, stage, vk.buffer_readback.buffer);
+	vk_bind_storage_buffer(descriptor, BINDING_OFFSET_READBACK_BUFFER, stage, vk.buf_readback.buffer);
 	vk_bind_storage_buffer(descriptor, BINDING_OFFSET_DYNAMIC_VERTEX, stage, vk.model_instance.buffer_vertex.buffer);
-	vk_bind_storage_buffer(descriptor, BINDING_OFFSET_LIGHT_BUFFER, stage, vk.buffer_light.buffer);
-	vk_bind_storage_buffer(descriptor, BINDING_OFFSET_TONEMAP_BUFFER, stage, vk.buffer_tonemap.buffer);
-	vk_bind_storage_buffer(descriptor, BINDING_OFFSET_SUN_COLOR_BUFFER, stage, vk.buffer_sun_color.buffer);
+	vk_bind_storage_buffer(descriptor, BINDING_OFFSET_LIGHT_BUFFER, stage, vk.buf_light.buffer);
+	vk_bind_storage_buffer(descriptor, BINDING_OFFSET_TONEMAP_BUFFER, stage, vk.buf_tonemap.buffer);
+	vk_bind_storage_buffer(descriptor, BINDING_OFFSET_SUN_COLOR_BUFFER, stage, vk.buf_sun_color.buffer);
 
 	// light stats
 	{
@@ -691,7 +691,7 @@ static void vk_bind_common_descriptor_data( vkdescriptor_t *descriptor, VkShader
 		vk_rtx_set_descriptor_update_size(descriptor, BINDING_OFFSET_LIGHT_STATS_BUFFER, VK_SHADER_STAGE_ALL, NUM_LIGHT_STATS_BUFFERS);
 
 		for (i = 0; i < NUM_LIGHT_STATS_BUFFERS; i++)
-			descriptor->data[light_stats_index].buffer[i] = { vk.buffer_light_stats[i].buffer, 0, vk.buffer_light_stats[i].size };
+			descriptor->data[light_stats_index].buffer[i] = { vk.buf_light_stats[i].buffer, 0, vk.buf_light_stats[i].size };
 	}
 
 	// light count history
@@ -701,7 +701,7 @@ static void vk_bind_common_descriptor_data( vkdescriptor_t *descriptor, VkShader
 		vk_rtx_set_descriptor_update_size(descriptor, BINDING_LIGHT_COUNTS_HISTORY_BUFFER, VK_SHADER_STAGE_ALL, LIGHT_COUNT_HISTORY);
 
 		for (i = 0; i < LIGHT_COUNT_HISTORY; i++)
-			descriptor->data[light_count_history_index].buffer[i] = { vk.buffer_light_counts_history[i].buffer, 0, vk.buffer_light_counts_history[i].size };
+			descriptor->data[light_count_history_index].buffer[i] = { vk.buf_light_counts_history[i].buffer, 0, vk.buf_light_counts_history[i].size };
 	}
 
 	// previous
@@ -1127,51 +1127,51 @@ void R_PreparePT( world_t &worldData )
 
 				width = shader->sky->outerbox[0]->width;
 				height = shader->sky->outerbox[0]->height;
-				vk_rtx_create_cubemap( &vk.envmap, width, height,
+				vk_rtx_create_cubemap( &vk.img_envmap, width, height,
 					VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 1 );
 
 				R_LoadImage(shader->sky->outerbox[3]->imgName, &pic, &width, &height);
 				if (width == 0 || height == 0) goto skyFromStage;
-				vk_rtx_upload_image_data(&vk.envmap, width, height, pic, 4, 0, 0); // back
+				vk_rtx_upload_image_data(&vk.img_envmap, width, height, pic, 4, 0, 0); // back
 				ri.Z_Free(pic);
 
 				R_LoadImage(shader->sky->outerbox[1]->imgName, &pic, &width, &height);
-				vk_rtx_upload_image_data(&vk.envmap, width, height, pic, 4, 0, 1); // front
+				vk_rtx_upload_image_data(&vk.img_envmap, width, height, pic, 4, 0, 1); // front
 				ri.Z_Free(pic);
 
 				R_LoadImage(shader->sky->outerbox[4]->imgName, &pic, &width, &height);
-				vk_rtx_upload_image_data(&vk.envmap, width, height, pic, 4, 0, 2); // bottom
+				vk_rtx_upload_image_data(&vk.img_envmap, width, height, pic, 4, 0, 2); // bottom
 				ri.Z_Free(pic);
 
 				R_LoadImage(shader->sky->outerbox[5]->imgName, &pic, &width, &height);
-				vk_rtx_upload_image_data(&vk.envmap, width, height, pic, 4, 0, 3); // up
+				vk_rtx_upload_image_data(&vk.img_envmap, width, height, pic, 4, 0, 3); // up
 				ri.Z_Free(pic);
 
 				R_LoadImage(shader->sky->outerbox[0]->imgName, &pic, &width, &height);
-				vk_rtx_upload_image_data(&vk.envmap, width, height, pic, 4, 0, 4); // right
+				vk_rtx_upload_image_data(&vk.img_envmap, width, height, pic, 4, 0, 4); // right
 				ri.Z_Free(pic);
 
 				R_LoadImage(shader->sky->outerbox[2]->imgName, &pic, &width, &height);
-				vk_rtx_upload_image_data(&vk.envmap, width, height, pic, 4, 0, 5); // left
+				vk_rtx_upload_image_data(&vk.img_envmap, width, height, pic, 4, 0, 5); // left
 				ri.Z_Free(pic);
 
-				//vk_rtx_upload_image_data(&vk.envmap, width, height, pic, 4, 0, 5);
+				//vk_rtx_upload_image_data(&vk.img_envmap, width, height, pic, 4, 0, 5);
 			}
 			else if (shader->stages[0] != NULL) {
 			skyFromStage:
 				width = shader->stages[0]->bundle[0].image[0]->width;
 				height = shader->stages[0]->bundle[0].image[0]->height;
 
-				vk_rtx_create_cubemap( &vk.envmap, width, height,
+				vk_rtx_create_cubemap( &vk.img_envmap, width, height,
 					VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 1 );
 
 				R_LoadImage(shader->stages[0]->bundle[0].image[0]->imgName/*"textures/skies/bluedimclouds.tga"*/, &pic, &width, &height);
-				vk_rtx_upload_image_data(&vk.envmap, width, height, pic, 4, 0, 0);
-				vk_rtx_upload_image_data(&vk.envmap, width, height, pic, 4, 0, 1);
-				vk_rtx_upload_image_data(&vk.envmap, width, height, pic, 4, 0, 2);
-				vk_rtx_upload_image_data(&vk.envmap, width, height, pic, 4, 0, 3);
-				vk_rtx_upload_image_data(&vk.envmap, width, height, pic, 4, 0, 4);
-				vk_rtx_upload_image_data(&vk.envmap, width, height, pic, 4, 0, 5);
+				vk_rtx_upload_image_data(&vk.img_envmap, width, height, pic, 4, 0, 0);
+				vk_rtx_upload_image_data(&vk.img_envmap, width, height, pic, 4, 0, 1);
+				vk_rtx_upload_image_data(&vk.img_envmap, width, height, pic, 4, 0, 2);
+				vk_rtx_upload_image_data(&vk.img_envmap, width, height, pic, 4, 0, 3);
+				vk_rtx_upload_image_data(&vk.img_envmap, width, height, pic, 4, 0, 4);
+				vk_rtx_upload_image_data(&vk.img_envmap, width, height, pic, 4, 0, 5);
 			}
 
 			vk_rtx_set_envmap_descriptor_binding();
@@ -1187,7 +1187,7 @@ void R_PreparePT( world_t &worldData )
 		// add brush models
 #if 0
 		if (worldData.surfaces[i].blas == NULL && !worldData.surfaces[i].notBrush && !worldData.surfaces[i].added && !worldData.surfaces[i].skip) {
-			vk.scratch_buffer_ptr = 0;
+			vk.scratch_buf_ptr = 0;
 			tess.numVertexes = 0;
 			tess.numIndexes = 0;
 			float originalTime = backEnd.refdef.floatTime;
@@ -1220,26 +1220,26 @@ void R_PreparePT( world_t &worldData )
 			backEnd.refdef.floatTime = originalTime;
 			tess.numVertexes = 0;
 			tess.numIndexes = 0;
-			vk.scratch_buffer_ptr = 0;
+			vk.scratch_buf_ptr = 0;
 		}
 #endif
 	}
 
-	vk.scratch_buffer_ptr = 0;
+	vk.scratch_buf_ptr = 0;
 
 	if (!cmInit) {
 		byte black[4] = { 0,0,0,0 };
 
-		vk_rtx_create_cubemap( &vk.envmap, 1, 1,
+		vk_rtx_create_cubemap( &vk.img_envmap, 1, 1,
 			VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 1 );
 
 		for ( int skyIndex = 0; skyIndex < 5; skyIndex++ )
-			vk_rtx_upload_image_data(&vk.envmap, 1, 1, black, 4, 0, skyIndex);
+			vk_rtx_upload_image_data(&vk.img_envmap, 1, 1, black, 4, 0, skyIndex);
 
 		vk_rtx_set_envmap_descriptor_binding();
 	}
 
-	vk.scratch_buffer_ptr = 0;
+	vk.scratch_buf_ptr = 0;
 	
 
 	// the descriptor system is slightly different compared to Q2RTX.
@@ -1249,10 +1249,10 @@ void R_PreparePT( world_t &worldData )
 	{
 		VkCommandBuffer cmd_buf = vk_begin_command_buffer();
 
-		if ( vk.buffer_light_stats[0].buffer )
+		if ( vk.buf_light_stats[0].buffer )
 		{
 			for ( i = 0; i < NUM_LIGHT_STATS_BUFFERS; i++ )
-				qvkCmdFillBuffer( cmd_buf, vk.buffer_light_stats[i].buffer, 0, vk.buffer_light_stats[i].size, 0 );
+				qvkCmdFillBuffer( cmd_buf, vk.buf_light_stats[i].buffer, 0, vk.buf_light_stats[i].size, 0 );
 		}
 
 		vk_end_command_buffer( cmd_buf );

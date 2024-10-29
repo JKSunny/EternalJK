@@ -803,10 +803,10 @@ typedef struct {
 	qboolean		rtxActive;	// raytracing on
 	qboolean		rtx_surf_is_hdr;
 
-	VkPhysicalDeviceProperties						props;
-	VkPhysicalDeviceProperties2						props2;	// unused?
-	VkPhysicalDeviceRayTracingPropertiesNV			rtxprops_nv;
-	VkPhysicalDeviceRayTracingPipelinePropertiesKHR rtxprops_khr;
+	VkPhysicalDeviceProperties							props;
+	VkPhysicalDeviceProperties2							props2;
+	VkPhysicalDeviceRayTracingPipelinePropertiesKHR		ray_pipeline_properties;
+	VkPhysicalDeviceAccelerationStructurePropertiesKHR	accel_struct_properties;
 
 	VkExtent2D		extent_screen_images;
 	VkExtent2D		extent_render;
@@ -817,6 +817,7 @@ typedef struct {
 
 	uint32_t		shaderGroupHandleSize;
 	uint32_t		shaderGroupBaseAlignment;
+	uint32_t		minAccelerationStructureScratchOffsetAlignment;
 	uint32_t		device_count;
 	uint32_t		gpu_slice_width;
 	uint32_t		gpu_slice_width_prev;
@@ -838,7 +839,7 @@ typedef struct {
 
 	qboolean		worldASInit;
 
-	vkbuffer_t		rt_shader_binding_table;
+	vkbuffer_t		buf_shader_binding_table;
 	vkpipeline_t	rt_pipeline;
 
 	vkpipeline_t	asvgf_pipeline[ASVGF_NUM_PIPELINES];
@@ -850,16 +851,13 @@ typedef struct {
 	vkpipeline_t	physical_sky_pipeline[PHYSICAL_SKY_NUM_PIPELINES];
 	vkshader_t		*physical_sky_shader[NUM_PHYSICAL_SKY_SHADER_MODULES];
 
-	vkpipeline_t	god_rays_pipeline[ASVGF_NUM_PIPELINES];
-	vkshader_t		*god_rays_shader[NUM_ASVGF_SHADER_MODULES];
-
 	VkPipeline		pipeline_final_blit;
 	vkshader_t		*final_blit_shader_frag;
 	
-	vkimage_t		envmap;
-	vkimage_t		blue_noise;
-	vkimage_t		physicalSkyImages	[NUM_PHYSICAL_SKY_IMAGES];
-	vkimage_t		rtx_images[NUM_RTX_IMAGES];
+	vkimage_t		img_envmap;
+	vkimage_t		img_blue_noise;
+	vkimage_t		img_physical_sky[NUM_PHYSICAL_SKY_IMAGES];
+	vkimage_t		img_rtx[NUM_RTX_IMAGES];
 
 	VkDescriptorPool desc_pool_textures;
 
@@ -944,25 +942,25 @@ typedef struct {
 	vk_tlas_t		tlas_geometry[VK_MAX_SWAPCHAIN_SIZE];
 
 	// stores offset and stuff for in shader lookup
-	vkbuffer_t		buffer_blas_instance[VK_MAX_SWAPCHAIN_SIZE];
+	vkbuffer_t		buf_instances[VK_MAX_SWAPCHAIN_SIZE];
 	
-	vkbuffer_t		buffer_readback;
-	vkbuffer_t		buffer_readback_staging[VK_MAX_SWAPCHAIN_SIZE];
+	vkbuffer_t		buf_readback;
+	vkbuffer_t		buf_readback_staging[VK_MAX_SWAPCHAIN_SIZE];
 
-	vkbuffer_t		buffer_light;
-	vkbuffer_t		buffer_light_staging[VK_MAX_SWAPCHAIN_SIZE];
-	vkbuffer_t		buffer_light_stats[NUM_LIGHT_STATS_BUFFERS];
-	vkbuffer_t		buffer_light_counts_history[LIGHT_COUNT_HISTORY];
+	vkbuffer_t		buf_light;
+	vkbuffer_t		buf_light_staging[VK_MAX_SWAPCHAIN_SIZE];
+	vkbuffer_t		buf_light_stats[NUM_LIGHT_STATS_BUFFERS];
+	vkbuffer_t		buf_light_counts_history[LIGHT_COUNT_HISTORY];
 
-	vkbuffer_t		buffer_tonemap;
+	vkbuffer_t		buf_tonemap;
 
-	vkbuffer_t		buffer_sun_color;
+	vkbuffer_t		buf_sun_color;
 
-	vkbuffer_t		scratch_buffer;	// only required for build, not needed after build
-	VkDeviceSize	scratch_buffer_ptr;
+	vkbuffer_t		buf_accel_scratch;
+	size_t			scratch_buf_ptr;
 
-	vkUniformRTX_t	buffer_uniform;
-	InstanceBuffer	buffer_uniform_instance;
+	vkUniformRTX_t	uniform_buffer;
+	InstanceBuffer	uniform_instance_buffer;
 #endif
 
 	VkSwapchainKHR	swapchain;

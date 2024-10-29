@@ -115,13 +115,13 @@ void append_blas( vk_geometry_instance_t *instances, int *num_instances, uint32_
 
 	//assert(*num_instances < INSTANCE_MAX_NUM);
 	memcpy(instances + *num_instances, &instance, sizeof(instance));
-	vk.buffer_uniform_instance.tlas_instance_type[*num_instances] = type;
+	vk.uniform_instance_buffer.tlas_instance_type[*num_instances] = type;
 	++*num_instances;
 }
 
 void vkpt_pt_create_all_dynamic( VkCommandBuffer cmd_buf, int idx, const EntityUploadInfo *upload_info )
 {
-	vk.scratch_buffer_ptr = 0;
+	vk.scratch_buf_ptr = 0;
 	uint64_t offset_vertex_base = offsetof(ModelDynamicVertexBuffer, positions_instanced);
 	uint64_t offset_vertex = offset_vertex_base;
 	uint64_t offset_index = 0;
@@ -135,7 +135,7 @@ void vkpt_pt_create_all_dynamic( VkCommandBuffer cmd_buf, int idx, const EntityU
 		qtrue, qtrue, qfalse, instanced );
 
 	MEM_BARRIER_BUILD_ACCEL(cmd_buf);
-	vk.scratch_buffer_ptr = 0;
+	vk.scratch_buf_ptr = 0;
 }
 
 static void vkpt_pt_create_toplevel( VkCommandBuffer cmd_buf, uint32_t idx, drawSurf_t *drawSurfs, int numDrawSurfs ) 
@@ -159,14 +159,14 @@ static void vkpt_pt_create_toplevel( VkCommandBuffer cmd_buf, uint32_t idx, draw
 	//
 	append_blas( instances, &num_instances, BLAS_ENTITY_DYNAMIC,		&vk.model_instance.blas.dynamic[idx], AS_INSTANCE_FLAG_DYNAMIC, 0, 0, 0 );
 
-	void *instance_data = buffer_map(vk.buffer_blas_instance + idx);
+	void *instance_data = buffer_map(vk.buf_instances + idx);
 	memcpy(instance_data, &instances, sizeof(vk_geometry_instance_t) * num_instances);
 
-	buffer_unmap(vk.buffer_blas_instance + idx);
+	buffer_unmap(vk.buf_instances + idx);
 	instance_data = NULL;
 
 	vk_rtx_destroy_tlas( &vk.tlas_geometry[idx] );
-	vk_rtx_create_tlas( cmd_buf, &vk.tlas_geometry[idx], vk.buffer_blas_instance[idx].address, num_instances);
+	vk_rtx_create_tlas( cmd_buf, &vk.tlas_geometry[idx], vk.buf_instances[idx].address, num_instances);
 }
 
 static inline uint32_t fill_mdxm_instance( const trRefEntity_t* entity, const mdxmVBOMesh_t* mesh, shader_t *shader,
@@ -177,7 +177,7 @@ static inline uint32_t fill_mdxm_instance( const trRefEntity_t* entity, const md
 	vk_rtx_shader_to_material( shader, material_index, material_flags );
 	uint32_t material_id = (material_flags & ~MATERIAL_INDEX_MASK) | (material_index & MATERIAL_INDEX_MASK);
 
-	ModelInstance *instance = &vk.buffer_uniform_instance.model_instances[model_instance_index];
+	ModelInstance *instance = &vk.uniform_instance_buffer.model_instances[model_instance_index];
 	memcpy(instance->M, transform, sizeof(float) * 16);
 
 	instance->idx_offset = mesh->indexOffset;
@@ -244,7 +244,7 @@ static void process_regular_entity(
 	if ( !vk_rtx_find_mdxm_meshes_for_entity( entityNum, entity ) )
 		return;
 
-	InstanceBuffer *uniform_instance_buffer = &vk.buffer_uniform_instance;
+	InstanceBuffer *uniform_instance_buffer = &vk.uniform_instance_buffer;
 	uint32_t *ubo_instance_buf_offset	= (uint32_t*)uniform_instance_buffer->model_instance_buf_offset;
 	uint32_t *ubo_instance_buf_size		= (uint32_t*)uniform_instance_buffer->model_instance_buf_size;
 	uint32_t *ubo_model_idx_offset		= (uint32_t*)uniform_instance_buffer->model_idx_offset;
@@ -325,7 +325,7 @@ static void prepare_entities( EntityUploadInfo *upload_info, const trRefdef_t *r
 
 	entity_frame_num = !entity_frame_num;
 
-	InstanceBuffer *instance_buffer = &vk.buffer_uniform_instance;
+	InstanceBuffer *instance_buffer = &vk.uniform_instance_buffer;
 
 	memcpy( instance_buffer->bsp_mesh_instances_prev, instance_buffer->bsp_mesh_instances,
 		sizeof(instance_buffer->bsp_mesh_instances_prev) );
@@ -806,15 +806,15 @@ static void vk_rtx_prepare_ubo( trRefdef_t *refdef, world_t *world, vkUniformRTX
 
 static void vk_rtx_trace_rays( VkCommandBuffer cmd_buf, vkpipeline_t *pipeline, uint32_t height, int group_index ) 
 {
-	assert( vk.rt_shader_binding_table.address );
+	assert( vk.buf_shader_binding_table.address );
 
 	VkStridedDeviceAddressRegionKHR raygen;
-	raygen.deviceAddress = vk.rt_shader_binding_table.address + group_index * vk.shaderGroupBaseAlignment;
+	raygen.deviceAddress = vk.buf_shader_binding_table.address + group_index * vk.shaderGroupBaseAlignment;
 	raygen.stride = vk.shaderGroupBaseAlignment;
 	raygen.size = vk.shaderGroupBaseAlignment;
 
 	VkStridedDeviceAddressRegionKHR miss_and_hit;
-	miss_and_hit.deviceAddress = vk.rt_shader_binding_table.address;
+	miss_and_hit.deviceAddress = vk.buf_shader_binding_table.address;
 	miss_and_hit.stride = vk.shaderGroupBaseAlignment;
 	miss_and_hit.size = vk.shaderGroupBaseAlignment;
 
@@ -836,7 +836,7 @@ static void vk_rtx_trace_primary_rays( VkCommandBuffer cmd_buf, uint32_t idx )
 	BUFFER_BARRIER( cmd_buf,
 		VK_ACCESS_TRANSFER_READ_BIT,
 		VK_ACCESS_SHADER_WRITE_BIT,
-		vk.buffer_readback.buffer,
+		vk.buf_readback.buffer,
 		0,
 		VK_WHOLE_SIZE
 	);
@@ -867,23 +867,23 @@ static void vk_rtx_trace_primary_rays( VkCommandBuffer cmd_buf, uint32_t idx )
 
 	int frame_idx = idx;
 
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_VISBUF_PRIM_A + frame_idx] );
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_VISBUF_BARY_A + frame_idx] );
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_TRANSPARENT] );
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_MOTION] );
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_SHADING_POSITION] );
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_VIEW_DIRECTION] );
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_THROUGHPUT] );
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_BOUNCE_THROUGHPUT] );
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_GODRAYS_THROUGHPUT_DIST] );
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_BASE_COLOR_A + frame_idx] );
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_METALLIC_A + frame_idx] );
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_CLUSTER_A + frame_idx] );
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_VIEW_DEPTH_A + frame_idx] );
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_NORMAL_A + frame_idx] );
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_ASVGF_RNG_SEED_A + frame_idx] );
+	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_VISBUF_PRIM_A + frame_idx] );
+	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_VISBUF_BARY_A + frame_idx] );
+	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_TRANSPARENT] );
+	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_MOTION] );
+	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_SHADING_POSITION] );
+	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_VIEW_DIRECTION] );
+	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_THROUGHPUT] );
+	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_BOUNCE_THROUGHPUT] );
+	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_GODRAYS_THROUGHPUT_DIST] );
+	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_BASE_COLOR_A + frame_idx] );
+	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_METALLIC_A + frame_idx] );
+	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_CLUSTER_A + frame_idx] );
+	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_VIEW_DEPTH_A + frame_idx] );
+	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_NORMAL_A + frame_idx] );
+	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_ASVGF_RNG_SEED_A + frame_idx] );
 #ifdef USE_RTX_INSPECT_TANGENTS
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_TANGENT_A + frame_idx] );
+	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_TANGENT_A + frame_idx] );
 #endif
 }
 
@@ -914,19 +914,19 @@ static void vk_rtx_trace_reflections( VkCommandBuffer cmd_buf, uint32_t idx, int
 
 	int frame_idx = idx;
 
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_TRANSPARENT] );
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_MOTION] );
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_SHADING_POSITION] );
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_VIEW_DIRECTION] );
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_THROUGHPUT] );
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_GODRAYS_THROUGHPUT_DIST] );
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_BASE_COLOR_A + frame_idx] );
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_METALLIC_A + frame_idx] );
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_CLUSTER_A + frame_idx] );
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_VIEW_DEPTH_A + frame_idx] );
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_NORMAL_A + frame_idx] );
+	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_TRANSPARENT] );
+	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_MOTION] );
+	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_SHADING_POSITION] );
+	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_VIEW_DIRECTION] );
+	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_THROUGHPUT] );
+	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_GODRAYS_THROUGHPUT_DIST] );
+	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_BASE_COLOR_A + frame_idx] );
+	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_METALLIC_A + frame_idx] );
+	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_CLUSTER_A + frame_idx] );
+	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_VIEW_DEPTH_A + frame_idx] );
+	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_NORMAL_A + frame_idx] );
 #ifdef USE_RTX_INSPECT_TANGENTS
-	//BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_TANGENT_A + frame_idx] );
+	//BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_TANGENT_A + frame_idx] );
 #endif
 }
 
@@ -960,15 +960,15 @@ static void vk_rxt_trace_lighting( VkCommandBuffer cmd_buf, uint32_t idx, float 
 
 	END_PERF_MARKER(cmd_buf, PROFILER_DIRECT_LIGHTING);
 
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_COLOR_LF_SH] );
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_COLOR_LF_COCG] );
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_COLOR_HF] );
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_COLOR_SPEC] );
+	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_COLOR_LF_SH] );
+	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_COLOR_LF_COCG] );
+	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_COLOR_HF] );
+	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_COLOR_SPEC] );
 
 	BUFFER_BARRIER( cmd_buf,
 		VK_ACCESS_SHADER_WRITE_BIT,
 		VK_ACCESS_TRANSFER_READ_BIT,
-		vk.buffer_readback.buffer,
+		vk.buf_readback.buffer,
 		0,
 		VK_WHOLE_SIZE
 	);
@@ -1003,11 +1003,11 @@ static void vk_rxt_trace_lighting( VkCommandBuffer cmd_buf, uint32_t idx, float 
 			vk_rtx_trace_rays( cmd_buf, &vk.rt_pipeline, height, rgen_index );
 		}
 
-		BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_COLOR_LF_SH] );
-		BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_COLOR_LF_COCG] );
-		BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_COLOR_HF] );
-		BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_COLOR_SPEC] );
-		BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_PT_BOUNCE_THROUGHPUT] );
+		BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_COLOR_LF_SH] );
+		BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_COLOR_LF_COCG] );
+		BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_COLOR_HF] );
+		BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_COLOR_SPEC] );
+		BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_BOUNCE_THROUGHPUT] );
 	}
 
 	END_PERF_MARKER( cmd_buf, PROFILER_INDIRECT_LIGHTING );
@@ -1034,7 +1034,7 @@ static VkResult vkpt_final_blit_simple( VkCommandBuffer cmd_buf )
 	int output_img = RTX_IMG_TAA_OUTPUT;
 
 	IMAGE_BARRIER( cmd_buf,
-		vk.rtx_images[output_img].handle,
+		vk.img_rtx[output_img].handle,
 		subresource_range,
 		VK_ACCESS_SHADER_WRITE_BIT,
 		VK_ACCESS_TRANSFER_READ_BIT,
@@ -1060,7 +1060,7 @@ static VkResult vkpt_final_blit_simple( VkCommandBuffer cmd_buf )
 	img_blit.dstOffsets[1] = blit_size_unscaled;
 
 	qvkCmdBlitImage( cmd_buf,
-		vk.rtx_images[output_img].handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+		vk.img_rtx[output_img].handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 		vk.color_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 		1, &img_blit, VK_FILTER_NEAREST );
 
@@ -1074,7 +1074,7 @@ static VkResult vkpt_final_blit_simple( VkCommandBuffer cmd_buf )
 	);
 
 	IMAGE_BARRIER( cmd_buf,
-		vk.rtx_images[output_img].handle,
+		vk.img_rtx[output_img].handle,
 		subresource_range,
 		VK_ACCESS_TRANSFER_READ_BIT,
 		VK_ACCESS_SHADER_WRITE_BIT,
@@ -1088,27 +1088,27 @@ static VkResult vkpt_final_blit_simple( VkCommandBuffer cmd_buf )
 VkResult
 vkpt_light_buffer_upload_staging( VkCommandBuffer cmd_buf, uint32_t idx )
 {
-	vkbuffer_t *staging = vk.buffer_light_staging + idx;
+	vkbuffer_t *staging = vk.buf_light_staging + idx;
 
 	assert( !staging->is_mapped );
 
 	VkBufferCopy copyRegion = { 0, 0, sizeof(LightBuffer) };
 
-	qvkCmdCopyBuffer( cmd_buf, staging->buffer, vk.buffer_light.buffer, 1, &copyRegion );
+	qvkCmdCopyBuffer( cmd_buf, staging->buffer, vk.buf_light.buffer, 1, &copyRegion );
 
 	// sunny this is questionable, were not using frame_counter for frame idx
 	// see vk_rtx_get_descriptor_index()
 	int buffer_idx = vk.frame_counter % 3;
-	if ( vk.buffer_light_stats[buffer_idx].buffer )
+	if ( vk.buf_light_stats[buffer_idx].buffer )
 	{
-		qvkCmdFillBuffer(cmd_buf, vk.buffer_light_stats[buffer_idx].buffer, 0, vk.buffer_light_stats[buffer_idx].size, 0);
+		qvkCmdFillBuffer(cmd_buf, vk.buf_light_stats[buffer_idx].buffer, 0, vk.buf_light_stats[buffer_idx].size, 0);
 	}
 
 
 	BUFFER_BARRIER( cmd_buf,
 		VK_ACCESS_NONE_KHR,
 		VK_ACCESS_SHADER_WRITE_BIT,
-		vk.buffer_light.buffer,
+		vk.buf_light.buffer,
 		0,
 		VK_WHOLE_SIZE
 	);
@@ -1359,7 +1359,7 @@ static void vk_begin_trace_rays( trRefdef_t *refdef, reference_mode_t *ref_mode,
 
 		{
 			VkBufferCopy copyRegion = { 0, 0, sizeof(ReadbackBuffer) };
-			qvkCmdCopyBuffer( cmd_buf_trace_post, vk.buffer_readback.buffer, vk.buffer_readback_staging[idx].buffer, 1, &copyRegion);
+			qvkCmdCopyBuffer( cmd_buf_trace_post, vk.buf_readback.buffer, vk.buf_readback_staging[idx].buffer, 1, &copyRegion);
 		}
 
 #ifdef VK_RTX_INVESTIGATE_SLOW_CMD_BUF
@@ -1382,7 +1382,7 @@ static qboolean frame_ready;
 void vk_rtx_begin_scene( trRefdef_t *refdef, drawSurf_t *drawSurfs, int numDrawSurfs ) 
 {
 	// reset offsets
-	vk.scratch_buffer_ptr = 0;
+	vk.scratch_buf_ptr = 0;
 
 	reference_mode_t	ref_mode;
 	vkUniformRTX_t		*ubo;
@@ -1449,7 +1449,7 @@ void vk_rtx_begin_scene( trRefdef_t *refdef, drawSurf_t *drawSurfs, int numDrawS
 		vkpt_build_beam_lights(model_lights, &num_model_lights, MAX_MODEL_LIGHTS, bsp_world_model, fd->entities, fd->num_entities, prev_adapted_luminance);
 #endif
 
-	ubo = &vk.buffer_uniform;
+	ubo = &vk.uniform_buffer;
 	vk_rtx_prepare_ubo( refdef, tr.world, ubo, viewleaf, &ref_mode, sky_matrix, render_world );
 	ubo->prev_adapted_luminance = prev_adapted_luminance;
 

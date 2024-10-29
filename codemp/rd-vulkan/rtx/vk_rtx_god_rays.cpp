@@ -158,8 +158,8 @@ void vk_rtx_record_god_rays_trace_command_buffer( VkCommandBuffer command_buffer
 	uint32_t idx, prev_idx;
 	vk_rtx_get_descriptor_index( idx, prev_idx );
 
-	BARRIER_COMPUTE( command_buffer, vk.rtx_images[RTX_IMG_PT_GODRAYS_THROUGHPUT_DIST] );
-	BARRIER_COMPUTE( command_buffer, vk.rtx_images[RTX_IMG_ASVGF_COLOR] );
+	BARRIER_COMPUTE( command_buffer, vk.img_rtx[RTX_IMG_PT_GODRAYS_THROUGHPUT_DIST] );
+	BARRIER_COMPUTE( command_buffer, vk.img_rtx[RTX_IMG_ASVGF_COLOR] );
 
 	qvkCmdBindPipeline( command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, god_rays.pipelines[0] );
 
@@ -182,8 +182,8 @@ void vk_rtx_record_god_rays_trace_command_buffer( VkCommandBuffer command_buffer
 
 	qvkCmdDispatch( command_buffer, group_num_x, group_num_y, 1 );
 
-	BARRIER_COMPUTE( command_buffer, vk.rtx_images[RTX_IMG_PT_GODRAYS_THROUGHPUT_DIST] );
-	BARRIER_COMPUTE( command_buffer, vk.rtx_images[RTX_IMG_ASVGF_COLOR] );
+	BARRIER_COMPUTE( command_buffer, vk.img_rtx[RTX_IMG_PT_GODRAYS_THROUGHPUT_DIST] );
+	BARRIER_COMPUTE( command_buffer, vk.img_rtx[RTX_IMG_ASVGF_COLOR] );
 }
 
 void vk_rtx_record_god_rays_filter_command_buffer( VkCommandBuffer command_buffer )
@@ -191,7 +191,7 @@ void vk_rtx_record_god_rays_filter_command_buffer( VkCommandBuffer command_buffe
 	uint32_t idx, prev_idx;
 	vk_rtx_get_descriptor_index( idx, prev_idx );
 
-	BARRIER_COMPUTE( command_buffer, vk.rtx_images[RTX_IMG_PT_TRANSPARENT] );
+	BARRIER_COMPUTE( command_buffer, vk.img_rtx[RTX_IMG_PT_TRANSPARENT] );
 
 	VkImageSubresourceRange subresource_range;
 	Com_Memset( &subresource_range, 0, sizeof(VkImageSubresourceRange) );
@@ -221,7 +221,7 @@ void vk_rtx_record_god_rays_filter_command_buffer( VkCommandBuffer command_buffe
 
 	qvkCmdDispatch( command_buffer, group_num_x, group_num_y, 1 );
 
-	BARRIER_COMPUTE( command_buffer, vk.rtx_images[RTX_IMG_PT_TRANSPARENT] );
+	BARRIER_COMPUTE( command_buffer, vk.img_rtx[RTX_IMG_PT_TRANSPARENT] );
 }
 
 

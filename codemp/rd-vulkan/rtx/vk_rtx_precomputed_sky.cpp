@@ -75,9 +75,9 @@ void ReleaseInfo( struct ImageGPUInfo *info, uint32_t binding )
 {
 	const int binding_offset = ( binding - ( BINDING_OFFSET_PHYSICAL_SKY ) );
 
-	qvkFreeMemory( vk.device, vk.physicalSkyImages[binding_offset].memory, NULL );
-	qvkDestroyImage( vk.device, vk.physicalSkyImages[binding_offset].handle, NULL );
-	qvkDestroyImageView( vk.device, vk.physicalSkyImages[binding_offset].view, NULL );
+	qvkFreeMemory( vk.device, vk.img_physical_sky[binding_offset].memory, NULL );
+	qvkDestroyImage( vk.device, vk.img_physical_sky[binding_offset].handle, NULL );
+	qvkDestroyImageView( vk.device, vk.img_physical_sky[binding_offset].view, NULL );
 	memset( info, 0, sizeof(*info) );
 }
 
@@ -152,11 +152,11 @@ VkResult UploadImage( void *FirstPixel, size_t total_size, unsigned int Width, u
 	if (Cube)
 		img_info.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
 
-	VK_CHECK( qvkCreateImage( vk.device, &img_info, NULL, &vk.physicalSkyImages[binding_offset].handle ) );
-	VK_SET_OBJECT_NAME( &vk.physicalSkyImages[binding_offset].handle, DebugName, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT );
+	VK_CHECK( qvkCreateImage( vk.device, &img_info, NULL, &vk.img_physical_sky[binding_offset].handle ) );
+	VK_SET_OBJECT_NAME( &vk.img_physical_sky[binding_offset].handle, DebugName, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT );
 
 	VkMemoryRequirements mem_req;
-	qvkGetImageMemoryRequirements( vk.device, vk.physicalSkyImages[binding_offset].handle, &mem_req );
+	qvkGetImageMemoryRequirements( vk.device, vk.img_physical_sky[binding_offset].handle, &mem_req );
 	assert( mem_req.size >= buf_img_upload.size );
 
 	VkMemoryAllocateInfo mem_alloc_info;
@@ -178,9 +178,9 @@ VkResult UploadImage( void *FirstPixel, size_t total_size, unsigned int Width, u
 	}
 #endif
 
-	VK_CHECK( qvkAllocateMemory( vk.device, &mem_alloc_info, NULL, &vk.physicalSkyImages[binding_offset].memory ) );
+	VK_CHECK( qvkAllocateMemory( vk.device, &mem_alloc_info, NULL, &vk.img_physical_sky[binding_offset].memory ) );
 
-	VK_CHECK( qvkBindImageMemory( vk.device, vk.physicalSkyImages[binding_offset].handle, vk.physicalSkyImages[binding_offset].memory, 0 ) );
+	VK_CHECK( qvkBindImageMemory( vk.device, vk.img_physical_sky[binding_offset].handle, vk.img_physical_sky[binding_offset].memory, 0 ) );
 
 	VkImageViewType viewType = VK_IMAGE_VIEW_TYPE_2D;
 	if (Depth > 1)
@@ -195,7 +195,7 @@ VkResult UploadImage( void *FirstPixel, size_t total_size, unsigned int Width, u
 	img_view_info.flags = 0;
 	img_view_info.viewType = viewType;
 	img_view_info.format = PixelFormat;
-	img_view_info.image = vk.physicalSkyImages[binding_offset].handle;
+	img_view_info.image = vk.img_physical_sky[binding_offset].handle;
 	img_view_info.subresourceRange = {
 		VK_IMAGE_ASPECT_COLOR_BIT,
 		0,
@@ -210,8 +210,8 @@ VkResult UploadImage( void *FirstPixel, size_t total_size, unsigned int Width, u
 		VK_COMPONENT_SWIZZLE_A,			
 	};
 
-	VK_CHECK( qvkCreateImageView( vk.device, &img_view_info, NULL, &vk.physicalSkyImages[binding_offset].view ) );
-	VK_SET_OBJECT_NAME( &vk.physicalSkyImages[binding_offset].view, DebugName, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT );
+	VK_CHECK( qvkCreateImageView( vk.device, &img_view_info, NULL, &vk.img_physical_sky[binding_offset].view ) );
+	VK_SET_OBJECT_NAME( &vk.img_physical_sky[binding_offset].view, DebugName, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT );
 
 	VkCommandBuffer cmd_buf = vk_begin_command_buffer();
 
@@ -224,7 +224,7 @@ VkResult UploadImage( void *FirstPixel, size_t total_size, unsigned int Width, u
 
 
 	IMAGE_BARRIER(cmd_buf,
-		vk.physicalSkyImages[binding_offset].handle,
+		vk.img_physical_sky[binding_offset].handle,
 		subresource_range,
 		0,
 		VK_ACCESS_TRANSFER_WRITE_BIT,
@@ -244,12 +244,12 @@ VkResult UploadImage( void *FirstPixel, size_t total_size, unsigned int Width, u
 	copy_info.imageOffset = { 0, 0, 0 };
 	copy_info.imageExtent = { Width, Height, Depth };
 
-	qvkCmdCopyBufferToImage( cmd_buf, buf_img_upload.buffer, vk.physicalSkyImages[binding_offset].handle,
+	qvkCmdCopyBufferToImage( cmd_buf, buf_img_upload.buffer, vk.img_physical_sky[binding_offset].handle,
 		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy_info );
 
 
 	IMAGE_BARRIER(cmd_buf,
-		vk.physicalSkyImages[binding_offset].handle,
+		vk.img_physical_sky[binding_offset].handle,
 		subresource_range,
 		VK_ACCESS_TRANSFER_WRITE_BIT,
 		VK_ACCESS_SHADER_READ_BIT,
@@ -261,7 +261,7 @@ VkResult UploadImage( void *FirstPixel, size_t total_size, unsigned int Width, u
 
 	VkDescriptorImageInfo desc_img_info;
 	desc_img_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	desc_img_info.imageView = vk.physicalSkyImages[binding_offset].view;
+	desc_img_info.imageView = vk.img_physical_sky[binding_offset].view;
 	desc_img_info.sampler = vk.tex_sampler;
 
 	VkWriteDescriptorSet s;
@@ -865,7 +865,7 @@ struct ShadowmapGeometry FillVertexAndIndexBuffers( const char* FileName, unsign
 	range.layerCount = 1;
 
 	IMAGE_BARRIER( cmd_buf,
-		vk.physicalSkyImages[binding_offset].handle,
+		vk.img_physical_sky[binding_offset].handle,
 		range,
 		VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
 		VK_ACCESS_SHADER_READ_BIT,
@@ -897,14 +897,14 @@ void ReleaseShadowmap( struct Shadowmap *InOutShadowmap )
 {
 	const int binding_offset = ( BINDING_OFFSET_TERRAIN_SHADOWMAP - ( BINDING_OFFSET_PHYSICAL_SKY ) );
 
-	if ( vk.physicalSkyImages[binding_offset].view )
-		qvkDestroyImageView( vk.device, vk.physicalSkyImages[binding_offset].view, NULL );
+	if ( vk.img_physical_sky[binding_offset].view )
+		qvkDestroyImageView( vk.device, vk.img_physical_sky[binding_offset].view, NULL );
 
-	if ( vk.physicalSkyImages[binding_offset].handle )
-		qvkDestroyImage( vk.device, vk.physicalSkyImages[binding_offset].handle, NULL );
+	if ( vk.img_physical_sky[binding_offset].handle )
+		qvkDestroyImage( vk.device, vk.img_physical_sky[binding_offset].handle, NULL );
 
-	if ( vk.physicalSkyImages[binding_offset].memory )
-		qvkFreeMemory( vk.device, vk.physicalSkyImages[binding_offset].memory, NULL );
+	if ( vk.img_physical_sky[binding_offset].memory )
+		qvkFreeMemory( vk.device, vk.img_physical_sky[binding_offset].memory, NULL );
 
 	if ( InOutShadowmap->framebuffer )
 		qvkDestroyFramebuffer( vk.device, InOutShadowmap->framebuffer, NULL );
@@ -924,7 +924,7 @@ void vk_rtx_create_shadow_map_framebuffer( struct Shadowmap *InOutShadowmap )
 	fbufCreateInfo.pNext = NULL;
 	fbufCreateInfo.renderPass = render_pass_smap;
 	fbufCreateInfo.attachmentCount = 1;
-	fbufCreateInfo.pAttachments = &vk.physicalSkyImages[binding_offset].view;
+	fbufCreateInfo.pAttachments = &vk.img_physical_sky[binding_offset].view;
 	fbufCreateInfo.width = InOutShadowmap->width;
 	fbufCreateInfo.height = InOutShadowmap->height;
 	fbufCreateInfo.layers = 1;
@@ -955,11 +955,11 @@ void CreateShadowMap( struct Shadowmap *InOutShadowmap )
 	ShadowTexInfo.format = InOutShadowmap->format;																// Depth stencil attachment
 	ShadowTexInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;		// We will sample directly from the depth attachment for the shadow mapping
 
-	VK_CHECK( qvkCreateImage( vk.device, &ShadowTexInfo, NULL, &vk.physicalSkyImages[binding_offset].handle ) );
-	//ATTACH_LABEL_VARIABLE_NAME(vk.physicalSkyImages[binding_offset].handle, IMAGE_VIEW, "EnvShadowMap");
+	VK_CHECK( qvkCreateImage( vk.device, &ShadowTexInfo, NULL, &vk.img_physical_sky[binding_offset].handle ) );
+	//ATTACH_LABEL_VARIABLE_NAME(vk.img_physical_sky[binding_offset].handle, IMAGE_VIEW, "EnvShadowMap");
 
 	VkMemoryRequirements memReqs = {0};
-	qvkGetImageMemoryRequirements( vk.device, vk.physicalSkyImages[binding_offset].handle, &memReqs );
+	qvkGetImageMemoryRequirements( vk.device, vk.img_physical_sky[binding_offset].handle, &memReqs );
 
 	VkMemoryAllocateInfo memAlloc;
 	memAlloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
@@ -967,8 +967,8 @@ void CreateShadowMap( struct Shadowmap *InOutShadowmap )
 	memAlloc.allocationSize = memReqs.size;
 	memAlloc.memoryTypeIndex = vk_find_memory_type( memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT );
 
-	VK_CHECK( qvkAllocateMemory( vk.device, &memAlloc, NULL, &vk.physicalSkyImages[binding_offset].memory ) );
-	VK_CHECK( qvkBindImageMemory( vk.device, vk.physicalSkyImages[binding_offset].handle, vk.physicalSkyImages[binding_offset].memory, 0 ) );
+	VK_CHECK( qvkAllocateMemory( vk.device, &memAlloc, NULL, &vk.img_physical_sky[binding_offset].memory ) );
+	VK_CHECK( qvkBindImageMemory( vk.device, vk.img_physical_sky[binding_offset].handle, vk.img_physical_sky[binding_offset].memory, 0 ) );
 
 	VkImageViewCreateInfo depthStencilView;
 	Com_Memset( &depthStencilView, 0, sizeof(VkImageViewCreateInfo) );
@@ -982,9 +982,9 @@ void CreateShadowMap( struct Shadowmap *InOutShadowmap )
 	depthStencilView.subresourceRange.levelCount = 1;
 	depthStencilView.subresourceRange.baseArrayLayer = 0;
 	depthStencilView.subresourceRange.layerCount = 1;
-	depthStencilView.image = vk.physicalSkyImages[binding_offset].handle;
+	depthStencilView.image = vk.img_physical_sky[binding_offset].handle;
 
-	VK_CHECK( qvkCreateImageView( vk.device, &depthStencilView, NULL, &vk.physicalSkyImages[binding_offset].view ) );
+	VK_CHECK( qvkCreateImageView( vk.device, &depthStencilView, NULL, &vk.img_physical_sky[binding_offset].view ) );
 
 	Vk_Sampler_Def sd;
 	Com_Memset( &sd, 0, sizeof(sd) );
@@ -995,7 +995,7 @@ void CreateShadowMap( struct Shadowmap *InOutShadowmap )
 
 	VkDescriptorImageInfo desc_img_info;
 	desc_img_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	desc_img_info.imageView = vk.physicalSkyImages[binding_offset].view;
+	desc_img_info.imageView = vk.img_physical_sky[binding_offset].view;
 	desc_img_info.sampler = vk.tex_sampler;
 
 	VkWriteDescriptorSet s;
@@ -1069,7 +1069,7 @@ void RecordCommandBufferShadowmap( VkCommandBuffer cmd_buf )
 	const int binding_offset = ( BINDING_OFFSET_TERRAIN_SHADOWMAP - ( BINDING_OFFSET_PHYSICAL_SKY ) );
 
 	IMAGE_BARRIER( cmd_buf,
-		vk.physicalSkyImages[binding_offset].handle,
+		vk.img_physical_sky[binding_offset].handle,
 		range,
 		VK_ACCESS_SHADER_READ_BIT,
 		VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
@@ -1125,7 +1125,7 @@ void RecordCommandBufferShadowmap( VkCommandBuffer cmd_buf )
 	qvkCmdEndRenderPass( cmd_buf );
 
 	IMAGE_BARRIER( cmd_buf,
-		vk.physicalSkyImages[binding_offset].handle,
+		vk.img_physical_sky[binding_offset].handle,
 		range,
 		VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
 		VK_ACCESS_SHADER_READ_BIT,

@@ -386,11 +386,11 @@ static void vk_rtx_record_image_layout_transition( vkimage_t *image, VkImageLayo
 #define IMG_FLAGS	VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT  | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
 static void vk_rtx_create_images( const char *name, uint32_t index, uint32_t width, uint32_t height, VkFormat format )
 {
-	vk_rtx_create_image( name, &vk.rtx_images[index], width, height, format, IMG_FLAGS, 1);
+	vk_rtx_create_image( name, &vk.img_rtx[index], width, height, format, IMG_FLAGS, 1);
 
-	vk_rtx_record_image_layout_transition( &vk.rtx_images[index], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL );
-	VK_SET_OBJECT_NAME( vk.rtx_images[index].handle,	name,	VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT );
-	VK_SET_OBJECT_NAME( vk.rtx_images[index].view,		name,	VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT );
+	vk_rtx_record_image_layout_transition( &vk.img_rtx[index], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL );
+	VK_SET_OBJECT_NAME( vk.img_rtx[index].handle,	name,	VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT );
+	VK_SET_OBJECT_NAME( vk.img_rtx[index].view,		name,	VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT );
 }
 #undef IMG_FLAGS
 
@@ -407,7 +407,7 @@ void vk_rtx_create_images( void )
 	#define IMG_DO(_name, ...) \
 		desc_output_img_info[RTX_IMG_##_name] = { \
 			VK_NULL_HANDLE, \
-			vk.rtx_images[RTX_IMG_##_name].view, \
+			vk.img_rtx[RTX_IMG_##_name].view, \
 			VK_IMAGE_LAYOUT_GENERAL \
 		},
 	VkDescriptorImageInfo desc_output_img_info[] = {
@@ -421,7 +421,7 @@ void vk_rtx_create_images( void )
 	#define IMG_DO(_name, ...) \
 		img_info[RTX_IMG_##_name] = { \
 			vk.tex_sampler_nearest, \
-			vk.rtx_images[RTX_IMG_##_name].view, \
+			vk.img_rtx[RTX_IMG_##_name].view, \
 			VK_IMAGE_LAYOUT_GENERAL \
 		},
 		LIST_IMAGES
@@ -737,7 +737,7 @@ void vk_rtx_create_blue_noise( void )
 	component_map.b = VK_COMPONENT_SWIZZLE_R;
 	component_map.a = VK_COMPONENT_SWIZZLE_R;
 
-	vk_rtx_create_image_array( "blue noise array", &vk.blue_noise, res, res, VK_FORMAT_R16_UNORM, 
+	vk_rtx_create_image_array( "blue noise array", &vk.img_blue_noise, res, res, VK_FORMAT_R16_UNORM, 
 		VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 
 		1, NUM_BLUE_NOISE_TEX, 0, &component_map );
 	
@@ -759,7 +759,7 @@ void vk_rtx_create_blue_noise( void )
 				img[(j * bytes_per_channel) + 1] = *(pic + ((j * 8) + ((channel * bytes_per_channel) + 1)));
 			}
 
-			vk_rtx_upload_image_data( &vk.blue_noise, width, height, img, bytes_per_channel, 0, (i*4) + channel );
+			vk_rtx_upload_image_data( &vk.img_blue_noise, width, height, img, bytes_per_channel, 0, (i*4) + channel );
 		}
 
 		Z_Free( pic );
@@ -767,7 +767,7 @@ void vk_rtx_create_blue_noise( void )
 
 	VkDescriptorImageInfo desc_img_info;
 	desc_img_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	desc_img_info.imageView   = vk.blue_noise.view;
+	desc_img_info.imageView   = vk.img_blue_noise.view;
 	desc_img_info.sampler     = vk.tex_sampler;
 
 	VkWriteDescriptorSet s;

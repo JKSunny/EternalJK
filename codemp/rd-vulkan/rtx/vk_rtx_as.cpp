@@ -23,6 +23,11 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include "tr_local.h"
 
+static inline size_t align(size_t x, size_t alignment)
+{
+	return (x + (alignment - 1)) & ~(alignment - 1);
+}
+
 qboolean RB_ASDynamic( shader_t *shader ) 
 {
 	return (qboolean)((shader->numDeforms > 0) || (backEnd.currentEntity->e.frame > 0 || backEnd.currentEntity->e.oldframe > 0));
@@ -203,10 +208,11 @@ void vk_rtx_create_blas( VkCommandBuffer cmd_buf,
 	// set where the build lands
 	buildInfo.dstAccelerationStructure = blas->accel;
 
-	buildInfo.scratchData.deviceAddress = vk.scratch_buffer.address + vk.scratch_buffer_ptr;
-	assert(vk.scratch_buffer.address);
+	buildInfo.scratchData.deviceAddress = vk.buf_accel_scratch.address + vk.scratch_buf_ptr;
+	assert(vk.buf_accel_scratch.address);
 
-	vk.scratch_buffer_ptr += sizeInfo.buildScratchSize;
+	vk.scratch_buf_ptr += sizeInfo.buildScratchSize;
+	vk.scratch_buf_ptr = align(vk.scratch_buf_ptr, vk.minAccelerationStructureScratchOffsetAlignment);
 
 	// build offset
 	VkAccelerationStructureBuildRangeInfoKHR offset;
@@ -257,9 +263,10 @@ void vk_rtx_update_blas( VkCommandBuffer cmd_buf,
 			// set where the build lands
 			buildInfo.dstAccelerationStructure = newBas->accel;
 			buildInfo.srcAccelerationStructure = oldBas->accel;
-			buildInfo.scratchData.deviceAddress = vk.scratch_buffer.address + vk.scratch_buffer_ptr;
+			buildInfo.scratchData.deviceAddress = vk.buf_accel_scratch.address + vk.scratch_buf_ptr;
 
-			vk.scratch_buffer_ptr += sizeInfo.buildScratchSize;
+			vk.scratch_buf_ptr += sizeInfo.buildScratchSize;
+			vk.scratch_buf_ptr = align(vk.scratch_buf_ptr, vk.minAccelerationStructureScratchOffsetAlignment);
 		}
 
 		// build offset
@@ -312,7 +319,7 @@ void vk_rtx_create_tlas( VkCommandBuffer cmd_buf, vk_tlas_t *as, VkDeviceAddress
 	sizeInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
 	sizeInfo.pNext = NULL;
 	qvkGetAccelerationStructureBuildSizesKHR( vk.device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &buildInfo, &num_instances, &sizeInfo);
-	//assert( sizeInfo.accelerationStructureSize < SIZE_SCRATCH_BUFFER );
+	//assert( sizeInfo.accelerationStructureSize < SIZE_buf_accel_scratch );
 
 	//if (accel_top_match[idx].instanceCount < num_instances) {
 	//	vkpt_pt_destroy_toplevel(idx);
@@ -343,8 +350,8 @@ void vk_rtx_create_tlas( VkCommandBuffer cmd_buf, vk_tlas_t *as, VkDeviceAddress
 
 	// Update build information
 	buildInfo.dstAccelerationStructure = as->accel;
-	buildInfo.scratchData.deviceAddress = vk.scratch_buffer.address;
-	assert(vk.scratch_buffer.address);
+	buildInfo.scratchData.deviceAddress = vk.buf_accel_scratch.address;
+	assert(vk.buf_accel_scratch.address);
 
 	VkAccelerationStructureBuildRangeInfoKHR offset;
 	Com_Memset( &offset, 0, sizeof(VkAccelerationStructureBuildRangeInfoKHR) );

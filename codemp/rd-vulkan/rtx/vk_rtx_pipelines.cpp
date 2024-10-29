@@ -204,13 +204,13 @@ static void vk_rtx_create_raytracing_shader_binding_table( vkpipeline_t *pipelin
 
 	// create the SBT buffer
 	uint32_t shader_binding_table_size = vk.shaderGroupBaseAlignment * num_shader_groups;
-	vk_rtx_buffer_create( &vk.rt_shader_binding_table, shader_binding_table_size,
+	vk_rtx_buffer_create( &vk.buf_shader_binding_table, shader_binding_table_size,
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT );
 
 	// copy/unpack the shader handles into the SBT:
 	// shaderGroupBaseAlignment is likely greater than shaderGroupHandleSize (64 vs 32 on NV)
-	char *shader_binding_table = (char*)buffer_map( &vk.rt_shader_binding_table );
+	char *shader_binding_table = (char*)buffer_map( &vk.buf_shader_binding_table );
 	for ( uint32_t group = 0; group < num_shader_groups; group++ )
 	{
 		memcpy(	shader_binding_table + group * vk.shaderGroupBaseAlignment,
@@ -218,7 +218,7 @@ static void vk_rtx_create_raytracing_shader_binding_table( vkpipeline_t *pipelin
 				vk.shaderGroupHandleSize );
 	}
 
-	buffer_unmap( &vk.rt_shader_binding_table );
+	buffer_unmap( &vk.buf_shader_binding_table );
 	shader_binding_table = NULL;
 }
 
