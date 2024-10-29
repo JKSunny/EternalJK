@@ -45,7 +45,7 @@ layout(constant_id = 0) const uint spec_tone_mapping_hdr = 0;
 #define GLOBAL_TEXTURES_DESC_SET_IDX 1
 #include "../global_textures.h"
 
-#define VERTEX_BUFFER_DESC_SET_IDX 2
+#define VERTEX_BUFFER_DESC_SET_IDX 0
 
 #include "../vertex_buffer.h"
 
