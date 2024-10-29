@@ -455,6 +455,8 @@ void JKG_Shop_InventoryItemCost(itemDef_t* item, int nOwnerDrawID) {
 		return; // There isn't an item in this slot.
 	}
 	itemInstance_t* pItem = vInventoryItems[nInventoryScroll + nOwnerDrawID].second;
+	vec4_t color;	//color of sales text
+	VectorCopy4(colorWhite, color);	//default to white
 
 	char info[MAX_INFO_VALUE];
 	trap->GetConfigString(CS_SERVERINFO, info, sizeof(info));
@@ -462,12 +464,41 @@ void JKG_Shop_InventoryItemCost(itemDef_t* item, int nOwnerDrawID) {
 	if (!Q_stricmp(pItem->id->internalName, Info_ValueForKey(info, "jkg_startingGun")) && nNumberInventoryItems > 1)		//selling our starting gun is worth only one credit
 		sprintf(item->text, "%i", 1);
 	
-	else // we only get 1/2 the cost back
+	// we only get 1/2 the cost back
+	else 
 	{
-		sprintf(item->text, "%i", pItem->id->baseCost / 2 * pItem->quantity);
+		//if there's durability damage its reduced further
+		if (pItem->durability < pItem->id->maxDurability)
+		{
+			//durability damage gives us 1/4th the cost + whatever % of 1/4 is left based on durability out of maxdurability
+			int usedCost = pItem->id->baseCost *0.25;	
+			float depreciation = static_cast<float>(pItem->durability) / static_cast<float>(pItem->id->maxDurability);
+			usedCost = usedCost * depreciation;
+			if (pItem->durability > 0)
+			{
+				usedCost = (pItem->id->baseCost * 0.25) + usedCost;
+				VectorCopy4(colorYellow, color);
+			}
+			else
+			{
+				usedCost = pItem->id->baseCost * 0.1;	//broken only nets us 10% of original cost
+				VectorCopy4(colorRed, color);
+			}
+
+			//must be at least 1 credit
+			if (usedCost < 1)
+				usedCost = 1;
+
+			int percent = (static_cast<float>(pItem->durability) / pItem->id->maxDurability) * 100;
+			sprintf(item->text, "(%i%% durability) %i", percent, usedCost * pItem->quantity);
+		}
+		else
+			sprintf(item->text, "%i", pItem->id->baseCost / 2 * pItem->quantity);
 	}
-		
-	Item_Text_Paint(item);
+	
+	JKG_LightenTextColor(color);	//make it legible
+	item->window.flags |= WINDOW_TEXTCOLOR; //override color
+	Item_Text_Paint(item, color);
 }
 
 void JKG_Shop_ShopItemCost(itemDef_t* item, int nOwnerDrawID) {
@@ -711,6 +742,7 @@ void JKG_Shop_SelectRight(char** args) {
 	vShopItemDesc.clear();
 
 	Menu_ShowGroup(Menus_FindByName("jkg_shop"), "shop_ammobuttons", qfalse);
+	Menu_ShowGroup(Menus_FindByName("jkg_shop"), "shop_repairbuttons", qfalse);
 
 	if (nSelected >= 0 && nSelected < vShopItems.size())
 	{
@@ -797,7 +829,7 @@ void JKG_Shop_SortSelectionPrice(itemDef_t* item, int ownerDrawID) {
 void JKG_Shop_BuyItem(char** args) {
 	if (bLeftSelected) {
 		return; // Can't buy an item from your inventory
-	}
+	}	
 	if (nSelected < 0 || nSelected >= nNumberShopItems) {
 		return; // Invalid selection
 	}

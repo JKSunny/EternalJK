@@ -2490,8 +2490,25 @@ void Cmd_SellItem_f(gentity_t *ent)
 		JKG_ArmorChanged(ent);
 	}
 
+	if (item.durability < item.id->maxDurability)
+	{
+		//durability damage gives us 1/4th the cost + whatever % of 1/4 is left based on durability out of maxdurability
+		int usedCost = item.id->baseCost * 0.25;
+		float depreciation = static_cast<float>(item.durability) / static_cast<float>(item.id->maxDurability);
+		usedCost = usedCost * depreciation;
+		if (item.durability > 0)
+			usedCost = (item.id->baseCost * 0.25) + usedCost;
+		else
+			usedCost = item.id->baseCost * 0.1;	//broken only nets us 10% of original cost
 
-	ent->client->ps.credits += (creditAmount * item.quantity) / 2;
+		//must be at least 1 credit
+		if (usedCost < 1)
+			usedCost = 1;
+
+		ent->client->ps.credits += (usedCost * item.quantity);
+	}
+	else
+		ent->client->ps.credits += (creditAmount * item.quantity) / 2;
 	
 
 	BG_RemoveItemStack(ent, nInvID);
@@ -4991,6 +5008,7 @@ void Cmd_BuyRepair_f(gentity_t* ent)
 		return;
 	}
 	
+	//logic here should be the same as BG_GetRepairDuraCost() in bg_items.cpp
 	costPerDura =  static_cast<float>(item.id->baseCost) / static_cast<float>(item.id->maxDurability);
 	//if our item wasn't broken
 	if (item.durability > 0)
@@ -5000,27 +5018,25 @@ void Cmd_BuyRepair_f(gentity_t* ent)
 		switch (item.id->itemTier)	//item tier determines cost
 		{
 			case TIER_SCRAP:
-				costPerDura *= 0.4f;
+				costPerDura *= 0.3f;
 				break;
 			case TIER_COMMON:
-				costPerDura *= 0.5f;
+				costPerDura *= 0.35f;
 				break;
 			case TIER_REFINED:
-				costPerDura *= 0.65f;
+				costPerDura *= 0.45f;
 				break;
 			case TIER_ELITE:
-				costPerDura *= 0.75f;
+				costPerDura *= 0.6f;
 				break;
 			case TIER_SUPERIOR:
 				costPerDura *= 0.9f;
 				break;
 			default:
-				costPerDura *= 0.5f;
+				costPerDura *= 0.4f;
 				break;
 		}
 	}
-
-	
 
 	if (ent->client->ps.credits < costPerDura) // we don't have enough money to afford one unit of repair
 	{

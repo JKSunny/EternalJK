@@ -1184,22 +1184,22 @@ int BG_GetRepairDuraCost(itemInstance_t* item)
 		switch (item->id->itemTier) //item tier determines cost
 		{
 		case TIER_SCRAP:
-			costPerDura *= 0.4f;
+			costPerDura *= 0.3f;
 			break;
 		case TIER_COMMON:
-			costPerDura *= 0.5f;
+			costPerDura *= 0.35f;
 			break;
 		case TIER_REFINED:
-			costPerDura *= 0.65f;
+			costPerDura *= 0.45f;
 			break;
 		case TIER_ELITE:
-			costPerDura *= 0.75f;
+			costPerDura *= 0.6f;
 			break;
 		case TIER_SUPERIOR:
 			costPerDura *= 0.9f;
 			break;
 		default:
-			costPerDura *= 0.5f;
+			costPerDura *= 0.4f;
 			break;
 		}
 	}
