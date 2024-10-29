@@ -4997,26 +4997,25 @@ void Cmd_BuyRepair_f(gentity_t* ent)
 		costPerDura *= 0.10;	//it only costs 1/10th to repair, otherwise we'll have to pay a lot more
 	else
 	{
-		costPerDura = 0.5;
 		switch (item.id->itemTier)	//item tier determines cost
 		{
 			case TIER_SCRAP:
-				costPerDura = 0.4f;
+				costPerDura *= 0.4f;
 				break;
 			case TIER_COMMON:
-				costPerDura = 0.5f;
+				costPerDura *= 0.5f;
 				break;
 			case TIER_REFINED:
-				costPerDura = 0.65f;
+				costPerDura *= 0.65f;
 				break;
 			case TIER_ELITE:
-				costPerDura = 0.75f;
+				costPerDura *= 0.75f;
 				break;
 			case TIER_SUPERIOR:
-				costPerDura = 0.9f;
+				costPerDura *= 0.9f;
 				break;
 			default:
-				costPerDura = 0.5f;
+				costPerDura *= 0.5f;
 				break;
 		}
 	}
