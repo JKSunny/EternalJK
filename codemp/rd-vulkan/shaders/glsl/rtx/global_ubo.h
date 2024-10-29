@@ -21,9 +21,12 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define  _GLOBAL_UBO_DESCRIPTOR_SET_LAYOUT_H_
 
 #include "constants.h"
+#include "shader_structs.h"
 
 #define GLOBAL_UBO_BINDING_IDX               0
 #define GLOBAL_INSTANCE_BUFFER_BINDING_IDX   1
+
+#define UBO_CVAR_DO( name, default_value ) GLOBAL_UBO_VAR_LIST_DO( FLOAT, name )
 
 #define UBO_CVAR_LIST \
 	UBO_CVAR_DO( flt_antilag_hf,					1		)	/* A-SVGF anti-lag filter strength, [0..inf) */ \
@@ -209,80 +212,6 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 	\
 	UBO_CVAR_LIST // WARNING: Do not put any other members into global_ubo after this: the CVAR list is not vec4-aligned
 
-// shared structures between GLSL and C
-#define UBO_CVAR_DO( name, default_value ) GLOBAL_UBO_VAR_LIST_DO( FLOAT, name )
-#define GLOBAL_UBO_VAR_LIST_DO( type, name ) type(name)
-
-#ifdef GLSL
-    #define STRUCT(content, name) struct name { content };
-    #define BOOL(n)		bool n;
-    #define INT(n)		int n;
-    #define UINT(n)		uint n;
-    #define FLOAT(n)	float n;
-    #define VEC2(n)		vec2 n;
-    #define VEC3(n)		vec3 n;
-    #define VEC4(n)		vec4 n;
-    #define MAT4(n)		mat4 n;
-    #define MAT4X3(n)	mat4x3 n;
-    #define MAT3X4(n)	mat3x4 n;
-    #define UVEC2(n)	uvec2 n;
-	#define IVEC3(n)	ivec3 n;
-	#define IVEC4(n)	ivec4 n;
-	#define uint32_t	uint
-	#define MAX_LIGHT_STYLES		64
-	#define BONESREF(n)	mat3x4 n[72];	
-#else
-    #define STRUCT(content, name) typedef struct { content } name;
-    #define BOOL(n)		unsigned int n;
-    #define INT(n)		int n;
-    #define UINT(n)		unsigned int n;
-    #define FLOAT(n)	float n;
-    #define VEC2(n)		float n[2];
-    #define VEC3(n)		float n[3];
-    #define VEC4(n)		float n[4];
-    #define MAT4(n)		float n[16];
-    #define MAT4X3(n)	float n[12];
-    #define MAT3X4(n)	float n[12];
-    #define UVEC2(n)	unsigned int[2] n;
-	#define IVEC3(n)	int n[3];
-	#define IVEC4(n)	int n[4];
-	#define BONESREF(n)	mat3x4_t n[72];	
-#endif
-
-#define MODEL_DYNAMIC_VERTEX_BUFFER_LIST \
-	VERTEX_BUFFER_LIST_DO( float,	 3,					positions_instanced,		(MAX_VERT_MODEL) ) \
-	VERTEX_BUFFER_LIST_DO( float,    3,					pos_prev_instanced,			(MAX_VERT_MODEL) ) \
-	VERTEX_BUFFER_LIST_DO( uint32_t, 1,					normals_instanced,			(MAX_VERT_MODEL) ) \
-	VERTEX_BUFFER_LIST_DO( uint32_t, 1,					tangents_instanced,			(MAX_VERT_MODEL) ) \
-	VERTEX_BUFFER_LIST_DO( float,    2,					tex_coords_instanced,		(MAX_VERT_MODEL) ) \
-	VERTEX_BUFFER_LIST_DO( float,    1,					alpha_instanced,			(MAX_PRIM_MODEL) ) \
-	VERTEX_BUFFER_LIST_DO( uint32_t, 1,					clusters_instanced,			(MAX_PRIM_MODEL) ) \
-	VERTEX_BUFFER_LIST_DO( uint32_t, 1,					materials_instanced,		(MAX_PRIM_MODEL) ) \
-	VERTEX_BUFFER_LIST_DO( uint32_t, 1,					instance_id_instanced,		(MAX_PRIM_MODEL) ) \
-
-#define LIGHT_BUFFER_LIST \
-	VERTEX_BUFFER_LIST_DO( uint32_t, MATERIAL_UINTS,	material_table,				(MAX_PBR_MATERIALS)		) \
-	VERTEX_BUFFER_LIST_DO( float,    4,					light_polys,				(MAX_LIGHT_POLYS * LIGHT_POLY_VEC4S) ) \
-	VERTEX_BUFFER_LIST_DO( uint32_t, 1,					light_list_offsets,			(MAX_LIGHT_LISTS     )	) \
-	VERTEX_BUFFER_LIST_DO( uint32_t, 1,					light_list_lights,			(MAX_LIGHT_LIST_NODES)	) \
-	VERTEX_BUFFER_LIST_DO( float,    1,					light_styles,				(MAX_LIGHT_STYLES    )	) \
-	VERTEX_BUFFER_LIST_DO( uint32_t, 1,					cluster_debug_mask,			(MAX_LIGHT_LISTS / 32)	) \
-
-// sample_light_counts: light count in cluster used for sampling (may differ from actual light count!)
-
-#define VERTEX_BUFFER_LIST_DO( type, dim, name, size ) \
-	type name[ ALIGN_SIZE_4( size, dim ) ];
-
-struct ModelDynamicVertexBuffer
-{
-	MODEL_DYNAMIC_VERTEX_BUFFER_LIST
-};
-
-struct LightBuffer
-{
-	LIGHT_BUFFER_LIST
-};
-
 STRUCT ( 
 	VEC3	( center )
 	FLOAT	( radius )
@@ -296,25 +225,6 @@ STRUCT (
 	UINT	( spot_data )
 , DynLightData )
 #define DYNLIGHTDATA(n) DynLightData n;
-
-#undef VERTEX_BUFFER_LIST_DO
-
-#ifdef GLSL
-struct LightPolygon
-{
-	mat3 positions;
-	vec3 color;
-	float light_style_scale;
-	float prev_style_scale;
-};
-#else
-typedef struct {
-	vec3_t position;
-	vec3_t normal;
-	vec2_t texcoord;
-	vec4_t tangents;
-} model_vertex_t;
-#endif
 
 STRUCT (  
 	MAT4	( M )
@@ -338,86 +248,6 @@ STRUCT (
 , BspMeshInstance )
 #define BSPMESHINSTANCE(n) BspMeshInstance n;
 
-#ifdef GLSL
-struct TextureData {
-	int tex0;
-	int tex1;
-	uint tex0Blend;
-	uint tex1Blend;
-	bool tex0Color;
-	bool tex1Color;
-};
-#endif
-
-STRUCT (  
-	UINT	( base_texture )
-	UINT	( normals_texture )
-	UINT	( emissive_texture )
-	UINT	( physical_texture )
-	UINT	( mask_texture )
-	//FLOAT	( bump_scale )
-	//FLOAT	( roughness_override )
-	//FLOAT	( metalness_factor )
-	//FLOAT	( specular_factor )
-	VEC4	( specular_scale )	// contains the commented above see stage->specularScale
-	FLOAT	( emissive_factor )
-	FLOAT	( base_factor )
-	FLOAT	( light_style_scale )
-	UINT	( num_frames )
-	UINT	( next_frame )
-, MaterialInfo )
-
-STRUCT (  
-	INT		( accumulator[HISTOGRAM_BINS] )
-	FLOAT	( curve[HISTOGRAM_BINS] )
-	FLOAT	( normalized[HISTOGRAM_BINS] )
-	FLOAT	( adapted_luminance )
-	FLOAT	( tonecurve )
-, ToneMappingBuffer )
-
-STRUCT ( 
-	UINT	( material )
-	UINT	( cluster )
-	FLOAT	( sun_luminance )
-	FLOAT	( sky_luminance )
-	VEC3	( hdr_color )
-	FLOAT	( adapted_luminance )
-, ReadbackBuffer )
-
-STRUCT ( 
-	IVEC3	( accum_sun_color )
-	INT		( pad0 )
-	IVEC4	( accum_sky_color )
-	VEC3	( sun_color )
-	FLOAT	( sun_luminance )
-	VEC3	( sky_color )
-	FLOAT	( sky_luminance )
-, SunColorBuffer )
-
-// holds all bsp vertex data
-STRUCT ( 
-    VEC3    ( pos )
-    UINT    ( material )
-
-	// using packed qtangent instead, this can be removed or commented for now
-    //VEC4    ( normal )
-    VEC4    ( qtangent )
-    UINT    ( color[4] )
-
-    VEC2    ( uv[4] )
-
-    UINT	( texIdx0 )
-    UINT    ( texIdx1 )
-    INT     ( cluster )
-    UINT    ( buff2 )
-,VertexBuffer )
-
-// global ubo
-STRUCT ( 
-	GLOBAL_UBO_VAR_LIST
-, vkUniformRTX_t )
-
-// model instance
 STRUCT ( 
 	UINT			( tlas_instance_type		[1000]						)	// could probably pack this in ray_payload_brdf
 	INT				( model_indices				[SHADER_MAX_ENTITIES + SHADER_MAX_BSP_ENTITIES] )
@@ -444,20 +274,23 @@ STRUCT (
 	BONESREF		( model_mdxm_bones			[SHADER_MAX_ENTITIES]		)
 , InstanceBuffer ) 
 
-#undef UBO_CVAR_DO
-
-#undef STRUCT
-#undef BOOL
-#undef UINT
-#undef FLOAT
-#undef VEC2
-#undef VEC3
-#undef VEC4
+#define GLOBAL_UBO_VAR_LIST_DO( type, name ) type(name)
+STRUCT ( 
+	GLOBAL_UBO_VAR_LIST
+, vkUniformRTX_t )
+#undef GLOBAL_UBO_VAR_LIST_DO
 
 #ifdef GLSL
 // bindings
-layout( binding = GLOBAL_UBO_BINDING_IDX, set = 3 ) uniform UBO { vkUniformRTX_t global_ubo; };
-layout( binding = GLOBAL_INSTANCE_BUFFER_BINDING_IDX, set = 3 ) readonly buffer InstanceUBO { InstanceBuffer instance_buffer; };
+layout( set = GLOBAL_UBO_DESC_SET_IDX, binding = GLOBAL_UBO_BINDING_IDX ) uniform UBO { 
+	vkUniformRTX_t global_ubo; 
+};
+
+layout( set = GLOBAL_UBO_DESC_SET_IDX, binding = GLOBAL_INSTANCE_BUFFER_BINDING_IDX ) readonly buffer InstanceSSBO { 
+	InstanceBuffer instance_buffer; 
+};
 #endif
+
+#undef UBO_CVAR_DO
 
 #endif /*_GLOBAL_UBO_DESCRIPTOR_SET_LAYOUT_H_*/

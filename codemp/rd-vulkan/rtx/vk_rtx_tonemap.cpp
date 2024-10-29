@@ -105,17 +105,17 @@ VkResult vkpt_tone_mapping_reset( VkCommandBuffer cmd_buf )
 	BUFFER_BARRIER( cmd_buf,
 		VK_ACCESS_NONE_KHR,
 		VK_ACCESS_NONE_KHR,
-		vk.buffer_tonemap.buffer,
+		vk.buf_tonemap.buffer,
 		0,
 		VK_WHOLE_SIZE
 	);
 
-	qvkCmdFillBuffer( cmd_buf, vk.buffer_tonemap.buffer, 0, VK_WHOLE_SIZE, 0 );
+	qvkCmdFillBuffer( cmd_buf, vk.buf_tonemap.buffer, 0, VK_WHOLE_SIZE, 0 );
 
 	BUFFER_BARRIER( cmd_buf,
 		VK_ACCESS_NONE_KHR,
 		VK_ACCESS_SHADER_WRITE_BIT,
-		vk.buffer_tonemap.buffer,
+		vk.buf_tonemap.buffer,
 		0,
 		VK_WHOLE_SIZE
 	);
@@ -212,7 +212,7 @@ VkResult vkpt_tone_mapping_record_cmd_buffer( VkCommandBuffer cmd_buf, float fra
 	BUFFER_BARRIER( cmd_buf,
 		VK_ACCESS_SHADER_WRITE_BIT,
 		VK_ACCESS_SHADER_READ_BIT,
-		vk.buffer_tonemap.buffer,
+		vk.buf_tonemap.buffer,
 		0,
 		VK_WHOLE_SIZE
 	);
@@ -272,7 +272,7 @@ VkResult vkpt_tone_mapping_record_cmd_buffer( VkCommandBuffer cmd_buf, float fra
 	BUFFER_BARRIER( cmd_buf,
 		VK_ACCESS_SHADER_WRITE_BIT,
 		VK_ACCESS_SHADER_READ_BIT,
-		vk.buffer_tonemap.buffer,
+		vk.buf_tonemap.buffer,
 		0,
 		VK_WHOLE_SIZE
 	);
@@ -345,7 +345,7 @@ VkResult vkpt_tone_mapping_record_cmd_buffer( VkCommandBuffer cmd_buf, float fra
 	// Because VKPT_IMG_TAA_OUTPUT changed, we make sure to wait for the image
 	// to be written before continuing. This could be ensured in several
 	// other ways as well.
-	BARRIER_COMPUTE( cmd_buf, vk.rtx_images[RTX_IMG_TAA_OUTPUT] );
+	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_TAA_OUTPUT] );
 
 	reset_required = 0;
 

@@ -38,12 +38,11 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 layout(local_size_x = GROUP_SIZE, local_size_y = GROUP_SIZE, local_size_z = 1) in;
 
-//#define GLOBAL_UBO_DESC_SET_IDX 0
+#define GLOBAL_UBO_DESC_SET_IDX 3
 #include "../global_ubo.h"
 
-//#define GLOBAL_TEXTURES_DESC_SET_IDX 1
+#define GLOBAL_TEXTURES_DESC_SET_IDX 1
 #include "../global_textures.h"
-
 
 // Store some color data in shared memory for efficient access and for downsampling
 shared uvec2 s_normal_lum[SHARED_SIZE][SHARED_SIZE];

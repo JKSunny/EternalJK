@@ -35,13 +35,13 @@ layout(local_size_x = GROUP_SIZE, local_size_y = GROUP_SIZE, local_size_z = 1) i
 
 #include "../utils.glsl"
 
-//#define GLOBAL_UBO_DESC_SET_IDX 0
+#define GLOBAL_UBO_DESC_SET_IDX 3
 #include "../global_ubo.h"
 
-//#define GLOBAL_TEXTURES_DESC_SET_IDX 1
+#define GLOBAL_TEXTURES_DESC_SET_IDX 1
 #include "../global_textures.h"
 
-//#define VERTEX_BUFFER_DESC_SET_IDX 2
+#define VERTEX_BUFFER_DESC_SET_IDX 0
 #define VERTEX_READONLY 1
 #include "../vertex_buffer.h"
 //layout(binding = BINDING_OFFSET_READBACK_BUFFER, set = 0) buffer READBACK_BUFFER { ReadbackBuffer readback; };

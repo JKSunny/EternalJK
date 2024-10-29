@@ -117,9 +117,9 @@ void vk_rtx_create_model_vbo_ibo_descriptor( void )
 	
 	for ( int i = 0; i < MAX_VBOS; i++ )
 	{
-		vk_rtx_write_model_descriptor( i, vk.model_instance.descriptor.vbos, null_buffer.buffer, null_buffer.allocSize );
+		vk_rtx_write_model_descriptor( i, vk.model_instance.descriptor.vbos, null_buffer.buffer, null_buffer.size );
 #ifdef USE_RTX_GLOBAL_MODEL_VBO
-		vk_rtx_write_model_descriptor( i, vk.model_instance.descriptor.ibos, null_buffer.buffer, null_buffer.allocSize );
+		vk_rtx_write_model_descriptor( i, vk.model_instance.descriptor.ibos, null_buffer.buffer, null_buffer.size );
 #endif
 	}
 }
@@ -215,7 +215,7 @@ void vkpt_instance_geometry( VkCommandBuffer cmd_buf, uint32_t num_instances, qb
 	barrier.srcAccessMask       = VK_ACCESS_SHADER_WRITE_BIT;
 	barrier.dstAccessMask       = VK_ACCESS_SHADER_READ_BIT;
 	barrier.buffer              = vk.model_instance.buffer_vertex.buffer;
-	barrier.size                = vk.model_instance.buffer_vertex.allocSize;
+	barrier.size                = vk.model_instance.buffer_vertex.size;
 	barrier.srcQueueFamilyIndex = vk.queue_family_index;
 	barrier.dstQueueFamilyIndex = vk.queue_family_index;
 
@@ -324,7 +324,7 @@ void vk_rtx_build_mdxm_vbo( model_t *mod, mdxmHeader_t *mdxm )
 		{
 			VkBufferCopy copyRegion;
 			Com_Memset( &copyRegion, 0, sizeof(VkBufferCopy) );
-			copyRegion.size = vbo->staging_buffer.allocSize;
+			copyRegion.size = vbo->staging_buffer.size;
 
 			qvkCmdCopyBuffer(cmd_buf, vbo->staging_buffer.buffer, vbo->buffer.buffer, 1, &copyRegion);
 		}
@@ -335,7 +335,7 @@ void vk_rtx_build_mdxm_vbo( model_t *mod, mdxmHeader_t *mdxm )
 		{
 			VK_DestroyBuffer( &vbo->staging_buffer );
 
-			vk_rtx_write_model_descriptor( vboModel->model_index, vk.model_instance.descriptor.vbos, vbo->buffer.buffer, vbo->buffer.allocSize );
+			vk_rtx_write_model_descriptor( vboModel->model_index, vk.model_instance.descriptor.vbos, vbo->buffer.buffer, vbo->buffer.size );
 		}
 	}
 }

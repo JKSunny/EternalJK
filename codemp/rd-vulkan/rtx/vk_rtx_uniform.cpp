@@ -157,10 +157,10 @@ VkResult vkpt_uniform_buffer_update( VkCommandBuffer command_buffer, uint32_t id
 
 	vkUniformRTX_t *mapped_ubo = (vkUniformRTX_t*)buffer_map( ubo );
 	assert(mapped_ubo);
-	memcpy( mapped_ubo, &vk.buffer_uniform, sizeof(vkUniformRTX_t) );
+	memcpy( mapped_ubo, &vk.uniform_buffer, sizeof(vkUniformRTX_t) );
 
 	const size_t offset = align( sizeof(vkUniformRTX_t), ubo_alignment );
-	memcpy((uint8_t*)mapped_ubo + offset, &vk.buffer_uniform_instance, sizeof(InstanceBuffer));
+	memcpy((uint8_t*)mapped_ubo + offset, &vk.uniform_instance_buffer, sizeof(InstanceBuffer));
 
 	buffer_unmap( ubo );
 	mapped_ubo = NULL;

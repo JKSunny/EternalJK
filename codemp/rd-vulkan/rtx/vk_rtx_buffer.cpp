@@ -123,7 +123,7 @@ VkResult vk_rtx_buffer_create( vkbuffer_t *buf, VkDeviceSize size,
 	buf_create_info.queueFamilyIndexCount = 0;
 	buf_create_info.pQueueFamilyIndices = NULL;
 
-	buf->allocSize = size;
+	buf->size = size;
 	buf->is_mapped = 0;
 
 	result = qvkCreateBuffer( vk.device, &buf_create_info, NULL, &buf->buffer );
@@ -188,7 +188,7 @@ fail_mem_alloc:
 fail_buffer:
 	buf->buffer = VK_NULL_HANDLE;
 	buf->memory = VK_NULL_HANDLE;
-	buf->allocSize   = 0;
+	buf->size   = 0;
 	return result;
 }
 
@@ -204,7 +204,7 @@ VkResult vk_rtx_buffer_destroy( vkbuffer_t *buf )
 
 	buf->buffer = VK_NULL_HANDLE;
 	buf->memory = VK_NULL_HANDLE;
-	buf->allocSize   = 0;
+	buf->size   = 0;
 	buf->address = 0;
 
 	return VK_SUCCESS;
@@ -230,15 +230,15 @@ void vk_rtx_destroy_buffers( void )
 {
 	uint32_t i = 0;
 
-	VK_DestroyBuffer( &vk.buffer_readback );
-	VK_DestroyBuffer( &vk.buffer_tonemap );
-	VK_DestroyBuffer( &vk.buffer_light );
-	VK_DestroyBuffer( &vk.buffer_sun_color );
+	VK_DestroyBuffer( &vk.buf_readback );
+	VK_DestroyBuffer( &vk.buf_tonemap );
+	VK_DestroyBuffer( &vk.buf_light );
+	VK_DestroyBuffer( &vk.buf_sun_color );
 
 	for ( i = 0; i < vk.swapchain_image_count; i++ ) 
 	{
-		VK_DestroyBuffer( vk.buffer_readback_staging + i );
-		VK_DestroyBuffer( vk.buffer_light_staging + i );
+		VK_DestroyBuffer( vk.buf_readback_staging + i );
+		VK_DestroyBuffer( vk.buf_light_staging + i );
 	}
 }
 
@@ -250,9 +250,9 @@ void *buffer_map( vkbuffer_t *buf )
 	void *ret = NULL;
 
 	assert(buf->memory != VK_NULL_HANDLE);
-	assert(buf->allocSize > 0);
+	assert(buf->size > 0);
 
-	VK_CHECK( qvkMapMemory( vk.device, buf->memory, 0 /*offset*/, buf->allocSize, 0 /*flags*/, &ret ) );
+	VK_CHECK( qvkMapMemory( vk.device, buf->memory, 0 /*offset*/, buf->size, 0 /*flags*/, &ret ) );
 	return ret;
 }
 
@@ -300,17 +300,17 @@ void VK_CreateImageMemory(VkMemoryPropertyFlags properties, VkImage *image, VkDe
 	VK_CHECK(qvkBindImageMemory(vk.device, *image, *bufferMemory, 0));
 }
 
-void VK_CreateAttributeBuffer(vkbuffer_t* buffer, VkDeviceSize allocSize, VkBufferUsageFlagBits usage) {
+void VK_CreateAttributeBuffer(vkbuffer_t* buffer, VkDeviceSize size, VkBufferUsageFlagBits usage) {
 	VkDeviceSize nCAS = vk.props.limits.nonCoherentAtomSize;
-	buffer->allocSize = ((allocSize + (nCAS - 1)) / nCAS) * nCAS;
+	buffer->size = ((size + (nCAS - 1)) / nCAS) * nCAS;
 
-	vk_rtx_buffer_create( buffer, buffer->allocSize, usage, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT );
-	VK_CHECK(qvkMapMemory(vk.device, buffer->memory, 0, buffer->allocSize, 0, (void**)&buffer->p));
+	vk_rtx_buffer_create( buffer, buffer->size, usage, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT );
+	VK_CHECK(qvkMapMemory(vk.device, buffer->memory, 0, buffer->size, 0, (void**)&buffer->p));
 }
 
 void vk_rtx_upload_buffer_data_offset( vkbuffer_t *buffer, VkDeviceSize offset, VkDeviceSize size, const byte *data ) 
 {
-    if (offset + size > buffer->allocSize) {
+    if (offset + size > buffer->size) {
         ri.Error(ERR_FATAL, "Vulkan: Buffer to small!");
     }
 	if (buffer->p == NULL) {
@@ -323,7 +323,7 @@ void vk_rtx_upload_buffer_data_offset( vkbuffer_t *buffer, VkDeviceSize offset, 
 
 void vk_rtx_upload_buffer_data( vkbuffer_t *buffer, const byte *data ) 
 {
-	vk_rtx_upload_buffer_data_offset(buffer, 0, buffer->allocSize, data);
+	vk_rtx_upload_buffer_data_offset(buffer, 0, buffer->size, data);
 }
 
 static void copy_bsp_lights( world_t *world, LightBuffer *lbo )
@@ -333,20 +333,20 @@ static void copy_bsp_lights( world_t *world, LightBuffer *lbo )
 		
 	// Store the light counts in the light counts history entry for the current frame
 	uint32_t history_index = vk.frame_counter % LIGHT_COUNT_HISTORY;
-	uint32_t *sample_light_counts = (uint32_t *)buffer_map( vk.buffer_light_counts_history + history_index );
+	uint32_t *sample_light_counts = (uint32_t *)buffer_map( vk.buf_light_counts_history + history_index );
 		
 	for ( int c = 0; c < vk.numClusters; c++ )
 	{
 		sample_light_counts[c] = world->cluster_light_offsets[c + 1] - world->cluster_light_offsets[c];
 	}
 
-	buffer_unmap( vk.buffer_light_counts_history + history_index );
+	buffer_unmap( vk.buf_light_counts_history + history_index );
 }
 
 VkResult vkpt_light_buffer_upload_to_staging( const uint32_t idx, qboolean render_world, 
 	world_t *world, int num_model_lights, const float* sky_radiance )
 {
-	vkbuffer_t *staging = vk.buffer_light_staging + idx;
+	vkbuffer_t *staging = vk.buf_light_staging + idx;
 
 	LightBuffer *lbo = (LightBuffer *)buffer_map(staging);
 	assert(lbo);
@@ -575,7 +575,7 @@ VkResult vk_rtx_readback( ReadbackBuffer *dst )
 	uint32_t idx, prev_idx;
 	vk_rtx_get_descriptor_index( idx, prev_idx );
 
-	vkbuffer_t *buffer = &vk.buffer_readback_staging[idx];
+	vkbuffer_t *buffer = &vk.buf_readback_staging[idx];
 	void *mapped = buffer_map(buffer);
 
 	if  ( mapped == NULL )
@@ -601,14 +601,14 @@ VkResult vkpt_light_buffers_create( world_t &worldData )
 
 	for ( int frame = 0; frame < NUM_LIGHT_STATS_BUFFERS; frame++ )
 	{
-		vk_rtx_buffer_create( vk.buffer_light_stats + frame, sizeof(uint32_t) * num_stats,
+		vk_rtx_buffer_create( vk.buf_light_stats + frame, sizeof(uint32_t) * num_stats,
 			VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT );
 	}
 
 	for ( int h = 0; h < LIGHT_COUNT_HISTORY; h++ )
 	{
-		vk_rtx_buffer_create( vk.buffer_light_counts_history + h, sizeof(uint32_t) * vk.numClusters,
+		vk_rtx_buffer_create( vk.buf_light_counts_history + h, sizeof(uint32_t) * vk.numClusters,
 			VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT );
 	}
@@ -621,10 +621,10 @@ VkResult vkpt_light_buffers_create( world_t &worldData )
 VkResult vkpt_light_buffers_destroy( void )
 {
 	for ( int frame = 0; frame < NUM_LIGHT_STATS_BUFFERS; frame++ )
-		VK_DestroyBuffer( vk.buffer_light_stats + frame );
+		VK_DestroyBuffer( vk.buf_light_stats + frame );
 
 	for ( int h = 0; h < LIGHT_COUNT_HISTORY; h++ )
-		VK_DestroyBuffer( vk.buffer_light_counts_history + h );
+		VK_DestroyBuffer( vk.buf_light_counts_history + h );
 
 	return VK_SUCCESS;
 }
@@ -634,16 +634,15 @@ void vk_rtx_create_buffers( void )
 	uint32_t i;
 
 	// scratch buffer
-	vk_rtx_buffer_create( &vk.scratch_buffer, VK_MAX_DYNAMIC_BOTTOM_AS_INSTANCES * VK_AS_MEMORY_ALLIGNMENT_SIZE * sizeof(byte), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT );
-	vk.scratch_buffer.onGpu = VK_TRUE;	
-	vk.scratch_buffer_ptr = 0;
+	vk_rtx_buffer_create( &vk.buf_accel_scratch, VK_MAX_DYNAMIC_BOTTOM_AS_INSTANCES * VK_AS_MEMORY_ALLIGNMENT_SIZE * sizeof(byte), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT );
+	vk.scratch_buf_ptr = 0;
 
 	vkpt_uniform_buffer_create();
 
 	for ( i = 0; i < vk.swapchain_image_count; i++ ) 
 	{
 		// blas instances in tlas
-		vk_rtx_buffer_create(		&vk.buffer_blas_instance[i],		VK_MAX_BOTTOM_AS_INSTANCES * sizeof(vk_geometry_instance_t), VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT );	
+		vk_rtx_buffer_create(		&vk.buf_instances[i],		VK_MAX_BOTTOM_AS_INSTANCES * sizeof(vk_geometry_instance_t), VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT );	
 	}
 
 	// world static
@@ -671,13 +670,13 @@ void vk_rtx_create_buffers( void )
 	VK_CreateAttributeBuffer( &vk.geometry.cluster_world_dynamic_as, RTX_WORLD_DYNAMIC_AS_IDX_SIZE / 3 * sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT );
 
 	// readback
-	vk_rtx_buffer_create( &vk.buffer_readback, sizeof(ReadbackBuffer),
+	vk_rtx_buffer_create( &vk.buf_readback, sizeof(ReadbackBuffer),
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 	for ( i = 0; i < vk.swapchain_image_count; i++ ) 
 	{
-		vk_rtx_buffer_create( vk.buffer_readback_staging + i, sizeof(ReadbackBuffer),
+		vk_rtx_buffer_create( vk.buf_readback_staging + i, sizeof(ReadbackBuffer),
 			VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT );	
 	}
@@ -687,24 +686,24 @@ void vk_rtx_create_buffers( void )
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 	// light & material buffer
-	vk_rtx_buffer_create( &vk.buffer_light, sizeof(LightBuffer),
+	vk_rtx_buffer_create( &vk.buf_light, sizeof(LightBuffer),
 		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 	for ( i = 0; i < vk.swapchain_image_count; i++ ) 
 	{
-		vk_rtx_buffer_create( vk.buffer_light_staging + i, sizeof(LightBuffer),
+		vk_rtx_buffer_create( vk.buf_light_staging + i, sizeof(LightBuffer),
 			VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT );	
 	}
 
 	// tonemap
-	vk_rtx_buffer_create( &vk.buffer_tonemap, sizeof(ToneMappingBuffer),
+	vk_rtx_buffer_create( &vk.buf_tonemap, sizeof(ToneMappingBuffer),
 		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 	// sky
-	vk_rtx_buffer_create( &vk.buffer_sun_color, sizeof(SunColorBuffer),
+	vk_rtx_buffer_create( &vk.buf_sun_color, sizeof(SunColorBuffer),
 		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 }

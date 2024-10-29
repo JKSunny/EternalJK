@@ -22,13 +22,13 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 #include "../utils.glsl"
 
-//#define GLOBAL_UBO_DESC_SET_IDX 0
+#define GLOBAL_UBO_DESC_SET_IDX 3
 #include "../global_ubo.h"
 
-//#define GLOBAL_TEXTURES_DESC_SET_IDX 1
+#define GLOBAL_TEXTURES_DESC_SET_IDX 1
 #include "../global_textures.h"
 
-//#define VERTEX_BUFFER_DESC_SET_IDX 2
+#define VERTEX_BUFFER_DESC_SET_IDX 0
 #define VERTEX_READONLY 1
 #include "../vertex_buffer.h"
 
@@ -39,9 +39,6 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 layout(push_constant, std140) uniform ShadowMapConstants {
     mat4 shadow_view_projection_matrix;
 } push;
-
-#define SUN_COLOR_ACCUMULATOR_FIXED_POINT_SCALE 0x100000
-#define SKY_COLOR_ACCUMULATOR_FIXED_POINT_SCALE 0x100
 
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 

@@ -73,7 +73,7 @@ static void change_image_layouts( VkImage image, const VkImageSubresourceRange* 
 	VkCommandBuffer cmd_buf = vk_begin_command_buffer();
 
 	IMAGE_BARRIER( cmd_buf,
-		image,	// vk.physicalSkyImages[binding_offset].handle
+		image,	// vk.img_physical_sky[binding_offset].handle
 		*subresource_range,
 		0,
 		VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
@@ -89,19 +89,19 @@ static void vk_rtx_destroy_env_texture( void )
 {
 	const int binding_offset = ( BINDING_OFFSET_PHYSICAL_SKY - ( BINDING_OFFSET_PHYSICAL_SKY ) );
 
-	vk_rtx_destroy_image( &vk.physicalSkyImages[binding_offset] );
+	vk_rtx_destroy_image( &vk.img_physical_sky[binding_offset] );
 #if 0
-    if ( vk.physicalSkyImages[binding_offset].view != VK_NULL_HANDLE ) {
-        qvkDestroyImageView( vk.device, vk.physicalSkyImages[binding_offset].view, NULL );
-        vk.physicalSkyImages[binding_offset].view = NULL;
+    if ( vk.img_physical_sky[binding_offset].view != VK_NULL_HANDLE ) {
+        qvkDestroyImageView( vk.device, vk.img_physical_sky[binding_offset].view, NULL );
+        vk.img_physical_sky[binding_offset].view = NULL;
     }
-    if ( vk.physicalSkyImages[binding_offset].handle != VK_NULL_HANDLE ) {
-        qvkDestroyImage( vk.device, vk.physicalSkyImages[binding_offset].handle, NULL );
-        vk.physicalSkyImages[binding_offset].handle = NULL;
+    if ( vk.img_physical_sky[binding_offset].handle != VK_NULL_HANDLE ) {
+        qvkDestroyImage( vk.device, vk.img_physical_sky[binding_offset].handle, NULL );
+        vk.img_physical_sky[binding_offset].handle = NULL;
     }
-	if ( vk.physicalSkyImages[binding_offset].memory != VK_NULL_HANDLE ) {
-		qvkFreeMemory( vk.device, vk.physicalSkyImages[binding_offset].memory, NULL );
-		vk.physicalSkyImages[binding_offset].memory = VK_NULL_HANDLE;
+	if ( vk.img_physical_sky[binding_offset].memory != VK_NULL_HANDLE ) {
+		qvkFreeMemory( vk.device, vk.img_physical_sky[binding_offset].memory, NULL );
+		vk.img_physical_sky[binding_offset].memory = VK_NULL_HANDLE;
 	}
 #endif
 }
@@ -140,16 +140,16 @@ static VkResult vk_rtx_init_env_texture( int width, int height )
 	//img_info.queueFamilyIndexCount = vk.queue_family_index;
     img_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-    VK_CHECK( qvkCreateImage( vk.device, &img_info, NULL, &vk.physicalSkyImages[binding_offset].handle ) );
+    VK_CHECK( qvkCreateImage( vk.device, &img_info, NULL, &vk.img_physical_sky[binding_offset].handle ) );
     //ATTACH_LABEL_VARIABLE(img_envmap, IMAGE);
 
     VkMemoryRequirements mem_req;
-    qvkGetImageMemoryRequirements( vk.device, vk.physicalSkyImages[binding_offset].handle, &mem_req );
+    qvkGetImageMemoryRequirements( vk.device, vk.img_physical_sky[binding_offset].handle, &mem_req );
     //assert(mem_req.size >= (img_size * num_images));
 
-	VK_CHECK( allocate_gpu_memory( mem_req, &vk.physicalSkyImages[binding_offset].memory ) );
+	VK_CHECK( allocate_gpu_memory( mem_req, &vk.img_physical_sky[binding_offset].memory ) );
 
-    VK_CHECK( qvkBindImageMemory( vk.device, vk.physicalSkyImages[binding_offset].handle, vk.physicalSkyImages[binding_offset].memory, 0) );
+    VK_CHECK( qvkBindImageMemory( vk.device, vk.img_physical_sky[binding_offset].handle, vk.img_physical_sky[binding_offset].memory, 0) );
 
 	VkImageSubresourceRange subresource_range;
     subresource_range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -158,7 +158,7 @@ static VkResult vk_rtx_init_env_texture( int width, int height )
     subresource_range.baseArrayLayer = 0;
     subresource_range.layerCount = num_images;
 
-	change_image_layouts( vk.physicalSkyImages[binding_offset].handle, &subresource_range );
+	change_image_layouts( vk.img_physical_sky[binding_offset].handle, &subresource_range );
 
 
     // image view
@@ -169,7 +169,7 @@ static VkResult vk_rtx_init_env_texture( int width, int height )
     img_view_info.flags = 0;
     img_view_info.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
     img_view_info.format = VK_FORMAT_R16G16B16A16_SFLOAT;
-    img_view_info.image = vk.physicalSkyImages[binding_offset].handle;
+    img_view_info.image = vk.img_physical_sky[binding_offset].handle;
     img_view_info.subresourceRange = subresource_range;
     img_view_info.components = {
         VK_COMPONENT_SWIZZLE_R,
@@ -178,7 +178,7 @@ static VkResult vk_rtx_init_env_texture( int width, int height )
         VK_COMPONENT_SWIZZLE_A,
     };
 
-    VK_CHECK( qvkCreateImageView( vk.device, &img_view_info, NULL, &vk.physicalSkyImages[binding_offset].view ) );
+    VK_CHECK( qvkCreateImageView( vk.device, &img_view_info, NULL, &vk.img_physical_sky[binding_offset].view ) );
     //ATTACH_LABEL_VARIABLE(imv_envmap, IMAGE_VIEW);
 
 	int binding_offset_env_tex = ( BINDING_OFFSET_PHYSICAL_SKY - ( BINDING_OFFSET_PHYSICAL_SKY ) );
@@ -187,7 +187,7 @@ static VkResult vk_rtx_init_env_texture( int width, int height )
     {
         VkDescriptorImageInfo desc_img_info;
         desc_img_info.imageLayout	= VK_IMAGE_LAYOUT_GENERAL;
-        desc_img_info.imageView		= vk.physicalSkyImages[binding_offset_env_tex].view;
+        desc_img_info.imageView		= vk.img_physical_sky[binding_offset_env_tex].view;
         desc_img_info.sampler		= vk.tex_sampler;
 
         VkWriteDescriptorSet s;
@@ -211,7 +211,7 @@ static VkResult vk_rtx_init_env_texture( int width, int height )
     {
         VkDescriptorImageInfo desc_img_info;
         desc_img_info.imageLayout	= VK_IMAGE_LAYOUT_GENERAL;
-        desc_img_info.imageView		= vk.physicalSkyImages[binding_offset_env_tex].view;
+        desc_img_info.imageView		= vk.img_physical_sky[binding_offset_env_tex].view;
 		desc_img_info.sampler		= VK_NULL_HANDLE;
 
         VkWriteDescriptorSet s;
@@ -300,7 +300,7 @@ void vk_destroy_physical_sky_pipelines( void )
 //
 void vk_rtx_reset_envmap( void ) 
 {
-	vk_rtx_destroy_image( &vk.envmap );
+	vk_rtx_destroy_image( &vk.img_envmap );
 	has_envmap = false;
 }
 
@@ -308,7 +308,7 @@ void vk_rtx_set_envmap_descriptor_binding( void )
 {
 	VkDescriptorImageInfo desc_img_info;
 	desc_img_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	desc_img_info.imageView   = vk.envmap.view;
+	desc_img_info.imageView   = vk.img_envmap.view;
 	desc_img_info.sampler     = vk.tex_sampler;
 
 	VkWriteDescriptorSet s;
@@ -349,7 +349,7 @@ void vk_rtx_prepare_envmap( world_t &worldData )
 			width = shader->sky->outerbox[0]->width;
 			height = shader->sky->outerbox[0]->height;
 
-			vk_rtx_create_cubemap( &vk.envmap, width, height,
+			vk_rtx_create_cubemap( &vk.img_envmap, width, height,
 				VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 1 );
 
 			R_LoadImage( shader->sky->outerbox[3]->imgName, &pic, &width, &height );
@@ -357,27 +357,27 @@ void vk_rtx_prepare_envmap( world_t &worldData )
 			if ( width == 0 || height == 0 ) 
 				goto skyFromStage;
 
-			vk_rtx_upload_image_data( &vk.envmap, width, height, pic, 4, 0, 0 ); // back
+			vk_rtx_upload_image_data( &vk.img_envmap, width, height, pic, 4, 0, 0 ); // back
 			ri.Z_Free( pic );
 
 			R_LoadImage( shader->sky->outerbox[1]->imgName, &pic, &width, &height );
-			vk_rtx_upload_image_data( &vk.envmap, width, height, pic, 4, 0, 1 ); // front
+			vk_rtx_upload_image_data( &vk.img_envmap, width, height, pic, 4, 0, 1 ); // front
 			ri.Z_Free( pic );
 
 			R_LoadImage(shader->sky->outerbox[4]->imgName, &pic, &width, &height );
-			vk_rtx_upload_image_data( &vk.envmap, width, height, pic, 4, 0, 2 ); // bottom
+			vk_rtx_upload_image_data( &vk.img_envmap, width, height, pic, 4, 0, 2 ); // bottom
 			ri.Z_Free( pic );
 
 			R_LoadImage(shader->sky->outerbox[5]->imgName, &pic, &width, &height );
-			vk_rtx_upload_image_data( &vk.envmap, width, height, pic, 4, 0, 3 ); // up
+			vk_rtx_upload_image_data( &vk.img_envmap, width, height, pic, 4, 0, 3 ); // up
 			ri.Z_Free( pic );
 
 			R_LoadImage(shader->sky->outerbox[0]->imgName, &pic, &width, &height );
-			vk_rtx_upload_image_data( &vk.envmap, width, height, pic, 4, 0, 4 ) ; // right
+			vk_rtx_upload_image_data( &vk.img_envmap, width, height, pic, 4, 0, 4 ) ; // right
 			ri.Z_Free( pic );
 
 			R_LoadImage(shader->sky->outerbox[2]->imgName, &pic, &width, &height );
-			vk_rtx_upload_image_data( &vk.envmap, width, height, pic, 4, 0, 5 ); // left
+			vk_rtx_upload_image_data( &vk.img_envmap, width, height, pic, 4, 0, 5 ); // left
 			ri.Z_Free( pic );
 		}
 
@@ -387,16 +387,16 @@ void vk_rtx_prepare_envmap( world_t &worldData )
 			width = shader->stages[0]->bundle[0].image[0]->width;
 			height = shader->stages[0]->bundle[0].image[0]->height;
 
-			vk_rtx_create_cubemap( &vk.envmap, width, height,
+			vk_rtx_create_cubemap( &vk.img_envmap, width, height,
 				VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 1 );
 
 			R_LoadImage( shader->stages[0]->bundle[0].image[0]->imgName, &pic, &width, &height );
-			vk_rtx_upload_image_data( &vk.envmap, width, height, pic, 4, 0, 0 );
-			vk_rtx_upload_image_data( &vk.envmap, width, height, pic, 4, 0, 1 );
-			vk_rtx_upload_image_data( &vk.envmap, width, height, pic, 4, 0, 2 );
-			vk_rtx_upload_image_data( &vk.envmap, width, height, pic, 4, 0, 3 );
-			vk_rtx_upload_image_data( &vk.envmap, width, height, pic, 4, 0, 4 );
-			vk_rtx_upload_image_data( &vk.envmap, width, height, pic, 4, 0, 5 );
+			vk_rtx_upload_image_data( &vk.img_envmap, width, height, pic, 4, 0, 0 );
+			vk_rtx_upload_image_data( &vk.img_envmap, width, height, pic, 4, 0, 1 );
+			vk_rtx_upload_image_data( &vk.img_envmap, width, height, pic, 4, 0, 2 );
+			vk_rtx_upload_image_data( &vk.img_envmap, width, height, pic, 4, 0, 3 );
+			vk_rtx_upload_image_data( &vk.img_envmap, width, height, pic, 4, 0, 4 );
+			vk_rtx_upload_image_data( &vk.img_envmap, width, height, pic, 4, 0, 5 );
 		}
 
 		vk_rtx_set_envmap_descriptor_binding();
@@ -432,18 +432,18 @@ reset_sun_color_buffer(VkCommandBuffer cmd_buf)
 	BUFFER_BARRIER( cmd_buf,
 		VK_ACCESS_UNIFORM_READ_BIT,
 		VK_ACCESS_TRANSFER_WRITE_BIT,
-		vk.buffer_sun_color.buffer,
+		vk.buf_sun_color.buffer,
 		0,
 		VK_WHOLE_SIZE
 	);
 
-	qvkCmdFillBuffer(cmd_buf, vk.buffer_sun_color.buffer,
+	qvkCmdFillBuffer(cmd_buf, vk.buf_sun_color.buffer,
 		0, VK_WHOLE_SIZE, 0);
 
 	BUFFER_BARRIER( cmd_buf,
 		VK_ACCESS_TRANSFER_WRITE_BIT,
 		VK_ACCESS_SHADER_WRITE_BIT,
-		vk.buffer_sun_color.buffer,
+		vk.buf_sun_color.buffer,
 		0,
 		VK_WHOLE_SIZE
 	);
@@ -500,7 +500,7 @@ VkResult vkpt_physical_sky_record_cmd_buffer( VkCommandBuffer cmd_buf )
 	BUFFER_BARRIER( cmd_buf,
 		VK_ACCESS_SHADER_WRITE_BIT,
 		VK_ACCESS_SHADER_WRITE_BIT,
-		vk.buffer_sun_color.buffer,
+		vk.buf_sun_color.buffer,
 		0,
 		VK_WHOLE_SIZE
 	);
@@ -518,7 +518,7 @@ VkResult vkpt_physical_sky_record_cmd_buffer( VkCommandBuffer cmd_buf )
 	BUFFER_BARRIER( cmd_buf,
 		VK_ACCESS_SHADER_WRITE_BIT,
 		VK_ACCESS_UNIFORM_READ_BIT,
-		vk.buffer_sun_color.buffer,
+		vk.buf_sun_color.buffer,
 		0,
 		VK_WHOLE_SIZE
 	);

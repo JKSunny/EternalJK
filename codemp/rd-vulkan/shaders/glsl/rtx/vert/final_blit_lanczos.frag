@@ -27,12 +27,12 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #extension GL_EXT_nonuniform_qualifier    : enable
 
 
-//#define GLOBAL_UBO_DESC_SET_IDX 0
+#define GLOBAL_UBO_DESC_SET_IDX 3
 #include "../global_ubo.h"
 
 #include "../utils.glsl"
 
-//#define GLOBAL_TEXTURES_DESC_SET_IDX 1
+#define GLOBAL_TEXTURES_DESC_SET_IDX 1
 #include "../global_textures.h"
 
 layout(location = 0) in vec2 tex_coord;

@@ -2619,7 +2619,7 @@ void vk_imgui_bind_rtx_draw_image( void )
 	sampler = vk_find_sampler( &sd );
 
 	inspector.render_mode.rtx_image.bound[0] = inspector.render_mode.image;	// blitted to color_image
-	inspector.render_mode.rtx_image.bound[1] = ImGui_ImplVulkan_AddTexture( sampler, vk.rtx_images[RTX_IMG_FLAT_COLOR].view, VK_IMAGE_LAYOUT_GENERAL );
+	inspector.render_mode.rtx_image.bound[1] = ImGui_ImplVulkan_AddTexture( sampler, vk.img_rtx[RTX_IMG_FLAT_COLOR].view, VK_IMAGE_LAYOUT_GENERAL );
 }
 #endif
 

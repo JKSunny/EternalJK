@@ -31,7 +31,7 @@ layout (push_constant) uniform push_constant_block {
     int pass;
 } push;
 
-#define GLOBAL_UBO_DESC_SET_IDX 0
+#define GLOBAL_UBO_DESC_SET_IDX 3
 #include "../global_ubo.h"
 
 #define GLOBAL_TEXTURES_DESC_SET_IDX 1

@@ -180,7 +180,7 @@ enum VK_RTX_IMAGES {
 #ifdef GLSL
 
 // global texture
-layout( binding = 0, set = 2 ) uniform sampler2D texure_array[];
+layout( set = 2, binding = 0 ) uniform sampler2D texure_array[];
 
 #define SAMPLER_r16ui   usampler2D
 #define SAMPLER_r32ui   usampler2D
@@ -210,7 +210,7 @@ layout( binding = 0, set = 2 ) uniform sampler2D texure_array[];
 
 /* framebuffer images */
 #define IMG_DO(_name, _binding, _vkformat, _glslformat, _w, _h) \
-	layout(set = 1, binding = BINDING_OFFSET_IMAGES + _binding, _glslformat) \
+	layout(set = GLOBAL_TEXTURES_DESC_SET_IDX, binding = BINDING_OFFSET_IMAGES + _binding, _glslformat) \
 	uniform IMAGE_##_glslformat IMG_##_name;
 LIST_IMAGES
 LIST_IMAGES_A_B
@@ -218,27 +218,27 @@ LIST_IMAGES_A_B
 
 /* framebuffer textures */
 #define IMG_DO(_name, _binding, _vkformat, _glslformat, _w, _h) \
-	layout(set = 1, binding = BINDING_OFFSET_TEXTURES + _binding) \
+	layout(set = GLOBAL_TEXTURES_DESC_SET_IDX, binding = BINDING_OFFSET_TEXTURES + _binding) \
 	uniform SAMPLER_##_glslformat TEX_##_name;
 LIST_IMAGES
 LIST_IMAGES_A_B
 #undef IMG_DO
 
 // blue noise
-layout( binding = BINDING_OFFSET_BLUE_NOISE,		set = 1 ) uniform sampler2DArray TEX_BLUE_NOISE;
-layout( binding = BINDING_OFFSET_ENVMAP,			set = 1 ) uniform samplerCube TEX_ENVMAP;
-layout( binding = BINDING_OFFSET_PHYSICAL_SKY,		set = 1 ) uniform samplerCube TEX_PHYSICAL_SKY;
-layout( binding = BINDING_OFFSET_PHYSICAL_SKY_IMG,	set = 1, rgba16f ) uniform imageCube IMG_PHYSICAL_SKY;
+layout( set = GLOBAL_TEXTURES_DESC_SET_IDX, binding = BINDING_OFFSET_BLUE_NOISE		 ) uniform sampler2DArray TEX_BLUE_NOISE;
+layout( set = GLOBAL_TEXTURES_DESC_SET_IDX, binding = BINDING_OFFSET_ENVMAP			 ) uniform samplerCube TEX_ENVMAP;
+layout( set = GLOBAL_TEXTURES_DESC_SET_IDX, binding = BINDING_OFFSET_PHYSICAL_SKY		 ) uniform samplerCube TEX_PHYSICAL_SKY;
+layout( set = GLOBAL_TEXTURES_DESC_SET_IDX, binding = BINDING_OFFSET_PHYSICAL_SKY_IMG, rgba16f ) uniform imageCube IMG_PHYSICAL_SKY;
 
-// precomputed_sky begin
-layout( binding = BINDING_OFFSET_SKY_TRANSMITTANCE, set = 1 ) uniform sampler2D TEX_SKY_TRANSMITTANCE;
-layout( binding = BINDING_OFFSET_SKY_SCATTERING,	set = 1 ) uniform sampler3D TEX_SKY_SCATTERING;
-layout( binding = BINDING_OFFSET_SKY_IRRADIANCE,	set = 1 ) uniform sampler2D TEX_SKY_IRRADIANCE;
-layout( binding = BINDING_OFFSET_SKY_CLOUDS,		set = 1 ) uniform sampler3D TEX_SKY_CLOUDS;
-layout( binding = BINDING_OFFSET_TERRAIN_ALBEDO,	set = 1 ) uniform samplerCube IMG_TERRAIN_ALBEDO;
-layout( binding = BINDING_OFFSET_TERRAIN_NORMALS,	set = 1 ) uniform samplerCube IMG_TERRAIN_NORMALS;
-layout( binding = BINDING_OFFSET_TERRAIN_DEPTH,		set = 1 ) uniform samplerCube IMG_TERRAIN_DEPTH;
-layout( binding = BINDING_OFFSET_TERRAIN_SHADOWMAP,	set = 1 ) uniform sampler2D TEX_TERRAIN_SHADOWMAP;
+// precomputed_, sky begin
+layout( set = GLOBAL_TEXTURES_DESC_SET_IDX, binding = BINDING_OFFSET_SKY_TRANSMITTANCE  ) uniform sampler2D TEX_SKY_TRANSMITTANCE;
+layout( set = GLOBAL_TEXTURES_DESC_SET_IDX, binding = BINDING_OFFSET_SKY_SCATTERING	 ) uniform sampler3D TEX_SKY_SCATTERING;
+layout( set = GLOBAL_TEXTURES_DESC_SET_IDX, binding = BINDING_OFFSET_SKY_IRRADIANCE	 ) uniform sampler2D TEX_SKY_IRRADIANCE;
+layout( set = GLOBAL_TEXTURES_DESC_SET_IDX, binding = BINDING_OFFSET_SKY_CLOUDS		 ) uniform sampler3D TEX_SKY_CLOUDS;
+layout( set = GLOBAL_TEXTURES_DESC_SET_IDX, binding = BINDING_OFFSET_TERRAIN_ALBEDO	 ) uniform samplerCube IMG_TERRAIN_ALBEDO;
+layout( set = GLOBAL_TEXTURES_DESC_SET_IDX, binding = BINDING_OFFSET_TERRAIN_NORMALS	 ) uniform samplerCube IMG_TERRAIN_NORMALS;
+layout( set = GLOBAL_TEXTURES_DESC_SET_IDX, binding = BINDING_OFFSET_TERRAIN_DEPTH		 ) uniform samplerCube IMG_TERRAIN_DEPTH;
+layout( set = GLOBAL_TEXTURES_DESC_SET_IDX, binding = BINDING_OFFSET_TERRAIN_SHADOWMAP	 ) uniform sampler2D TEX_TERRAIN_SHADOWMAP;
 // precomputed_sky end
 
 vec4 global_texture( in uint idx, in vec2 tex_coord )

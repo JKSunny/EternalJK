@@ -232,8 +232,9 @@ void vk_rtx_initialize( void )
 	vk.device_count = 1;	// right
 	vk.gpu_slice_width = (vk.extent_render.width + vk.device_count - 1) / vk.device_count;
 	
-	vk.shaderGroupBaseAlignment = vk.rtxprops_khr.shaderGroupBaseAlignment;
-	vk.shaderGroupHandleSize = vk.rtxprops_khr.shaderGroupHandleSize;
+	vk.shaderGroupBaseAlignment = vk.ray_pipeline_properties.shaderGroupBaseAlignment;
+	vk.shaderGroupHandleSize = vk.ray_pipeline_properties.shaderGroupHandleSize;
+	vk.minAccelerationStructureScratchOffsetAlignment = vk.accel_struct_properties.minAccelerationStructureScratchOffsetAlignment;
 
 	for ( i = 0; i < NUM_TAA_SAMPLES; i++ )
 	{
@@ -280,7 +281,7 @@ void vk_rtx_shutdown( void )
 	}
 
 	vk_rtx_destroy_pipeline( &vk.rt_pipeline );
-	VK_DestroyBuffer( &vk.rt_shader_binding_table );
+	VK_DestroyBuffer( &vk.buf_shader_binding_table );
 
 	vk_destroy_asvgf_pipelines();
 	vk_destroy_tonemap_pipelines();
@@ -294,7 +295,7 @@ void vk_rtx_shutdown( void )
 
 	vk.updateDataOffsetXYZCount = 0;
 	vk.updateASOffsetXYZCount = 0;
-	vk.scratch_buffer_ptr = 0;
+	vk.scratch_buf_ptr = 0;
 
 	vk.worldASInit = qfalse;
 }

@@ -698,9 +698,14 @@ static qboolean vk_create_device( VkPhysicalDevice physical_device, int device_i
 		qboolean accelStruct = qfalse;
 		qboolean deferredHostOp = qfalse;
 
-		vk.rtxprops_khr.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PROPERTIES_NV;
+		vk.accel_struct_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR;
+		vk.accel_struct_properties.pNext = NULL;
+
+		vk.ray_pipeline_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR;
+		vk.ray_pipeline_properties.pNext = &vk.accel_struct_properties;
+
 		vk.props2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
-		vk.props2.pNext = &vk.rtxprops_khr;
+		vk.props2.pNext = &vk.ray_pipeline_properties;
 		qvkGetPhysicalDeviceProperties2( physical_device, &vk.props2 );
 #endif
 

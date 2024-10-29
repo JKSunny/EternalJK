@@ -31,10 +31,10 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define GOD_RAYS_DESC_SET_IDX 4
 #include "../god_rays_shared.h"
 
-//#define GLOBAL_UBO_DESC_SET_IDX 2
+#define GLOBAL_UBO_DESC_SET_IDX 3
 #include "../global_ubo.h"
 
-//#define GLOBAL_TEXTURES_DESC_SET_IDX 3
+#define GLOBAL_TEXTURES_DESC_SET_IDX 1
 #include "../global_textures.h"
 
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;

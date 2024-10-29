@@ -5060,7 +5060,7 @@ void vk_rtx_AddGhoulSurfaces( trRefEntity_t *ent, int entityNum )
 			}
 
 			const int model_index = model->currentModel->data.glm->vboModels[whichLod].vbo->index;
-			Com_Memcpy( &vk.buffer_uniform_instance.model_mdxm_bones[model_index], bc->boneMatrices, sizeof(mat3x4_t) * bc->mBones.size() );
+			Com_Memcpy( &vk.uniform_instance_buffer.model_mdxm_bones[model_index], bc->boneMatrices, sizeof(mat3x4_t) * bc->mBones.size() );
 
 			//
 			// meshes (surfaces) for this model
