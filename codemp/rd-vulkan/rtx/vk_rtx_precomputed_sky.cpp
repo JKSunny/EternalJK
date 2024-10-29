@@ -157,7 +157,7 @@ VkResult UploadImage( void *FirstPixel, size_t total_size, unsigned int Width, u
 
 	VkMemoryRequirements mem_req;
 	qvkGetImageMemoryRequirements( vk.device, vk.physicalSkyImages[binding_offset].handle, &mem_req );
-	assert( mem_req.size >= buf_img_upload.allocSize );
+	assert( mem_req.size >= buf_img_upload.size );
 
 	VkMemoryAllocateInfo mem_alloc_info;
 	mem_alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;

@@ -28,6 +28,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "shaders/glsl/rtx/sky.h"
 #include "shaders/glsl/rtx/global_ubo.h"		// contains constants.h
 #include "shaders/glsl/rtx/global_textures.h"	// contains constants.h, ignored
+#include "shaders/glsl/rtx/vertex_buffer.h"	// contains constants.h, ignored
 #include "shaders/glsl/rtx/inspector.h"
 #include "vk_rtx_asvgf.h"
 #include "vk_rtx_tonemap.h"
@@ -190,8 +191,7 @@ typedef struct {
 } cluster_t;
 
 typedef struct {
-    VkDeviceSize	allocSize;
-    VkBool32		onGpu;
+    VkDeviceSize	size;
     byte			*p;
     VkBuffer		buffer;
     VkDeviceMemory	memory;
@@ -314,9 +314,9 @@ typedef struct {
 	VkDeviceSize						offset;			// offset in static or dynamic buffer
 	vkbuffer_t							mem;
 	vk_blas_match_info_t				match;
-	VkAccelerationStructureGeometryKHR	geometries;
-
+	
 	// revisit this
+	VkAccelerationStructureGeometryKHR	geometries;
 	uint32_t	create_num_vertices;
 	uint32_t	create_num_indices;
 } vk_blas_t;
@@ -399,7 +399,7 @@ void		*buffer_map( vkbuffer_t *buf );
 void		buffer_unmap( vkbuffer_t *buf );
 
 void		VK_CreateImageMemory( VkMemoryPropertyFlags properties, VkImage *image, VkDeviceMemory *bufferMemory );
-void		VK_CreateAttributeBuffer( vkbuffer_t *buffer, VkDeviceSize allocSize, VkBufferUsageFlagBits usage );
+void		VK_CreateAttributeBuffer( vkbuffer_t *buffer, VkDeviceSize size, VkBufferUsageFlagBits usage );
 void		vk_rtx_upload_buffer_data_offset( vkbuffer_t *buffer, VkDeviceSize offset, VkDeviceSize size, const byte *data );
 void		vk_rtx_upload_buffer_data( vkbuffer_t *buffer, const byte *data );
 VkResult	vkpt_light_buffer_upload_to_staging( const uint32_t idx, qboolean render_world, 

@@ -691,7 +691,7 @@ static void vk_bind_common_descriptor_data( vkdescriptor_t *descriptor, VkShader
 		vk_rtx_set_descriptor_update_size(descriptor, BINDING_OFFSET_LIGHT_STATS_BUFFER, VK_SHADER_STAGE_ALL, NUM_LIGHT_STATS_BUFFERS);
 
 		for (i = 0; i < NUM_LIGHT_STATS_BUFFERS; i++)
-			descriptor->data[light_stats_index].buffer[i] = { vk.buffer_light_stats[i].buffer, 0, vk.buffer_light_stats[i].allocSize };
+			descriptor->data[light_stats_index].buffer[i] = { vk.buffer_light_stats[i].buffer, 0, vk.buffer_light_stats[i].size };
 	}
 
 	// light count history
@@ -701,7 +701,7 @@ static void vk_bind_common_descriptor_data( vkdescriptor_t *descriptor, VkShader
 		vk_rtx_set_descriptor_update_size(descriptor, BINDING_LIGHT_COUNTS_HISTORY_BUFFER, VK_SHADER_STAGE_ALL, LIGHT_COUNT_HISTORY);
 
 		for (i = 0; i < LIGHT_COUNT_HISTORY; i++)
-			descriptor->data[light_count_history_index].buffer[i] = { vk.buffer_light_counts_history[i].buffer, 0, vk.buffer_light_counts_history[i].allocSize };
+			descriptor->data[light_count_history_index].buffer[i] = { vk.buffer_light_counts_history[i].buffer, 0, vk.buffer_light_counts_history[i].size };
 	}
 
 	// previous
@@ -1252,7 +1252,7 @@ void R_PreparePT( world_t &worldData )
 		if ( vk.buffer_light_stats[0].buffer )
 		{
 			for ( i = 0; i < NUM_LIGHT_STATS_BUFFERS; i++ )
-				qvkCmdFillBuffer( cmd_buf, vk.buffer_light_stats[i].buffer, 0, vk.buffer_light_stats[i].allocSize, 0 );
+				qvkCmdFillBuffer( cmd_buf, vk.buffer_light_stats[i].buffer, 0, vk.buffer_light_stats[i].size, 0 );
 		}
 
 		vk_end_command_buffer( cmd_buf );

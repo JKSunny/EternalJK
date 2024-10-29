@@ -39,9 +39,6 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define VERTEX_READONLY 1
 #include "../vertex_buffer.h"
 
-#define SUN_COLOR_ACCUMULATOR_FIXED_POINT_SCALE 0x100000
-#define SKY_COLOR_ACCUMULATOR_FIXED_POINT_SCALE 0x100
-
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
 void main()

@@ -123,7 +123,7 @@ VkResult vk_rtx_buffer_create( vkbuffer_t *buf, VkDeviceSize size,
 	buf_create_info.queueFamilyIndexCount = 0;
 	buf_create_info.pQueueFamilyIndices = NULL;
 
-	buf->allocSize = size;
+	buf->size = size;
 	buf->is_mapped = 0;
 
 	result = qvkCreateBuffer( vk.device, &buf_create_info, NULL, &buf->buffer );
@@ -188,7 +188,7 @@ fail_mem_alloc:
 fail_buffer:
 	buf->buffer = VK_NULL_HANDLE;
 	buf->memory = VK_NULL_HANDLE;
-	buf->allocSize   = 0;
+	buf->size   = 0;
 	return result;
 }
 
@@ -204,7 +204,7 @@ VkResult vk_rtx_buffer_destroy( vkbuffer_t *buf )
 
 	buf->buffer = VK_NULL_HANDLE;
 	buf->memory = VK_NULL_HANDLE;
-	buf->allocSize   = 0;
+	buf->size   = 0;
 	buf->address = 0;
 
 	return VK_SUCCESS;
@@ -250,9 +250,9 @@ void *buffer_map( vkbuffer_t *buf )
 	void *ret = NULL;
 
 	assert(buf->memory != VK_NULL_HANDLE);
-	assert(buf->allocSize > 0);
+	assert(buf->size > 0);
 
-	VK_CHECK( qvkMapMemory( vk.device, buf->memory, 0 /*offset*/, buf->allocSize, 0 /*flags*/, &ret ) );
+	VK_CHECK( qvkMapMemory( vk.device, buf->memory, 0 /*offset*/, buf->size, 0 /*flags*/, &ret ) );
 	return ret;
 }
 
@@ -300,17 +300,17 @@ void VK_CreateImageMemory(VkMemoryPropertyFlags properties, VkImage *image, VkDe
 	VK_CHECK(qvkBindImageMemory(vk.device, *image, *bufferMemory, 0));
 }
 
-void VK_CreateAttributeBuffer(vkbuffer_t* buffer, VkDeviceSize allocSize, VkBufferUsageFlagBits usage) {
+void VK_CreateAttributeBuffer(vkbuffer_t* buffer, VkDeviceSize size, VkBufferUsageFlagBits usage) {
 	VkDeviceSize nCAS = vk.props.limits.nonCoherentAtomSize;
-	buffer->allocSize = ((allocSize + (nCAS - 1)) / nCAS) * nCAS;
+	buffer->size = ((size + (nCAS - 1)) / nCAS) * nCAS;
 
-	vk_rtx_buffer_create( buffer, buffer->allocSize, usage, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT );
-	VK_CHECK(qvkMapMemory(vk.device, buffer->memory, 0, buffer->allocSize, 0, (void**)&buffer->p));
+	vk_rtx_buffer_create( buffer, buffer->size, usage, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT );
+	VK_CHECK(qvkMapMemory(vk.device, buffer->memory, 0, buffer->size, 0, (void**)&buffer->p));
 }
 
 void vk_rtx_upload_buffer_data_offset( vkbuffer_t *buffer, VkDeviceSize offset, VkDeviceSize size, const byte *data ) 
 {
-    if (offset + size > buffer->allocSize) {
+    if (offset + size > buffer->size) {
         ri.Error(ERR_FATAL, "Vulkan: Buffer to small!");
     }
 	if (buffer->p == NULL) {
@@ -323,7 +323,7 @@ void vk_rtx_upload_buffer_data_offset( vkbuffer_t *buffer, VkDeviceSize offset, 
 
 void vk_rtx_upload_buffer_data( vkbuffer_t *buffer, const byte *data ) 
 {
-	vk_rtx_upload_buffer_data_offset(buffer, 0, buffer->allocSize, data);
+	vk_rtx_upload_buffer_data_offset(buffer, 0, buffer->size, data);
 }
 
 static void copy_bsp_lights( world_t *world, LightBuffer *lbo )
@@ -635,7 +635,6 @@ void vk_rtx_create_buffers( void )
 
 	// scratch buffer
 	vk_rtx_buffer_create( &vk.scratch_buffer, VK_MAX_DYNAMIC_BOTTOM_AS_INSTANCES * VK_AS_MEMORY_ALLIGNMENT_SIZE * sizeof(byte), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT );
-	vk.scratch_buffer.onGpu = VK_TRUE;	
 	vk.scratch_buffer_ptr = 0;
 
 	vkpt_uniform_buffer_create();

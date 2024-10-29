@@ -20,13 +20,11 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "path_tracer.h"	// contains global_ubo.h -> constants.h
 #include "utils.glsl"
 
-
-layout( set = 0, binding = BINDING_OFFSET_AS ) uniform accelerationStructureEXT topLevelAS;
-
 #include "global_textures.h"
 
 #define VERTEX_READONLY 1
 #include "vertex_buffer.h"
+layout( set = 0, binding = BINDING_OFFSET_AS ) uniform accelerationStructureEXT topLevelAS;
 
 #include "read_visbuf.glsl"
 #include "compute/asvgf.glsl"

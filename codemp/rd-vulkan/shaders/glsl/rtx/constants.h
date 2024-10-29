@@ -25,15 +25,12 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define USE_RTX_INSPECT_TANGENTS
 #endif
 
-#define ALIGN_SIZE_4(x, n)  ((x * n + 3) & (~3))
-
-//
-#define BAS_DEFAULT                                 (0)
-#define BAS_WORLD_STATIC                            (1)
-#define BAS_WORLD_DYNAMIC_DATA                      (2)
-#define BAS_WORLD_DYNAMIC_AS                        (3)
-#define BAS_ENTITY_STATIC                           (4)
-#define BAS_ENTITY_DYNAMIC                          (5)
+#define BLAS_DEFAULT                                 (0)
+#define BLAS_WORLD_STATIC                            (1)
+#define BLAS_WORLD_DYNAMIC_DATA                      (2)
+#define BLAS_WORLD_DYNAMIC_AS                        (3)
+#define BLAS_ENTITY_STATIC                           (4)
+#define BLAS_ENTITY_DYNAMIC                          (5)
 
 #define AS_INSTANCE_FLAG_DYNAMIC					(1 << 23)
 #define AS_INSTANCE_FLAG_SKY						(1 << 22)
@@ -115,7 +112,10 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define MATERIAL_FLAG_SEE_THROUGH_NO_ALPHA  	    0x00004000
 #define MATERIAL_FLAG_IGNORE_LUMINANCE 				0x00008000
 
-// Q2RTX
+#define MATERIAL_LIGHT_STYLE_MASK    0x0003f000
+#define MATERIAL_LIGHT_STYLE_SHIFT   12
+#define MATERIAL_INDEX_MASK			 0x00000fff	// just 4095 material indexes? can cause issues some day?
+
 #define CHECKERBOARD_FLAG_PRIMARY    1
 #define CHECKERBOARD_FLAG_REFLECTION 2
 #define CHECKERBOARD_FLAG_REFRACTION 4
@@ -134,55 +134,6 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define MAX_LIGHT_STYLES         64
 
 // Variables that have "_lf", "_hf" or "_spec" suffix apply to the low-frequency, high-frequency or specular lighting channels, respectively.
-
-// BINDING OFFSETS
-// top level acceleration structure
-#define BINDING_OFFSET_AS							        0
-
-// world static
-#define BINDING_OFFSET_XYZ_WORLD_STATIC                     1
-#define BINDING_OFFSET_IDX_WORLD_STATIC                     2
-
-// world dynamic data
-#define BINDING_OFFSET_XYZ_WORLD_DYNAMIC_DATA		        3
-#define BINDING_OFFSET_XYZ_WORLD_DYNAMIC_DATA_PREV          4
-#define BINDING_OFFSET_IDX_WORLD_DYNAMIC_DATA		        5
-#define BINDING_OFFSET_IDX_WORLD_DYNAMIC_DATA_PREV          6
-
-// world dynamic as
-#define BINDING_OFFSET_XYZ_WORLD_DYNAMIC_AS		            7
-#define BINDING_OFFSET_XYZ_WORLD_DYNAMIC_AS_PREV            8
-#define BINDING_OFFSET_IDX_WORLD_DYNAMIC_AS		            9
-#define BINDING_OFFSET_IDX_WORLD_DYNAMIC_AS_PREV            10
-
-// cluster data
-#define BINDING_OFFSET_CLUSTER_WORLD_STATIC                 11
-#define BINDING_OFFSET_CLUSTER_WORLD_DYNAMIC_DATA           12
-#define BINDING_OFFSET_CLUSTER_WORLD_DYNAMIC_AS             13
-
-// readback
-#define BINDING_OFFSET_READBACK_BUFFER						14
-
-// dynamic vertex
-#define BINDING_OFFSET_DYNAMIC_VERTEX						15
-
-// light and material
-#define BINDING_OFFSET_LIGHT_BUFFER							16
-#define BINDING_LIGHT_COUNTS_HISTORY_BUFFER					17
-
-// tonemap
-#define BINDING_OFFSET_TONEMAP_BUFFER						18
-
-// sky
-#define BINDING_OFFSET_SUN_COLOR_BUFFER						19
-
-// light stats
-#define BINDING_OFFSET_LIGHT_STATS_BUFFER					20
-
-// precomputed sky
-#define BINDING_OFFSET_PRECOMPUTED_SKY_UBO					21
-
-#define NUM_BUFFERS											22	// used as offset for storage images and textures
 
 // shader groups
 #define SBT_RGEN_PRIMARY_RAYS				0
@@ -216,7 +167,6 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define TEX0_BLEND_MASK                             0x00001C00
 #define TEX1_BLEND_MASK                             0x1C000000
 
-
 #define MAX_VERT_MODEL          (1 << 23)
 #define MAX_IDX_MODEL           (1 << 22)
 #define MAX_PRIM_MODEL          (MAX_IDX_MODEL / 3)
@@ -224,24 +174,8 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define SHADER_MAX_ENTITIES		1024
 #define SHADER_MAX_BSP_ENTITIES	128
 
-// lights
-#define MAX_LIGHT_LISTS         (1 << 14)
-#define MAX_LIGHT_LIST_NODES    (1 << 19)
-#define LIGHT_COUNT_HISTORY 16
-
-#define MAX_LIGHT_POLYS         4096
-#define LIGHT_POLY_VEC4S        4
-
-// should match the same constant declared in material.h
-#define MATERIAL_INDEX_MASK		0x00000fff	// just 4095 material indexes? can cause issues some day?
-
-#define MATERIAL_UINTS			5
-#define MAX_PBR_MATERIALS		4096
-
-#ifdef GLSL
-	#ifndef M_PI
-		#define M_PI 3.14159265358979323846264338327950288f
-	#endif
+#ifndef M_PI
+	#define M_PI 3.14159265358979323846264338327950288f
 #endif
 
 // Dynamic light types

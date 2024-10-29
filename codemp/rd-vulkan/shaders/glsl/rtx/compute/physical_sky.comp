@@ -40,9 +40,6 @@ layout(push_constant, std140) uniform ShadowMapConstants {
     mat4 shadow_view_projection_matrix;
 } push;
 
-#define SUN_COLOR_ACCUMULATOR_FIXED_POINT_SCALE 0x100000
-#define SKY_COLOR_ACCUMULATOR_FIXED_POINT_SCALE 0x100
-
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 struct SunInfo {

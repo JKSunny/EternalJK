@@ -146,18 +146,18 @@ static void vkpt_pt_create_toplevel( VkCommandBuffer cmd_buf, uint32_t idx, draw
 	//
 	// world instances ( static & dynamic, no model/entity )
 	//
-	append_blas( instances, &num_instances, BAS_WORLD_STATIC,		&vk.blas_static.world, 0, 0, 0, 0 );
+	append_blas( instances, &num_instances, BLAS_WORLD_STATIC,		&vk.blas_static.world, 0, 0, 0, 0 );
 	
-	append_blas( instances, &num_instances, BAS_WORLD_DYNAMIC_DATA,	&vk.blas_dynamic.data_world, 0, 0, 0, 0 );
-	//append_blas( instances, &num_instances, BAS_WORLD_DYNAMIC_AS,	&vk.blas_dynamic.data_world_transparent, 0, 0, 0, 0 );
+	append_blas( instances, &num_instances, BLAS_WORLD_DYNAMIC_DATA,	&vk.blas_dynamic.data_world, 0, 0, 0, 0 );
+	//append_blas( instances, &num_instances, BLAS_WORLD_DYNAMIC_DATA,	&vk.blas_dynamic.data_world_transparent, 0, 0, 0, 0 );
 	
-	append_blas( instances, &num_instances, BAS_WORLD_DYNAMIC_AS,	&vk.blas_dynamic.as_world[idx], 0, 0, 0, 0 );
-	//append_blas( instances, &num_instances, BAS_WORLD_DYNAMIC_AS,	&vk.blas_dynamic.as_world_transparent[idx], 0, 0, 0, 0 );
+	append_blas( instances, &num_instances, BLAS_WORLD_DYNAMIC_AS,	&vk.blas_dynamic.as_world[idx], 0, 0, 0, 0 );
+	//append_blas( instances, &num_instances, BLAS_WORLD_DYNAMIC_AS,	&vk.blas_dynamic.as_world_transparent[idx], 0, 0, 0, 0 );
 	
 	//
 	// model/entity instances
 	//
-	append_blas( instances, &num_instances, BAS_ENTITY_DYNAMIC,		&vk.model_instance.blas.dynamic[idx], AS_INSTANCE_FLAG_DYNAMIC, 0, 0, 0 );
+	append_blas( instances, &num_instances, BLAS_ENTITY_DYNAMIC,		&vk.model_instance.blas.dynamic[idx], AS_INSTANCE_FLAG_DYNAMIC, 0, 0, 0 );
 
 	void *instance_data = buffer_map(vk.buffer_blas_instance + idx);
 	memcpy(instance_data, &instances, sizeof(vk_geometry_instance_t) * num_instances);
@@ -1101,7 +1101,7 @@ vkpt_light_buffer_upload_staging( VkCommandBuffer cmd_buf, uint32_t idx )
 	int buffer_idx = vk.frame_counter % 3;
 	if ( vk.buffer_light_stats[buffer_idx].buffer )
 	{
-		qvkCmdFillBuffer(cmd_buf, vk.buffer_light_stats[buffer_idx].buffer, 0, vk.buffer_light_stats[buffer_idx].allocSize, 0);
+		qvkCmdFillBuffer(cmd_buf, vk.buffer_light_stats[buffer_idx].buffer, 0, vk.buffer_light_stats[buffer_idx].size, 0);
 	}
 
 

@@ -20,11 +20,209 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #ifndef _VERTEX_BUFFER_H_
 #define _VERTEX_BUFFER_H_
 
+#include "shader_structs.h"
+
+// lights
+#define MAX_LIGHT_LISTS         (1 << 14)
+#define MAX_LIGHT_LIST_NODES    (1 << 19)
+#define LIGHT_COUNT_HISTORY 16
+
+#define MAX_LIGHT_POLYS         4096
+#define LIGHT_POLY_VEC4S        4
+#define MATERIAL_UINTS			5
+
+// should match the same constant declared in material.h
+#define MAX_PBR_MATERIALS		4096
+
+#define ALIGN_SIZE_4(x, n)  ((x * n + 3) & (~3))
+
+// BINDING OFFSETS
+// top level acceleration structure
+#define BINDING_OFFSET_AS							        0
+
+// world static
+#define BINDING_OFFSET_XYZ_WORLD_STATIC                     1
+#define BINDING_OFFSET_IDX_WORLD_STATIC                     2
+
+// world dynamic data
+#define BINDING_OFFSET_XYZ_WORLD_DYNAMIC_DATA		        3
+#define BINDING_OFFSET_XYZ_WORLD_DYNAMIC_DATA_PREV          4
+#define BINDING_OFFSET_IDX_WORLD_DYNAMIC_DATA		        5
+#define BINDING_OFFSET_IDX_WORLD_DYNAMIC_DATA_PREV          6
+
+// world dynamic as
+#define BINDING_OFFSET_XYZ_WORLD_DYNAMIC_AS		            7
+#define BINDING_OFFSET_XYZ_WORLD_DYNAMIC_AS_PREV            8
+#define BINDING_OFFSET_IDX_WORLD_DYNAMIC_AS		            9
+#define BINDING_OFFSET_IDX_WORLD_DYNAMIC_AS_PREV            10
+
+// cluster data
+#define BINDING_OFFSET_CLUSTER_WORLD_STATIC                 11
+#define BINDING_OFFSET_CLUSTER_WORLD_DYNAMIC_DATA           12
+#define BINDING_OFFSET_CLUSTER_WORLD_DYNAMIC_AS             13
+
+// readback
+#define BINDING_OFFSET_READBACK_BUFFER						14
+
+// dynamic vertex
+#define BINDING_OFFSET_DYNAMIC_VERTEX						15
+
+// light and material
+#define BINDING_OFFSET_LIGHT_BUFFER							16
+#define BINDING_LIGHT_COUNTS_HISTORY_BUFFER					17
+
+// tonemap
+#define BINDING_OFFSET_TONEMAP_BUFFER						18
+
+// sky
+#define BINDING_OFFSET_SUN_COLOR_BUFFER						19
+
+// light stats
+#define BINDING_OFFSET_LIGHT_STATS_BUFFER					20
+
+// precomputed sky
+#define BINDING_OFFSET_PRECOMPUTED_SKY_UBO					21
+
+#define NUM_BUFFERS											22	// used as offset for storage images and textures
+
+
+#define SUN_COLOR_ACCUMULATOR_FIXED_POINT_SCALE 0x100000
+#define SKY_COLOR_ACCUMULATOR_FIXED_POINT_SCALE 0x100
+
+#define MODEL_DYNAMIC_VERTEX_BUFFER_LIST \
+	VERTEX_BUFFER_LIST_DO( float,	 3,					positions_instanced,		(MAX_VERT_MODEL) ) \
+	VERTEX_BUFFER_LIST_DO( float,    3,					pos_prev_instanced,			(MAX_VERT_MODEL) ) \
+	VERTEX_BUFFER_LIST_DO( uint32_t, 1,					normals_instanced,			(MAX_VERT_MODEL) ) \
+	VERTEX_BUFFER_LIST_DO( uint32_t, 1,					tangents_instanced,			(MAX_VERT_MODEL) ) \
+	VERTEX_BUFFER_LIST_DO( float,    2,					tex_coords_instanced,		(MAX_VERT_MODEL) ) \
+	VERTEX_BUFFER_LIST_DO( float,    1,					alpha_instanced,			(MAX_PRIM_MODEL) ) \
+	VERTEX_BUFFER_LIST_DO( uint32_t, 1,					clusters_instanced,			(MAX_PRIM_MODEL) ) \
+	VERTEX_BUFFER_LIST_DO( uint32_t, 1,					materials_instanced,		(MAX_PRIM_MODEL) ) \
+	VERTEX_BUFFER_LIST_DO( uint32_t, 1,					instance_id_instanced,		(MAX_PRIM_MODEL) ) \
+
+#define LIGHT_BUFFER_LIST \
+	VERTEX_BUFFER_LIST_DO( uint32_t, MATERIAL_UINTS,	material_table,				(MAX_PBR_MATERIALS)		) \
+	VERTEX_BUFFER_LIST_DO( float,    4,					light_polys,				(MAX_LIGHT_POLYS * LIGHT_POLY_VEC4S) ) \
+	VERTEX_BUFFER_LIST_DO( uint32_t, 1,					light_list_offsets,			(MAX_LIGHT_LISTS     )	) \
+	VERTEX_BUFFER_LIST_DO( uint32_t, 1,					light_list_lights,			(MAX_LIGHT_LIST_NODES)	) \
+	VERTEX_BUFFER_LIST_DO( float,    1,					light_styles,				(MAX_LIGHT_STYLES    )	) \
+	VERTEX_BUFFER_LIST_DO( uint32_t, 1,					cluster_debug_mask,			(MAX_LIGHT_LISTS / 32)	) \
+
+// sample_light_counts: light count in cluster used for sampling (may differ from actual light count!)
+
+#define VERTEX_BUFFER_LIST_DO( type, dim, name, size ) \
+type name[ ALIGN_SIZE_4( size, dim ) ];
+
+struct ModelDynamicVertexBuffer
+{
+	MODEL_DYNAMIC_VERTEX_BUFFER_LIST
+};
+
+struct LightBuffer
+{
+	LIGHT_BUFFER_LIST
+};
+
+
+#undef VERTEX_BUFFER_LIST_DO
+
+#ifndef USE_RTX_GLOBAL_MODEL_VBO
+typedef struct {
+	vec3_t position;
+	vec3_t normal;
+	vec2_t texcoord;
+	vec4_t tangents;
+} model_vertex_t;
+#endif
+
+STRUCT (  
+	INT		( accumulator[HISTOGRAM_BINS] )
+	FLOAT	( curve[HISTOGRAM_BINS] )
+	FLOAT	( normalized[HISTOGRAM_BINS] )
+	FLOAT	( adapted_luminance )
+	FLOAT	( tonecurve )
+, ToneMappingBuffer )
+
+STRUCT ( 
+	UINT	( material )
+	UINT	( cluster )
+	FLOAT	( sun_luminance )
+	FLOAT	( sky_luminance )
+	VEC3	( hdr_color )
+	FLOAT	( adapted_luminance )
+, ReadbackBuffer )
+
+STRUCT ( 
+	IVEC3	( accum_sun_color )
+	INT		( pad0 )
+	IVEC4	( accum_sky_color )
+	VEC3	( sun_color )
+	FLOAT	( sun_luminance )
+	VEC3	( sky_color )
+	FLOAT	( sky_luminance )
+, SunColorBuffer )
+
+// holds all bsp vertex data
+STRUCT ( 
+    VEC3    ( pos )
+    UINT    ( material )
+
+	// using packed qtangent instead, this can be removed or commented for now
+    //VEC4    ( normal )
+    VEC4    ( qtangent )
+    UINT    ( color[4] )
+
+    VEC2    ( uv[4] )
+
+    UINT	( texIdx0 )
+    UINT    ( texIdx1 )
+    INT     ( cluster )
+    UINT    ( buff2 )
+,VertexBuffer )
+
+
+#ifdef GLSL
+
 #ifdef VERTEX_READONLY
 #define BUFFER_T readonly buffer
 #else
 #define BUFFER_T buffer
 #endif
+
+STRUCT (  
+	UINT	( base_texture )
+	UINT	( normals_texture )
+	UINT	( emissive_texture )
+	UINT	( physical_texture )
+	UINT	( mask_texture )
+	//FLOAT	( bump_scale )
+	//FLOAT	( roughness_override )
+	//FLOAT	( metalness_factor )
+	//FLOAT	( specular_factor )
+	VEC4	( specular_scale )	// contains the commented above see stage->specularScale
+	FLOAT	( emissive_factor )
+	FLOAT	( base_factor )
+	FLOAT	( light_style_scale )
+	UINT	( num_frames )
+	UINT	( next_frame )
+, MaterialInfo )
+
+struct LightPolygon
+{
+	mat3 positions;
+	vec3 color;
+	float light_style_scale;
+	float prev_style_scale;
+};
+
+struct TextureData {
+	int tex0;
+	int tex1;
+	uint tex0Blend;
+	uint tex1Blend;
+	bool tex0Color;
+	bool tex1Color;
+};
 
 // Buffer with indices and vertices
 layout( set = 0, binding = BINDING_OFFSET_IDX_WORLD_STATIC )			BUFFER_T Indices_World_static { uint i[]; } indices_world_static;
@@ -370,7 +568,7 @@ ivec3 get_bsp_triangle_indices_and_data( in uint instance_id, in uint prim_id, o
 	uint prim = prim_id * 3;
 	ivec3 indices;
 
-	if ( instance_buffer.tlas_instance_type[instance_id] == BAS_WORLD_STATIC )
+	if ( instance_buffer.tlas_instance_type[instance_id] == BLAS_WORLD_STATIC )
 	{
 		indices = ivec3(	
 			indices_world_static.i[prim + 0], 
@@ -382,7 +580,7 @@ ivec3 get_bsp_triangle_indices_and_data( in uint instance_id, in uint prim_id, o
 		triangle[2] = vertices_world_static.v[indices.z];
 	}
 	
-	else if ( instance_buffer.tlas_instance_type[instance_id] == BAS_WORLD_DYNAMIC_DATA )
+	else if ( instance_buffer.tlas_instance_type[instance_id] == BLAS_WORLD_DYNAMIC_DATA )
 	{
 		indices = ivec3(	
 			indices_dynamic_data.i[prim + 0], 
@@ -394,7 +592,7 @@ ivec3 get_bsp_triangle_indices_and_data( in uint instance_id, in uint prim_id, o
 		triangle[2] = vertices_dynamic_data.v[indices.z];
 	}
 	
-	else if ( instance_buffer.tlas_instance_type[instance_id] == BAS_WORLD_DYNAMIC_AS )
+	else if ( instance_buffer.tlas_instance_type[instance_id] == BLAS_WORLD_DYNAMIC_AS )
 	{
 		indices = ivec3(	
 			indices_dynamic_as.i[prim + 0], 
@@ -414,7 +612,7 @@ mat3x3 get_dynamic_bsp_positions_prev( in uint instance_id, in uint prim_id  )
 	uint prim = prim_id * 3;
 	mat3x3 position;
 
-	if ( instance_buffer.tlas_instance_type[instance_id] == BAS_WORLD_DYNAMIC_DATA )
+	if ( instance_buffer.tlas_instance_type[instance_id] == BLAS_WORLD_DYNAMIC_DATA )
 	{
 		ivec3 indices = ivec3( 
 			indices_dynamic_data_prev.i[prim + 0], 
@@ -426,7 +624,7 @@ mat3x3 get_dynamic_bsp_positions_prev( in uint instance_id, in uint prim_id  )
 		position[2] = vertices_dynamic_data_prev.v[indices.z].pos.xyz;
 	}
 	
-	else if ( instance_buffer.tlas_instance_type[instance_id] == BAS_WORLD_DYNAMIC_AS )
+	else if ( instance_buffer.tlas_instance_type[instance_id] == BLAS_WORLD_DYNAMIC_AS )
 	{
 		ivec3 indices = ivec3(
 			indices_dynamic_as_prev.i[prim + 0], 
@@ -452,7 +650,7 @@ Triangle get_bsp_triangle( in uint instance_id, in uint prim_id )
 	t.positions[1] = triangle[1].pos.xyz;
 	t.positions[2] = triangle[2].pos.xyz;
 	
-	if ( instance_buffer.tlas_instance_type[instance_id] == BAS_WORLD_STATIC )
+	if ( instance_buffer.tlas_instance_type[instance_id] == BLAS_WORLD_STATIC )
 		t.positions_prev = t.positions;
 	else 
 		t.positions_prev = get_dynamic_bsp_positions_prev( instance_id, prim_id ); 
@@ -516,21 +714,21 @@ Triangle get_bsp_triangle( in uint instance_id, in uint prim_id )
 
 	switch( instance_buffer.tlas_instance_type[instance_id] )
 	{
-		case BAS_WORLD_STATIC:
+		case BLAS_WORLD_STATIC:
 			t.tex0 = vertices_world_static.v[indices.x].texIdx0;
 			t.tex1 = vertices_world_static.v[indices.x].texIdx1;
 
 			t.cluster = cluster_world_static.c[prim_id];
 			t.material_id = vertices_world_static.v[indices.x].material;	// same as triangle[0].material ?
 			break;
-		case BAS_WORLD_DYNAMIC_DATA:
+		case BLAS_WORLD_DYNAMIC_DATA:
 			t.tex0 = vertices_dynamic_data.v[indices.x].texIdx0;
 			t.tex1 = vertices_dynamic_data.v[indices.x].texIdx1;
 
 			t.cluster = cluster_world_dynamic_data.c[prim_id];
 			t.material_id = vertices_dynamic_data.v[indices.x].material;
 			break;
-		case BAS_WORLD_DYNAMIC_AS:
+		case BLAS_WORLD_DYNAMIC_AS:
 			t.tex0 = vertices_dynamic_as.v[indices.x].texIdx0;
 			t.tex1 = vertices_dynamic_as.v[indices.x].texIdx1;
 
@@ -546,4 +744,5 @@ Triangle get_bsp_triangle( in uint instance_id, in uint prim_id )
 
 	return t;
 }
+#endif
 #endif
