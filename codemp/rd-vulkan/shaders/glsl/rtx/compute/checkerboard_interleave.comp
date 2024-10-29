@@ -83,7 +83,7 @@ right before this shader is invoked, see function `vkpt_interleave`.
 #define GLOBAL_UBO_DESC_SET_IDX 3
 #include "../global_ubo.h"
 
-//#define GLOBAL_TEXTURES_DESC_SET_IDX 1
+#define GLOBAL_TEXTURES_DESC_SET_IDX 1
 #include "../global_textures.h"
 
 #include "../utils.glsl"

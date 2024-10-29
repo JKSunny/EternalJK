@@ -227,17 +227,17 @@ struct TextureData {
 // Buffer with indices and vertices
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_IDX_WORLD_STATIC )			BUFFER_T Indices_World_static { uint i[]; } indices_world_static;
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_XYZ_WORLD_STATIC )			BUFFER_T Vertices_World_static { VertexBuffer v[]; } vertices_world_static;
-			  VERTEX_BUFFER_DESC_SET_IDX
+
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_IDX_WORLD_DYNAMIC_DATA )		BUFFER_T Indices_dynamic_data { uint i[]; } indices_dynamic_data;
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_XYZ_WORLD_DYNAMIC_DATA )		BUFFER_T Vertices_dynamic_data { VertexBuffer v[]; } vertices_dynamic_data;
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_IDX_WORLD_DYNAMIC_AS )		BUFFER_T Indices_dynamic_as { uint i[]; } indices_dynamic_as;
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_XYZ_WORLD_DYNAMIC_AS )		BUFFER_T Vertices_dynamic_as { VertexBuffer v[]; } vertices_dynamic_as;
-			  VERTEX_BUFFER_DESC_SET_IDX
+
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_CLUSTER_WORLD_STATIC )		BUFFER_T Cluster_World_static { uint c[]; } cluster_world_static;
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_CLUSTER_WORLD_DYNAMIC_DATA )	BUFFER_T Cluster_World_dynamic_data { uint c[]; } cluster_world_dynamic_data;
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_CLUSTER_WORLD_DYNAMIC_AS )	BUFFER_T Cluster_World_dynamic_as { uint c[]; } cluster_world_dynamic_as;
-			  VERTEX_BUFFER_DESC_SET_IDX
-layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_READBACK_BUFFER )				buffer READBACK_BUFFER { ReadbackBuffer readback; };
+
+layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_READBACK_BUFFER )			buffer READBACK_BUFFER { ReadbackBuffer readback; };
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_DYNAMIC_VERTEX )				buffer MODEL_DYNAMIC_VERTEX_BUFFER { ModelDynamicVertexBuffer vbo_model_dynamic; };
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_LIGHT_BUFFER )				buffer LIGHT_BUFFER { LightBuffer lbo; };
 
@@ -251,7 +251,7 @@ layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_LIGHT_BUFFER 
  *
  * We have multiple buffers b/c we may need to access the history for the current or any previous frame.
  * That'd be harder to do with a light_buffer member since that is backed by alternating buffers */
-layout( set = 0, binding = BINDING_LIGHT_COUNTS_HISTORY_BUFFER ) readonly buffer LIGHT_COUNTS_HISTORY_BUFFER {
+layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_LIGHT_COUNTS_HISTORY_BUFFER ) readonly buffer LIGHT_COUNTS_HISTORY_BUFFER {
 	uint sample_light_counts[];
 } light_counts_history[LIGHT_COUNT_HISTORY];
 

@@ -32,7 +32,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 #include "../utils.glsl"
 
-//#define GLOBAL_TEXTURES_DESC_SET_IDX 1
+#define GLOBAL_TEXTURES_DESC_SET_IDX 1
 #include "../global_textures.h"
 
 layout(location = 0) in vec2 tex_coord;

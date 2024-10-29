@@ -39,7 +39,7 @@ layout(constant_id = 1) const uint spec_enable_lf = 1;
 #define GLOBAL_UBO_DESC_SET_IDX 3
 #include "../global_ubo.h"
 
-//#define GLOBAL_TEXTURES_DESC_SET_IDX 1
+#define GLOBAL_TEXTURES_DESC_SET_IDX 1
 #include "../global_textures.h"
 
 #include "../utils.glsl"
