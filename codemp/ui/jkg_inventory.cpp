@@ -136,9 +136,8 @@ static QINLINE void JKG_ConstructItemTierDescription(itemTier_t tier, std::vecto
 }
 
 
-void JKG_ConstructItemDurabilityDescription(itemInstance_t* pItem, std::vector<std::string>& vDescLines, int ownerDrawID)
+void JKG_ConstructItemDurabilityDescription(itemInstance_t* pItem, std::vector<std::string>& vDescLines, int nItemNum)
 {
-	int nItemNum = ownerDrawID + nPosition;
 
 	if (nItemNum >= pItems.size() || nItemNum < 0) {
 		return;
@@ -935,33 +934,33 @@ void JKG_ConstructItemDescription(itemInstance_t* pItem, std::vector<std::string
 	switch (pItem->id->itemType) {
 		case ITEM_JETPACK:
 			JKG_ConstructJetpackDescription(pItem, vDescLines);
-			JKG_ConstructItemDurabilityDescription(pItem, vDescLines, invNum);
+			//JKG_ConstructItemDurabilityDescription(pItem, vDescLines, invNum);	
 			break;
 		case ITEM_SHIELD:
 			JKG_ConstructShieldDescription(pItem, vDescLines);
-			JKG_ConstructItemDurabilityDescription(pItem, vDescLines, invNum);
+			//JKG_ConstructItemDurabilityDescription(pItem, vDescLines, invNum);
 			break;
 		case ITEM_ARMOR:
 			JKG_ConstructArmorDescription(pItem, vDescLines);
-			JKG_ConstructItemDurabilityDescription(pItem, vDescLines, invNum);
+			JKG_ConstructItemDurabilityDescription(pItem, vDescLines, invNum);		//only print armor durability until other durability mechanics are finished
 			break;
 		case ITEM_WEAPON:
 			JKG_ConstructWeaponDescription(pItem, vDescLines);
-			JKG_ConstructItemDurabilityDescription(pItem, vDescLines, invNum);
+			//JKG_ConstructItemDurabilityDescription(pItem, vDescLines, invNum);
 			break;
 		case ITEM_AMMO:
 			JKG_ConstructAmmoDescription(pItem, vDescLines);
 			break;
 		case ITEM_TOOL:
 			JKG_ConstructToolDescription(pItem, vDescLines);
-			JKG_ConstructItemDurabilityDescription(pItem, vDescLines, invNum);
+			//JKG_ConstructItemDurabilityDescription(pItem, vDescLines, invNum);
 			break;
 		case ITEM_CONSUMABLE:
 			JKG_ConstructConsumableDescription(pItem, vDescLines);
 			break;
 		default:
 			JKG_ConstructItemTierDescription(pItem->id->itemTier, vDescLines);
-			JKG_ConstructItemDurabilityDescription(pItem, vDescLines, invNum);	//todo: get it to display durability in inventory and shop screens
+			//JKG_ConstructItemDurabilityDescription(pItem, vDescLines, invNum);
 			if (pItem->id->weight > 0.0f)
 			{
 				vDescLines.push_back(va(UI_GetStringEdString2("@JKG_INVENTORY_ITEM_WEIGHT"), pItem->id->weight));

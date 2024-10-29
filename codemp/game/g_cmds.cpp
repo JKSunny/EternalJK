@@ -2307,13 +2307,13 @@ void Cmd_ShowInv_f(gentity_t *ent)
 	Q_strncpyz (buffer, 
 		" ID | Item Num | Item Name                            | Durability | Quantity | Weight | Equip?\n", sizeof (buffer));
 	Q_strcat (buffer, sizeof (buffer), 
-		"----+----------+--------------------------------------+------------+----------+--------+-------+\n");
+		"----+------+------------------------------------------+------------+----------+--------+-------+\n");
 	trap->SendServerCommand(ent->s.number, va("print \"%s\n\"", buffer)); //print out
 	memset(buffer, '\0', sizeof(buffer));
 
-
 	for (auto it = ent->inventory->begin(); it != ent->inventory->end(); ++it) {
-		Q_strcat(buffer, sizeof(buffer), va(S_COLOR_WHITE "%3i | %8i | %-36s | %4i /%4i | %8i | %6.2f | %5s |\n", it - ent->inventory->begin(), it->id->itemID, it->id->displayName, (it->id->itemTier == TIER_LEGENDARY ? 999 : it->durability), it->id->maxDurability, it->quantity, it->id->weight, (it->equipped == true ? "Y" : "N") ));
+
+		Q_strcat(buffer, sizeof(buffer), va(S_COLOR_WHITE "%3i | %4i | %-40s | %4i /%4i | %8i | %6.2f | %5s |\n", it - ent->inventory->begin(), it->id->itemID, it->id->displayName, (it->id->itemTier == TIER_LEGENDARY ? 999 : it->durability), it->id->maxDurability, it->quantity, it->id->weight, (it->equipped == true ? "Y" : "N") ));
 		weight = weight + (it->id->weight * it->quantity);
 		if (it->equipped)
 		{
