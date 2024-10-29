@@ -33,7 +33,7 @@ layout(push_constant, std140) uniform IterationInfo {
 	uint iteration;
 } push;
 
-//#define GLOBAL_UBO_DESC_SET_IDX 0
+#define GLOBAL_UBO_DESC_SET_IDX 3
 #include "../global_ubo.h"
 
 //#define GLOBAL_TEXTURES_DESC_SET_IDX 1

@@ -4,7 +4,7 @@
 
 #include "../utils.glsl"
 
-//#define GLOBAL_UBO_DESC_SET_IDX 0
+#define GLOBAL_UBO_DESC_SET_IDX 3
 #include "../global_ubo.h"
 
 #include "../global_textures.h"

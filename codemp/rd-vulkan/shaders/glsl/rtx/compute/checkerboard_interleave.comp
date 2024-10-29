@@ -80,7 +80,7 @@ right before this shader is invoked, see function `vkpt_interleave`.
 #extension GL_GOOGLE_include_directive    : enable
 #extension GL_EXT_nonuniform_qualifier    : enable
 
-//#define GLOBAL_UBO_DESC_SET_IDX 0
+#define GLOBAL_UBO_DESC_SET_IDX 3
 #include "../global_ubo.h"
 
 //#define GLOBAL_TEXTURES_DESC_SET_IDX 1

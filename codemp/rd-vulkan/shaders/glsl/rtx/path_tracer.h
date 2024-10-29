@@ -133,6 +133,7 @@ Converting skyboxes to local lights provides two benefits:
 #define PRIM_ID_MASK (~(INSTANCE_DYNAMIC_FLAG | INSTANCE_SKY_FLAG))
 
 #ifndef NO_GLOBAL_UBO
+#define GLOBAL_UBO_DESC_SET_IDX 3
 #include "global_ubo.h"
 #endif
 

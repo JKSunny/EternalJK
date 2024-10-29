@@ -282,8 +282,13 @@ STRUCT (
 
 #ifdef GLSL
 // bindings
-layout( binding = GLOBAL_UBO_BINDING_IDX, set = 3 ) uniform UBO { vkUniformRTX_t global_ubo; };
-layout( binding = GLOBAL_INSTANCE_BUFFER_BINDING_IDX, set = 3 ) readonly buffer InstanceUBO { InstanceBuffer instance_buffer; };
+layout( set = GLOBAL_UBO_DESC_SET_IDX, binding = GLOBAL_UBO_BINDING_IDX ) uniform UBO { 
+	vkUniformRTX_t global_ubo; 
+};
+
+layout( set = GLOBAL_UBO_DESC_SET_IDX, binding = GLOBAL_INSTANCE_BUFFER_BINDING_IDX ) readonly buffer InstanceSSBO { 
+	InstanceBuffer instance_buffer; 
+};
 #endif
 
 #undef UBO_CVAR_DO

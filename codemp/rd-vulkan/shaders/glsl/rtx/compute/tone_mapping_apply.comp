@@ -39,7 +39,7 @@ layout(constant_id = 0) const uint spec_tone_mapping_hdr = 0;
 
 #include "../utils.glsl"
 
-#define GLOBAL_UBO_DESC_SET_IDX 0
+#define GLOBAL_UBO_DESC_SET_IDX 3
 #include "../global_ubo.h"
 
 #define GLOBAL_TEXTURES_DESC_SET_IDX 1
