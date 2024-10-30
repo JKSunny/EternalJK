@@ -79,14 +79,31 @@ References: \
 ### ImGui support 
 Press F1 to toggle input
 
-Dear ImGui: Bloat-free Graphical User interface for C++ with minimal dependencies<br />
+**Dear ImGui**: Bloat-free Graphical User interface for C++ with minimal dependencies<br />
 [Repository](https://github.com/ocornut/imgui) - 
 [License](https://github.com/ocornut/imgui/blob/master/LICENSE.txt)
 
-cimgui: Thin c-api wrapper for c++ Dear ImGui<br />
+**cimgui**: Thin c-api wrapper for c++ Dear ImGui<br />
 [Repository](https://github.com/cimgui/cimgui) - 
 [License](https://github.com/cimgui/cimgui/blob/docking_inter/LICENSE)
 
+**Legit profiler**: ImGui helper class for simple profiler histogram<br />
+[Repository](https://github.com/Raikiri/LegitProfiler) - 
+[License](https://github.com/Raikiri/LegitProfiler/blob/master/LICENSE.txt)
+
+**ImGuiColorTextEdit**: Syntax highlighting text editor for ImGui<br />
+[Repository](https://github.com/BalazsJako/ImGuiColorTextEdit) - 
+[License](https://github.com/BalazsJako/ImGuiColorTextEdit/blob/master/LICENSE)
+
+**ImNodeFlow**: Node-based editor/blueprints for ImGui<br />
+[Repository](https://github.com/Fattorino/ImNodeFlow) - 
+[License](https://github.com/Fattorino/ImNodeFlow/blob/master/LICENSE.txt)
+
+**NetRadiant-custom**: The open-source, cross-platform level editor for id Tech based games.<br />
+*- As Inspiration for auto-complete -*<br />
+[Commit](https://github.com/Garux/netradiant-custom/commit/9c2fbc9d1dd4029c0f76aec2830f991fcb2c259e) -
+[Repository](https://github.com/Garux/netradiant-custom/tree/master) -
+[License](https://github.com/Raikiri/LegitProfiler/blob/master/LICENSE.txt)
 ## Maintainers
 
 * [eternal](https://github.com/eternalcodes)

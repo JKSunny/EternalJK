@@ -732,7 +732,7 @@ typedef struct vk_tess_s {
 
 	VkDescriptorSet		uniform_descriptor;
 
-	VkDeviceSize		buf_offset[9];
+	VkDeviceSize		buf_offset[12];	// 10 is ok, bones & weights are ghoul2 vbo only anyway
 	VkDeviceSize		vbo_offset[12];
 
 	VkBuffer			curr_index_buffer;
@@ -1551,7 +1551,7 @@ void		vk_imgui_swapchain_restarted();
 void		vk_imgui_reload_shader_editor( qboolean close );
 int			vk_imgui_get_shader_editor_index( void );
 
-void		*R_GetImGuiContext( void );
+void		R_GetImGuiContext( void **context );
 uint64_t	R_GetImGuiTexture( qhandle_t hShader );
 
 // profiler

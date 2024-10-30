@@ -344,7 +344,7 @@ typedef struct uiImport_s {
 	void			(*R_ShaderNameFromIndex)				( char *name, int index );
 
 	// ImGui
-	void *			(*R_GetImGuiContext)					( void );
+	void 			(*R_GetImGuiContext)					( void **context );
 	uint64_t		(*R_GetImGuiTexture)					( qhandle_t hShader );
 
 	void			(*G2_ListModelSurfaces)					( void *ghlInfo );

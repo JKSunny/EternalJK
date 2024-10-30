@@ -579,7 +579,7 @@ typedef struct cgameImport_s {
 	qboolean		(*R_Language_IsAsian)					( void );
 	qboolean		(*R_Language_UsesSpaces)				( void );
 	int				(*R_LerpTag)							( orientation_t *tag,  qhandle_t model, int startFrame, int endFrame, float frac, const char *tagName );
-	void *			(*R_GetImGuiContext)					( void );	
+	void 			(*R_GetImGuiContext)					( void **context );	
 	uint64_t		(*R_GetImGuiTexture)					( qhandle_t hShader );	
 	int				(*R_LightForPoint)						( vec3_t point, vec3_t ambientLight, vec3_t directedLight, vec3_t lightDir );
 	void			(*R_LoadWorld)							( const char *name );

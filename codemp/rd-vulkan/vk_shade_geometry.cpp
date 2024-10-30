@@ -2200,7 +2200,8 @@ void RB_AddDrawItemIndexBinding( DrawItem &item )
 			// draw indexed indirect
 			if ( tess.multiDrawPrimitives > 1 ) 
 			{
-				uint32_t j, offset, *index;
+				uint32_t j, offset;
+				size_t *index;
 
 				item.indexedIndirect = qtrue;		// change type
 				item.draw.params.indexedIndirect.numDraws = tess.multiDrawPrimitives;
@@ -2209,11 +2210,10 @@ void RB_AddDrawItemIndexBinding( DrawItem &item )
 				{
 					VkDrawIndexedIndirectCommand indirectCmd = {};
 
-					index = ((uint32_t*)tess.multiDrawFirstIndex) + j;
-
+					index = (size_t*)tess.multiDrawFirstIndex + j;
 					indirectCmd.indexCount = tess.multiDrawNumIndexes[j];
 					indirectCmd.instanceCount = 1;
-					indirectCmd.firstIndex = *index;
+					indirectCmd.firstIndex = (uint32_t)(*index);
 					indirectCmd.vertexOffset = 0;
 					indirectCmd.firstInstance = 0;
 
@@ -2431,6 +2431,8 @@ void RB_StageIteratorGeneric( void )
 			pipeline = pStage->vk_pipeline[fog_stage];
 		}
 
+		Com_Memset( &def, 0, sizeof(Vk_Pipeline_Def) );
+
 		// for 2D flipped images
 		if ( backEnd.projection2D ) {
 			if ( !pStage->vk_2d_pipeline ) {
@@ -2441,7 +2443,6 @@ void RB_StageIteratorGeneric( void )
 				def.vk_light_flags = 0;
 				tess.xstages[stage]->vk_2d_pipeline = vk_find_pipeline_ext(0, &def, qfalse);
 			}
-
 
 			pipeline = pStage->vk_2d_pipeline;
 		}
@@ -2483,12 +2484,13 @@ void RB_StageIteratorGeneric( void )
 			def.vbo_ghoul2 = is_ghoul2_vbo;
 			def.vbo_mdv = is_mdv_vbo;
 
-			if ( !tess.vbo_world_index && !tess.vbo_model_index )
+			// sunny forgot why this is here.. @!&!%!
+			if ( backEnd.currentEntity != &tr.worldEntity && !tess.vbo_model_index )
 				def.vk_light_flags = 0;
 		
 			pipeline = vk_find_pipeline_ext( 0, &def, qfalse );
 		}
-	
+
 		if ( is_refraction ) 
 		{
 			// bind extracted color image copy / blit
@@ -2505,7 +2507,9 @@ void RB_StageIteratorGeneric( void )
 
 		// removed glow handling statement, this results in unnecessary glow pass binds?
 		{
-			if ( tess.vbo_world_index || tess.vbo_model_index )
+			qboolean has_cubemap = ( !vk.useFastLight && tr.numCubemaps && tess.cubemapIndex > 0) ? qtrue : qfalse;
+
+			if ( def.vk_light_flags )
 				vk_update_pbr_descriptor(6, vk.brdflut_image_descriptor);
 
 			if ( pStage->vk_pbr_flags & PBR_HAS_NORMALMAP )
@@ -2524,8 +2528,6 @@ void RB_StageIteratorGeneric( void )
 				uniform_global.specularScale[3] = 1.0f;
 				uniform_global.specularScale[1] = 0.5f;
 			}
-
-			qboolean has_cubemap = ( !vk.useFastLight && tr.numCubemaps && tess.cubemapIndex > 0) ? qtrue : qfalse;
 
 			if ( !has_cubemap || backEnd.viewParms.targetCube != nullptr )
 				vk_update_pbr_descriptor(9, tr.emptyCubemap->descriptor_set);
@@ -2574,10 +2576,8 @@ void RB_StageIteratorGeneric( void )
 					item.reset_uniform = qfalse;
 				}
 
-	
 				vk_push_uniform_global( &uniform_global );
 			}
-
 
 			RB_AddDrawItemIndexBinding( item );
 			RB_AddDrawItemVertexBinding( item );

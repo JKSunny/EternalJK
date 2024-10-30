@@ -257,27 +257,31 @@ void UI_igAssetCache( qboolean inGameLoad ) {
 }
 
 void UI_ImGuiInit( qboolean inGameLoad ) {
-	igContext = (ImGuiContext*)trap->R_GetImGuiContext();
+	trap->R_GetImGuiContext( (void**)&igContext );
 
+#if 0
 	if ( !igContext || !igContext->Initialized )
 		return;
 
 	igSetCurrentContext( igContext );
 
 	UI_igAssetCache( inGameLoad );
+#endif
 }
 
 void UI_ImGuiFrame( void ) {
+#if 0
 	if ( !igContext || !igContext->Initialized || !igContext->WithinFrameScope )
 		return;
 
-	/*ImGuiIO *io = igGetIO();
+	ImGuiIO *io = igGetIO();
 
 	igBegin( "ui_module",NULL,ImGuiWindowFlags_NoTitleBar );
     igText( "Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io->Framerate, io->Framerate );
 	igTestImages();		// Test asset rendering
 	igEnd();
-
+	/*
 	// Show loaded .menu files
 	UI_igDebugMenus();*/
+#endif
 }
