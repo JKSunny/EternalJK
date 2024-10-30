@@ -92,7 +92,7 @@ void vk_rtx_create_blas( accel_build_batch_t *batch,
 								 vkbuffer_t *vertex_buffer, VkDeviceAddress vertex_offset,
 								 vkbuffer_t *index_buffer, VkDeviceAddress index_offset,
 								 uint32_t num_vertices, uint32_t num_indices,
-								 vk_blas_t *blas, boolean is_dynamic, qboolean fast_build, 
+								 vk_blas_t *blas, qboolean is_dynamic, qboolean fast_build, 
 								 qboolean allow_update, qboolean instanced ) 
 {	
 	assert(batch->numBuilds < MAX_BATCH_ACCEL_BUILDS);
