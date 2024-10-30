@@ -34,11 +34,30 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define OT_NODE				( 8 )
 #define OT_SURFACE			( 16 )
 #define OT_ENTITY			( 32 )
+#ifdef USE_RTX
+#define OT_RTX_LIGHT_POLY	( 64 )
+#endif
 
 #define FILE_HASH_SIZE		1024
 
 // define if profiler starts or ends with WaitForTargetFPS frame time
 #define PROFILER_PREPEND_WAITMAXFPS
+
+#ifdef USE_RTX
+enum {
+#define IMG_DO( _handle, ... ) _handle##_RENDER_MODE_RTX,
+	LIST_RTX_RENDER_MODES
+#undef IMG_DO
+	NUM_BOUND_RENDER_MODES_RTX,    
+	// images bound to rtx and compute descriptors stop here
+
+    // reset to 0, using a different variable ( rtxImage and rtxDebug )
+    SHADOW_MAP_RENDER_MODE_RTX = 0,
+
+    NUM_UNBOUND_RENDER_MODES_RTX,
+    NUM_TOTAL_RENDER_MODES_RTX = NUM_BOUND_RENDER_MODES_RTX + NUM_UNBOUND_RENDER_MODES_RTX
+};
+#endif
 
 typedef struct {
 	qboolean	init;
@@ -50,6 +69,13 @@ typedef struct {
 	struct {
 		int				index;
 		VkDescriptorSet	image;	// attachment image the engine renders to
+
+#ifdef USE_RTX
+		struct {
+			VkDescriptorSet bound[2];		// rtx or compute descriptor bound images
+			VkDescriptorSet unbound[NUM_UNBOUND_RENDER_MODES_RTX];	// direct images
+#endif
+		} rtx_image;
 	} render_mode;
 
 	struct {
@@ -86,6 +112,12 @@ typedef struct {
 		void		*surf;
 	} surface;
 
+#ifdef USE_RTX
+	struct {
+		qboolean		active;
+		light_poly_t	*light;
+	} rtx_light_poly;
+#endif
 } vk_imgui_inspector_t;
 
 typedef struct {
@@ -185,6 +217,17 @@ static const char *render_modes[23] = {
 	"IBL Contribution"
 };
 
+#ifdef USE_RTX
+static const char *rtx_render_modes[] = { 
+	#define IMG_DO( _handle, _name, ... ) _name,
+		LIST_RTX_RENDER_MODES
+	#undef IMG_DO 
+	// images bound to rtx and compute descriptors stop here
+
+	"Shadowmap",
+};
+#endif
+
 // main
 void		vk_imgui_create_gui( void );
 
@@ -224,4 +267,18 @@ void		vk_imgui_reload_shader_editor( qboolean close );
 void		vk_imgui_draw_inspector_world_node( void );
 void		vk_imgui_draw_inspector_world_node_surface( void );
 void		vk_imgui_draw_objects_world_nodes( void );
+
+#ifdef USE_RTX
+// rtx
+void vk_imgui_bind_rtx_cvars( void );
+void vk_imgui_bind_rtx_draw_image( void );
+void vk_imgui_rtx_add_unbound_texture( VkDescriptorSet *image, VkImageView view, VkSampler sampler );
+
+void vk_imgui_draw_rtx_settings( void );
+void vk_imgui_draw_rtx_feedback( void );
+
+void vk_imgui_draw_inspector_rtx_light_poly( void );
+void vk_rtx_imgui_draw_objects_lights( void );
+#endif
+
 #endif

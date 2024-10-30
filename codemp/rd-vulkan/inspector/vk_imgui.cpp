@@ -45,6 +45,9 @@ void vk_imgui_clear_inspector( qboolean reset )
 	Com_Memset( &inspector.entity, 0, sizeof(inspector.entity) );
 	Com_Memset( &inspector.node, 0, sizeof(inspector.node) );
 	Com_Memset( &inspector.surface, 0, sizeof(inspector.surface) );
+#ifdef USE_RTX
+	Com_Memset( &inspector.rtx_light_poly, 0, sizeof(inspector.rtx_light_poly) );
+#endif
 }
 
 // handler to set/update ptrs and info for the current object selected
@@ -108,6 +111,14 @@ static void vk_imgui_selected_object_handler( void )
 				
 				break;
 			}
+#ifdef USE_RTX
+			case OT_RTX_LIGHT_POLY:
+			{
+				inspector.rtx_light_poly.active = qtrue;
+				inspector.rtx_light_poly.light = (light_poly_t*)inspector.selected.ptr;
+				break;
+			}
+#endif
 		}
 
 		inspector.selected.prev = inspector.selected.ptr;
@@ -137,6 +148,9 @@ static void vk_imgui_draw_objects( void )
 			//vk_imgui_draw_objects_nodes();
 			vk_imgui_draw_objects_entities();
 			vk_imgui_draw_objects_flares();
+#ifdef USE_RTX
+			vk_rtx_imgui_draw_objects_lights();
+#endif
 		}
 
 		vk_imgui_draw_objects_shaders();
@@ -181,6 +195,9 @@ static void vk_imgui_draw_inspector( void )
 		vk_imgui_draw_inspector_entity();
 		vk_imgui_draw_inspector_world_node();
 		vk_imgui_draw_inspector_world_node_surface();
+#ifdef USE_RTX
+		vk_imgui_draw_inspector_rtx_light_poly();
+#endif
 	}
 
 	vk_imgui_draw_inspector_shader();
@@ -368,9 +385,52 @@ static void vk_imgui_draw_viewport( void )
 	ImGui::PopStyleVar();
 
 	ImGui::SetCursorScreenPos( ImVec2( pos.x + region.x - 205.0f, pos.y + 4.0f ) );
-	vk_imgui_draw_render_mode( render_modes, IM_ARRAYSIZE( render_modes ) );
 
-	ImGui::Image( (ImU64)inspector.render_mode.image, { (float)gls.windowWidth, (float)gls.windowHeight } );
+#ifdef USE_RTX
+	if ( vk.rtxActive )  
+	{
+		uint32_t index;
+
+		vk_imgui_draw_render_mode( rtx_render_modes, NUM_TOTAL_RENDER_MODES_RTX );
+
+		if ( inspector.render_mode.index < NUM_BOUND_RENDER_MODES_RTX )
+		{
+			if ( inspector.render_mode.index > 0 )
+				index = 1; // FLAT_COLOR;
+			else 
+				index = 0; // TAA_OUTPUT + TONEMAPPING;
+
+			ImGui::Image( (ImU64)inspector.render_mode.rtx_image.bound[index], 
+				{ (float)gls.windowWidth, (float)gls.windowHeight } );
+		}
+
+		// unbound images in the rtx or compute descriptors will have to be drawn directly
+		else
+		{
+			VkDescriptorSet *image = &inspector.render_mode.rtx_image.unbound[SHADOW_MAP_RENDER_MODE_RTX];
+			if ( *image == NULL )
+			{
+				VkImageView shadow_image_view;
+				VkSampler shadow_sampler;
+				vk_rtx_get_god_rays_shadowmap( shadow_image_view, shadow_sampler );
+
+				vk_imgui_rtx_add_unbound_texture( image, shadow_image_view, shadow_sampler );
+			}
+
+			index = ( inspector.render_mode.index - NUM_BOUND_RENDER_MODES_RTX);
+
+			ImGui::Image( (ImU64)inspector.render_mode.rtx_image.unbound[index], 
+				{ (float)gls.windowWidth, (float)gls.windowHeight } );
+		}
+	}
+	else
+#endif
+	{
+		vk_imgui_draw_render_mode( render_modes, IM_ARRAYSIZE( render_modes ) );
+
+		ImGui::Image( (ImU64)inspector.render_mode.image, { (float)gls.windowWidth, (float)gls.windowHeight } );
+	}
+
 	ImGui::End();
 }
 
@@ -380,6 +440,9 @@ static void vk_imgui_draw_viewport( void )
 void vk_imgui_swapchain_restarted( void )
 {
 	vk_imgui_bind_game_color_image();
+#ifdef USE_RTX
+	vk_imgui_bind_rtx_draw_image();
+#endif
 
 	glConfig.vidWidth = (int)windows.viewport.size.x;
     glConfig.vidHeight = (int)windows.viewport.size.y - 46.0f;
@@ -424,6 +487,10 @@ void vk_imgui_create_gui( void )
 
 		// render image
 		vk_imgui_bind_game_color_image();
+	#ifdef USE_RTX
+		vk_imgui_bind_rtx_draw_image();
+		vk_imgui_bind_rtx_cvars();
+	#endif
 
 		inspector.init = qtrue;
 	}
@@ -437,6 +504,10 @@ void vk_imgui_create_gui( void )
 	vk_imgui_draw_shader_editor();
 	vk_imgui_draw_profiler();
 	vk_imgui_draw_viewport();
+#ifdef USE_RTX
+	vk_imgui_draw_rtx_settings();
+	vk_imgui_draw_rtx_feedback();
+#endif
 
 	ImGui::End();
 }

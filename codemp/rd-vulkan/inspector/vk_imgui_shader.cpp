@@ -464,6 +464,54 @@ static void vk_imgui_draw_inspector_shader_visualize( int index ) {
 		return;
 	}
 
+#ifdef USE_RTX
+	// dirty hack to quickly test textures
+	{
+		rtx_material_t *mat;
+
+
+		mat = vk_rtx_get_material( (uint32_t)sh->index );
+
+
+		ImGuiBeginGroupPanel( va(ICON_FA_LAYER_GROUP " RTX material"), ImVec2( -1.0f, 0.0f ) );
+
+		ImGui::GetWindowDrawList()->ChannelsSplit( 3 );
+		ImGui::GetWindowDrawList()->ChannelsSetCurrent( 1 );
+
+		ImGui::PushItemWidth( ImGui::GetContentRegionAvail().x );
+		ImGui::BeginGroup();
+		ImGui::Dummy( ImVec2( ImGui::GetContentRegionAvail().x-10.0f, 0.0f ) );
+
+		ImVec2 padding = { 20.0f, 10.0f };
+		ImVec2 p0 = ImGui::GetCursorScreenPos();
+		ImGui::SetCursorScreenPos( p0 + padding );
+
+		{
+			ImGui::BeginGroup();
+			ImGui::Dummy( ImVec2( 0.0f, 1.0f ) );
+
+			vk_imgui_draw_inspector_shader_visualize_texture( tr.images[mat->albedo], va( "Albedo: %d", mat->albedo ) );
+
+			vk_imgui_draw_inspector_shader_visualize_texture( tr.images[mat->emissive], va( "Emissive: %d", mat->emissive ) );
+
+			ImGui::EndGroup();
+		}
+
+		ImGui::EndGroup();
+		ImVec2 p1 = ImGui::GetItemRectMax() + padding;
+			
+		ImGui::Dummy( ImVec2( 0.0f, padding.y ) );
+		p0.x += 10.0f;
+		p1.x -= 20.0f;
+			
+		ImGui::GetWindowDrawList()->ChannelsSetCurrent(0);
+		ImGui::GetWindowDrawList()->AddRectFilled( p0, p1, RGBA_LE(0x0f0f0fffu), 5.0f );
+		ImGui::GetWindowDrawList()->ChannelsMerge();
+
+		ImGuiEndGroupPanel( color_palette[0] );
+	}
+#endif
+
 	for ( i = 0; i < MAX_SHADER_STAGES; i++ ) 
 	{
 		pStage = sh->stages[i];

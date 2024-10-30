@@ -74,6 +74,38 @@ void vk_imgui_bind_game_color_image( void )
 	inspector.render_mode.image = ImGui_ImplVulkan_AddTexture( sampler, vk.gamma_image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL );
 }
 
+#ifdef USE_RTX
+void vk_imgui_rtx_add_unbound_texture( VkDescriptorSet *image, VkImageView view, VkSampler sampler )
+{
+	if ( *image != NULL )
+		return;
+
+	vk_rtx_get_god_rays_shadowmap( view, sampler );
+	*image = ImGui_ImplVulkan_AddTexture( sampler, view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL );
+}
+
+void vk_imgui_bind_rtx_draw_image( void )
+{
+	if ( !vk.rtxActive ) 
+		return;
+
+	uint32_t i, j;
+	Vk_Sampler_Def sd;
+	VkSampler	sampler;
+
+	Com_Memset(&sd, 0, sizeof(sd));
+	sd.gl_mag_filter = sd.gl_min_filter = vk.blitFilter;
+	sd.address_mode = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	sd.max_lod_1_0 = qtrue;
+	sd.noAnisotropy = qtrue;
+	
+	sampler = vk_find_sampler( &sd );
+
+	inspector.render_mode.rtx_image.bound[0] = inspector.render_mode.image;	// blitted to color_image
+	inspector.render_mode.rtx_image.bound[1] = ImGui_ImplVulkan_AddTexture( sampler, vk.img_rtx[RTX_IMG_FLAT_COLOR].view, VK_IMAGE_LAYOUT_GENERAL );
+}
+#endif
+
 static void vk_imgui_dark_theme( void )
 {
 	ImVec4* colors = ImGui::GetStyle().Colors;
@@ -265,6 +297,18 @@ void vk_imgui_shutdown( void )
 	Com_Memset( &imguiGlobal, 0, sizeof(imguiGlobal) );
 
 	ImGui_ImplVulkan_RemoveTexture( inspector.render_mode.image );
+
+#ifdef USE_RTX
+	uint32_t i;
+
+	ImGui_ImplVulkan_RemoveTexture( inspector.render_mode.rtx_image.bound[0] );
+	ImGui_ImplVulkan_RemoveTexture( inspector.render_mode.rtx_image.bound[1] );
+
+	for ( i = 0; i < NUM_UNBOUND_RENDER_MODES_RTX; i++ ) 
+	{
+		ImGui_ImplVulkan_RemoveTexture( inspector.render_mode.rtx_image.unbound[i] );
+	}	
+#endif
 }
 
 static void vk_imgui_get_input_state( void )
