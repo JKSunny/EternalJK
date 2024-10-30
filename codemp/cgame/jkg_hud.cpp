@@ -832,6 +832,9 @@ static void CG_DrawTopLeftHUD ( menuDef_t *menuHUD, vec4_t opacity )
 		CG_DrawForcePower(menuHUD);
 		JKG_DrawFiringMode(menuHUD);
 		JKG_DrawAmmoType(menuHUD);
+		playerState_t* ps;
+		ps = &cg.predictedPlayerState;
+		static vec4_t fullcolor = { 0.2f, 1, 0.3f, 1 };
 
 		focusItem = Menu_FindItemByName(menuHUD, "frame");
 		if (focusItem)
@@ -849,7 +852,16 @@ static void CG_DrawTopLeftHUD ( menuDef_t *menuHUD, vec4_t opacity )
 		focusItem = Menu_FindItemByName(menuHUD, "hudicon_shield");
 		if (focusItem)
 		{
-			trap->R_SetColor(opacity);	
+			
+			
+			int	shield = ps->stats[STAT_SHIELD];
+			int maxShield = ps->stats[STAT_MAX_SHIELD];
+
+			if(shield > 0 && shield >= maxShield)
+				trap->R_SetColor(fullcolor);
+			else
+				trap->R_SetColor(opacity);
+			
 			CG_DrawPic( 
 				focusItem->window.rect.x, 
 				focusItem->window.rect.y, 
@@ -862,7 +874,15 @@ static void CG_DrawTopLeftHUD ( menuDef_t *menuHUD, vec4_t opacity )
 		focusItem = Menu_FindItemByName(menuHUD, "hudicon_health");
 		if (focusItem)
 		{
-			trap->R_SetColor(opacity);	
+			
+			int	hp = ps->stats[STAT_HEALTH];
+			int maxhp = ps->stats[STAT_MAX_HEALTH];
+
+			if (hp > 0 && hp >= maxhp)
+				trap->R_SetColor(fullcolor);
+			else
+				trap->R_SetColor(opacity);
+
 			CG_DrawPic( 
 				focusItem->window.rect.x, 
 				focusItem->window.rect.y, 
@@ -875,7 +895,14 @@ static void CG_DrawTopLeftHUD ( menuDef_t *menuHUD, vec4_t opacity )
 		focusItem = Menu_FindItemByName(menuHUD, "hudicon_stamina");
 		if (focusItem)
 		{
-			trap->R_SetColor(opacity);	
+			int	stamina = ps->forcePower;
+			int maxstamina = ps->stats[STAT_MAX_STAMINA];
+
+			if (stamina > 0 && stamina >= maxstamina)
+				trap->R_SetColor(fullcolor);
+			else
+				trap->R_SetColor(opacity);
+
 			CG_DrawPic( 
 				focusItem->window.rect.x, 
 				focusItem->window.rect.y, 
