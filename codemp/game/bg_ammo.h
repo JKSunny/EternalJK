@@ -67,6 +67,8 @@ struct ammo_t {
 		complexAmmoOverride<double> knockback;
 		complexAmmoOverride<double> speed;
 		complexAmmoOverride<double> armorPenetration;
+		complexAmmoOverride<double> heatGenerated;
+
 		std::vector<complexAmmoBuffOverride> buffs;
 
 		std::pair<qboolean, int> useGravity;

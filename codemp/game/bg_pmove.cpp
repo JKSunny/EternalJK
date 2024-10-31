@@ -5377,7 +5377,9 @@ static void PM_Weapon(void)
 	}
 
 	// Increase heat
-	pm->ps->heat += weaponData->firemodes[pm->ps->firingMode].heatGenerated;
+	double heatToAdd = weaponData->firemodes[pm->ps->firingMode].heatGenerated;
+	JKG_ApplyAmmoOverride(heatToAdd, ammoTable[pm->ps->ammoType].overrides.heatGenerated);
+	pm->ps->heat += static_cast<float>(heatToAdd);
 
 	// Warn that we're about to overheat
 	if (pm->ps->heat >= weaponData->firemodes[pm->ps->firingMode].heatThreshold)

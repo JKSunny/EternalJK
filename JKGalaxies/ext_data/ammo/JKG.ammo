@@ -196,6 +196,9 @@
 			"damage": {
 				"multiply": 1.35
 			},
+			"heatGenerated": {
+				"multiply": 1.25
+			},
 			"visuals": {
 				"projectile": {
 					"hit": "Blasters/purple_flesh_impact",
