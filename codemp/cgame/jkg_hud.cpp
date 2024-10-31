@@ -824,7 +824,6 @@ static void CG_DrawTopLeftHUD ( menuDef_t *menuHUD, vec4_t opacity )
 			);			
 	}*/
 
-
 	if (cg.predictedPlayerState.pm_type != PM_SPECTATOR)
 	{
 		CG_DrawShield(menuHUD);
@@ -832,9 +831,10 @@ static void CG_DrawTopLeftHUD ( menuDef_t *menuHUD, vec4_t opacity )
 		CG_DrawForcePower(menuHUD);
 		JKG_DrawFiringMode(menuHUD);
 		JKG_DrawAmmoType(menuHUD);
+
 		playerState_t* ps;
 		ps = &cg.predictedPlayerState;
-		static vec4_t fullcolor = { 0.2f, 1, 0.3f, 1 };
+		static vec4_t fullcolor = { 0.2f, 1, 0.3f, 1 };		//use this color when the resource is full (greenish)
 
 		focusItem = Menu_FindItemByName(menuHUD, "frame");
 		if (focusItem)
@@ -852,8 +852,6 @@ static void CG_DrawTopLeftHUD ( menuDef_t *menuHUD, vec4_t opacity )
 		focusItem = Menu_FindItemByName(menuHUD, "hudicon_shield");
 		if (focusItem)
 		{
-			
-			
 			int	shield = ps->stats[STAT_SHIELD];
 			int maxShield = ps->stats[STAT_MAX_SHIELD];
 
@@ -874,7 +872,6 @@ static void CG_DrawTopLeftHUD ( menuDef_t *menuHUD, vec4_t opacity )
 		focusItem = Menu_FindItemByName(menuHUD, "hudicon_health");
 		if (focusItem)
 		{
-			
 			int	hp = ps->stats[STAT_HEALTH];
 			int maxhp = ps->stats[STAT_MAX_HEALTH];
 
