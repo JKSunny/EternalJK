@@ -4981,7 +4981,9 @@ static void PM_Weapon(void)
 		{
 			if (jkg_didGrenadeCook[pm->ps->clientNum])
 			{
+#ifdef _GAME
 				JKG_DoubleCheckWeaponChange(&pm->cmd, pm->ps); //change weapon if no more grenades in that item stack left
+#endif
 			}
 			else
 			{
