@@ -100,14 +100,6 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 	VERTEX_BUFFER_LIST_DO( uint32_t, 1,					materials_instanced,		(MAX_PRIM_MODEL) ) \
 	VERTEX_BUFFER_LIST_DO( uint32_t, 1,					instance_id_instanced,		(MAX_PRIM_MODEL) ) \
 
-#define LIGHT_BUFFER_LIST \
-	VERTEX_BUFFER_LIST_DO( uint32_t, MATERIAL_UINTS,	material_table,				(MAX_PBR_MATERIALS)		) \
-	VERTEX_BUFFER_LIST_DO( float,    4,					light_polys,				(MAX_LIGHT_POLYS * LIGHT_POLY_VEC4S) ) \
-	VERTEX_BUFFER_LIST_DO( uint32_t, 1,					light_list_offsets,			(MAX_LIGHT_LISTS     )	) \
-	VERTEX_BUFFER_LIST_DO( uint32_t, 1,					light_list_lights,			(MAX_LIGHT_LIST_NODES)	) \
-	VERTEX_BUFFER_LIST_DO( float,    1,					light_styles,				(MAX_LIGHT_STYLES    )	) \
-	VERTEX_BUFFER_LIST_DO( uint32_t, 1,					cluster_debug_mask,			(MAX_LIGHT_LISTS / 32)	) \
-
 // sample_light_counts: light count in cluster used for sampling (may differ from actual light count!)
 
 #define VERTEX_BUFFER_LIST_DO( type, dim, name, size ) \
@@ -118,11 +110,15 @@ struct ModelDynamicVertexBuffer
 	MODEL_DYNAMIC_VERTEX_BUFFER_LIST
 };
 
-struct LightBuffer
-{
-	LIGHT_BUFFER_LIST
-};
-
+STRUCT ( 
+	UINT	( material_table[MAX_PBR_MATERIALS * MATERIAL_UINTS] )
+	VEC4	( light_polys[MAX_LIGHT_POLYS * LIGHT_POLY_VEC4S] )
+	UINT	( light_list_offsets[MAX_LIGHT_LISTS] )
+	UINT	( light_list_lights[MAX_LIGHT_LIST_NODES] )
+	FLOAT	( light_styles[MAX_LIGHT_STYLES] )
+	UINT	( cluster_debug_mask[MAX_LIGHT_LISTS / 32] )
+, LightBuffer )
+// UINT	( sky_visibility[MAX_LIGHT_LISTS / 32] )
 
 #undef VERTEX_BUFFER_LIST_DO
 
@@ -239,7 +235,7 @@ layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_CLUSTER_WORLD
 
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_READBACK_BUFFER )			buffer READBACK_BUFFER { ReadbackBuffer readback; };
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_DYNAMIC_VERTEX )				buffer MODEL_DYNAMIC_VERTEX_BUFFER { ModelDynamicVertexBuffer vbo_model_dynamic; };
-layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_LIGHT_BUFFER )				buffer LIGHT_BUFFER { LightBuffer lbo; };
+layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_LIGHT_BUFFER )				buffer LIGHT_BUFFER { LightBuffer light_buffer; };
 
 /* History of light count in cluster, used for sampling.
  * This is used to make gradient estimation work correctly:
@@ -415,6 +411,8 @@ struct Triangle {
 	uint tex1;
 	uint cluster;
 	uint material_id;
+	float  emissive_factor;
+	//float  alpha;
 };
 
 Triangle
@@ -442,9 +440,8 @@ get_instanced_triangle( uint prim_id )
 	t.tex_coords0[2] = get_tex_coords_instanced(prim_id * 3 + 2);
 
 	t.material_id = get_materials_instanced(prim_id);
-
 	t.cluster = get_clusters_instanced(prim_id);
-
+	t.emissive_factor = 1.0;
 	//t.alpha = 1.0;
 
 	return t;
@@ -485,7 +482,7 @@ store_instanced_triangle(Triangle t, uint instance_id, uint prim_id)
 #endif
 
 uint get_material_uint( in uint material_index, in uint offset ) {
-	return lbo.material_table[nonuniformEXT(material_index * MATERIAL_UINTS + offset)];
+	return light_buffer.material_table[nonuniformEXT(material_index * MATERIAL_UINTS + offset)];
 	//return lbo.material_table[nonuniformEXT(idx)] & 0xffff;
 	//return (lbo.material_table[nonuniformEXT(idx)] + 0) >> 16;
 }
@@ -737,6 +734,8 @@ Triangle get_bsp_triangle( in uint instance_id, in uint prim_id )
 			t.cluster = 0;
 			t.material_id = 0;
 	}
+
+	t.emissive_factor = 1.0;
 
 	return t;
 }

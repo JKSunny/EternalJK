@@ -344,7 +344,7 @@ static void copy_bsp_lights( world_t *world, LightBuffer *lbo )
 }
 
 VkResult vkpt_light_buffer_upload_to_staging( const uint32_t idx, qboolean render_world, 
-	world_t *world, int num_model_lights, const float* sky_radiance )
+	world_t *world, int num_model_lights, light_poly_t *transformed_model_lights, const float* sky_radiance )
 {
 	vkbuffer_t *staging = vk.buf_light_staging + idx;
 
@@ -375,7 +375,7 @@ VkResult vkpt_light_buffer_upload_to_staging( const uint32_t idx, qboolean rende
 		for ( int nlight = 0; nlight < world->num_light_polys; nlight++ )
 		{
 			light_poly_t* light = world->light_polys + nlight;
-			float* vblight = lbo->light_polys + nlight * (LIGHT_POLY_VEC4S * 4);
+			float* vblight = *(lbo->light_polys + nlight * LIGHT_POLY_VEC4S);
 			copy_light(light, vblight, sky_radiance);
 		}
 	}

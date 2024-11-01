@@ -99,24 +99,6 @@ void vk_rtx_clear_material( uint32_t index )
 	return &rtx_materials[index];
 }
 
-qboolean RB_IsLight(shader_t *shader) 
-{
-	if (tess.numIndexes > 12) {
-		if(!strstr(shader->name, "proto_light_2k") && !strstr(shader->name, "gothic_light3_2K")) return qfalse;
-	}
-	if (strstr(shader->name, "wsupprt1_12") || strstr(shader->name, "scrolllight") || strstr(shader->name, "runway")) return qfalse;
-
-	if (strstr(shader->name, "base_light") || strstr(shader->name, "gothic_light") || strstr(shader->name, "lamplight_y")) { // all lamp textures
-		return qtrue;
-	}
-	
-	if (strstr(shader->name, "flame")) {
-		return qtrue;
-	}
-	
-	return qfalse;
-}
-
 static qboolean RB_NeedsColor() {
 
 	for (int i = 0; i < MAX_SHADER_STAGES; i++) {
@@ -181,14 +163,16 @@ uint32_t vk_rtx_find_emissive_texture( const shader_t *shader )
 
 	for ( i = 0; i < MAX_RTX_STAGES; i++ ) 
 	{
-		if ( !shader->stages[i] || !shader->stages[i]->active || !shader->stages[i]->glow )
+		shaderStage_t *pStage = shader->stages[i];
+
+		if ( !pStage || !pStage->active || !pStage->glow )
 			continue;
 
 		for ( j = 0; j < NUM_TEXTURE_BUNDLES; j++ ) 
 		{
-			if ( shader->stages[i]->bundle[j].glow ) {
-				//Com_Printf("found glow texture: %d = %s", shader->stages[i]->bundle[j].image[0]->index, shader->stages[i]->bundle[j].image[0]->imgName );
-				return shader->stages[i]->bundle[j].image[0]->index;
+			if ( pStage->bundle[j].glow ) {
+				//Com_Printf("found glow texture: %d = %s", pStage->bundle[j].image[0]->index, pStage->bundle[j].image[0]->imgName );
+				return pStage->bundle[j].image[0]->index;
 			}
 		}
 	}
@@ -201,7 +185,7 @@ uint32_t RB_GetMaterial( shader_t *shader )
 	uint32_t material = 0;
 	material = MATERIAL_KIND_REGULAR;
 
-	if ( RB_IsLight( shader ) )
+	if ( vk_rtx_find_emissive_texture( shader ) )
 		material |= MATERIAL_FLAG_LIGHT;
 	
 	if ( strstr( shader->name, "glass" ) )
@@ -274,6 +258,9 @@ uint32_t RB_GetNextTexEncoded( shader_t *shader, int stage )
 void vk_rtx_update_shader_material( shader_t *shader, shader_t *updatedShader )
 {
 	uint32_t index, flags;
+
+	if ( !vk.rtxActive )
+		return;
 
 	// clear material first so mat->uploaded[idx] is reset reupload in the next frame in
 	// vk_rtx_upload_materials() 

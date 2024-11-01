@@ -25,10 +25,10 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 LightPolygon
 get_light_polygon(uint index)
 {
-	vec4 p0 = vec4( lbo.light_polys[ index * LIGHT_POLY_VEC4S + 0 ] );
-	vec4 p1 = vec4( lbo.light_polys[ index * LIGHT_POLY_VEC4S + 1 ] );
-	vec4 p2 = vec4( lbo.light_polys[ index * LIGHT_POLY_VEC4S + 2 ] );
-	vec4 p3 = vec4( lbo.light_polys[ index * LIGHT_POLY_VEC4S + 3 ] );
+	vec4 p0 = vec4( light_buffer.light_polys[ index * LIGHT_POLY_VEC4S + 0 ] );
+	vec4 p1 = vec4( light_buffer.light_polys[ index * LIGHT_POLY_VEC4S + 1 ] );
+	vec4 p2 = vec4( light_buffer.light_polys[ index * LIGHT_POLY_VEC4S + 2 ] );
+	vec4 p3 = vec4( light_buffer.light_polys[ index * LIGHT_POLY_VEC4S + 3 ] );
 
 	LightPolygon light;
 
@@ -228,8 +228,8 @@ sample_polygonal_lights(
 	if(list_idx == ~0u)
 		return;
 
-	uint list_start = lbo.light_list_offsets[list_idx];
-	uint list_end   = lbo.light_list_offsets[list_idx + 1];
+	uint list_start = light_buffer.light_list_offsets[list_idx];
+	uint list_end   = light_buffer.light_list_offsets[list_idx + 1];
 	/* The light count we base light selection on may differ from the current count
 	 * to avoid gradient estimation breaking (see comment on light_counts_history).
 	 * Obtain the frame number for the historical count from the RNG seed
@@ -259,7 +259,7 @@ sample_polygonal_lights(
 			continue;
 		}
 
-		uint current_idx = lbo.light_list_lights[n_idx];
+		uint current_idx = light_buffer.light_list_lights[n_idx];
 
 		// In case of polygon light overflow, the host code will still populate the light lists
 		// with invalid indices. Skip those lights here, so they have pdf=0 and will not be selected.
@@ -349,7 +349,7 @@ sample_polygonal_lights(
 
 	// assert: current_idx >= 0?
 	if (current_idx >= 0) {
-		current_idx = int(lbo.light_list_lights[current_idx]);
+		current_idx = int(light_buffer.light_list_lights[current_idx]);
 
 		LightPolygon light = get_light_polygon(current_idx);
 

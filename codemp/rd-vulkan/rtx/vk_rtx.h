@@ -413,7 +413,7 @@ void		VK_CreateAttributeBuffer( vkbuffer_t *buffer, VkDeviceSize size, VkBufferU
 void		vk_rtx_upload_buffer_data_offset( vkbuffer_t *buffer, VkDeviceSize offset, VkDeviceSize size, const byte *data );
 void		vk_rtx_upload_buffer_data( vkbuffer_t *buffer, const byte *data );
 VkResult	vkpt_light_buffer_upload_to_staging( const uint32_t idx, qboolean render_world, 
-												 world_t *world, int num_model_lights, const float* sky_radiance );
+												 world_t *world, int num_model_lights, light_poly_t *transformed_model_lights, const float* sky_radiance );
 VkResult	vk_rtx_readback( ReadbackBuffer *dst );
 VkResult	vkpt_light_buffers_create( world_t &world );
 VkResult	vkpt_light_buffers_destroy( void );
@@ -478,6 +478,7 @@ VkResult	vk_rtx_upload_materials( const uint32_t idx, LightBuffer *lbo );
 void		vk_rtx_create_image( const char *name, vkimage_t *image, uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage, uint32_t mipLevels );
 void		vk_rtx_create_cubemap( vkimage_t *image, uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage, uint32_t mipLevels );
 void		vk_rtx_upload_image_data( vkimage_t *image, uint32_t width, uint32_t height, const uint8_t *pixels, uint32_t bytes_per_pixel, uint32_t mipLevel, uint32_t arrayLayer );
+void		vk_rtx_extract_emissive_texture_info( image_t *image );
 void		vk_rtx_create_images( void );
 void		vk_rtx_initialize_images( void );
 void		vk_rtx_destroy_image( vkimage_t *image );

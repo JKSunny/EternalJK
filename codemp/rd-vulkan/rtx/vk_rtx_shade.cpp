@@ -36,7 +36,10 @@ static int world_entity_ids[2][MAX_REFENTITIES];
 static int model_entity_id_count[2];
 static int world_entity_id_count[2];
 
+#define MAX_MODEL_LIGHTS 16384
 static int			num_model_lights;
+static light_poly_t model_lights[MAX_MODEL_LIGHTS];
+
 static qboolean		temporal_frame_valid = qfalse;
 
 static vec3_t avg_envmap_color = { 0.0, 0.0, 0.0 };
@@ -1487,7 +1490,7 @@ void vk_rtx_begin_scene( trRefdef_t *refdef, drawSurf_t *drawSurfs, int numDrawS
 	vec3_t sky_radiance;
 	VectorScale( avg_envmap_color, ubo->pt_env_scale, sky_radiance );
 
-	vkpt_light_buffer_upload_to_staging( idx, render_world, tr.world, num_model_lights, sky_radiance );
+	vkpt_light_buffer_upload_to_staging( idx, render_world, tr.world, num_model_lights, model_lights, sky_radiance );
 
 	float shadowmap_view_proj[16];
 	float shadowmap_depth_scale;

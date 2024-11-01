@@ -5141,6 +5141,16 @@ shader_t *GeneratePermanentShader( )
 		hashTable[hash] = newShader;
 	}
 
+#ifdef USE_RTX
+	if ( vk.rtxActive )
+	{
+		uint32_t emissive = vk_rtx_find_emissive_texture( newShader );
+
+		if ( emissive && !tr.images[emissive]->processing_complete )
+			vk_rtx_extract_emissive_texture_info( tr.images[emissive] );
+	}
+#endif
+
 	return newShader;
 }
 

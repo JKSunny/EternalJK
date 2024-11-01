@@ -92,6 +92,83 @@ static void R_LoadImage16( const char *name, byte **pic, int *width, int *height
 		LoadPNG16( name, pic, width, height );
 }
 
+static inline float decode_srgb(byte pix)
+{
+	float x = (float)pix / 255.f;
+	
+	if (x < 0.04045f)
+		return x / 12.92f;
+
+	return powf((x + 0.055f) / 1.055f, 2.4f);
+}
+
+void vk_rtx_extract_emissive_texture_info( image_t *image )
+{
+	// sunny
+	// doesnt work with texture compression yet - VK_FORMAT_BC3_UNORM_BLOCK
+	if ( image->processing_complete )
+		return;
+
+	int w = image->uploadWidth;
+	int h = image->uploadHeight;
+
+	byte* current_pixel = image->pix_data;
+	vec3_t emissive_color;
+	VectorClear(emissive_color);
+
+	int min_x = w;
+	int max_x = -1;
+	int min_y = h;
+	int max_y = -1;
+
+	for (int y = 0; y < h; y++) {
+		for (int x = 0; x < w; x++) {
+			if(current_pixel[0] + current_pixel[1] + current_pixel[2] > 0)
+			{
+				vec3_t color;
+				color[0] = decode_srgb(current_pixel[0]);
+				color[1] = decode_srgb(current_pixel[1]);
+				color[2] = decode_srgb(current_pixel[2]);
+
+				color[0] = MAX(0.f, color[0] + EMISSIVE_TRANSFORM_BIAS);
+				color[1] = MAX(0.f, color[1] + EMISSIVE_TRANSFORM_BIAS);
+				color[2] = MAX(0.f, color[2] + EMISSIVE_TRANSFORM_BIAS);
+
+				VectorAdd(emissive_color, color, emissive_color);
+
+				min_x = MIN(min_x, x);
+				min_y = MIN(min_y, y);
+				max_x = MAX(max_x, x);
+				max_y = MAX(max_y, y);
+			}
+			
+			current_pixel += 4;
+		}
+	}
+
+	if (min_x <= max_x && min_y <= max_y)
+	{
+		float normalization = 1.f / (float)((max_x - min_x + 1) * (max_y - min_y + 1));
+		VectorScale(emissive_color, normalization, image->light_color);
+	}
+	else
+	{
+		VectorSet(image->light_color, 0.f, 0.f, 0.f);
+	}
+
+	image->min_light_texcoord[0] = (float)min_x / (float)w;
+	image->min_light_texcoord[1] = (float)min_y / (float)h;
+	image->max_light_texcoord[0] = (float)(max_x + 1) / (float)w;
+	image->max_light_texcoord[1] = (float)(max_y + 1) / (float)h;
+
+	image->entire_texture_emissive = (min_x == 0) && (min_y == 0) && (max_x == w - 1) && (max_y == h - 1);
+
+	image->processing_complete = true;
+
+	// shouldnt image->pix_data be freed now?
+	ri.Hunk_FreeTempMemory( image->pix_data );
+}
+
 static void vk_rtx_copy_buffer_to_image(vkimage_t* image, uint32_t width, uint32_t height, VkBuffer *buffer, uint32_t mipLevel, uint32_t arrayLayer)
 {
 	VkCommandBuffer command_buffer;

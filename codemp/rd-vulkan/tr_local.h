@@ -292,6 +292,12 @@ typedef struct image_s {
 	VkDescriptorSet			descriptor_set;
 #ifdef USE_RTX
 	VkSampler				sampler;
+    byte					*pix_data;
+    vec3_t					light_color; // use this color if this is a light source
+	vec2_t					min_light_texcoord;
+	vec2_t					max_light_texcoord;
+	bool					entire_texture_emissive;
+	bool					processing_complete;
 #endif
 	qboolean				isLightmap;
 	uint32_t				mipLevels;		// gl texture binding
@@ -1331,6 +1337,7 @@ typedef struct light_poly_s {
 	void	*material;
 	int		cluster;
 	int		style;
+	float emissive_factor;
 } light_poly_t;
 #endif
 

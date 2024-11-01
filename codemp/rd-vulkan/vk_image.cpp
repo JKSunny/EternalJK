@@ -835,6 +835,11 @@ void vk_upload_image_data( image_t *image, int x, int y, int width,
 		buf = vk_resample_image_data( image->internalFormat, pixels, size, &bpp );
 	}
 
+#ifdef USE_RTX
+	image->pix_data = (byte *)ri.Hunk_AllocateTempMemory(sizeof(byte) * 4 * width * height);
+	Com_Memcpy( image->pix_data, pixels, sizeof(byte) * 4 * width * height );
+#endif
+
 	while (qtrue) {
 		Com_Memset(&region, 0, sizeof(region));
 		region.bufferOffset = buffer_size;

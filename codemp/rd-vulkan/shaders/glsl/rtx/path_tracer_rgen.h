@@ -442,10 +442,10 @@ get_direct_illumination(
 	specular = vec3(0);
 
 	vec3 pos_on_light_polygonal;
-	vec3 pos_on_light_spherical;
+	vec3 pos_on_light_dynamic;
 
 	vec3 contrib_polygonal = vec3(0);
-	vec3 contrib_spherical = vec3(0);
+	vec3 contrib_dynamic = vec3(0);
 
 	float alpha = square(roughness);
 	float phong_exp = RoughnessSquareToSpecPower(alpha);
@@ -498,28 +498,28 @@ get_direct_illumination(
 			normal,
 			geo_normal,
 			max_solid_angle,
-			pos_on_light_spherical,
-			contrib_spherical,
+			pos_on_light_dynamic,
+			contrib_dynamic,
 			rng);
 #endif
 	}
 
 	float spec_polygonal = phong(normal, normalize(pos_on_light_polygonal - position), view_direction, phong_exp) * phong_scale;
-	float spec_spherical = phong(normal, normalize(pos_on_light_spherical - position), view_direction, phong_exp) * phong_scale;
+	float spec_dynamic = phong(normal, normalize(pos_on_light_dynamic - position), view_direction, phong_exp) * phong_scale;
 
 	float l_polygonal  = luminance(abs(contrib_polygonal)) * mix(1, spec_polygonal, phong_weight);
-	float l_spherical = luminance(abs(contrib_spherical)) * mix(1, spec_spherical, phong_weight);
-	float l_sum = l_polygonal + l_spherical;
+	float l_dynamic = luminance(abs(contrib_dynamic)) * mix(1, spec_dynamic, phong_weight);
+	float l_sum = l_polygonal + l_dynamic;
 
 	bool null_light = (l_sum == 0);
 
-	float w = null_light ? 0.5 : l_polygonal / (l_polygonal + l_spherical);
+	float w = null_light ? 0.5 : l_polygonal / (l_polygonal + l_dynamic);
 
 	float rng2 = get_rng(RNG_NEE_LIGHT_TYPE(bounce));
 	is_polygonal = (rng2 < w);
 	vis = is_polygonal ? (1 / w) : (1 / (1 - w));
-	vec3 pos_on_light = null_light ? position : (is_polygonal ? pos_on_light_polygonal : pos_on_light_spherical);
-	vec3 contrib = is_polygonal ? contrib_polygonal : contrib_spherical;
+	vec3 pos_on_light = null_light ? position : (is_polygonal ? pos_on_light_polygonal : pos_on_light_dynamic);
+	vec3 contrib = is_polygonal ? contrib_polygonal : contrib_dynamic;
 
 	Ray shadow_ray = get_shadow_ray(position - view_direction * 0.01, pos_on_light, 0);
 	
@@ -713,11 +713,11 @@ sample_emissive_texture(uint material_id, MaterialInfo minfo, vec2 tex_coord, ve
 	return vec3(0);
 }
 
-#if 0 // unused
 vec3 get_emissive_shell(uint material_id, uint shell)
 {
 	vec3 c = vec3(0);
 
+#if 0
 	if((shell & SHELL_MASK) != 0)
 	{ 
 		if ((shell & SHELL_HALF_DAM) != 0)
@@ -746,10 +746,10 @@ vec3 get_emissive_shell(uint material_id, uint shell)
 
 	if(tonemap_buffer.adapted_luminance > 0)
 			c.rgb *= tonemap_buffer.adapted_luminance * 100;
+#endif
 
     return c;
 }
-#endif
 
 bool get_is_gradient(ivec2 ipos)
 {
@@ -922,9 +922,15 @@ void get_material(
 
 	base_color.rgb = AO * base_color.rgb;
 
-	emissive = sample_emissive_texture( triangle.material_id, minfo, tex_coord[0], tex_coord_x[0], tex_coord_y[0], mip_level );
+	if (triangle.emissive_factor > 0)
+	{
+		emissive = sample_emissive_texture( triangle.material_id, minfo, tex_coord[0], tex_coord_x[0], tex_coord_y[0], mip_level );
+		emissive *= triangle.emissive_factor;
+	}
+	else
+		emissive = vec3(0);
 
-	//emissive += get_emissive_shell(triangle.material_id, triangle.shell) * base_color * (1 - metallic * 0.9);
+	emissive += get_emissive_shell(triangle.material_id, 0 /*triangle.shell*/) * base_color * (1 - metallic * 0.9);
 }
 
 // Anisotropic texture sampling algorithm from 

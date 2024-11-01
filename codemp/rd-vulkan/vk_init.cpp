@@ -417,6 +417,16 @@ void vk_initialize( void )
 	ri.Printf( PRINT_ALL, "\nVK_MAX_TEXTURE_SIZE: %d\n", glConfig.maxTextureSize );
 	ri.Printf( PRINT_ALL, "VK_MAX_TEXTURE_UNITS: %d\n", glConfig.maxActiveTextures );
 
+#ifdef USE_RTX
+	// Raytracing
+	if ( vk.rtxSupport && r_vertexLight->value == 2 )
+		vk.rtxActive = qtrue;
+
+	// sunny
+	// rtx emissive/glow extraction on compressed textures is not implemented.
+	// I doubt you run compression with rtx hardware ..
+	if ( !vk.rtxActive )
+#endif
 	vk_initTextureCompression();
 
 	vk.xscale2D = glConfig.vidWidth * ( 1.0 / 640.0 );
@@ -451,10 +461,10 @@ void vk_initialize( void )
 
 #ifdef USE_RTX
 	// Raytracing
-	if ( vk.rtxSupport && r_vertexLight->value == 2 ) {
-		vk.rtxActive = qtrue;
+	if ( vk.rtxActive )
 		vk.msaaActive = qfalse;
-	}
+	else if ( r_ext_multisample->integer  )
+		vk.msaaActive = qtrue;
 #else
 	//if (r_ext_multisample->integer && !r_ext_supersample->integer)
 	if ( r_ext_multisample->integer  )

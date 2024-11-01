@@ -314,7 +314,6 @@ indirect_lighting(
 				if (global_ubo.pt_specular_mis != 0)
 				{
 					mat3 projected_positions = project_triangle(triangle.positions, position);
-
 					float pdfw = get_spherical_triangle_pdfw(projected_positions);
 
 					direct_specular_weight *= get_specular_sampled_lighting_weight(primary_roughness,
@@ -332,14 +331,14 @@ indirect_lighting(
 	}
 	else
 	{
-		vec3 bary					= get_hit_barycentric(ray_payload_brdf);
-		vec2 tex_coord				= triangle.tex_coords0 * bary;
-		uint bounce_material_id		= triangle.material_id;
+		vec3 bary         = get_hit_barycentric(ray_payload_brdf);
+		vec2 tex_coord    = triangle.tex_coords0 * bary;
+		uint bounce_material_id = triangle.material_id;
 	
 #if 0
 		if((bounce_material_id & MATERIAL_FLAG_WARP) != 0)
 		{
-			tex_coord = lava_uv_warp(tex_coord);
+			tex_coord = lava_uv_warp(tex_coord, global_ubo.time);
 		}
 #endif
 
@@ -364,13 +363,12 @@ indirect_lighting(
 		uint bounce_cluster_idx    = triangle.cluster;
 
 
-		vec3 emissive = sample_emissive_texture(triangle.material_id, bounce_minfo, tex_coord, vec2(0), vec2(0), is_specular_ray ? 2 : 3);
-#if 0    
-		emissive *= triangle.emissive_factor;	
-		emissive += get_emissive_shell(triangle.material_id) * bounce_base_color;
-#endif
+		vec3 emissive = sample_emissive_texture(triangle.material_id, bounce_minfo, tex_coord, vec2(0), vec2(0), is_specular_ray ? 2 : 3);    
+		emissive *= triangle.emissive_factor;
 
-		if ( luminance(emissive) > 0 ) 
+		emissive += get_emissive_shell(triangle.material_id, 0 /*triangle.shell*/) * bounce_base_color;
+
+		if(luminance(emissive) > 0) 
 		{        
 			emissive *= bounce_throughput;
 
