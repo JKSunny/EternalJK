@@ -4979,8 +4979,10 @@ static void PM_Weapon(void)
 	{
 		if ((pm->cmd.weapon != pm->ps->weaponId) && pm->ps->weaponstate != WEAPON_DROPPING)
 		{
-			if (jkg_didGrenadeCook[pm->ps->clientNum]) //needs a better way to check if we're currently cooking a nade on server, this doesn't really work. --futuza
-				;
+			if (jkg_didGrenadeCook[pm->ps->clientNum])
+			{
+				JKG_DoubleCheckWeaponChange(&pm->cmd, pm->ps); //change weapon if no more grenades in that item stack left
+			}
 			else
 			{
 				PM_BeginWeaponChange(pm->cmd.weapon, weaponData);
