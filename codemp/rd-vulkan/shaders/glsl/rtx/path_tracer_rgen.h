@@ -128,37 +128,37 @@ ivec2 get_image_size()
 }
 
 bool
-is_dynamic_instance(RayPayload pay_load)
+is_dynamic_instance(RayPayload rp)
 {
-	return (pay_load.instance_prim & INSTANCE_DYNAMIC_FLAG) > 0;
+	return (rp.instance_prim & INSTANCE_DYNAMIC_FLAG) > 0;
 }
 
 uint
-get_primitive(RayPayload pay_load)
+get_primitive(RayPayload rp)
 {
-	return pay_load.instance_prim & PRIM_ID_MASK;
+	return rp.instance_prim & PRIM_ID_MASK;
 }
 
 bool
-found_intersection(in RayPayload ray_payload_brdf)
+found_intersection(RayPayload rp)
 {
-	return ray_payload_brdf.instanceID != ~0u;
+	return rp.instanceID != ~0u;
 }
 
-Triangle get_hit_triangle( in RayPayload ray_payload_brdf )
+Triangle get_hit_triangle(RayPayload rp)
 {
-	uint prim = get_primitive(ray_payload_brdf);
+	uint prim = get_primitive(rp);
 
-	return is_dynamic_instance(ray_payload_brdf)
+	return is_dynamic_instance(rp)
 		?  get_instanced_triangle(prim)
-		:  get_bsp_triangle( ray_payload_brdf.instanceID, prim);
+		:  get_bsp_triangle( rp.instanceID, prim);
 }
 
 vec3
-get_hit_barycentric( RayPayload ray_payload_brdf )
+get_hit_barycentric( RayPayload rp )
 {
 	vec3 bary;
-	bary.yz = ray_payload_brdf.barycentric;
+	bary.yz = rp.barycentric;
 	bary.x  = 1.0 - bary.y - bary.z;
 	return bary;
 }
@@ -267,10 +267,13 @@ void trace_ray( Ray ray, bool cull_back_faces, uint cullMask )
 
 	if ( !cull_back_faces )	// reversed?
 		rayFlags |= gl_RayFlagsCullBackFacingTrianglesEXT;
+	rayFlags |= gl_RayFlagsSkipProceduralPrimitives;
 
+	ray_payload_brdf.barycentric = vec2(0);
+	ray_payload_brdf.instanceID = ~0u;
+	ray_payload_brdf.instance_prim = ~0u;
 	ray_payload_brdf.transparency = vec4(0);
 	ray_payload_brdf.hit_distance = 0;
-	ray_payload_brdf.max_transparent_distance = 0;
 
 	traceRayEXT( topLevelAS, rayFlags, cullMask,
 			SBT_RCHIT_OPAQUE /*sbtRecordOffset*/, 0 /*sbtRecordStride*/, SBT_RMISS_PATH_TRACER /*missIndex*/,
@@ -295,7 +298,7 @@ Ray get_shadow_ray( vec3 p1, vec3 p2, float tmin )
 float
 trace_shadow_ray( Ray ray, int cull_mask )
 {
-	const uint rayFlags = gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT;
+	const uint rayFlags = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipProceduralPrimitives;
 
 	ray_payload_shadow.missed = 0;
 
@@ -310,11 +313,17 @@ trace_shadow_ray( Ray ray, int cull_mask )
 vec3
 trace_caustic_ray( Ray ray, int surface_medium )
 {
+	ray_payload_brdf.barycentric = vec2(0);
+	ray_payload_brdf.instanceID = ~0u;
+	ray_payload_brdf.instance_prim = ~0u;
+	ray_payload_brdf.transparency = vec4(0);
 	ray_payload_brdf.hit_distance = -1;
 
 #if 1
-	traceRayEXT(topLevelAS, gl_RayFlagsCullBackFacingTrianglesEXT, RAY_FIRST_PERSON_OPAQUE_VISIBLE,
-		SBT_RCHIT_OPAQUE, 0, SBT_RMISS_PATH_TRACER,
+	uint rayFlags = gl_RayFlagsCullBackFacingTrianglesEXT | gl_RayFlagsOpaqueEXT | gl_RayFlagsSkipProceduralPrimitives;
+	uint instance_mask = RAY_FIRST_PERSON_OPAQUE_VISIBLE;
+
+	traceRayEXT(topLevelAS, rayFlags, instance_mask, SBT_RCHIT_OPAQUE, 0, SBT_RMISS_PATH_TRACER,
 			ray.origin, ray.t_min, ray.direction, ray.t_max, PAYLOAD_BRDF);
 #else
 	traceRayEXT(topLevelAS, gl_RayFlagsCullBackFacingTrianglesEXT, AS_FLAG_TRANSPARENT,

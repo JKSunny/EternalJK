@@ -125,8 +125,7 @@ Converting skyboxes to local lights provides two benefits:
 #extension GL_ARB_separate_shader_objects : enable	// hmm?
 #extension GL_EXT_nonuniform_qualifier    : enable
 
-#ifndef  _DEFINES_H_
-#define  _DEFINES_H_
+#define gl_RayFlagsSkipProceduralPrimitives 0x200 // not defined in GLSL
 
 #define INSTANCE_DYNAMIC_FLAG        (1u << 31)
 #define INSTANCE_SKY_FLAG            (1u << 30)
@@ -145,13 +144,9 @@ layout (push_constant) uniform push_constant_block {
 struct RayPayload {
 	vec2 barycentric;
 	uint instanceID;
-	uint primitiveID;
 	uint instance_prim;
 	float hit_distance;
 	vec4 transparency;
-	float max_transparent_distance;
-	bool transLight;
-	bool trans;
 };
 
 struct RayPayloadShadow {
@@ -184,5 +179,4 @@ const float SS_ALMOST_NEAREST 						= 15;	// gun smoke puffs
 
 const float SS_NEAREST 								= 16;	// blood blobs
 
-#endif	// _DEFINES_H_
 #endif	// _PATH_TRACER_H_
