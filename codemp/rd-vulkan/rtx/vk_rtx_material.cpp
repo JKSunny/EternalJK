@@ -195,7 +195,7 @@ uint32_t RB_GetMaterial( shader_t *shader )
 		material |= MATERIAL_FLAG_MIRROR;
 
 	if ( ( backEnd.currentEntity->e.renderfx & RF_FIRST_PERSON ) )
-		material |= MATERIAL_FLAG_PLAYER_OR_WEAPON;
+		material |= MATERIAL_FLAG_WEAPON;
 
 	// sunny
 	if ( strstr( shader->name, "botton") || strstr( shader->name, "door02") ) 

@@ -17,7 +17,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 */
 
 #define PRECOMPUTED_SKY_BINDING_IDX					0
-#define PRECOMPUTED_SKY_UBO_DESC_SET_IDX			3
+#define PRECOMPUTED_SKY_UBO_DESC_SET_IDX			0
 
 /*
 Based on E. Bruneton F. Neyet paper "Precomputed Atmospheric Scattering"
@@ -40,7 +40,7 @@ struct AtmosphereParameters
 	float		reserved;
 };
 
-layout(set = 0, binding = BINDING_OFFSET_PRECOMPUTED_SKY_UBO, std140) uniform SKY_UBO{
+layout(set = PRECOMPUTED_SKY_UBO_DESC_SET_IDX, binding = BINDING_OFFSET_PRECOMPUTED_SKY_UBO, std140) uniform SKY_UBO{
 	AtmosphereParameters SkyParams;
 };
 

@@ -109,18 +109,13 @@ main()
 	vec3 normal						= decode_normal( imageLoad( IMG_PT_NORMAL_A, ipos ).x );
 	uint cluster_idx				= imageLoad( IMG_PT_CLUSTER_A, ipos).r;
 	
-#if 1
 	int primary_medium = int(material_id & MATERIAL_LIGHT_STYLE_MASK) >> MATERIAL_LIGHT_STYLE_SHIFT;
-	bool primary_is_weapon = (material_id & MATERIAL_FLAG_PLAYER_OR_WEAPON) != 0;
-#else
-	
 	bool primary_is_weapon = (material_id & MATERIAL_FLAG_WEAPON) != 0;
-#endif
-
+	
 	int correct_motion_vector = 0; // 1 -> flat reflection, 2 -> flat refraction
 	bool include_player_model = !primary_is_weapon;
 	bool backface_culling = true;
-
+	
 	// Process reflection or refraction.
 	// Each pixel follows either the reflected or the refracted path, depending on 
 	// the material, incident vector, and checkerboard field. For more information
@@ -309,7 +304,7 @@ main()
 		// This is a non-physical see-through material.
 		// One ray stops at the primary surface, the other goes through it.
 
-		checkerboard_flags = CHECKERBOARD_FLAG_PRIMARY | CHECKERBOARD_FLAG_REFRACTION;
+		//checkerboard_flags = CHECKERBOARD_FLAG_PRIMARY | CHECKERBOARD_FLAG_REFRACTION;
 		correct_motion_vector = 2;
 
 		// Apply a very light distortion effect to TRANS walls (but not models with alpha)
@@ -540,9 +535,7 @@ main()
 	
 		transparent = alpha_blend(transparent, vec4(env * throughput, 1));
 
-#if 0
 		material_id = (primary_medium << MATERIAL_LIGHT_STYLE_SHIFT) & MATERIAL_LIGHT_STYLE_MASK;
-#endif
 		imageStore( IMG_PT_NORMAL_A,				ipos, uvec4(0) );
 		imageStore( IMG_PT_GEO_NORMAL_A,			ipos, uvec4(0) );
 		imageStore( IMG_PT_BASE_COLOR_A,			ipos, vec4(0) );
@@ -768,10 +761,8 @@ main()
 #endif
 	}
 
-#if 0
 	// Replace the material light style with medium
 	material_id = (material_id & ~MATERIAL_LIGHT_STYLE_MASK) | (primary_medium << MATERIAL_LIGHT_STYLE_SHIFT) & MATERIAL_LIGHT_STYLE_MASK;
-#endif
 
 	imageStore( IMG_PT_GEO_NORMAL_A,			ipos, uvec4(encode_normal(geo_normal)) );
 	imageStore( IMG_PT_SHADING_POSITION,		ipos, vec4(position.xyz, uintBitsToFloat(material_id)) );

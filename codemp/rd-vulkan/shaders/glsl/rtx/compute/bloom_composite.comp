@@ -39,23 +39,23 @@ vec2 img_to_uv(ivec2 ipos)
 void main()
 {
     ivec2 ipos = ivec2(gl_GlobalInvocationID);
-    if ( any( greaterThanEqual( ipos, ivec2( global_ubo.taa_output_width, global_ubo.taa_output_height ) ) ) )
+    if(any(greaterThanEqual(ipos, ivec2(global_ubo.taa_output_width, global_ubo.taa_output_height))))
         return;
     
-    vec2 uv = img_to_uv( ipos );
+    vec2 uv = img_to_uv(ipos);
 
-    vec4 src = textureLod( TEX_BLOOM_VBLUR, uv, 0 );
-    vec4 dst = textureLod( TEX_TAA_OUTPUT, uv, 0 );
+    vec4 src = textureLod(TEX_BLOOM_VBLUR, uv, 0);
+    vec4 dst = textureLod(TEX_TAA_OUTPUT, uv, 0);
 
-    if ( any( isnan(dst) ) || any( isinf(dst) ) ) {
+    if (any(isnan(dst)) || any(isinf(dst))) {
         return;
     }
 
     src.a = 0.f;
     dst.a = 1.f;
 
-    const vec4 blend_factor = vec4( global_ubo.bloom_intensity );
+    const vec4 blend_factor = vec4(global_ubo.bloom_intensity);
 
     vec4 result = src * blend_factor + dst * (vec4(1.0) - blend_factor);
-    imageStore( IMG_TAA_OUTPUT, ipos, result );
+    imageStore(IMG_TAA_OUTPUT, ipos, result);
 }

@@ -136,12 +136,12 @@ ivec2 get_output_position()
 void main()
 {
     int other_side_offset;
-    ivec2 ipos = get_input_position( other_side_offset );
+    ivec2 ipos = get_input_position(other_side_offset);
     ivec2 opos = get_output_position();
     
-    if ( opos.x >= global_ubo.width || opos.y >= global_ubo.height )
+    if (opos.x >= global_ubo.width || opos.y >= global_ubo.height)
     {
-        imageStore( IMG_FLAT_COLOR, opos, vec4(0) );
+        imageStore(IMG_FLAT_COLOR, opos, vec4(0));
         return;
     }
   

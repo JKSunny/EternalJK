@@ -44,7 +44,6 @@ layout(local_size_x = GROUP_SIZE, local_size_y = GROUP_SIZE, local_size_z = 1) i
 #define VERTEX_BUFFER_DESC_SET_IDX 0
 #define VERTEX_READONLY 1
 #include "../vertex_buffer.h"
-//layout(binding = BINDING_OFFSET_READBACK_BUFFER, set = 0) buffer READBACK_BUFFER { ReadbackBuffer readback; };
 
 #include "asvgf.glsl"
 

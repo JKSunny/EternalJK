@@ -144,11 +144,8 @@ void main()
 	vec4 position_material = texelFetch(TEX_PT_SHADING_POSITION, sourcePixelPos.xy, 0);
 	vec3 surface_pos = position_material.xyz;
 	uint material_id = floatBitsToUint(position_material.w);
-#if 0
 	int medium = int((material_id & MATERIAL_LIGHT_STYLE_MASK) >> MATERIAL_LIGHT_STYLE_SHIFT);
-#else
-	int medium = 0;
-#endif
+
 	vec3 direction = texelFetch(TEX_PT_VIEW_DIRECTION, sourcePixelPos.xy, 0).xyz;
 
 	vec4 throughput_distance = texelFetch(TEX_PT_GODRAYS_THROUGHPUT_DIST, sourcePixelPos.xy, 0);
