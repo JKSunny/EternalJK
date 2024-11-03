@@ -115,7 +115,7 @@ vec3 srgb_dither(vec3 color, ivec2 ipos)
     vec3 srgb = linear_to_srgb(color);
     vec3 diff = srgb_to_linear(srgb + vec3(1.0/256.0)) - color;
 
-    int texnum = int(global_ubo.current_frame_idx) & (NUM_BLUE_NOISE_TEX - 1);
+    int texnum = global_ubo.current_frame_idx & (NUM_BLUE_NOISE_TEX - 1);
     ivec2 texpos = ipos & ivec2(BLUE_NOISE_RES - 1);
     float noise = texelFetch(TEX_BLUE_NOISE, ivec3(texpos, texnum), 0).r;
 

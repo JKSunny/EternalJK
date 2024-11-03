@@ -62,7 +62,7 @@ float GetShadow(vec3 worldPos, out float distanceToWater)
 
 float rand(ivec2 pos)
 {
-    int texnum = int(global_ubo.current_frame_idx) & (NUM_BLUE_NOISE_TEX - 1);
+    int texnum = global_ubo.current_frame_idx & (NUM_BLUE_NOISE_TEX - 1);
     ivec2 texpos = pos & ivec2(BLUE_NOISE_RES - 1);
     float noise = texelFetch(TEX_BLUE_NOISE, ivec3(texpos, texnum), 0).r;
     return noise;

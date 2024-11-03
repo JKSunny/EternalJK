@@ -143,7 +143,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 	GLOBAL_UBO_VAR_LIST_DO( VEC4,	 fs_blend_color					) \
 	GLOBAL_UBO_VAR_LIST_DO( VEC4,	 fs_colorize					) \
 	\
-	GLOBAL_UBO_VAR_LIST_DO( UINT,	 current_frame_idx				) \
+	GLOBAL_UBO_VAR_LIST_DO( INT,	 current_frame_idx				) \
 	GLOBAL_UBO_VAR_LIST_DO( INT	,	 width							) \
 	GLOBAL_UBO_VAR_LIST_DO( INT	,	 height							) \
 	GLOBAL_UBO_VAR_LIST_DO( INT	,	 current_gpu_slice_width		) \

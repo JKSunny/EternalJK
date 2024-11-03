@@ -128,7 +128,7 @@ filter_image(
 	// Add some jitter to sample positions to hide the a-trous filter aliasing patterns
 	ivec2 jitter;
 	{
-	    int texnum = int(global_ubo.current_frame_idx);
+	    int texnum = global_ubo.current_frame_idx;
 	    ivec2 texpos = ipos & ivec2(BLUE_NOISE_RES - 1);
 	    float jitter_x = texelFetch(TEX_BLUE_NOISE, ivec3(texpos, (texnum + 0) & (NUM_BLUE_NOISE_TEX - 1)), 0).r;
 	    float jitter_y = texelFetch(TEX_BLUE_NOISE, ivec3(texpos, (texnum + 1) & (NUM_BLUE_NOISE_TEX - 1)), 0).r;

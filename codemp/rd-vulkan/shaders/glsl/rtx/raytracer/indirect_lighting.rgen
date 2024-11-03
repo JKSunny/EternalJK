@@ -496,7 +496,7 @@ main()
 		// size is only half of the frame, so rename the threads.
 		// This is more efficient than launching an entire frame of 
 		// threads and then doing nothing in every other row.
-		ipos.y = ipos.y * 2 + int(global_ubo.current_frame_idx & 1);
+		ipos.y = ipos.y * 2 + global_ubo.current_frame_idx & 1;
 	}
 
 	vec3 bounce_direction;

@@ -97,7 +97,7 @@ get_primary_ray(vec2 screen_pos)
 
 void generate_rng_seed(ivec2 ipos, bool is_odd_checkerboard)
 {
-	int frame_num = int(global_ubo.current_frame_idx);
+	int frame_num = global_ubo.current_frame_idx;
 
 	uint frame_offset = frame_num / NUM_BLUE_NOISE_TEX;
 
