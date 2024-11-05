@@ -819,17 +819,39 @@ static void vk_rtx_prepare_ubo( trRefdef_t *refdef, world_t *world, vkUniformRTX
 	//ubo->num_cameras = 0;
 }
 
-static void vk_rtx_trace_rays( VkCommandBuffer cmd_buf, vkpipeline_t *pipeline, uint32_t height, int group_index ) 
+static void vk_rtx_setup_rt_pipeline( VkCommandBuffer cmd_buf, uint32_t idx, VkPipelineBindPoint bind_point, uint32_t index )
 {
+	VkDescriptorSet desc_sets[] = {
+		vk.rtxDescriptor[idx].set,
+        vk_rtx_get_current_desc_set_textures(),
+		vk.imageDescriptor.set,
+        vk.desc_set_ubo
+	};
+
+	// https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/8038
+	qvkCmdBindPipeline( cmd_buf, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, vk.rt_pipelines[index] );
+
+	qvkCmdBindDescriptorSets( cmd_buf, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR,
+			vk.rt_pipeline_layout, 0, ARRAY_LEN(desc_sets), desc_sets, 0, 0);
+}
+
+static void dispatch_rays( VkCommandBuffer cmd_buf, uint32_t idx, uint32_t pipeline_index, pt_push_constants_t push, uint32_t height ) 
+{
+	vk_rtx_setup_rt_pipeline( cmd_buf, idx, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline_index );
+
 	assert( vk.buf_shader_binding_table.address );
 
+	qvkCmdPushConstants( cmd_buf, vk.rt_pipeline_layout, VK_SHADER_STAGE_RAYGEN_BIT_KHR, 0, sizeof(push), &push );	
+
+	uint32_t sbt_offset = SBT_ENTRIES_PER_PIPELINE * pipeline_index * vk.shaderGroupBaseAlignment;
+
 	VkStridedDeviceAddressRegionKHR raygen;
-	raygen.deviceAddress = vk.buf_shader_binding_table.address + group_index * vk.shaderGroupBaseAlignment;
+	raygen.deviceAddress = vk.buf_shader_binding_table.address + sbt_offset;
 	raygen.stride = vk.shaderGroupBaseAlignment;
 	raygen.size = vk.shaderGroupBaseAlignment;
 
 	VkStridedDeviceAddressRegionKHR miss_and_hit;
-	miss_and_hit.deviceAddress = vk.buf_shader_binding_table.address;
+	miss_and_hit.deviceAddress = vk.buf_shader_binding_table.address + sbt_offset;
 	miss_and_hit.stride = vk.shaderGroupBaseAlignment;
 	miss_and_hit.size = vk.shaderGroupBaseAlignment;
 
@@ -856,27 +878,13 @@ static void vk_rtx_trace_primary_rays( VkCommandBuffer cmd_buf, uint32_t idx )
 		VK_WHOLE_SIZE
 	);
 
-	VkDescriptorSet desc_sets[] = {
-		vk.rtxDescriptor[idx].set,
-        vk_rtx_get_current_desc_set_textures(),
-		vk.imageDescriptor.set,
-        vk.desc_set_ubo
-	};
-
 	BEGIN_PERF_MARKER( cmd_buf, PROFILER_PRIMARY_RAYS );
-
-	// https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/8038
-	qvkCmdBindPipeline( cmd_buf, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, vk.rt_pipeline.handle );
-
-	qvkCmdBindDescriptorSets( cmd_buf, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR,
-			vk.rt_pipeline.layout, 0, ARRAY_LEN(desc_sets), desc_sets, 0, 0);
 
 	pt_push_constants_t push;
 	push.gpu_index = -1; // vk.device_count == 1 ? -1 : i;
-	push.bounce = 0;
-	qvkCmdPushConstants( cmd_buf, vk.rt_pipeline.layout, VK_SHADER_STAGE_RAYGEN_BIT_KHR, 0, sizeof(push), &push );		
+	push.bounce = 0;	
 		
-	vk_rtx_trace_rays( cmd_buf, &vk.rt_pipeline, vk.extent_render.height, SBT_RGEN_PRIMARY_RAYS );
+	dispatch_rays( cmd_buf, idx, PIPELINE_PRIMARY_RAYS, push, vk.extent_render.height );
 
 	END_PERF_MARKER( cmd_buf, PROFILER_PRIMARY_RAYS );
 
@@ -904,28 +912,13 @@ static void vk_rtx_trace_primary_rays( VkCommandBuffer cmd_buf, uint32_t idx )
 
 static void vk_rtx_trace_reflections( VkCommandBuffer cmd_buf, uint32_t idx, int bounce ) 
 {
-
-	VkDescriptorSet desc_sets[] = {
-		vk.rtxDescriptor[idx].set,
-        vk_rtx_get_current_desc_set_textures(),
-		vk.imageDescriptor.set,
-        vk.desc_set_ubo
-	};
-
-	// reflections/refractions
-	qvkCmdBindPipeline( cmd_buf, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, vk.rt_pipeline.handle );
-
-	qvkCmdBindDescriptorSets( cmd_buf, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR,
-			vk.rt_pipeline.layout, 0, ARRAY_LEN(desc_sets), desc_sets, 0, 0);
+	uint32_t pipeline_index = (bounce == 0) ? PIPELINE_REFLECT_REFRACT_1 : PIPELINE_REFLECT_REFRACT_2;
 
 	pt_push_constants_t push;
 	push.gpu_index = -1; // vk.device_count == 1 ? -1 : i;
 	push.bounce = bounce;
-	qvkCmdPushConstants( cmd_buf, vk.rt_pipeline.layout, VK_SHADER_STAGE_RAYGEN_BIT_KHR, 0, sizeof(push), &push );	
 
-	int shader = (bounce == 0) ? SBT_RGEN_REFLECT_REFRACT1 : SBT_RGEN_REFLECT_REFRACT2;
-
-	vk_rtx_trace_rays( cmd_buf, &vk.rt_pipeline, vk.extent_render.height, shader );
+	dispatch_rays( cmd_buf, idx, pipeline_index, push, vk.extent_render.height );
 
 	int frame_idx = idx;
 
@@ -947,31 +940,18 @@ static void vk_rtx_trace_reflections( VkCommandBuffer cmd_buf, uint32_t idx, int
 
 static void vk_rxt_trace_lighting( VkCommandBuffer cmd_buf, uint32_t idx, float num_bounce_rays )
 {
-	VkDescriptorSet desc_sets[] = {
-		vk.rtxDescriptor[idx].set,
-        vk_rtx_get_current_desc_set_textures(),
-		vk.imageDescriptor.set,
-        vk.desc_set_ubo
-	};
-
 	// direct lighting
 	BEGIN_PERF_MARKER(cmd_buf, PROFILER_DIRECT_LIGHTING);
 
-	qvkCmdBindPipeline( cmd_buf, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, vk.rt_pipeline.handle );
-	
-	qvkCmdBindDescriptorSets( cmd_buf, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR,
-			vk.rt_pipeline.layout, 0, ARRAY_LEN(desc_sets), desc_sets, 0, 0);
+	{
+		uint32_t pipeline_index = (pt_caustics->value != 0) ? PIPELINE_DIRECT_LIGHTING_CAUSTICS : PIPELINE_DIRECT_LIGHTING;
 
-	pt_push_constants_t push;
-	push.gpu_index = -1; // vk.device_count == 1 ? -1 : i;
-	push.bounce = 0;
-	qvkCmdPushConstants( cmd_buf, vk.rt_pipeline.layout, VK_SHADER_STAGE_RAYGEN_BIT_KHR, 0, sizeof(push), &push );
+		pt_push_constants_t push;
+		push.gpu_index = -1; // vk.device_count == 1 ? -1 : i;
+		push.bounce = 0;
 
-	int rgen_index = SBT_RGEN_DIRECT_LIGHTING;
-	if ( pt_caustics->value != 0 )
-		rgen_index = SBT_RGEN_DIRECT_LIGHTING_CAUSTICS;
-
-	vk_rtx_trace_rays( cmd_buf, &vk.rt_pipeline, vk.extent_render.height, rgen_index );
+		dispatch_rays( cmd_buf, idx, pipeline_index, push, vk.extent_render.height );
+	}
 
 	END_PERF_MARKER(cmd_buf, PROFILER_DIRECT_LIGHTING);
 
@@ -993,29 +973,21 @@ static void vk_rxt_trace_lighting( VkCommandBuffer cmd_buf, uint32_t idx, float 
 
 	if ( num_bounce_rays > 0 ) 
 	{
-		qvkCmdBindPipeline( cmd_buf, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, vk.rt_pipeline.handle );
-
-		qvkCmdBindDescriptorSets( cmd_buf, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR,
-			vk.rt_pipeline.layout, 0, ARRAY_LEN(desc_sets), desc_sets, 0, 0);
-
-		pt_push_constants_t push;
-		push.gpu_index = -1; // vk.device_count == 1 ? -1 : i;
-		push.bounce = 0;
-		qvkCmdPushConstants( cmd_buf, vk.rt_pipeline.layout, VK_SHADER_STAGE_RAYGEN_BIT_KHR, 0, sizeof(push), &push );
+		uint32_t height;
+		if (num_bounce_rays == 0.5f)
+			height = vk.extent_render.height / 2;
+		else
+			height = vk.extent_render.height;	
 
 		for (int bounce_ray = 0; bounce_ray < (int)ceilf(num_bounce_rays); bounce_ray++)
 		{
-			uint32_t height;
-			if (num_bounce_rays == 0.5f)
-				height = vk.extent_render.height / 2;
-			else
-				height = vk.extent_render.height;	
+			uint32_t pipeline_index = (bounce_ray == 0) ? PIPELINE_INDIRECT_LIGHTING_FIRST : PIPELINE_INDIRECT_LIGHTING_SECOND;
 
-			int rgen_index = (bounce_ray == 0) 
-				? SBT_RGEN_INDIRECT_LIGHTING_FIRST 
-				: SBT_RGEN_INDIRECT_LIGHTING_SECOND;
-
-			vk_rtx_trace_rays( cmd_buf, &vk.rt_pipeline, height, rgen_index );
+			pt_push_constants_t push;
+			push.gpu_index = -1; // vk.device_count == 1 ? -1 : i;
+			push.bounce = 0;
+		
+			dispatch_rays( cmd_buf, idx, pipeline_index, push, height );
 		}
 
 		BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_COLOR_LF_SH] );

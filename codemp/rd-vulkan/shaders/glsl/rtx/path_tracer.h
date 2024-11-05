@@ -149,10 +149,6 @@ struct RayPayload {
 	vec4 transparency;
 };
 
-struct RayPayloadShadow {
-  	int missed;
-};
-
 // for shaderSort_t
 const float SS_BAD 									= 0;
 const float SS_PORTAL 								= 1;	// mirrors, portals, viewscreens

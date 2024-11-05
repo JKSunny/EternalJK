@@ -240,7 +240,6 @@ typedef struct {
 typedef struct {
     size_t									size;
     VkShaderModule							*modules;
-    VkShaderStageFlagBits					*flags;
     VkPipelineShaderStageCreateInfo			*shader_stages;
 	size_t									group_count;
 	VkRayTracingShaderGroupCreateInfoKHR	*shader_groups;
@@ -392,7 +391,7 @@ void		vk_rtx_destroy_descriptor( vkdescriptor_t *descriptor );
 void		vk_rtx_bind_pipeline_shader( vkpipeline_t *pipeline, vkshader_t *shader );
 void		vk_rtx_bind_pipeline_desc_set_layouts( vkpipeline_t *pipeline, VkDescriptorSetLayout *set_layouts, uint32_t count );
 void		vk_rtx_create_compute_pipeline( vkpipeline_t *pipeline, VkSpecializationInfo *spec, uint32_t push_size );
-void		vk_rtx_create_raytracing_pipelines( void );
+void		vk_rtx_create_rt_pipelines( void );
 void		vk_rtx_create_compute_pipelines( void );
 void		vk_rtx_destroy_pipeline( vkpipeline_t *pipeline );
 
@@ -467,7 +466,7 @@ qboolean	RB_StageNeedsColor( int stage );
 uint32_t	RB_GetMaterial( shader_t *shader );
 uint32_t	RB_GetNextTex( shader_t *shader, int stage );
 uint32_t	RB_GetNextTexEncoded( shader_t *shader, int stage );
-qboolean	RB_IsLight( shader_t *shader );
+//qboolean	RB_IsLight( shader_t *shader );
 qboolean	RB_SkipObject( shader_t *shader );
 qboolean	RB_IsTransparent( shader_t *shader );
 void		vk_rtx_update_shader_material( shader_t *shader, shader_t *updatedShader );
@@ -486,8 +485,8 @@ void		vk_rtx_create_blue_noise( void );
 
 // shader
 void		vk_load_final_blit_shader( void );
-
-vkshader_t	*vk_rtx_create_global_shader( void );
+void		vk_rtx_create_shader_modules( void );
+void		vk_rtx_create_pipelines( void );
 void		vk_rtx_destroy_shaders( void );
 
 void		vk_rtx_begin_scene( trRefdef_t *refdef, drawSurf_t *drawSurfs, int numDrawSurfs );

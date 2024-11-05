@@ -761,6 +761,18 @@ typedef struct vk_tess_s {
 
 typedef struct shader_s shader_t;
 typedef struct msurface_s msurface_t;
+
+typedef enum {
+	PIPELINE_PRIMARY_RAYS,
+	PIPELINE_REFLECT_REFRACT_1,
+	PIPELINE_REFLECT_REFRACT_2,
+    PIPELINE_DIRECT_LIGHTING,
+    PIPELINE_DIRECT_LIGHTING_CAUSTICS,
+    PIPELINE_INDIRECT_LIGHTING_FIRST,
+    PIPELINE_INDIRECT_LIGHTING_SECOND,
+
+	PIPELINE_COUNT
+} pipeline_index_t;
 #endif
 
 // Vk_Instance contains engine-specific vulkan resources that persist entire renderer lifetime.
@@ -840,7 +852,10 @@ typedef struct {
 	qboolean		worldASInit;
 
 	vkbuffer_t		buf_shader_binding_table;
-	vkpipeline_t	rt_pipeline;
+
+	VkPipelineLayout rt_pipeline_layout;
+	VkPipeline		rt_pipelines[PIPELINE_COUNT];
+	VkShaderModule  shader_modules[6];
 
 	vkpipeline_t	asvgf_pipeline[ASVGF_NUM_PIPELINES];
 	vkshader_t		*asvgf_shader[NUM_ASVGF_SHADER_MODULES];

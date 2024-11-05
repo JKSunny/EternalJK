@@ -24,32 +24,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "tr_local.h"
 #include "shaders/spirv/shader_data_rtx.c"
 
-static vkshader_t				*global_rtx_shader;
 static VkSpecializationMapEntry specEntry;
 static VkSpecializationInfo		specInfo[2];
-
-uint32_t numbers[2] = { 0, 1 };
-
-#define SHADER_STAGE( index, handle, flag ) \
-	shader->flags[index] = flag; \
-	shader->modules[index] = vk_rtx_create_shader( handle, sizeof(handle) ); \
-	\
-	shader->shader_stages[index].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO; \
-	shader->shader_stages[index].pNext = NULL; \
-	shader->shader_stages[index].stage = shader->flags[index]; \
-	shader->shader_stages[index].module = shader->modules[index]; \
-	shader->shader_stages[index].pName = "main";
-
-#define SHADER_STAGE_SPEC( index, handle, flag, spec ) \
-	shader->flags[index] = flag; \
-	shader->modules[index] = vk_rtx_create_shader( handle, sizeof(handle) ); \
-	\
-	shader->shader_stages[index].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO; \
-	shader->shader_stages[index].pNext = NULL; \
-	shader->shader_stages[index].stage = shader->flags[index]; \
-	shader->shader_stages[index].module = shader->modules[index]; \
-	shader->shader_stages[index].pName = "main"; \
-	shader->shader_stages[index].pSpecializationInfo = spec;
 
 static VkShaderModule vk_rtx_create_shader( const uint8_t *bytes, const int count )
 {
@@ -75,11 +51,8 @@ static void vk_rtx_load_shader( vkshader_t *shader, const uint8_t *bytes, const 
 {
 	shader->size = 1;
 	shader->modules = (VkShaderModule*)malloc(shader->size * sizeof(VkShaderModule));
-	shader->flags = (VkShaderStageFlagBits*)malloc(shader->size * sizeof(VkShaderStageFlagBits));
 	shader->shader_stages = (VkPipelineShaderStageCreateInfo*)calloc(shader->size, sizeof(VkPipelineShaderStageCreateInfo));
 	shader->shader_groups = NULL;
-
-	shader->flags[0] = flags;
 
 	shader->modules[0] = vk_rtx_create_shader( bytes, size );
 
@@ -97,7 +70,6 @@ static void vk_rtx_destroy_shader( vkshader_t *shader )
 		qvkDestroyShaderModule( vk.device, shader->modules[i], NULL );
 
 	free( shader->modules );
-	free( shader->flags );
 	free( shader->shader_stages );
 
 	if ( shader->shader_groups ) 
@@ -195,18 +167,44 @@ void vk_rtx_destroy_shaders( void )
 
 	vk_destroy_asvgf_shaders();
 	vk_destroy_tonemap_shaders();
-
-	vk_rtx_destroy_shader( global_rtx_shader );
-	free( global_rtx_shader );
-	global_rtx_shader = NULL;
 }
 
-static void vk_rtx_prepare_global_shader( vkshader_t *shader ) 
+#define LIST_PATH_TRACER_SHADERS \
+	SHADER_MODULE_DO( SHADER_PATH_TRACER_PRIMARY_RAYS_RGEN,			primary_rays_rgen		) \
+	SHADER_MODULE_DO( SHADER_PATH_TRACER_REFLECT_REFRACT_RGEN,		reflect_refract_rgen	) \
+	SHADER_MODULE_DO( SHADER_PATH_TRACER_DIRECT_LIGHTING_RGEN,		direct_lighting_rgen	) \
+	SHADER_MODULE_DO( SHADER_PATH_TRACER_INDIRECT_LIGHTING_RGEN,	indirect_lighting_rgen	) \
+	\
+	SHADER_MODULE_DO( SHADER_PATH_TRACER_PATH_TRACER_RMISS,			path_tracer_rmiss		) \
+	SHADER_MODULE_DO( SHADER_PATH_TRACER_PATH_TRACER_RCHIT,			path_tracer_rchit		) \
+
+enum {
+#define SHADER_MODULE_DO( _index, ... ) _index,
+	LIST_PATH_TRACER_SHADERS
+#undef SHADER_MODULE_DO
+	NUM_PATH_TRACER_SHADER_MODULES
+};
+
+void vk_rtx_create_shader_modules( void )
 {
-	shader->size = 10;
-	shader->modules = (VkShaderModule*)calloc(shader->size, sizeof(VkShaderModule));
-	shader->flags = (VkShaderStageFlagBits*)calloc(shader->size, sizeof(VkShaderStageFlagBits));
-	shader->shader_stages = (VkPipelineShaderStageCreateInfo*)calloc(shader->size, sizeof(VkPipelineShaderStageCreateInfo));
+	#define SHADER_MODULE_DO( _index, _bytes ) \
+	vk.shader_modules[_index] = vk_rtx_create_shader( _bytes, sizeof(_bytes) );
+		LIST_PATH_TRACER_SHADERS
+	#undef SHADER_MODULE_DO
+}
+
+#define SHADER_STAGE( index, _module, _stage ) \
+	shader_stages[index].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO; \
+	shader_stages[index].pNext = NULL; \
+	shader_stages[index].stage = _stage; \
+	shader_stages[index].module = vk.shader_modules[_module]; \
+	shader_stages[index].pName = "main";
+
+void vk_rtx_create_pipelines( void ) 
+{
+	Com_Memset( &vk.rt_pipelines, 0, sizeof(VkPipeline) * PIPELINE_COUNT );
+
+	uint32_t numbers[2] = { 0, 1 };
 
 	specEntry.constantID = 0;
 	specEntry.offset = 0;
@@ -222,125 +220,149 @@ static void vk_rtx_prepare_global_shader( vkshader_t *shader )
 	specInfo[1].dataSize = sizeof(uint32_t);
 	specInfo[1].pData = &numbers[1];
 
-	Com_Memset( shader->shader_stages, 0, sizeof(VkPipelineShaderStageCreateInfo) * shader->size );
+	uint32_t num_shader_groups = SBT_ENTRIES_PER_PIPELINE * PIPELINE_COUNT;
+	char* shader_handles = (char*)alloca(num_shader_groups * vk.shaderGroupHandleSize);
+	memset(shader_handles, 0, num_shader_groups * vk.shaderGroupHandleSize);
 
+	VkPipelineShaderStageCreateInfo shader_stages[SBT_ENTRIES_PER_PIPELINE];
+	Com_Memset( &shader_stages, 0, sizeof(VkPipelineShaderStageCreateInfo) * SBT_ENTRIES_PER_PIPELINE );
+
+	// Stages used by all pipelines. Count must match num_base_shader_stages below!
 	{
-		SHADER_STAGE(		0, primary_rays_rgen,				VK_SHADER_STAGE_RAYGEN_BIT_KHR )
-		SHADER_STAGE_SPEC(	1, reflect_refract_rgen,			VK_SHADER_STAGE_RAYGEN_BIT_KHR, &specInfo[0] )
-		SHADER_STAGE_SPEC(	2, reflect_refract_rgen,			VK_SHADER_STAGE_RAYGEN_BIT_KHR, &specInfo[1] )
-		SHADER_STAGE_SPEC(	3, direct_lighting_rgen,			VK_SHADER_STAGE_RAYGEN_BIT_KHR, &specInfo[0] )
-		SHADER_STAGE_SPEC(	4, direct_lighting_rgen,			VK_SHADER_STAGE_RAYGEN_BIT_KHR, &specInfo[1] )
-		SHADER_STAGE_SPEC(	5, indirect_lighting_rgen,			VK_SHADER_STAGE_RAYGEN_BIT_KHR, &specInfo[0] )
-		SHADER_STAGE_SPEC(	6, indirect_lighting_rgen,			VK_SHADER_STAGE_RAYGEN_BIT_KHR, &specInfo[1] )
-		SHADER_STAGE(		7, path_tracer_rmiss,				VK_SHADER_STAGE_MISS_BIT_KHR )
-		SHADER_STAGE(		8, path_tracer_shadow_rmiss,		VK_SHADER_STAGE_MISS_BIT_KHR )
-		SHADER_STAGE(		9, path_tracer_rchit,				VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR )
+		shader_stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		shader_stages[0].pNext = NULL;
+		shader_stages[0].stage = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+		shader_stages[0].module = VK_NULL_HANDLE;
+		shader_stages[0].pName = "main";
+		// Shader module is set below
+	}
+	SHADER_STAGE( 1, SHADER_PATH_TRACER_PATH_TRACER_RMISS,	VK_SHADER_STAGE_MISS_BIT_KHR		)
+	SHADER_STAGE( 2, SHADER_PATH_TRACER_PATH_TRACER_RCHIT,	VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR )
+
+	for ( uint32_t index = 0; index < PIPELINE_COUNT; index++ )
+	{
+		unsigned int num_shader_stages = ARRAY_LEN(shader_stages);
+
+		switch (index)
+		{
+		case PIPELINE_PRIMARY_RAYS:
+			shader_stages[0].module = vk.shader_modules[SHADER_PATH_TRACER_PRIMARY_RAYS_RGEN];
+			shader_stages[0].pSpecializationInfo = NULL;
+			break;
+		case PIPELINE_REFLECT_REFRACT_1:
+			shader_stages[0].module = vk.shader_modules[SHADER_PATH_TRACER_REFLECT_REFRACT_RGEN];
+			shader_stages[0].pSpecializationInfo = &specInfo[0];
+			break;
+		case PIPELINE_REFLECT_REFRACT_2:
+			shader_stages[0].module = vk.shader_modules[SHADER_PATH_TRACER_REFLECT_REFRACT_RGEN];
+			shader_stages[0].pSpecializationInfo = &specInfo[1];
+			break;
+		case PIPELINE_DIRECT_LIGHTING:
+			shader_stages[0].module = vk.shader_modules[SHADER_PATH_TRACER_DIRECT_LIGHTING_RGEN];
+			shader_stages[0].pSpecializationInfo = &specInfo[0];
+			break;
+		case PIPELINE_DIRECT_LIGHTING_CAUSTICS:
+			shader_stages[0].module = vk.shader_modules[SHADER_PATH_TRACER_DIRECT_LIGHTING_RGEN];
+			shader_stages[0].pSpecializationInfo = &specInfo[1];
+			break;
+		case PIPELINE_INDIRECT_LIGHTING_FIRST:
+			shader_stages[0].module = vk.shader_modules[SHADER_PATH_TRACER_INDIRECT_LIGHTING_RGEN];
+			shader_stages[0].pSpecializationInfo = &specInfo[0];
+			break;
+		case PIPELINE_INDIRECT_LIGHTING_SECOND:
+			shader_stages[0].module = vk.shader_modules[SHADER_PATH_TRACER_INDIRECT_LIGHTING_RGEN];
+			shader_stages[0].pSpecializationInfo = &specInfo[1];
+			break;
+		default:
+			assert(!"invalid pipeline index");
+			break;
+		}
+
+		VkRayTracingShaderGroupCreateInfoKHR rt_shader_group_info[SBT_ENTRIES_PER_PIPELINE];
+		VkRayTracingShaderGroupCreateInfoKHR *group;
+		Com_Memset( &rt_shader_group_info, 0, sizeof(VkRayTracingShaderGroupCreateInfoKHR) * SBT_ENTRIES_PER_PIPELINE );
+
+		group						= &rt_shader_group_info[SBT_RGEN];
+		group->pNext				= NULL;
+		group->sType				= VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
+		group->type					= VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
+		group->generalShader		= 0;
+		group->closestHitShader		= VK_SHADER_UNUSED_KHR;
+		group->anyHitShader			= VK_SHADER_UNUSED_KHR;
+		group->intersectionShader	= VK_SHADER_UNUSED_KHR;
+
+		group						= &rt_shader_group_info[SBT_RMISS_EMPTY];
+		group->pNext				= NULL;
+		group->sType				= VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
+		group->type					= VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
+		group->generalShader		= 1;
+		group->closestHitShader		= VK_SHADER_UNUSED_KHR;
+		group->anyHitShader			= VK_SHADER_UNUSED_KHR;
+		group->intersectionShader	= VK_SHADER_UNUSED_KHR;
+
+		group						= &rt_shader_group_info[SBT_RCHIT_GEOMETRY];
+		group->pNext				= NULL;
+		group->sType				= VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
+		group->type					= VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
+		group->generalShader		= VK_SHADER_UNUSED_KHR;
+		group->closestHitShader		= 2;
+		group->anyHitShader			= VK_SHADER_UNUSED_KHR;
+		group->intersectionShader	= VK_SHADER_UNUSED_KHR;
+
+		unsigned int num_shader_groups = ARRAY_LEN(rt_shader_group_info);
+
+		VkPipelineLibraryCreateInfoKHR library_info;
+		VkRayTracingPipelineCreateInfoKHR rt_pipeline_info;
+
+		Com_Memset( &library_info, 0, sizeof(VkPipelineLibraryCreateInfoKHR) );
+		library_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LIBRARY_CREATE_INFO_KHR;
+		library_info.pNext = NULL;
+	
+		Com_Memset( &rt_pipeline_info, 0, sizeof(VkRayTracingPipelineCreateInfoKHR) );
+		rt_pipeline_info.sType = VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR;
+		rt_pipeline_info.pNext = NULL;
+		rt_pipeline_info.flags = 0;
+		rt_pipeline_info.stageCount = num_shader_stages;
+		rt_pipeline_info.pStages = shader_stages;
+		rt_pipeline_info.groupCount = num_shader_groups;
+		rt_pipeline_info.pGroups = rt_shader_group_info;
+		rt_pipeline_info.maxPipelineRayRecursionDepth = 1;
+		rt_pipeline_info.layout = vk.rt_pipeline_layout;
+		rt_pipeline_info.pLibraryInfo = &library_info,
+		rt_pipeline_info.pLibraryInterface = NULL,
+		rt_pipeline_info.pDynamicState = NULL,
+		rt_pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
+		rt_pipeline_info.basePipelineIndex = 0;
+
+		VkResult res = qvkCreateRayTracingPipelinesKHR( vk.device, VK_NULL_HANDLE, VK_NULL_HANDLE, 1, &rt_pipeline_info, NULL, &vk.rt_pipelines[index] );
+		if ( res != VK_SUCCESS )
+		{
+			ri.Error( ERR_DROP, "Failed to create ray tracing pipeline #%d, vkCreateRayTracingPipelinesKHR\n", index );
+			return;
+		}
+
+		VK_CHECK( qvkGetRayTracingShaderGroupHandlesKHR( 
+			vk.device, vk.rt_pipelines[index], 0, num_shader_groups,
+				/* dataSize = */ num_shader_groups * vk.shaderGroupHandleSize,
+				/* pData = */ shader_handles + SBT_ENTRIES_PER_PIPELINE * vk.shaderGroupHandleSize * index ) );
 	}
 
-	VkRayTracingShaderGroupCreateInfoKHR groups[11];
-	VkRayTracingShaderGroupCreateInfoKHR *group;
-	Com_Memset( &groups, 0, sizeof(VkRayTracingShaderGroupCreateInfoKHR) * 11 );
-
-	group						= &groups[SBT_RGEN_PRIMARY_RAYS];
-	group->sType				= VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
-	group->type					= VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
-	group->generalShader		= 0;
-	group->closestHitShader		= VK_SHADER_UNUSED_KHR;
-	group->anyHitShader			= VK_SHADER_UNUSED_KHR;
-	group->intersectionShader	= VK_SHADER_UNUSED_KHR;
-
-	group						= &groups[SBT_RGEN_REFLECT_REFRACT1];
-	group->sType				= VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
-	group->type					= VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
-	group->generalShader		= 1;
-	group->closestHitShader		= VK_SHADER_UNUSED_KHR;
-	group->anyHitShader			= VK_SHADER_UNUSED_KHR;
-	group->intersectionShader	= VK_SHADER_UNUSED_KHR;
-
-	group						= &groups[SBT_RGEN_REFLECT_REFRACT2];
-	group->sType				= VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
-	group->type					= VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
-	group->generalShader		= 2;
-	group->closestHitShader		= VK_SHADER_UNUSED_KHR;
-	group->anyHitShader			= VK_SHADER_UNUSED_KHR;
-	group->intersectionShader	= VK_SHADER_UNUSED_KHR;
-
-	group						= &groups[SBT_RGEN_DIRECT_LIGHTING];
-	group->sType				= VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
-	group->type					= VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
-	group->generalShader		= 3;
-	group->closestHitShader		= VK_SHADER_UNUSED_KHR;
-	group->anyHitShader			= VK_SHADER_UNUSED_KHR;
-	group->intersectionShader	= VK_SHADER_UNUSED_KHR;
-
-	group						= &groups[SBT_RGEN_DIRECT_LIGHTING_CAUSTICS];
-	group->sType				= VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
-	group->type					 = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
-	group->generalShader		= 4;
-	group->closestHitShader		= VK_SHADER_UNUSED_KHR;
-	group->anyHitShader			= VK_SHADER_UNUSED_KHR;
-	group->intersectionShader	= VK_SHADER_UNUSED_KHR;
-
-	group						= &groups[SBT_RGEN_INDIRECT_LIGHTING_FIRST];
-	group->sType				= VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
-	group->type					= VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
-	group->generalShader		= 5;
-	group->closestHitShader		= VK_SHADER_UNUSED_KHR;
-	group->anyHitShader			= VK_SHADER_UNUSED_KHR;
-	group->intersectionShader	= VK_SHADER_UNUSED_KHR;
-
-	group						= &groups[SBT_RGEN_INDIRECT_LIGHTING_SECOND];
-	group->sType				= VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
-	group->type					= VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
-	group->generalShader		= 6;
-	group->closestHitShader		= VK_SHADER_UNUSED_KHR;
-	group->anyHitShader			= VK_SHADER_UNUSED_KHR;
-	group->intersectionShader	= VK_SHADER_UNUSED_KHR;
-
-	group						= &groups[SBT_RMISS_PATH_TRACER];
-	group->sType				= VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
-	group->type					= VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
-	group->generalShader		= 7;
-	group->closestHitShader		= VK_SHADER_UNUSED_KHR;
-	group->anyHitShader			= VK_SHADER_UNUSED_KHR;
-	group->intersectionShader	= VK_SHADER_UNUSED_KHR;
-
-	group						= &groups[SBT_RMISS_SHADOW];
-	group->sType				= VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
-	group->type					= VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
-	group->generalShader		= 8;
-	group->closestHitShader		= VK_SHADER_UNUSED_KHR;
-	group->anyHitShader			= VK_SHADER_UNUSED_KHR;
-	group->intersectionShader	= VK_SHADER_UNUSED_KHR;
-
-	group						= &groups[SBT_RCHIT_OPAQUE];
-	group->sType				= VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
-	group->type					= VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
-	group->generalShader		= VK_SHADER_UNUSED_KHR;
-	group->closestHitShader		= 9;
-	group->anyHitShader			= VK_SHADER_UNUSED_KHR;
-	group->intersectionShader	= VK_SHADER_UNUSED_KHR;
-
-	group						= &groups[SBT_RCHIT_EMPTY];
-	group->sType				= VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
-	group->type					= VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
-	group->generalShader		= VK_SHADER_UNUSED_KHR;
-	group->closestHitShader		= VK_SHADER_UNUSED_KHR;
-	group->anyHitShader			= VK_SHADER_UNUSED_KHR;
-	group->intersectionShader	= VK_SHADER_UNUSED_KHR;
-
-	shader->group_count = sizeof(groups) / sizeof(VkRayTracingShaderGroupCreateInfoKHR);
-	shader->shader_groups = (VkRayTracingShaderGroupCreateInfoKHR*)calloc(shader->group_count, sizeof(VkRayTracingShaderGroupCreateInfoKHR));
-	memcpy(shader->shader_groups, &groups[0], sizeof(groups));
-}
-
-vkshader_t *vk_rtx_create_global_shader( void ) 
-{
-	if ( !global_rtx_shader )
+	// create the SBT buffer
+	uint32_t shader_binding_table_size = num_shader_groups * vk.shaderGroupBaseAlignment;
+	VK_CHECK( vk_rtx_buffer_create( &vk.buf_shader_binding_table, shader_binding_table_size,
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT));
+		
+	// copy/unpack the shader handles into the SBT:
+	// shaderGroupBaseAlignment is likely greater than shaderGroupHandleSize (64 vs 32 on NV)
+	char *shader_binding_table = (char*)buffer_map( &vk.buf_shader_binding_table );
+	for ( uint32_t group = 0; group < num_shader_groups; group++ )
 	{
-		global_rtx_shader = (vkshader_t*)malloc(sizeof(vkshader_t));
-		vk_rtx_prepare_global_shader( global_rtx_shader );
+		memcpy(	shader_binding_table + group * vk.shaderGroupBaseAlignment,
+				shader_handles + group * vk.shaderGroupHandleSize,
+				vk.shaderGroupHandleSize );
 	}
 
-	return global_rtx_shader;
+	buffer_unmap( &vk.buf_shader_binding_table );
+	shader_binding_table = NULL;
 }

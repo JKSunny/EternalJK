@@ -280,7 +280,13 @@ void vk_rtx_shutdown( void )
 		vk_rtx_destroy_descriptor( &vk.computeDescriptor[i] );
 	}
 
-	vk_rtx_destroy_pipeline( &vk.rt_pipeline );
+	for ( i = 0; i < PIPELINE_COUNT; i++ )
+	{
+		qvkDestroyPipeline( vk.device, vk.rt_pipelines[i], NULL);
+		vk.rt_pipelines[i] = VK_NULL_HANDLE;
+	}
+	qvkDestroyPipelineLayout( vk.device, vk.rt_pipeline_layout, NULL);
+
 	VK_DestroyBuffer( &vk.buf_shader_binding_table );
 
 	vk_destroy_asvgf_pipelines();

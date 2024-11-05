@@ -753,7 +753,8 @@ static void vk_create_primary_rays_pipelines()
 		vk_create_compute_descriptor( i, prev_index );
 	}
 
-	vk_rtx_create_raytracing_pipelines();
+	vk_rtx_create_shader_modules();
+	vk_rtx_create_rt_pipelines();
 	vk_rtx_create_compute_pipelines();
 }
 

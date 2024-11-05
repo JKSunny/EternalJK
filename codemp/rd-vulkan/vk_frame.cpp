@@ -1396,7 +1396,8 @@ vkpt_final_blit_filtered(VkCommandBuffer cmd_buf)
     qfalse, vk.extent_unscaled.width, vk.extent_unscaled.height );
 
 	qvkCmdBindDescriptorSets( cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS,
-		vk.rt_pipeline.layout, 0, ARRAY_LEN(desc_sets), desc_sets, 0, 0 );
+		vk.rt_pipeline_layout, 0, ARRAY_LEN(desc_sets), desc_sets, 0, 0 );
+
 
 	qvkCmdBindPipeline( cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_final_blit );
 	qvkCmdDraw( cmd_buf, 4, 1, 0, 0 );

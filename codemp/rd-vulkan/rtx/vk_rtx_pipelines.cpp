@@ -160,72 +160,8 @@ void vk_rtx_create_compute_pipelines( void )
 //
 // raytracing
 //
-static void vk_rtx_finish_raytracing_pipeline( vkpipeline_t *pipeline )
+static void vk_rtx_create_rt_pipeline_layout( void )
 {
-	VkPipelineLibraryCreateInfoKHR library_info;
-	VkRayTracingPipelineCreateInfoKHR desc;
-
-	Com_Memset( &library_info, 0, sizeof(VkPipelineLibraryCreateInfoKHR) );
-	library_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LIBRARY_CREATE_INFO_KHR;
-	library_info.pNext = NULL;
-
-	
-	Com_Memset( &desc, 0, sizeof(VkRayTracingPipelineCreateInfoKHR) );
-	desc.sType = VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR;
-	desc.pNext = NULL;
-	desc.flags = 0;
-	desc.stageCount = pipeline->shader->size;
-	desc.pStages = pipeline->shader->shader_stages;
-	desc.groupCount = pipeline->shader->group_count;
-	desc.pGroups = pipeline->shader->shader_groups;
-	desc.maxPipelineRayRecursionDepth = 1;
-	desc.layout = pipeline->layout;
-	desc.pLibraryInfo = &library_info,
-	desc.pLibraryInterface = NULL,
-	desc.pDynamicState = NULL,
-	desc.basePipelineHandle = pipeline->handle;
-	desc.basePipelineIndex = 0;
-
-	VK_CHECK( qvkCreateRayTracingPipelinesKHR( vk.device, VK_NULL_HANDLE, VK_NULL_HANDLE, 1, &desc, NULL, &pipeline->handle ) );
-}
-
-static void vk_rtx_create_raytracing_shader_binding_table( vkpipeline_t *pipeline ) 
-{
-	uint32_t	num_shader_groups = 0;
-	char		*shader_handles = NULL;
-
-	num_shader_groups = pipeline->shader->group_count;
-
-	const uint32_t shader_handle_array_size = num_shader_groups * vk.shaderGroupHandleSize;
-	shader_handles = (char*)alloca(shader_handle_array_size);
-
-	VK_CHECK( qvkGetRayTracingShaderGroupHandlesKHR( vk.device, pipeline->handle, 0, num_shader_groups,
-		shader_handle_array_size, shader_handles ) );
-
-	// create the SBT buffer
-	uint32_t shader_binding_table_size = vk.shaderGroupBaseAlignment * num_shader_groups;
-	vk_rtx_buffer_create( &vk.buf_shader_binding_table, shader_binding_table_size,
-		VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT );
-
-	// copy/unpack the shader handles into the SBT:
-	// shaderGroupBaseAlignment is likely greater than shaderGroupHandleSize (64 vs 32 on NV)
-	char *shader_binding_table = (char*)buffer_map( &vk.buf_shader_binding_table );
-	for ( uint32_t group = 0; group < num_shader_groups; group++ )
-	{
-		memcpy(	shader_binding_table + group * vk.shaderGroupBaseAlignment,
-				shader_handles + group * vk.shaderGroupHandleSize,
-				vk.shaderGroupHandleSize );
-	}
-
-	buffer_unmap( &vk.buf_shader_binding_table );
-	shader_binding_table = NULL;
-}
-
-void vk_rtx_create_raytracing_pipelines( void ) 
-{
-	vkpipeline_t *pipeline = &vk.rt_pipeline;
-
 	VkDescriptorSetLayout set_layouts[] = {
 		vk.rtxDescriptor[0].layout,
 		vk.desc_set_layout_textures,
@@ -233,13 +169,28 @@ void vk_rtx_create_raytracing_pipelines( void )
 		vk.desc_set_layout_ubo
 	};
 
-	vk_rtx_bind_pipeline_shader( pipeline, vk_rtx_create_global_shader() );
-	vk_rtx_bind_pipeline_desc_set_layouts( pipeline, set_layouts, ARRAY_LEN(set_layouts) );
-	vk_rtx_bind_compute_push_constant( pipeline, VK_SHADER_STAGE_RAYGEN_BIT_KHR, 0, sizeof(pt_push_constants_t) );
+	VkPipelineLayoutCreateInfo desc;
+	
+	VkPushConstantRange push_constant_range;
+	push_constant_range.stageFlags		= VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+	push_constant_range.offset			= 0;
+	push_constant_range.size			= sizeof(pt_push_constants_t);
 
-	vk_rtx_create_pipeline_layout( pipeline );
-	vk_rtx_finish_raytracing_pipeline( pipeline );
-	vk_rtx_create_raytracing_shader_binding_table( pipeline );
+	Com_Memset( &desc, 0, sizeof(VkPipelineLayoutCreateInfo) );
+	desc.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	desc.pNext = NULL;
+	desc.pSetLayouts = set_layouts;
+	desc.setLayoutCount = ARRAY_LEN(set_layouts);
+	desc.pushConstantRangeCount = 1;
+	desc.pPushConstantRanges = &push_constant_range;
+
+	VK_CHECK( qvkCreatePipelineLayout( vk.device, &desc, NULL, &vk.rt_pipeline_layout ) );
+}
+
+void vk_rtx_create_rt_pipelines( void ) 
+{
+	vk_rtx_create_rt_pipeline_layout();
+	vk_rtx_create_pipelines(); 
 
 	vk_load_final_blit_shader();
 	vk_rtx_create_final_blit_pipeline();
