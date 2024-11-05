@@ -375,11 +375,6 @@ VkDescriptorSet SkyGetDescriptorSet( void )
 	return desc_set_precomputed_ubo;
 }
 
-VkBuffer vk_rtx_get_atmospheric_buffer( void ) 
-{
-	return atmosphere_params_buffer.buffer;
-}
-
 static VkResult vk_rtx_uniform_precomputed_buffer_create( void )
 {
 	// clean me up. some things are not used ..

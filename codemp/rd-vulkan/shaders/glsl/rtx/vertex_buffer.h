@@ -80,10 +80,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 // light stats
 #define BINDING_OFFSET_LIGHT_STATS_BUFFER					20
 
-// precomputed sky
-#define BINDING_OFFSET_PRECOMPUTED_SKY_UBO					21
-
-#define NUM_BUFFERS											22	// used as offset for storage images and textures
+#define NUM_BUFFERS											21
 
 
 #define SUN_COLOR_ACCUMULATOR_FIXED_POINT_SCALE 0x100000

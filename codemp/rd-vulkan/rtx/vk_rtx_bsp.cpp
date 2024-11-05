@@ -735,8 +735,6 @@ static void vk_create_compute_descriptor( uint32_t index, int prev_index )
 
 	vk_bind_common_descriptor_data( descriptor, flags, index, stage, prev_index );
 
-	vk_bind_uniform_buffer( descriptor, BINDING_OFFSET_PRECOMPUTED_SKY_UBO,	flags, vk_rtx_get_atmospheric_buffer() ); // bad
-
 	vk_rtx_create_descriptor( descriptor );
 	vk_rtx_update_descriptor( descriptor );
 }

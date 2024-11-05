@@ -71,7 +71,6 @@ void					SkyReleaseDataGPU( void );
 void					UpdateTerrainShadowMapView(vec3_t forward);
 VkResult				SkyLoadScatterParameters( int preset );
 
-VkBuffer				vk_rtx_get_atmospheric_buffer( void );
 VkDescriptorSetLayout	*SkyGetDescriptorLayout( void );
 VkDescriptorSet			SkyGetDescriptorSet( void );
 

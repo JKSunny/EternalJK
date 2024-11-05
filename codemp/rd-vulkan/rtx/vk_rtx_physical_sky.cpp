@@ -265,11 +265,12 @@ static void vk_create_physical_sky_pipeline( uint32_t pipeline_index, uint32_t s
 {
 	vkpipeline_t *pipeline = &vk.physical_sky_pipeline[pipeline_index];
 
-	VkDescriptorSetLayout set_layouts[4] = {
+	VkDescriptorSetLayout set_layouts[] = {
 		vk.computeDescriptor[0].layout,
 		vk.desc_set_layout_textures,
 		vk.imageDescriptor.layout,
-		vk.desc_set_layout_ubo
+		vk.desc_set_layout_ubo,
+		*SkyGetDescriptorLayout()
 	};
 
 	vk_rtx_bind_pipeline_shader( pipeline, vk.physical_sky_shader[shader_index] );
@@ -467,7 +468,8 @@ VkResult vkpt_physical_sky_record_cmd_buffer( VkCommandBuffer cmd_buf )
 		vk.computeDescriptor[idx].set,
 		vk_rtx_get_current_desc_set_textures(),
 		vk.imageDescriptor.set,
-		vk.desc_set_ubo
+		vk.desc_set_ubo,
+		SkyGetDescriptorSet()
 	};
 
 	vk_rtx_create_shadow_map_framebuffer( &vk.precomputed_shadowmapdata );
