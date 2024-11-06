@@ -1386,7 +1386,7 @@ vkpt_final_blit_filtered(VkCommandBuffer cmd_buf)
 	vk_rtx_get_descriptor_index( idx, prev_idx );
 
 	VkDescriptorSet desc_sets[] = {
-		vk.rtxDescriptor[idx].set,
+		vk.rt_descriptor_set[idx].set,
         vk_rtx_get_current_desc_set_textures(),
 		vk.imageDescriptor.set,
         vk.desc_set_ubo

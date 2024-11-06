@@ -132,7 +132,7 @@ VkResult vk_rtx_model_vbo_create_pipelines( void )
 	assert(!pipeline_layout_instance_geometry);
 
 	VkDescriptorSetLayout set_layouts[] = {
-		vk.computeDescriptor[0].layout,
+		vk.desc_set_vertex_buffer[0].layout,
 		vk.desc_set_layout_textures,
 		vk.model_instance.layout,	// vbo
 		vk.desc_set_layout_ubo,
@@ -191,7 +191,7 @@ void vkpt_instance_geometry( VkCommandBuffer cmd_buf, uint32_t num_instances, qb
 	vk_rtx_get_descriptor_index( idx, prev_idx );
 
 	VkDescriptorSet desc_sets[] = {
-		vk.computeDescriptor[idx].set,
+		vk.desc_set_vertex_buffer[idx].set,
 		vk_rtx_get_current_desc_set_textures(),
 		vk.model_instance.descriptor.vbos,
 		vk.desc_set_ubo,

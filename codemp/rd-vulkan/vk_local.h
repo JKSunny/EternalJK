@@ -888,8 +888,8 @@ typedef struct {
 	VkDescriptorSetLayout       desc_set_layout_ubo;
 	VkDescriptorSet             desc_set_ubo;
 
-	vkdescriptor_t	rtxDescriptor		[VK_MAX_SWAPCHAIN_SIZE];
-	vkdescriptor_t	computeDescriptor	[VK_MAX_SWAPCHAIN_SIZE];
+	vkdescriptor_t	rt_descriptor_set		[VK_MAX_SWAPCHAIN_SIZE];
+	vkdescriptor_t	desc_set_vertex_buffer	[VK_MAX_SWAPCHAIN_SIZE];
 	vkdescriptor_t	imageDescriptor;
 
 	struct {

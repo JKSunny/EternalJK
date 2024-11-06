@@ -129,7 +129,7 @@ static void vk_create_tonemap_pipeline( uint32_t pipeline_index, uint32_t shader
 	vkpipeline_t *pipeline = &vk.tonemap_pipeline[pipeline_index];
 
 	VkDescriptorSetLayout set_layouts[] = {
-		vk.computeDescriptor[0].layout,
+		vk.desc_set_vertex_buffer[0].layout,
 		vk.desc_set_layout_textures,
 		vk.imageDescriptor.layout,
 		vk.desc_set_layout_ubo
@@ -190,7 +190,7 @@ VkResult vkpt_tone_mapping_record_cmd_buffer( VkCommandBuffer cmd_buf, float fra
 	vk_rtx_get_descriptor_index( idx, prev_idx );
 
 	VkDescriptorSet desc_sets[] = {
-		vk.computeDescriptor[idx].set,
+		vk.desc_set_vertex_buffer[idx].set,
 		vk_rtx_get_current_desc_set_textures(),
 		vk.imageDescriptor.set,
 		vk.desc_set_ubo

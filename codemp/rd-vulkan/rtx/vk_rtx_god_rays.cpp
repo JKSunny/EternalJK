@@ -164,7 +164,7 @@ void vk_rtx_record_god_rays_trace_command_buffer( VkCommandBuffer command_buffer
 	qvkCmdBindPipeline( command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, god_rays.pipelines[0] );
 
 	VkDescriptorSet desc_sets[] = {
-		vk.computeDescriptor[idx].set,
+		vk.desc_set_vertex_buffer[idx].set,
 		vk_rtx_get_current_desc_set_textures(),
 		vk.imageDescriptor.set,
 		vk.desc_set_ubo,
@@ -202,7 +202,7 @@ void vk_rtx_record_god_rays_filter_command_buffer( VkCommandBuffer command_buffe
 	qvkCmdBindPipeline( command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, god_rays.pipelines[1] );
 
 	VkDescriptorSet desc_sets[] = {
-		vk.computeDescriptor[idx].set,
+		vk.desc_set_vertex_buffer[idx].set,
 		vk_rtx_get_current_desc_set_textures(),
 		vk.imageDescriptor.set,
 		vk.desc_set_ubo,
@@ -301,7 +301,7 @@ static void create_pipeline_layout( void )
 		&god_rays.descriptor_set_layout) );
 
 	VkDescriptorSetLayout set_layouts[] = {
-		vk.computeDescriptor[0].layout,
+		vk.desc_set_vertex_buffer[0].layout,
 		vk.desc_set_layout_textures,
 		vk.imageDescriptor.layout,
 		vk.desc_set_layout_ubo,

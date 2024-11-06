@@ -665,30 +665,48 @@ static void vk_bind_sampler( vkdescriptor_t *descriptor, uint32_t binding, VkSha
 	vk_rtx_bind_descriptor_image_sampler( descriptor, binding, stage, sampler, view, 0 );
 }
 
-static void vk_bind_common_descriptor_data( vkdescriptor_t *descriptor, VkShaderStageFlagBits flags, uint32_t index, VkShaderStageFlagBits stage, int prev_index )
+static void vk_create_rt_descriptor( uint32_t index, uint32_t prev_index ) 
 {
-	vk_bind_storage_buffer(descriptor, BINDING_OFFSET_XYZ_WORLD_STATIC, flags, vk.geometry.xyz_world_static.buffer);
-	vk_bind_storage_buffer(descriptor, BINDING_OFFSET_IDX_WORLD_STATIC, flags, vk.geometry.idx_world_static.buffer);
-	vk_bind_storage_buffer(descriptor, BINDING_OFFSET_XYZ_WORLD_DYNAMIC_DATA, flags, vk.geometry.xyz_world_dynamic_data[index].buffer);
-	vk_bind_storage_buffer(descriptor, BINDING_OFFSET_IDX_WORLD_DYNAMIC_DATA, flags, vk.geometry.idx_world_dynamic_data[index].buffer);
-	vk_bind_storage_buffer(descriptor, BINDING_OFFSET_XYZ_WORLD_DYNAMIC_AS, flags, vk.geometry.xyz_world_dynamic_as[index].buffer);
-	vk_bind_storage_buffer(descriptor, BINDING_OFFSET_IDX_WORLD_DYNAMIC_AS, flags, vk.geometry.idx_world_dynamic_as[index].buffer);
-	vk_bind_storage_buffer(descriptor, BINDING_OFFSET_CLUSTER_WORLD_STATIC, flags, vk.geometry.cluster_world_static.buffer);
-	vk_bind_storage_buffer(descriptor, BINDING_OFFSET_CLUSTER_WORLD_DYNAMIC_DATA, flags, vk.geometry.cluster_world_dynamic_data.buffer);
-	vk_bind_storage_buffer(descriptor, BINDING_OFFSET_CLUSTER_WORLD_DYNAMIC_AS, flags, vk.geometry.cluster_world_dynamic_as.buffer);
+	vkdescriptor_t *descriptor = &vk.rt_descriptor_set[index];
 
-	// miscellaneous
-	vk_bind_storage_buffer(descriptor, BINDING_OFFSET_READBACK_BUFFER, stage, vk.buf_readback.buffer);
-	vk_bind_storage_buffer(descriptor, BINDING_OFFSET_DYNAMIC_VERTEX, stage, vk.model_instance.buffer_vertex.buffer);
-	vk_bind_storage_buffer(descriptor, BINDING_OFFSET_LIGHT_BUFFER, stage, vk.buf_light.buffer);
-	vk_bind_storage_buffer(descriptor, BINDING_OFFSET_TONEMAP_BUFFER, stage, vk.buf_tonemap.buffer);
-	vk_bind_storage_buffer(descriptor, BINDING_OFFSET_SUN_COLOR_BUFFER, stage, vk.buf_sun_color.buffer);
+	vk_rtx_add_descriptor_as( descriptor, RAY_GEN_DESCRIPTOR_SET_IDX, VK_SHADER_STAGE_RAYGEN_BIT_KHR );
+	vk_rtx_bind_descriptor_as( descriptor, RAY_GEN_DESCRIPTOR_SET_IDX, VK_SHADER_STAGE_RAYGEN_BIT_KHR, &vk.tlas_geometry[index].accel );
+
+	vk_rtx_create_descriptor( descriptor );
+	vk_rtx_update_descriptor( descriptor );
+}
+
+static void vk_create_vertex_buffer_descriptor( uint32_t index, uint32_t prev_index ) 
+{	
+	vkdescriptor_t *descriptor = &vk.desc_set_vertex_buffer[index] ;
+
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_XYZ_WORLD_STATIC, VK_SHADER_STAGE_ALL, vk.geometry.xyz_world_static.buffer );
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_IDX_WORLD_STATIC, VK_SHADER_STAGE_ALL, vk.geometry.idx_world_static.buffer );
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_XYZ_WORLD_DYNAMIC_DATA, VK_SHADER_STAGE_ALL, vk.geometry.xyz_world_dynamic_data[index].buffer );
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_IDX_WORLD_DYNAMIC_DATA, VK_SHADER_STAGE_ALL, vk.geometry.idx_world_dynamic_data[index].buffer );
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_XYZ_WORLD_DYNAMIC_AS, VK_SHADER_STAGE_ALL, vk.geometry.xyz_world_dynamic_as[index].buffer );
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_IDX_WORLD_DYNAMIC_AS, VK_SHADER_STAGE_ALL, vk.geometry.idx_world_dynamic_as[index].buffer );
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_CLUSTER_WORLD_STATIC, VK_SHADER_STAGE_ALL, vk.geometry.cluster_world_static.buffer );
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_CLUSTER_WORLD_DYNAMIC_DATA, VK_SHADER_STAGE_ALL, vk.geometry.cluster_world_dynamic_data.buffer );
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_CLUSTER_WORLD_DYNAMIC_AS, VK_SHADER_STAGE_ALL, vk.geometry.cluster_world_dynamic_as.buffer );
+
+	// previous
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_XYZ_WORLD_DYNAMIC_DATA_PREV, VK_SHADER_STAGE_ALL, vk.geometry.xyz_world_dynamic_data[prev_index].buffer );
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_IDX_WORLD_DYNAMIC_DATA_PREV, VK_SHADER_STAGE_ALL, vk.geometry.idx_world_dynamic_data[prev_index].buffer );
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_XYZ_WORLD_DYNAMIC_AS_PREV, VK_SHADER_STAGE_ALL, vk.geometry.xyz_world_dynamic_as[prev_index].buffer );
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_IDX_WORLD_DYNAMIC_AS_PREV, VK_SHADER_STAGE_ALL, vk.geometry.idx_world_dynamic_as[prev_index].buffer );
+
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_READBACK_BUFFER, VK_SHADER_STAGE_ALL, vk.buf_readback.buffer );
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_DYNAMIC_VERTEX, VK_SHADER_STAGE_ALL, vk.model_instance.buffer_vertex.buffer );
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_LIGHT_BUFFER, VK_SHADER_STAGE_ALL, vk.buf_light.buffer );
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_TONEMAP_BUFFER, VK_SHADER_STAGE_ALL, vk.buf_tonemap.buffer );
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_SUN_COLOR_BUFFER, VK_SHADER_STAGE_ALL, vk.buf_sun_color.buffer );
 
 	// light stats
 	{
 		uint32_t i, light_stats_index;
-		light_stats_index = vk_rtx_add_descriptor_buffer(descriptor, NUM_LIGHT_STATS_BUFFERS, BINDING_OFFSET_LIGHT_STATS_BUFFER, VK_SHADER_STAGE_ALL, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-		vk_rtx_set_descriptor_update_size(descriptor, BINDING_OFFSET_LIGHT_STATS_BUFFER, VK_SHADER_STAGE_ALL, NUM_LIGHT_STATS_BUFFERS);
+		light_stats_index = vk_rtx_add_descriptor_buffer( descriptor, NUM_LIGHT_STATS_BUFFERS, BINDING_OFFSET_LIGHT_STATS_BUFFER, VK_SHADER_STAGE_ALL, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER );
+		vk_rtx_set_descriptor_update_size( descriptor, BINDING_OFFSET_LIGHT_STATS_BUFFER, VK_SHADER_STAGE_ALL, NUM_LIGHT_STATS_BUFFERS );
 
 		for (i = 0; i < NUM_LIGHT_STATS_BUFFERS; i++)
 			descriptor->data[light_stats_index].buffer[i] = { vk.buf_light_stats[i].buffer, 0, vk.buf_light_stats[i].size };
@@ -697,43 +715,12 @@ static void vk_bind_common_descriptor_data( vkdescriptor_t *descriptor, VkShader
 	// light count history
 	{
 		uint32_t i, light_count_history_index;
-		light_count_history_index = vk_rtx_add_descriptor_buffer(descriptor, LIGHT_COUNT_HISTORY, BINDING_LIGHT_COUNTS_HISTORY_BUFFER, VK_SHADER_STAGE_ALL, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-		vk_rtx_set_descriptor_update_size(descriptor, BINDING_LIGHT_COUNTS_HISTORY_BUFFER, VK_SHADER_STAGE_ALL, LIGHT_COUNT_HISTORY);
+		light_count_history_index = vk_rtx_add_descriptor_buffer( descriptor, LIGHT_COUNT_HISTORY, BINDING_LIGHT_COUNTS_HISTORY_BUFFER, VK_SHADER_STAGE_ALL, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER );
+		vk_rtx_set_descriptor_update_size( descriptor, BINDING_LIGHT_COUNTS_HISTORY_BUFFER, VK_SHADER_STAGE_ALL, LIGHT_COUNT_HISTORY );
 
 		for (i = 0; i < LIGHT_COUNT_HISTORY; i++)
 			descriptor->data[light_count_history_index].buffer[i] = { vk.buf_light_counts_history[i].buffer, 0, vk.buf_light_counts_history[i].size };
 	}
-
-	// previous
-	vk_bind_storage_buffer(descriptor, BINDING_OFFSET_XYZ_WORLD_DYNAMIC_DATA_PREV, flags, vk.geometry.xyz_world_dynamic_data[prev_index].buffer);
-	vk_bind_storage_buffer(descriptor, BINDING_OFFSET_IDX_WORLD_DYNAMIC_DATA_PREV, flags, vk.geometry.idx_world_dynamic_data[prev_index].buffer);
-	vk_bind_storage_buffer(descriptor, BINDING_OFFSET_XYZ_WORLD_DYNAMIC_AS_PREV, flags, vk.geometry.xyz_world_dynamic_as[prev_index].buffer);
-	vk_bind_storage_buffer(descriptor, BINDING_OFFSET_IDX_WORLD_DYNAMIC_AS_PREV, flags, vk.geometry.idx_world_dynamic_as[prev_index].buffer);
-}
-
-static void vk_create_rtx_descriptor( uint32_t index, int prev_index ) 
-{
-	VkShaderStageFlagBits flags = (VkShaderStageFlagBits)( VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR );
-	vkdescriptor_t *descriptor = &vk.rtxDescriptor[index];
-	VkShaderStageFlagBits stage = VK_SHADER_STAGE_ALL;
-
-	vk_rtx_add_descriptor_as(descriptor, BINDING_OFFSET_AS, flags);
-	vk_rtx_bind_descriptor_as(descriptor, BINDING_OFFSET_AS, flags, &vk.tlas_geometry[index].accel);
-
-	vk_bind_common_descriptor_data( descriptor, flags, index, stage, prev_index );
-
-	descriptor->lastBindingVariableSizeExt = qtrue;
-	vk_rtx_create_descriptor( descriptor );
-	vk_rtx_update_descriptor( descriptor );
-}
-
-static void vk_create_compute_descriptor( uint32_t index, int prev_index ) 
-{
-	VkShaderStageFlagBits flags = (VkShaderStageFlagBits)( VK_SHADER_STAGE_COMPUTE_BIT );
-	vkdescriptor_t *descriptor = &vk.computeDescriptor[index];
-	VkShaderStageFlagBits stage = VK_SHADER_STAGE_COMPUTE_BIT;
-
-	vk_bind_common_descriptor_data( descriptor, flags, index, stage, prev_index );
 
 	vk_rtx_create_descriptor( descriptor );
 	vk_rtx_update_descriptor( descriptor );
@@ -747,8 +734,8 @@ static void vk_create_primary_rays_pipelines()
 	{
 		prev_index = (i + (vk.swapchain_image_count - 1)) % vk.swapchain_image_count;
 
-		vk_create_rtx_descriptor( i, prev_index );
-		vk_create_compute_descriptor( i, prev_index );
+		vk_create_rt_descriptor( i, prev_index );
+		vk_create_vertex_buffer_descriptor( i, prev_index );
 	}
 
 	vk_rtx_create_shader_modules();

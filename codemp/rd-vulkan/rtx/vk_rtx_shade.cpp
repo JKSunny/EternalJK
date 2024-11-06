@@ -822,10 +822,11 @@ static void vk_rtx_prepare_ubo( trRefdef_t *refdef, world_t *world, vkUniformRTX
 static void vk_rtx_setup_rt_pipeline( VkCommandBuffer cmd_buf, uint32_t idx, VkPipelineBindPoint bind_point, uint32_t index )
 {
 	VkDescriptorSet desc_sets[] = {
-		vk.rtxDescriptor[idx].set,
+		vk.rt_descriptor_set[idx].set,
         vk_rtx_get_current_desc_set_textures(),
 		vk.imageDescriptor.set,
-        vk.desc_set_ubo
+        vk.desc_set_ubo,
+		vk.desc_set_vertex_buffer[idx].set,
 	};
 
 	// https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/8038
@@ -1216,8 +1217,8 @@ static void vk_begin_trace_rays( trRefdef_t *refdef, reference_mode_t *ref_mode,
 		BEGIN_PERF_MARKER( trace_cmd_buf, PROFILER_BVH_UPDATE );
 		vkpt_pt_create_all_dynamic( trace_cmd_buf, idx, upload_info );
 		vkpt_pt_create_toplevel( trace_cmd_buf, idx, drawSurfs, numDrawSurfs );
-		vk_rtx_bind_descriptor_as( &vk.rtxDescriptor[idx], BINDING_OFFSET_AS,VK_SHADER_STAGE_RAYGEN_BIT_KHR, &vk.tlas_geometry[idx].accel );
-		vk_rtx_update_descriptor( &vk.rtxDescriptor[idx] );
+		vk_rtx_bind_descriptor_as( &vk.rt_descriptor_set[idx], RAY_GEN_DESCRIPTOR_SET_IDX, VK_SHADER_STAGE_RAYGEN_BIT_KHR, &vk.tlas_geometry[idx].accel );
+		vk_rtx_update_descriptor( &vk.rt_descriptor_set[idx] );
 		END_PERF_MARKER( trace_cmd_buf, PROFILER_BVH_UPDATE );
 
 		BEGIN_PERF_MARKER( trace_cmd_buf, PROFILER_SHADOW_MAP );

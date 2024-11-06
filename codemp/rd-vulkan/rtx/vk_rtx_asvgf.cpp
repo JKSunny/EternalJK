@@ -54,7 +54,7 @@ static void vk_create_asvgf_pipeline( uint32_t pipeline_index, uint32_t shader_i
 	vkpipeline_t *pipeline = &vk.asvgf_pipeline[pipeline_index];
 
 	VkDescriptorSetLayout set_layouts[] = {
-		vk.computeDescriptor[0].layout,
+		vk.desc_set_vertex_buffer[0].layout,
 		vk.desc_set_layout_textures,
 		vk.imageDescriptor.layout,
 		vk.desc_set_layout_ubo
@@ -114,7 +114,7 @@ VkResult vkpt_asvgf_gradient_reproject( VkCommandBuffer cmd_buf )
 	vk_rtx_get_descriptor_index( idx, prev_idx );
 
 	VkDescriptorSet desc_sets[] = {
-		vk.computeDescriptor[idx].set,
+		vk.desc_set_vertex_buffer[idx].set,
 		vk_rtx_get_current_desc_set_textures(),
 		vk.imageDescriptor.set,
 		vk.desc_set_ubo
@@ -145,7 +145,7 @@ VkResult vkpt_asvgf_filter( VkCommandBuffer cmd_buf, qboolean enable_lf )
 	vk_rtx_get_descriptor_index( idx, prev_idx );
 
 	VkDescriptorSet desc_sets[] = {
-		vk.computeDescriptor[idx].set,
+		vk.desc_set_vertex_buffer[idx].set,
 		vk_rtx_get_current_desc_set_textures(),
 		vk.imageDescriptor.set,
 		vk.desc_set_ubo
@@ -293,7 +293,7 @@ VkResult vkpt_compositing( VkCommandBuffer cmd_buf )
 	vk_rtx_get_descriptor_index( idx, prev_idx );
 
 	VkDescriptorSet desc_sets[] = {
-		vk.computeDescriptor[idx].set,
+		vk.desc_set_vertex_buffer[idx].set,
 		vk_rtx_get_current_desc_set_textures(),
 		vk.imageDescriptor.set,
 		vk.desc_set_ubo
@@ -330,7 +330,7 @@ VkResult vkpt_interleave( VkCommandBuffer cmd_buf )
 	vk_rtx_get_descriptor_index( idx, prev_idx );
 
 	VkDescriptorSet desc_sets[] = {
-		vk.computeDescriptor[idx].set,
+		vk.desc_set_vertex_buffer[idx].set,
 		vk_rtx_get_current_desc_set_textures(),
 		vk.imageDescriptor.set,
 		vk.desc_set_ubo
@@ -398,7 +398,7 @@ VkResult vkpt_taa( VkCommandBuffer cmd_buf )
 	vk_rtx_get_descriptor_index( idx, prev_idx );
 
 	VkDescriptorSet desc_sets[] = {
-		vk.computeDescriptor[idx].set,
+		vk.desc_set_vertex_buffer[idx].set,
 		vk_rtx_get_current_desc_set_textures(),
 		vk.imageDescriptor.set,
 		vk.desc_set_ubo

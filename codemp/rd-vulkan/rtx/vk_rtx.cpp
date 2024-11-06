@@ -276,8 +276,8 @@ void vk_rtx_shutdown( void )
 		vk_rtx_destroy_blas(&vk.blas_dynamic.as_world[i] );
 		vk_rtx_destroy_blas(&vk.blas_dynamic.as_world_transparent[i] );
 
-		vk_rtx_destroy_descriptor( &vk.rtxDescriptor[i] );
-		vk_rtx_destroy_descriptor( &vk.computeDescriptor[i] );
+		vk_rtx_destroy_descriptor( &vk.rt_descriptor_set[i] );
+		vk_rtx_destroy_descriptor( &vk.desc_set_vertex_buffer[i] );
 	}
 
 	for ( i = 0; i < PIPELINE_COUNT; i++ )

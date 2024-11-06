@@ -119,10 +119,9 @@ static void vk_rtx_create_descriptor_layout( vkdescriptor_t *descriptor )
 		
 	flags = (VkDescriptorBindingFlagBits*)calloc(descriptor->size, sizeof(VkDescriptorBindingFlagBits));
 
-	if ( descriptor->size > 0 ) 
-		flags[descriptor->size-1] = (VkDescriptorBindingFlagBits)(VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT_EXT | VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT_EXT);
+	//if ( descriptor->size > 0 ) 
+	//	flags[descriptor->size-1] = (VkDescriptorBindingFlagBits)(VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT_EXT | VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT_EXT);
 	
-
 	info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT;
 	info.pNext = VK_NULL_HANDLE;
 	info.bindingCount = descriptor->size;
@@ -171,21 +170,22 @@ static void vk_rtx_create_descriptor_pool( vkdescriptor_t *descriptor )
 
 static void vk_rtx_finish_descriptor( vkdescriptor_t *descriptor ) 
 {
-	VkDescriptorSetVariableDescriptorCountAllocateInfo alloc;
+	//VkDescriptorSetVariableDescriptorCountAllocateInfo alloc;
 	VkDescriptorSetAllocateInfo desc;
-	uint32_t count; 
+	//uint32_t count; 
 		
-	count = descriptor->bindings[descriptor->size - 1].descriptorCount;
+	/*count = descriptor->bindings[descriptor->size - 1].descriptorCount;
 
 	Com_Memset( &alloc, 0, sizeof(VkDescriptorSetVariableDescriptorCountAllocateInfo));
 	alloc.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO;
 	alloc.pNext = NULL;
     alloc.descriptorSetCount = 1;
     alloc.pDescriptorCounts = &count;
+	*/
 
 	Com_Memset( &desc, 0, sizeof(VkDescriptorSetAllocateInfo));
     desc.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	desc.pNext = &alloc;
+	desc.pNext = NULL;
     desc.descriptorSetCount = 1;
     desc.descriptorPool = descriptor->pool;
     desc.pSetLayouts = &descriptor->layout;

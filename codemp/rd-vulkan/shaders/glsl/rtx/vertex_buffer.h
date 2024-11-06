@@ -38,50 +38,47 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 // BINDING OFFSETS
 // top level acceleration structure
-#define BINDING_OFFSET_AS							        0
+#define RAY_GEN_DESCRIPTOR_SET_IDX							0
 
 // world static
-#define BINDING_OFFSET_XYZ_WORLD_STATIC                     1
-#define BINDING_OFFSET_IDX_WORLD_STATIC                     2
+#define BINDING_OFFSET_XYZ_WORLD_STATIC                     0
+#define BINDING_OFFSET_IDX_WORLD_STATIC                     1
 
 // world dynamic data
-#define BINDING_OFFSET_XYZ_WORLD_DYNAMIC_DATA		        3
-#define BINDING_OFFSET_XYZ_WORLD_DYNAMIC_DATA_PREV          4
-#define BINDING_OFFSET_IDX_WORLD_DYNAMIC_DATA		        5
-#define BINDING_OFFSET_IDX_WORLD_DYNAMIC_DATA_PREV          6
+#define BINDING_OFFSET_XYZ_WORLD_DYNAMIC_DATA		        2
+#define BINDING_OFFSET_XYZ_WORLD_DYNAMIC_DATA_PREV          3
+#define BINDING_OFFSET_IDX_WORLD_DYNAMIC_DATA		        4
+#define BINDING_OFFSET_IDX_WORLD_DYNAMIC_DATA_PREV          5
 
 // world dynamic as
-#define BINDING_OFFSET_XYZ_WORLD_DYNAMIC_AS		            7
-#define BINDING_OFFSET_XYZ_WORLD_DYNAMIC_AS_PREV            8
-#define BINDING_OFFSET_IDX_WORLD_DYNAMIC_AS		            9
-#define BINDING_OFFSET_IDX_WORLD_DYNAMIC_AS_PREV            10
+#define BINDING_OFFSET_XYZ_WORLD_DYNAMIC_AS		            6
+#define BINDING_OFFSET_XYZ_WORLD_DYNAMIC_AS_PREV            7
+#define BINDING_OFFSET_IDX_WORLD_DYNAMIC_AS		            8
+#define BINDING_OFFSET_IDX_WORLD_DYNAMIC_AS_PREV            9
 
 // cluster data
-#define BINDING_OFFSET_CLUSTER_WORLD_STATIC                 11
-#define BINDING_OFFSET_CLUSTER_WORLD_DYNAMIC_DATA           12
-#define BINDING_OFFSET_CLUSTER_WORLD_DYNAMIC_AS             13
+#define BINDING_OFFSET_CLUSTER_WORLD_STATIC                 10
+#define BINDING_OFFSET_CLUSTER_WORLD_DYNAMIC_DATA           11
+#define BINDING_OFFSET_CLUSTER_WORLD_DYNAMIC_AS             12
 
 // readback
-#define BINDING_OFFSET_READBACK_BUFFER						14
+#define BINDING_OFFSET_READBACK_BUFFER						13
 
 // dynamic vertex
-#define BINDING_OFFSET_DYNAMIC_VERTEX						15
+#define BINDING_OFFSET_DYNAMIC_VERTEX						14
 
 // light and material
-#define BINDING_OFFSET_LIGHT_BUFFER							16
-#define BINDING_LIGHT_COUNTS_HISTORY_BUFFER					17
+#define BINDING_OFFSET_LIGHT_BUFFER							15
+#define BINDING_LIGHT_COUNTS_HISTORY_BUFFER					16
 
 // tonemap
-#define BINDING_OFFSET_TONEMAP_BUFFER						18
+#define BINDING_OFFSET_TONEMAP_BUFFER						17
 
 // sky
-#define BINDING_OFFSET_SUN_COLOR_BUFFER						19
+#define BINDING_OFFSET_SUN_COLOR_BUFFER						18
 
 // light stats
-#define BINDING_OFFSET_LIGHT_STATS_BUFFER					20
-
-#define NUM_BUFFERS											21
-
+#define BINDING_OFFSET_LIGHT_STATS_BUFFER					19
 
 #define SUN_COLOR_ACCUMULATOR_FIXED_POINT_SCALE 0x100000
 #define SKY_COLOR_ACCUMULATOR_FIXED_POINT_SCALE 0x100
@@ -217,22 +214,23 @@ struct TextureData {
 	bool tex1Color;
 };
 
+
 // Buffer with indices and vertices
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_IDX_WORLD_STATIC )			BUFFER_T Indices_World_static { uint i[]; } indices_world_static;
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_XYZ_WORLD_STATIC )			BUFFER_T Vertices_World_static { VertexBuffer v[]; } vertices_world_static;
-
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_IDX_WORLD_DYNAMIC_DATA )		BUFFER_T Indices_dynamic_data { uint i[]; } indices_dynamic_data;
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_XYZ_WORLD_DYNAMIC_DATA )		BUFFER_T Vertices_dynamic_data { VertexBuffer v[]; } vertices_dynamic_data;
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_IDX_WORLD_DYNAMIC_AS )		BUFFER_T Indices_dynamic_as { uint i[]; } indices_dynamic_as;
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_XYZ_WORLD_DYNAMIC_AS )		BUFFER_T Vertices_dynamic_as { VertexBuffer v[]; } vertices_dynamic_as;
-
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_CLUSTER_WORLD_STATIC )		BUFFER_T Cluster_World_static { uint c[]; } cluster_world_static;
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_CLUSTER_WORLD_DYNAMIC_DATA )	BUFFER_T Cluster_World_dynamic_data { uint c[]; } cluster_world_dynamic_data;
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_CLUSTER_WORLD_DYNAMIC_AS )	BUFFER_T Cluster_World_dynamic_as { uint c[]; } cluster_world_dynamic_as;
 
-layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_READBACK_BUFFER )			buffer READBACK_BUFFER { ReadbackBuffer readback; };
-layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_DYNAMIC_VERTEX )				buffer MODEL_DYNAMIC_VERTEX_BUFFER { ModelDynamicVertexBuffer vbo_model_dynamic; };
-layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_LIGHT_BUFFER )				buffer LIGHT_BUFFER { LightBuffer light_buffer; };
+//prev
+layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_IDX_WORLD_DYNAMIC_DATA_PREV ) BUFFER_T Indices_dynamic_data_prev { uint i[]; } indices_dynamic_data_prev;
+layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_XYZ_WORLD_DYNAMIC_DATA_PREV ) BUFFER_T Vertices_dynamic_data_prev { VertexBuffer v[]; } vertices_dynamic_data_prev;
+layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_IDX_WORLD_DYNAMIC_AS_PREV )	BUFFER_T Indices_dynamic_as_prev { uint i[]; } indices_dynamic_as_prev;
+layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_XYZ_WORLD_DYNAMIC_AS_PREV )	BUFFER_T Vertices_dynamic_as_prev { VertexBuffer v[]; } vertices_dynamic_as_prev;
 
 /* History of light count in cluster, used for sampling.
  * This is used to make gradient estimation work correctly:
@@ -251,12 +249,9 @@ layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_LIGHT_COUNTS_HISTORY
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_TONEMAP_BUFFER )				buffer TONE_MAPPING_BUFFER { ToneMappingBuffer tonemap_buffer; };
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_SUN_COLOR_BUFFER )			buffer SUN_COLOR_BUFFER { SunColorBuffer sun_color_buffer; };
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_LIGHT_STATS_BUFFER )			buffer LIGHT_STATS_BUFFERS { uint stats[]; } light_stats_bufers[3];
-
-//prev
-layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_IDX_WORLD_DYNAMIC_DATA_PREV ) BUFFER_T Indices_dynamic_data_prev { uint i[]; } indices_dynamic_data_prev;
-layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_XYZ_WORLD_DYNAMIC_DATA_PREV ) BUFFER_T Vertices_dynamic_data_prev { VertexBuffer v[]; } vertices_dynamic_data_prev;
-layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_IDX_WORLD_DYNAMIC_AS_PREV )	BUFFER_T Indices_dynamic_as_prev { uint i[]; } indices_dynamic_as_prev;
-layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_XYZ_WORLD_DYNAMIC_AS_PREV )	BUFFER_T Vertices_dynamic_as_prev { VertexBuffer v[]; } vertices_dynamic_as_prev;
+layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_READBACK_BUFFER )			buffer READBACK_BUFFER { ReadbackBuffer readback; };
+layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_DYNAMIC_VERTEX )				buffer MODEL_DYNAMIC_VERTEX_BUFFER { ModelDynamicVertexBuffer vbo_model_dynamic; };
+layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_LIGHT_BUFFER )				buffer LIGHT_BUFFER { LightBuffer light_buffer; };
 
 #undef BUFFER_T
 

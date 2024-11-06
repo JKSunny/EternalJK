@@ -163,10 +163,11 @@ void vk_rtx_create_compute_pipelines( void )
 static void vk_rtx_create_rt_pipeline_layout( void )
 {
 	VkDescriptorSetLayout set_layouts[] = {
-		vk.rtxDescriptor[0].layout,
+		vk.rt_descriptor_set[0].layout,
 		vk.desc_set_layout_textures,
 		vk.imageDescriptor.layout,
-		vk.desc_set_layout_ubo
+		vk.desc_set_layout_ubo,
+		vk.desc_set_vertex_buffer[0].layout,
 	};
 
 	VkPipelineLayoutCreateInfo desc;
