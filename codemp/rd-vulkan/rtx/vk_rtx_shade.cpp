@@ -184,8 +184,9 @@ static void vkpt_pt_create_toplevel( VkCommandBuffer cmd_buf, uint32_t idx, draw
 	MEM_BARRIER_BUILD_ACCEL(cmd_buf); /* probably not needed here but doesn't matter */
 }
 
-static inline uint32_t fill_mdxm_instance( const trRefEntity_t* entity, const mdxmVBOMesh_t* mesh, shader_t *shader,
-	const float* transform, int model_instance_index, qboolean is_viewer_weapon, qboolean is_double_sided )
+static inline uint32_t fill_model_instance( const trRefEntity_t* entity, const int idx_offset, const int model_index, shader_t *shader,
+	const float* transform, int model_instance_index, qboolean is_viewer_weapon, qboolean is_double_sided,
+	qboolean is_mdxm )
 {
 	uint32_t material_index, material_flags;
 
@@ -195,22 +196,22 @@ static inline uint32_t fill_mdxm_instance( const trRefEntity_t* entity, const md
 	ModelInstance *instance = &vk.uniform_instance_buffer.model_instances[model_instance_index];
 	memcpy(instance->M, transform, sizeof(float) * 16);
 
-	instance->idx_offset = mesh->indexOffset;
-	instance->model_index = mesh->modelIndex;	
+	instance->idx_offset = idx_offset;
+	instance->model_index = model_index;
+
 #ifdef USE_RTX_GLOBAL_MODEL_VBO
 	instance->offset_curr = 0;
 	instance->offset_prev = 0;
 #else
-	//int frame = entity->e.frame;
-	//int oldframe = entity->e.oldframe;
-
-	frame = 0;
+	int frame = 0; // entity->e.frame;
+	int oldframe = 0; //entity->e.oldframe;
 	instance->offset_curr = mesh->vertexOffset + frame * mesh->numVertexes * (sizeof(model_vertex_t) / sizeof(uint32_t));
 	instance->offset_prev = mesh->vertexOffset + frame * mesh->numVertexes * (sizeof(model_vertex_t) / sizeof(uint32_t));
 #endif
 	instance->backlerp = entity->e.backlerp;
 	instance->material = material_id;
 	instance->alpha = /*(entity->flags & RF_TRANSLUCENT) ? entity->alpha :*/ 1.0f;
+	instance->is_mdxm = is_mdxm ? 1 : 0;
 
 	return material_id;
 }
@@ -220,33 +221,36 @@ static inline uint32_t fill_mdxm_instance( const trRefEntity_t* entity, const md
 #define MESH_FILTER_ALL 3
 
 // bad sunny, rework this
-uint32_t					mdxm_meshes_num = 0;
-static mdxmVBOMesh_t		*mdxm_meshes[200];
-static shader_t				*mdxm_meshes_shader[200];
+uint32_t			enitity_num_meshes = 0;
+static maliasmesh_t	*enitity_meshes[1024];
+static shader_t		*enitity_meshes_shader[1024];
 
-void vk_rtx_found_mdxm_vbo_mesh( mdxmVBOMesh_t *mesh, shader_t *shader ) 
+void vk_rtx_found_entity_vbo_mesh( maliasmesh_t *mesh, shader_t *shader ) 
 {
-	mdxm_meshes[mdxm_meshes_num] = mesh;
-	mdxm_meshes_shader[mdxm_meshes_num++] = shader;
+	enitity_meshes[enitity_num_meshes] = mesh;
+	enitity_meshes_shader[enitity_num_meshes++] = shader;
 }
 
-static qboolean vk_rtx_find_mdxm_meshes_for_entity( const uint32_t entityNum, trRefEntity_t *entity )
+static qboolean vk_rtx_find_entity_vbo_meshes( const model_t* model, const uint32_t entityNum, trRefEntity_t *entity )
 {
-	// bad sunny, rework this
-	Com_Memset( &mdxm_meshes, NULL, sizeof(mdxmVBOMesh_t*) * 200 );
-	Com_Memset( &mdxm_meshes_shader, NULL, sizeof(shader_t*) * 200 );
-	mdxm_meshes_num = 0;
+	Com_Memset( &enitity_meshes, NULL, sizeof(maliasmesh_t*) * 1024 );
+	Com_Memset( &enitity_meshes_shader, NULL, sizeof(shader_t*) * 1024 );
+	enitity_num_meshes = 0;
 
-	if ( entity->e.ghoul2 && G2API_HaveWeGhoul2Models( *( (CGhoul2Info_v*)entity->e.ghoul2 ) ) )
+	if ( model->type == MOD_MDXM || model->type == MOD_BAD  )
 		vk_rtx_AddGhoulSurfaces( entity, entityNum );
 
-	return mdxm_meshes_num > 0 ? qtrue : qfalse;
+	else if ( model->type == MOD_MESH )
+		vk_rtx_AddMD3Surfaces( entity, entityNum, model );
+
+	return enitity_num_meshes > 0 ? qtrue : qfalse;
 }
 
 static void process_regular_entity( 
 	const uint32_t entityNum,
 	const trRefdef_t *refdef,
-	trRefEntity_t* entity, 
+	trRefEntity_t *entity, 
+	const model_t *model,
 	qboolean is_viewer_weapon, 
 	qboolean is_double_sided, 
 	int* model_instance_idx, 
@@ -255,8 +259,12 @@ static void process_regular_entity(
 	int mesh_filter, 
 	qboolean* contains_transparent )
 {
-	// find all meshes for this ghoul2 entity
-	if ( !vk_rtx_find_mdxm_meshes_for_entity( entityNum, entity ) )
+	qboolean is_mdxm = qfalse;
+
+	if ( model->type == MOD_MDXM || model->type == MOD_BAD )
+		is_mdxm = qtrue;
+
+	if ( !vk_rtx_find_entity_vbo_meshes( model, entityNum, entity ) )
 		return;
 
 	InstanceBuffer *uniform_instance_buffer = &vk.uniform_instance_buffer;
@@ -276,22 +284,11 @@ static void process_regular_entity(
 	if ( contains_transparent )
 		*contains_transparent = qfalse;
 
-	int render_first_model_only = -1;
-
-	for ( i = 0; i < mdxm_meshes_num; i++ ) 
+	for ( i = 0; i < enitity_num_meshes; i++ ) 
 	{
-		mdxmVBOMesh_t *mesh = mdxm_meshes[i];
-		shader_t *shader = mdxm_meshes_shader[i];
+		maliasmesh_t *mesh = enitity_meshes[i];
+		shader_t *shader = enitity_meshes_shader[i];
 
-		render_first_model_only = mesh->modelIndex;
-
-		//if ( render_first_model_only > 0 && render_first_model_only != mesh->modelIndex )
-		//	break;
-
-		//if ( i > 0 )
-		//	break;
-
-		// do checks here
 		if ( current_model_instance_index >= SHADER_MAX_ENTITIES )
 			return assert(!"Model entity count overflow");
 
@@ -301,7 +298,9 @@ static void process_regular_entity(
 		if ( mesh->indexOffset < 0 ) // failed to upload the vertex data - don't instance this mesh
 			return;
 
-		uint32_t material_id = fill_mdxm_instance( entity, mesh, shader,  transform, current_model_instance_index, is_viewer_weapon, is_double_sided );
+		uint32_t material_id = fill_model_instance( entity, mesh->indexOffset, mesh->modelIndex, 
+			shader,  transform, current_model_instance_index, is_viewer_weapon, is_double_sided,
+			is_mdxm );
 		if (!material_id)
 			return;
 
@@ -401,19 +400,29 @@ static void prepare_entities( EntityUploadInfo *upload_info, const trRefdef_t *r
 					else 
 	#endif
 					model_t *model = R_GetModelByHandle( entity->e.hModel );
+
 					if ( !model )
 						continue;
 
+					// sunny, revisit these duplications
 					switch ( model->type )
 					{
 						case MOD_MESH:
+							{
+								qboolean contains_transparent = qfalse;
+								process_regular_entity( i, refdef, entity, model, qfalse, qfalse, &model_instance_idx, &instance_idx, &num_instanced_vert, 2, &contains_transparent );
+					
+								if ( contains_transparent )
+									transparent_model_indices[transparent_model_num++] = i;
+							}
+							break;
 						case MOD_BRUSH:
 							break;
 						case MOD_MDXM:
 						case MOD_BAD:
 							{
 								qboolean contains_transparent = qfalse;
-								process_regular_entity( i, refdef, entity, qfalse, qfalse, &model_instance_idx, &instance_idx, &num_instanced_vert, 2, &contains_transparent );
+								process_regular_entity( i, refdef, entity, model, qfalse, qfalse, &model_instance_idx, &instance_idx, &num_instanced_vert, 2, &contains_transparent );
 					
 								if ( contains_transparent )
 									transparent_model_indices[transparent_model_num++] = i;

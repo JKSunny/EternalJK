@@ -144,6 +144,16 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 				1, &barrier ); \
 	} while(0)
 
+
+// shared model-mesh vbo structure (mdxm, mdv)
+typedef struct
+{
+	int indexOffset;	// same as indexOffset in parent struct
+	int numIndexes;		// same as numIndexes in parent struct
+	int meshIndex;
+	int modelIndex;
+} maliasmesh_t;
+
 // passes information back from the RTX renderer to the engine for various development maros
 typedef struct ref_feedback_s {
 	int         viewcluster;
@@ -533,10 +543,9 @@ void		vk_rtx_bind_model( int index );
 #else
 void		vk_rtx_build_mdxm_vbo( model_t *mod, mdxmHeader_t *mdxm );
 #endif
-
-// ghoul2
+void		vk_rtx_found_entity_vbo_mesh( maliasmesh_t *mesh, shader_t *shader );
+void		vk_rtx_AddMD3Surfaces( trRefEntity_t *ent, int entityNum, const model_t *model );
 void		vk_rtx_AddGhoulSurfaces( trRefEntity_t *ent, int entityNum );
-void		vk_rtx_found_mdxm_vbo_mesh( mdxmVBOMesh_t *mesh, shader_t *shader );
 
 // debug
 #define PROFILER_LIST \

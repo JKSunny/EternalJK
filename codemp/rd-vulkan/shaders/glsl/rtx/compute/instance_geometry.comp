@@ -16,19 +16,25 @@
 #include "../read_visbuf.glsl"
 
 #ifdef USE_RTX_GLOBAL_MODEL_VBO
+	#define MODEL_MDXM_VERTEX_POSITION	0
+	#define MODEL_MDXM_VERTEX_NORMAL	4
+	#define MODEL_MDXM_VERTEX_TEXCOORD	8
+	#define MODEL_MDXM_VERTEX_BONEREFS	10
+	#define MODEL_MDXM_VERTEX_WEIGHTS	11
+	#define MODEL_MDXM_VERTEX_TANGENTS	12
+	#define MODEL_MDXM_VERTEX_SIZE		16
+
 	#define MODEL_VERTEX_POSITION	0
 	#define MODEL_VERTEX_NORMAL		4
 	#define MODEL_VERTEX_TEXCOORD	8
-	#define MODEL_VERTEX_BONEREFS	10
-	#define MODEL_VERTEX_WEIGHTS	11
-	#define MODEL_VERTEX_TANGENTS	12
-	#define MODEL_VERTEX_SIZE		16
+	#define MODEL_VERTEX_TANGENTS	10
+	#define MODEL_VERTEX_SIZE		14
 #else
 	#define MODEL_VERTEX_POSITION	0
-	#define MODEL_VERTEX_NORMAL		3
-	#define MODEL_VERTEX_TEXCOORD	6
-	#define MODEL_VERTEX_TANGENTS	8
-	#define MODEL_VERTEX_SIZE		12
+	#define MODEL_VERTEX_NORMAL		4
+	#define MODEL_VERTEX_TEXCOORD	8
+	#define MODEL_VERTEX_TANGENTS	10
+	#define MODEL_VERTEX_SIZE		14
 #endif
 
 layout(set = 2,	binding = 0) readonly buffer MODEL_VBO {
@@ -151,25 +157,25 @@ get_mxdm_triangle(uint model_id, uint prim_id, uint idx_offset, uint vert_offset
 	idx.z = model_vbos[nonuniformEXT(model_id)].data[idx_base + 2];
 #endif
 
-	idx = idx * MODEL_VERTEX_SIZE + vert_offset;
+	idx = idx * MODEL_MDXM_VERTEX_SIZE + vert_offset;
 
 	Triangle t;
-	t.positions[0] = get_model_float3(model_id, idx[0] + MODEL_VERTEX_POSITION);
-	t.positions[1] = get_model_float3(model_id, idx[1] + MODEL_VERTEX_POSITION);
-	t.positions[2] = get_model_float3(model_id, idx[2] + MODEL_VERTEX_POSITION);
+	t.positions[0] = get_model_float3(model_id, idx[0] + MODEL_MDXM_VERTEX_POSITION);
+	t.positions[1] = get_model_float3(model_id, idx[1] + MODEL_MDXM_VERTEX_POSITION);
+	t.positions[2] = get_model_float3(model_id, idx[2] + MODEL_MDXM_VERTEX_POSITION);
 
-	t.normals[0] = get_model_float3(model_id, idx[0] + MODEL_VERTEX_NORMAL);
-	t.normals[1] = get_model_float3(model_id, idx[1] + MODEL_VERTEX_NORMAL);
-	t.normals[2] = get_model_float3(model_id, idx[2] + MODEL_VERTEX_NORMAL);
+	t.normals[0] = get_model_float3(model_id, idx[0] + MODEL_MDXM_VERTEX_NORMAL);
+	t.normals[1] = get_model_float3(model_id, idx[1] + MODEL_MDXM_VERTEX_NORMAL);
+	t.normals[2] = get_model_float3(model_id, idx[2] + MODEL_MDXM_VERTEX_NORMAL);
 
-	t.tex_coords0[0] = get_model_float2(model_id, idx[0] + MODEL_VERTEX_TEXCOORD);
-	t.tex_coords0[1] = get_model_float2(model_id, idx[1] + MODEL_VERTEX_TEXCOORD);
-	t.tex_coords0[2] = get_model_float2(model_id, idx[2] + MODEL_VERTEX_TEXCOORD);
+	t.tex_coords0[0] = get_model_float2(model_id, idx[0] + MODEL_MDXM_VERTEX_TEXCOORD);
+	t.tex_coords0[1] = get_model_float2(model_id, idx[1] + MODEL_MDXM_VERTEX_TEXCOORD);
+	t.tex_coords0[2] = get_model_float2(model_id, idx[2] + MODEL_MDXM_VERTEX_TEXCOORD);
 
 	NTB ntb[3];
-	QTangentToNTB( get_model_float4(model_id, idx[0] + MODEL_VERTEX_TANGENTS), ntb[0] );
-	QTangentToNTB( get_model_float4(model_id, idx[1] + MODEL_VERTEX_TANGENTS), ntb[1] );
-	QTangentToNTB( get_model_float4(model_id, idx[2] + MODEL_VERTEX_TANGENTS), ntb[2] );
+	QTangentToNTB( get_model_float4(model_id, idx[0] + MODEL_MDXM_VERTEX_TANGENTS), ntb[0] );
+	QTangentToNTB( get_model_float4(model_id, idx[1] + MODEL_MDXM_VERTEX_TANGENTS), ntb[1] );
+	QTangentToNTB( get_model_float4(model_id, idx[2] + MODEL_MDXM_VERTEX_TANGENTS), ntb[2] );
 
 	t.tangents[0] = ntb[0].tangent.xyz;
 	t.tangents[1] = ntb[1].tangent.xyz;
@@ -179,8 +185,8 @@ get_mxdm_triangle(uint model_id, uint prim_id, uint idx_offset, uint vert_offset
 	{
 		mat4x3 skin_matrix = mat4x3(0);
 
-		uint bone_indices =  get_model_uint(model_id, idx[i_vtx] + MODEL_VERTEX_BONEREFS);
-		vec4 bone_weights =  unpackUnorm4x8(get_model_uint(model_id, idx[i_vtx] + MODEL_VERTEX_WEIGHTS));
+		uint bone_indices =  get_model_uint(model_id, idx[i_vtx] + MODEL_MDXM_VERTEX_BONEREFS);
+		vec4 bone_weights =  unpackUnorm4x8(get_model_uint(model_id, idx[i_vtx] + MODEL_MDXM_VERTEX_WEIGHTS));
 
 		for (int i_bone = 0; i_bone < 4; i_bone++)
 		{
@@ -241,7 +247,7 @@ void main()
 		Triangle t_i;
 		mat4 M_curr = mat4(1.0);
 		mat4 M_prev = mat4(1.0);
-		const int is_mdxm = 1;	// only format supported
+		//const int is_mdxm = 1;	// only format supported
 
 #if 0
 		if(is_world) {
@@ -260,7 +266,7 @@ void main()
 			}
 
 			/* model mdxm/ghoul2 */
-			if ( is_mdxm != 0 )
+			if ( mi_curr.is_mdxm != 0 )
 			{
 				t_i	= get_mxdm_triangle( mi_curr.model_index, idx, mi_curr.idx_offset, mi_curr.offset_curr );
 				
@@ -284,11 +290,13 @@ void main()
 				t_i.cluster = instance_buffer.model_cluster_id[instance_id];
 			}
 			else
-			{ /* model */
+			{ /* model mdv */
+				//continue;
+
 				{
 					/* read and interpolate triangles for model for _current_ frame */
-					Triangle t			= get_model_triangle( mi_curr.model_index, idx, mi_curr.idx_offset, mi_curr.offset_curr );
-					Triangle t_prev		= get_model_triangle( mi_curr.model_index, idx, mi_curr.idx_offset, mi_curr.offset_prev );
+					Triangle t		= get_model_triangle( mi_curr.model_index, idx, mi_curr.idx_offset, mi_curr.offset_curr );
+					Triangle t_prev	= get_model_triangle( mi_curr.model_index, idx, mi_curr.idx_offset, mi_curr.offset_prev );
 
 					float backlerp = mi_curr.backlerp;
 
@@ -302,7 +310,7 @@ void main()
 
 					t_i.tangents[0] = mix(t.tangents[0], t_prev.tangents[0], backlerp);
 					t_i.tangents[1] = mix(t.tangents[1], t_prev.tangents[1], backlerp);
-					t_i.tangents[2] = mix(t.tangents[2], t_prev.tangents[1], backlerp);
+					t_i.tangents[2] = mix(t.tangents[2], t_prev.tangents[2], backlerp);
 	#if 0
 					t_i.alpha = mi_curr.alpha.x;
 	#endif

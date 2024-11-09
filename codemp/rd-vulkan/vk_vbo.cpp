@@ -1101,8 +1101,10 @@ void R_BuildMDXM( model_t *mod, mdxmHeader_t *mdxm )
 			vboMeshes[n].numVertexes = surf->numVerts;
 			vboMeshes[n].numIndexes = surf->numTriangles * 3;
 #if defined(USE_RTX) && defined(USE_RTX_GLOBAL_MODEL_VBO)
-			vboMeshes[n].meshIndex = n;
-			vboMeshes[n].modelIndex = vbo->index;
+			vboMeshes[n].rtx_mesh.indexOffset = vboMeshes[n].indexOffset;
+			vboMeshes[n].rtx_mesh.numIndexes = vboMeshes[n].numIndexes;
+			vboMeshes[n].rtx_mesh.meshIndex = n;
+			vboMeshes[n].rtx_mesh.modelIndex = vbo->index;
 #endif
 			surf = (mdxmSurface_t *)((byte *)surf + surf->ofsEnd);
 		}
@@ -1300,7 +1302,17 @@ void R_BuildMD3( model_t *mod, mdvModel_t *mdvModel )
 		vboSurf->maxIndex = baseVertexes[i + 1] - 1;
 		vboSurf->numVerts = surf->numVerts;
 		vboSurf->numIndexes = surf->numIndexes;
+#if defined(USE_RTX) && defined(USE_RTX_GLOBAL_MODEL_VBO)
+		vboSurf->rtx_mesh.indexOffset = vboSurf->indexOffset;
+		vboSurf->rtx_mesh.numIndexes = vboSurf->numIndexes;
+		vboSurf->rtx_mesh.meshIndex = i;
+		vboSurf->rtx_mesh.modelIndex = vbo->index;
+#endif
 	}
+
+#if defined(USE_RTX) && defined(USE_RTX_GLOBAL_MODEL_VBO)
+	vk_rtx_bind_model( vbo->index );
+#endif
 
 	ri.Hunk_FreeTempMemory(indexOffsets);
 	ri.Hunk_FreeTempMemory(baseVertexes);

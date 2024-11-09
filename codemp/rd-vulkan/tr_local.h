@@ -1477,6 +1477,10 @@ typedef struct srfVBOMDVMesh_s
 	glIndex_t       minIndex;
 	glIndex_t       maxIndex;
 
+#ifdef USE_RTX
+	maliasmesh_t	rtx_mesh;
+#endif
+
 	// static render data
 	VBO_t          *vbo;
 	IBO_t          *ibo;
@@ -1512,8 +1516,7 @@ typedef struct mdxmVBOMesh_s
 	int numVertexes;
 
 #ifdef USE_RTX
-	int meshIndex;
-	int modelIndex;
+	maliasmesh_t	rtx_mesh;
 #ifndef USE_RTX_GLOBAL_MODEL_VBO
 	int vertexOffset;
 	model_vbo_t *vbo_rtx;

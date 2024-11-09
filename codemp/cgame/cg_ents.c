@@ -1081,6 +1081,9 @@ static void CG_General( centity_t *cent ) {
 	}
 
 	memset (&ent, 0, sizeof(ent));
+#ifdef USE_RTX
+	ent.id = cent->id;
+#endif
 
 	ent.shaderRGBA[0] = cent->currentState.customRGBA[0];
 	ent.shaderRGBA[1] = cent->currentState.customRGBA[1];
@@ -2060,6 +2063,9 @@ Ghoul2 Insert Start
 		uNorm[2] = 1;
 
 		memset( &ent, 0, sizeof( ent ) );
+#ifdef USE_RTX
+		ent.id = cent->id;
+#endif
 
 		ent.customShader = 0;
 		VectorCopy(cent->lerpOrigin, ent.origin);
@@ -2097,6 +2103,10 @@ Ghoul2 Insert End
 
 	if ( cg_simpleItems.integer && item->giType != IT_TEAM ) {
 		memset( &ent, 0, sizeof( ent ) );
+#ifdef USE_RTX
+	ent.id = cent->id;
+#endif
+
 		ent.reType = RT_SPRITE;
 		VectorCopy( cent->lerpOrigin, ent.origin );
 		ent.radius = 14;
@@ -2193,6 +2203,9 @@ Ghoul2 Insert End
 	}
 
 	memset (&ent, 0, sizeof(ent));
+#ifdef USE_RTX
+	ent.id = cent->id;
+#endif
 
 	if ( (!(cent->currentState.eFlags & EF_DROPPEDWEAPON) || item->giType == IT_POWERUP) &&
 		(item->giType == IT_WEAPON || item->giType == IT_POWERUP) )
@@ -2456,7 +2469,9 @@ Ghoul2 Insert End
 					spinAngles[1] = ( cg.time & 1023 ) * 360 / -1024.0f;
 				}
 				AnglesToAxis( spinAngles, ent.axis );
-
+#ifdef USE_RTX
+				ent.id = cent->id+1;
+#endif
 				trap->R_AddRefEntityToScene( &ent );
 			}
 		}
@@ -2476,6 +2491,9 @@ void CG_CreateDistortionTrailPart(centity_t *cent, float scale, vec3_t pos)
 		return;
 	}
 	memset( &ent, 0, sizeof( ent ) );
+#ifdef USE_RTX
+	ent.id = cent->id;
+#endif
 
 	VectorCopy( pos, ent.origin );
 
@@ -2953,6 +2971,9 @@ static void CG_Missile( centity_t *cent ) {
 
 	// create the render entity
 	memset (&ent, 0, sizeof(ent));
+#ifdef USE_RTX
+	ent.id = cent->id;
+#endif
 	VectorCopy( cent->lerpOrigin, ent.origin);
 	VectorCopy( cent->lerpOrigin, ent.oldorigin);
 /*
@@ -3198,6 +3219,9 @@ static void CG_Mover( centity_t *cent ) {
 
 	// create the render entity
 	memset (&ent, 0, sizeof(ent));
+#ifdef USE_RTX
+	ent.id = cent->id;
+#endif
 
 	if ( (cent->currentState.eFlags2&EF2_HYPERSPACE) )
 	{//I'm the hyperspace brush
@@ -3282,6 +3306,9 @@ Ghoul2 Insert End
 			ent.modelScale[0] = ent.modelScale[1] = ent.modelScale[2] = s1->iModelScale/100.0f;
 			ScaleModelAxis(&ent);
 		}
+#ifdef USE_RTX
+		ent.id = cent->id+1;
+#endif
 		trap->R_AddRefEntityToScene(&ent);
 	}
 
@@ -3334,6 +3361,9 @@ static void CG_Portal( centity_t *cent ) {
 
 	// create the render entity
 	memset (&ent, 0, sizeof(ent));
+#ifdef USE_RTX
+	ent.id = cent->id;
+#endif
 	VectorCopy( cent->lerpOrigin, ent.origin );
 	VectorCopy( s1->origin2, ent.oldorigin );
 	ByteToDir( s1->eventParm, ent.axis[0] );

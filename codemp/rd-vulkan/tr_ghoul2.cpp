@@ -2453,7 +2453,7 @@ static inline void vk_set_ghoul2_vbo_mesh( const CRenderSurface &RS, CRenderable
 
 #ifdef USE_RTX
 	if ( vk.rtxActive )
-		return vk_rtx_found_mdxm_vbo_mesh( &RS.currentModel->data.glm->vboModels[lod].vboMeshes[RS.surfaceNum], shader );
+		return vk_rtx_found_entity_vbo_mesh( &RS.currentModel->data.glm->vboModels[lod].vboMeshes[RS.surfaceNum].rtx_mesh, shader );
 #endif
 
 	surf->vboMesh = &RS.currentModel->data.glm->vboModels[lod].vboMeshes[RS.surfaceNum];
@@ -4956,6 +4956,9 @@ static void vk_rtx_RenderSurfaces( CRenderSurface &RS, const trRefEntity_t *ent,
 
 void vk_rtx_AddGhoulSurfaces( trRefEntity_t *ent, int entityNum ) 
 {
+	if ( ent->e.ghoul2 == NULL || !G2API_HaveWeGhoul2Models( *( (CGhoul2Info_v*)ent->e.ghoul2 ) ) )
+		return;
+
 	CGhoul2Info_v	&ghoul2 = *((CGhoul2Info_v *)ent->e.ghoul2);
 	mdxaBone_t		rootMatrix;
 	shader_t		*cust_shader = 0;
@@ -5047,16 +5050,19 @@ void vk_rtx_AddGhoulSurfaces( trRefEntity_t *ent, int entityNum )
 			else
 				G2_TransformGhoulBones( model->mBlist, rootMatrix, *model, currentTime );
 
+			const int model_index = model->currentModel->data.glm->vboModels[whichLod].vbo->index;
 			CBoneCache *bc = model->mBoneCache;
+#if 0
 			for (int bone = 0; bone < (int)bc->mBones.size(); bone++)
 			{
 				const mdxaBone_t& b = bc->EvalRender(bone);
 				Com_Memcpy( bc->boneMatrices + bone, &b.matrix[0][0], sizeof(mat3x4_t));
 			}
-
-			const int model_index = model->currentModel->data.glm->vboModels[whichLod].vbo->index;
 			Com_Memcpy( &vk.uniform_instance_buffer.model_mdxm_bones[model_index], bc->boneMatrices, sizeof(mat3x4_t) * bc->mBones.size() );
-
+#else	
+			for ( int bone = 0; bone < (int)bc->mBones.size(); bone++ )
+				Com_Memcpy( &vk.uniform_instance_buffer.model_mdxm_bones[model_index][bone], bc->EvalRender( bone ).matrix, sizeof(mat3x4_t) );
+#endif
 			//
 			// meshes (surfaces) for this model
 			//

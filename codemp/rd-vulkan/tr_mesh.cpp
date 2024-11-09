@@ -449,3 +449,96 @@ void R_AddMD3Surfaces( trRefEntity_t *ent, int entityNum ) {
 	}
 
 }
+
+#ifdef USE_RTX
+void vk_rtx_AddMD3Surfaces( trRefEntity_t *ent, int entityNum, const model_t *model )
+{
+	int				i;
+	mdvModel_t		*mdv_model = NULL;
+	mdvSurface_t	*surface = NULL;
+	shader_t		*shader = 0;
+	int				lod;
+	qboolean		personalModel;
+
+	// don't add third_person objects if not in a portal
+	personalModel = (qboolean)((ent->e.renderfx & RF_THIRD_PERSON) && (tr.viewParms.portalView == PV_NONE));
+
+	if ( ent->e.renderfx & RF_WRAP_FRAMES ) {
+		ent->e.frame %= model->data.mdv[0]->numFrames;
+		ent->e.oldframe %= model->data.mdv[0]->numFrames;
+	}
+
+	//
+	// Validate the frames so there is no chance of a crash.
+	// This will write directly into the entity structure, so
+	// when the surfaces are rendered, they don't need to be
+	// range checked again.
+	//
+	if ( (ent->e.frame >= model->data.mdv[0]->numFrames)
+		|| (ent->e.frame < 0)
+		|| (ent->e.oldframe >= model->data.mdv[0]->numFrames)
+		|| (ent->e.oldframe < 0) ) {
+			ri.Printf( PRINT_DEVELOPER, S_COLOR_RED "R_AddMD3Surfaces: no such frame %d to %d for '%s'\n",
+				ent->e.oldframe, ent->e.frame,
+				model->name );
+			ent->e.frame = 0;
+			ent->e.oldframe = 0;
+	}
+
+	//
+	// compute LOD
+	//
+#if 0
+	lod = R_ComputeLOD( ent );
+#else
+	lod = 0;
+#endif
+
+	mdv_model = model->data.mdv[lod];
+
+	// culling is disabled for now ..
+
+	surface = mdv_model->surfaces;
+	for ( i = 0 ; i < mdv_model->numSurfaces ; i++ ) 
+	{
+		if ( ent->e.customShader ) 
+			shader = R_GetShaderByHandle( ent->e.customShader );
+
+		else if ( ent->e.customSkin > 0 && ent->e.customSkin < tr.numSkins ) 
+		{
+			const skin_t *skin;
+			int		j;
+
+			skin = R_GetSkinByHandle( ent->e.customSkin );
+
+			// match the surface name to something in the skin file
+			shader = tr.defaultShader;
+			for ( j = 0 ; j < skin->numSurfaces ; j++ ) 
+			{
+				// the names have both been lowercased
+				if ( !strcmp( skin->surfaces[j]->name, surface->name ) ) 
+				{
+					shader = (shader_t *)skin->surfaces[j]->shader;
+					break;
+				}
+			}
+
+			if (shader == tr.defaultShader)
+				ri.Printf( PRINT_DEVELOPER, S_COLOR_RED "WARNING: no shader for surface %s in skin %s\n", surface->name, skin->name);
+
+			else if (shader->defaultShader)
+				ri.Printf( PRINT_DEVELOPER, S_COLOR_RED "WARNING: shader %s in skin %s not found\n", shader->name, skin->name);
+		} 
+
+		else 
+			shader = tr.shaders[ surface->shaderIndexes[ ent->e.skinNum % surface->numShaderIndexes ] ];
+
+		// don't add third_person objects if not viewing through a portal
+		// sunny, cant we just return immediately when personalModel is set .. ?
+		if ( !personalModel )
+			vk_rtx_found_entity_vbo_mesh( &mdv_model->vboSurfaces[i].rtx_mesh, shader );
+
+		surface++;
+	}
+}
+#endif

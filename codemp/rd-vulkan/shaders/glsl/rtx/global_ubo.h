@@ -237,7 +237,7 @@ STRUCT (
 	FLOAT	( alpha )
 	INT		( idx_offset )
 	INT		( model_index )
-	INT		( pad )
+	INT		( is_mdxm )
 , ModelInstance )
 #define MODELINSTANCE(n) ModelInstance n;
 	
