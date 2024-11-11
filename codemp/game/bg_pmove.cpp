@@ -4984,6 +4984,7 @@ static void PM_Weapon(void)
 #ifdef _GAME
 				JKG_DoubleCheckWeaponChange(&pm->cmd, pm->ps); //change weapon if no more grenades in that item stack left
 #endif
+				pm->ps->weaponstate = WEAPON_READY;
 			}
 			else
 			{
