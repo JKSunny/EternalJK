@@ -678,115 +678,97 @@
 	{
 		name                inv_feederTXT1
 		group              	inv_feederSel
-		rect                159 93 172 20
+		rect                151 85 170 23
 		style		1
-		text                "DUMMY"
-		textalign           ITEM_ALIGN_RIGHT
-		textalignx          172
-		text2aligny		25
+		textalign           ITEM_ALIGN_LEFT
 		font                5
 		textscale           0.4
-		textscale2		0.3
 		forecolor           1 1 1 1
 		visible		1
 		ownerdraw			1055
 		ownerdrawid			0
 		decoration
+		autowrapped
 	}
 	itemDef
 	{
 		name                inv_feederTXT2
 		group              	inv_feederSel
-		rect                159 151 172 20
+		rect                151 143 170 23
 		style		1
-		text                "DUMMY"
-		textalign           ITEM_ALIGN_RIGHT
-		textalignx          172
-		text2aligny		25
+		textalign           ITEM_ALIGN_LEFT
 		font                5
 		textscale           0.4
-		textscale2		0.3
 		forecolor           1 1 1 1
 		visible		1
 		ownerdraw			1055
 		ownerdrawid			1
 		decoration
+		autowrapped
 	}
 	itemDef
 	{
 		name                inv_feederTXT3
 		group              	inv_feederSel
-		rect                159 209 172 20
+		rect                151 201 170 23
 		style               1
-		text                "DUMMY"
-		textalign           ITEM_ALIGN_RIGHT
-		textalignx          172
-		text2aligny		25
+		textalign           ITEM_ALIGN_LEFT
 		font                5
 		textscale           0.4
-		textscale2		0.3
 		forecolor           1 1 1 1
 		visible		1
 		ownerdraw			1055
 		ownerdrawid			2
 		decoration
+		autowrapped
 	}
 	itemDef
 	{
 		name                inv_feederTXT4
 		group              	inv_feederSel
-		rect                159 267 172 20
+		rect                151 259 170 23
 		style               1
-		text                "DUMMY"
-		textalign           ITEM_ALIGN_RIGHT
-		textalignx          172
-		text2aligny		25
+		textalign           ITEM_ALIGN_LEFT
 		font                5
 		textscale           0.4
-		textscale2		0.3
 		forecolor           1 1 1 1
 		visible		1
 		ownerdraw			1055
 		ownerdrawid			3
 		decoration
+		autowrapped
 	}
 	itemDef
 	{
 		name                inv_feederTXT5
 		group              	inv_feederSel
-		rect                159 325 172 20
+		rect                151 317 170 23
 		style               1
-		text                "DUMMY"
-		textalign           ITEM_ALIGN_RIGHT
-		textalignx          172
-		text2aligny		25
+		textalign           ITEM_ALIGN_LEFT
 		font                5
 		textscale           0.4
-		textscale2		0.3
 		forecolor           1 1 1 1
 		visible		1
 		ownerdraw			1055
 		ownerdrawid			4
 		decoration
+		autowrapped
 	}
 	itemDef
 	{
 		name                inv_feederTXT6
 		group              	inv_feederSel
-		rect                159 383 172 20
+		rect                151 375 170 23
 		style		1
-		text                "DUMMY"
-		textalign           ITEM_ALIGN_RIGHT
-		textalignx          172
-		text2aligny		35
+		textalign           ITEM_ALIGN_LEFT
 		font                5
 		textscale           0.4
-		textscale2		0.3
 		forecolor           1 1 1 1
 		visible		1
 		ownerdraw			1055
 		ownerdrawid			5
 		decoration
+		autowrapped
 	}
 		
 	// Tag Top
@@ -1203,7 +1185,7 @@
 	{
 		name		inv_previewName
 		group		shop_preview
-		rect		365 240 160 20
+		rect		372 240 157 20
 		style		1
 		text		""
 		textalign	ITEM_ALIGN_CENTER

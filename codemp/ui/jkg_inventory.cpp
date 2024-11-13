@@ -1043,11 +1043,12 @@ void JKG_Inventory_OwnerDraw_ItemName(itemDef_t* item, int ownerDrawID) {
 		return;
 	}
 	itemInstance_t* pItem = pItems[nItemNum].second;
-	strcpy(item->text, pItem->id->displayName);
+	Q_strncpyz(item->text, pItem->id->displayName, sizeof(item->text));
 
 	//figure out color based on item tier
 	vec4_t color;
 	JKG_SetTierColor(pItem->id->itemTier, color);
+	item->window.flags |= WINDOW_TEXTCOLOR; //we're overriding the color
 	Item_Text_Paint(item, color);
 }
 
