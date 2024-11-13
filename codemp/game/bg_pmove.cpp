@@ -5119,6 +5119,7 @@ static void PM_Weapon(void)
 	if (jkg_didGrenadeCook[pm->ps->clientNum])
 	{
 		jkg_didGrenadeCook[pm->ps->clientNum] = 0;
+		PM_AddEvent(EV_GRENADE_COOKED);
 	}
 
 	// check for fire
