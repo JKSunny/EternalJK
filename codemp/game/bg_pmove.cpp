@@ -4979,13 +4979,17 @@ static void PM_Weapon(void)
 	{
 		if ((pm->cmd.weapon != pm->ps->weaponId) && pm->ps->weaponstate != WEAPON_DROPPING)
 		{
+			//change weapon if no more grenades in that item stack left
 			if (jkg_didGrenadeCook[pm->ps->clientNum])
 			{
-#ifdef _GAME
-				JKG_DoubleCheckWeaponChange(&pm->cmd, pm->ps); //change weapon if no more grenades in that item stack left
-#endif
-				pm->ps->weaponstate = WEAPON_READY;
+				PM_AddEvent(EV_GRENADE_COOKED);	//notify cg that grenade is no longer cooked
+				#ifdef _GAME
+				JKG_DoubleCheckWeaponChange(&pm->cmd, pm->ps);
+				#endif
+				pm->ps->weaponTime = 0;
+				PM_BeginWeaponChange(pm->cmd.weapon, weaponData);
 			}
+			
 			else
 			{
 				PM_BeginWeaponChange(pm->cmd.weapon, weaponData);

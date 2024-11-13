@@ -938,6 +938,9 @@ void BG_RemoveItemStack(gentity_t* ent, int itemStack) {
 }
 #else
 void BG_RemoveItemStack(int itemStack) {
+	itemInstance_t item = (*cg.playerInventory)[itemStack];
+
+	//tell player it was removed?
 	cg.playerInventory->erase(cg.playerInventory->begin() + itemStack);
 }
 #endif

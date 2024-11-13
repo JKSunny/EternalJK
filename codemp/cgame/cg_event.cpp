@@ -2626,6 +2626,14 @@ void CG_EntityEvent( centity_t *cent, vec3_t position ) {
 		
 		break;
 	}
+	// JKG - launched last cooked grenade in the stack
+	case EV_GRENADE_COOKED:
+		if (cg.jkg_grenadeCookTimer && cent->currentState.number == cg.clientNum)
+		{
+			cg.jkg_grenadeCookTimer = 0;
+		}
+		
+		break;
 	
 	case EV_EXPLOSIVE_ARM:
 	    DEBUGNAME ("EV_EXPLOSIVE_ARM");
