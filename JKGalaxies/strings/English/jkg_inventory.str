@@ -433,6 +433,9 @@ LANG_ENGLISH		"poison"
 REFERENCE       MOD_CURED
 LANG_ENGLISH        "detox heal"
 
+REFERENCE		MOD_REVIVED
+LANG_ENGLISH		"healing revive"
+
 REFERENCE       MOD_STAMINA
 LANG_ENGLISH        "stamina"
 

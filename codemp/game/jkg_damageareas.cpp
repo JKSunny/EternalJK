@@ -582,10 +582,15 @@ static void DebuffPlayer( gentity_t *player, const damageArea_t *area, int damag
 	int numDebuffs;
 	int ammoType;
     
-    if ( !player || !player->client )
+    if ( !player )
     {
         return;
     }
+
+	if (!player->client)
+	{
+		return;
+	}
 
 	if (!JKG_ClientAlive(player)) {	// Don't allow us to be debuffed if we are dead
 		return;
@@ -599,7 +604,7 @@ static void DebuffPlayer( gentity_t *player, const damageArea_t *area, int damag
 	if (mod > 0 && mod < allMeansOfDamage.size())
 	{
 		meansOfDamage_t means = allMeansOfDamage.at(mod);
-		if (means.modifiers.shieldBlocks && player && player->client && player->client->ps.stats[STAT_SHIELD] > 0)
+		if ( (means.modifiers.shieldBlocks || means.modifiers.shieldProtects) && player->client->ps.stats[STAT_SHIELD] > 0)
 		{	// Don't debuff them if shield blocks this.
 			return;
 		}

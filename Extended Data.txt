@@ -172,15 +172,19 @@ It contains a series of means of damage, each one has the following fields:
  - disintegrate (boolean): If true, this damage type will disintegrate people when it kills them.
 
  - modifiers (object):
-  - dodgeable (boolean, default: false): If true, this damage type may be reduced with an evade skill (eg: rolling)
-  - ignoreArmor (boolean, default: false): If true, this damage type ignores armor. 
-  - ignoreShield (boolean, default: false): If true, this damage type ignores shields. 
-  - isEMP (boolean, default: false): If true, this damage type can trigger special EMP effects, such as disabling jetpacks.  These effects are defined in game\g_combat.cpp within the G_Damage() function.  These only occur if the target actually takes damage (if a shield protects the target nothing is triggered).
+  - dodgeable (boolean, default false): If true, this damage type may be reduced with an evade skill (eg: rolling)
+  - ignoreArmor (boolean, default false): If true, this damage type ignores armor. 
+  - ignoreShield (boolean, default false): If true, this damage type ignores shields. 
+  - isEMP (boolean, default false): If true, this damage type can trigger special EMP effects, such as disabling jetpacks.  These effects are defined in game\g_combat.cpp within the G_Damage() function.  These only occur if the target actually takes damage (if a shield protects the target nothing is triggered).
+  - shieldBlocks (boolean, default false): If true, this damage type is blocked entirely by shields (shields take 0 dmg from this damage type).
+  - shieldProtects (boolean, default false): if true, this damage type cannot be applied as a debuff while protected by a shield (shields still take damage from this damage type).
   - isCC (boolean, default false): If true, this damage type counts as crowd control and will award assists based on applying crowd control. Note: doing knockback will also count as cc.
+  - canRevive (boolean, default false): If true, this damage type can bring the dead back to life!
   - armor (float, default 1.0): Controls how much damage this type does against armor
   - shield (float, default 1.0): Controls how much damage this type does against shields
   - organic (float, default 1.0): Controls how much damage this type does against soft targets
   - droid (float, default 1.0): Controls how much damage this type does against droids
+  - armorPenetration (float, default 0.0): How much % of equipped armor should this damage type ignore (eg: 1.0 ignores all of the target's armor, 0.5 ignores 50% of the armor, 0.1 ignores 10% of the armor)
 
  - dismemberment (object):
   - canDismember (boolean): If true, this damage type can dismember people.

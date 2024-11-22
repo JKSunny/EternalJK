@@ -923,7 +923,7 @@ qboolean JKG_ClientAlive(gentity_t* ent)
 		return qfalse;
 	}
 
-	if (ent->client->deathcamTime && level.time > ent->client->deathcamTime) {
+	if (ent->client->deathcamTime) {
 		return qfalse;
 	}
 	
@@ -3401,12 +3401,17 @@ void ClientSpawn(gentity_t *ent, qboolean respawn) {
 	}
 
 	// UQ1: Again, use an event :)
+	//if not a bot, reset the deathcam
 	if (!(ent->r.svFlags & SVF_BOT))
+	{
 		trap->SendServerCommand(ent->s.number, "dcr");
+		ent->client->deathcamTime = 0;
+	}
 
 	// Iterate through all items in the inventory and reequip stuff that might have been unequipped by clearing out the client data
 	if (ent->inventory) {
-		for (i = 0; i < ent->inventory->size(); i++) {
+		for (i = 0; i < ent->inventory->size(); i++) 
+		{
 			auto it = ent->inventory->begin() + i;
 			if (it->equipped && it->id->itemType == ITEM_SHIELD) {
 				JKG_ShieldEquipped(ent, i, qfalse);
@@ -3439,6 +3444,7 @@ void ClientSpawn(gentity_t *ent, qboolean respawn) {
 					}
 				}
 			}
+			trap->SendServerCommand(ent - g_entities, va("durability_update %i %i", i, it->durability)); //update the client's durability
 		}
 	}
 

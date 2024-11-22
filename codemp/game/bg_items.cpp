@@ -345,9 +345,9 @@ void BG_ReceivedItemPacket(itemPacketType_t packetType) {
 			{
 				int numItems = atoi(CG_Argv(2));
 				for (int i = 0; i < numItems; i++) {
-					int itemID = atoi(CG_Argv(3 + (2 * i)));
-					int quant = atoi(CG_Argv(4 + (2 * i)));
-					int durability = atoi(CG_Argv(4 + (2 * i)));
+					int itemID = atoi(CG_Argv(3 + (3 * i)));
+					int quant = atoi(CG_Argv(4 + (3 * i)));
+					int durability = atoi(CG_Argv(5 + (3 * i)));
 					itemInstance_t item = BG_ItemInstance(itemID, quant, durability);
 					cg.playerInventory->push_back(item);
 				}

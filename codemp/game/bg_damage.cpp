@@ -66,6 +66,9 @@ static void JKG_ParseSingleMeansOfDamage(const char* name, cJSON* json) {
 		child = cJSON_GetObjectItem(jsonNode, "shieldBlocks");
 		mod.modifiers.shieldBlocks = cJSON_ToBooleanOpt(child, qfalse);
 
+		child = cJSON_GetObjectItem(jsonNode, "shieldProtects");
+		mod.modifiers.shieldProtects = cJSON_ToBooleanOpt(child, qfalse);
+
 		child = cJSON_GetObjectItem(jsonNode, "dodgeable");
 		mod.modifiers.dodgeable = cJSON_ToBooleanOpt(child, qfalse);
 
@@ -74,6 +77,9 @@ static void JKG_ParseSingleMeansOfDamage(const char* name, cJSON* json) {
 
 		child = cJSON_GetObjectItem(jsonNode, "isCC");
 		mod.modifiers.isCC = cJSON_ToBooleanOpt(child, qfalse);
+
+		child = cJSON_GetObjectItem(jsonNode, "canRevive");
+		mod.modifiers.canRevive = cJSON_ToBooleanOpt(child, qfalse);
 
 		child = cJSON_GetObjectItem(jsonNode, "armor");
 		mod.modifiers.armor = cJSON_ToNumberOpt(child, 1.0);
@@ -100,6 +106,9 @@ static void JKG_ParseSingleMeansOfDamage(const char* name, cJSON* json) {
 			mod.modifiers.armorPenetration = 0.999f;
 		if (mod.modifiers.armorPenetration < 0.0f)
 			mod.modifiers.armorPenetration = 0.0f;
+
+		if(mod.modifiers.shieldProtects && mod.modifiers.shieldBlocks)
+			Com_Printf(S_COLOR_YELLOW "Warning: %s has both shieldProtects and shieldBlocks properties!\n", mod.inventoryName);
 		
 	}
 	else {
@@ -112,8 +121,13 @@ static void JKG_ParseSingleMeansOfDamage(const char* name, cJSON* json) {
 		mod.modifiers.ignoreArmor = qfalse;
 		mod.modifiers.ignoreShield = qfalse;
 		mod.modifiers.shieldBlocks = qfalse;
+		mod.modifiers.shieldProtects = qfalse;
 		mod.modifiers.dodgeable = qfalse;
 		mod.modifiers.isEMP = qfalse;
+		mod.modifiers.isCC = qfalse;
+		mod.modifiers.canRevive = qfalse;
+		mod.modifiers.armorPenetration = 0.0f;
+
 	}
 
 	jsonNode = cJSON_GetObjectItem(json, "dismemberment");

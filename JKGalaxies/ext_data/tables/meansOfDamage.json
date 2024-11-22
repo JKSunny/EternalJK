@@ -694,7 +694,7 @@
 			"shield": 0.5,
 			"armor": 0.75,
 			"isCC": true,
-			"shieldBlocks": true
+			"shieldProtects": true
 		},
 
 		"killFeed": {
@@ -744,7 +744,7 @@
 		"inventoryName": "@JKG_INVENTORY_MOD_IGNITED",
 
 		"modifiers": {
-			"shieldBlocks": true,
+			"shieldProtects": true,
 			"armor": 0.9,
 			"organic": 1.4,
 			"shield": 1.0,
@@ -841,6 +841,30 @@
 			"killMessage": "@JKG_INGAME_KILLED_CURED",
 			"deathMessage": "@JKG_INGAME_DIED_CURED",
 			"suicideMessage": "@JKG_INGAME_SUICIDE_CURED"
+		},
+	
+		"plums": {
+			"damageColor": [ "17", "255", "17" ],
+			"lowDamageColor": [ "89", "247", "110" ]
+		}
+	},
+	
+	"MOD_REVIVED": {
+	//gain hp and be revived!
+	"inventoryName": "@JKG_INVENTORY_MOD_REVIVED",
+	
+	"modifiers": {
+		"ignoreArmor": true,
+		"ignoreShield": true,
+		"canRevive": true,
+		"droid": 0.0,
+		"organic": 1.0
+		},
+	
+		"killFeed": {
+			"killMessage": "@JKG_INGAME_KILLED_REVIVED",
+			"deathMessage": "@JKG_INGAME_DIED_REVIVED",
+			"suicideMessage": "@JKG_INGAME_SUICIDE_REVIVED"
 		},
 	
 		"plums": {

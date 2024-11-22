@@ -11,6 +11,7 @@
 [Twitch](https://www.twitch.tv/jkgalaxies)  
 [ModDB Page](http://www.moddb.com/mods/jkgalaxies) (not updated frequently)  
 [Odysee.com](https://odysee.com/@JediKnightGalaxies:c?view=about) (not updated frequently)  
+[Bluesky](https://bsky.app/profile/jkgalaxies.net) (not updated frequently)  
 
 
 ### Downloads ###

@@ -4749,6 +4749,19 @@ void G_Heal(gentity_t* target, gentity_t* inflictor, gentity_t* healer,
 		return;
 	}
 
+	//they're dead Jim
+	if (!JKG_ClientAlive(target))
+	{
+		//check if this means is allowed to bring people back from the dead
+		if (!means->modifiers.canRevive)
+			return;
+
+		//check if we're past the expiration date
+		if (target->client->deathcamTime && level.time > target->client->deathcamTime)
+			return;
+	
+	}
+
 	//if we have less than max health we can be healed!
 	if (target->client->ps.stats[STAT_HEALTH] < target->client->ps.stats[STAT_MAX_HEALTH])
 	{
