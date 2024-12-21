@@ -293,6 +293,10 @@ static const char *editor_type[2] = { "node-based", "text-based" };
 	TYPE_DO( N_TMOD_ROTATE,						rotate					) \
 	TYPE_DO( N_TMOD_ENTITY_TRANSLATE,			entityTranslate			) \
 
+#define N_SORT_MODES \
+	TYPE_DO( N_SORT_MODE_KEYWORD,				keyword					) \
+	TYPE_DO( N_SORT_MODE_INDEX,					index					) \
+
 #define N_SORT_TYPES \
 	TYPE_DO( N_SS_PORTAL,						portal					) \
 	TYPE_DO( N_SS_ENVIRONMENT,					sky						) \
@@ -356,6 +360,7 @@ static const char *editor_type[2] = { "node-based", "text-based" };
 
 	// general
 	STRUCT( N_CULL_TYPES,			CullTypes			)
+	STRUCT( N_SORT_MODES,			SortModes			)
 	STRUCT( N_SORT_TYPES,			SortTypes			)
 	STRUCT( N_SURFACEPARAMS_TYPES,	SurfaceParamTypes	)
 	STRUCT( N_MATERIAL_TYPES,		MaterialTypes		)
@@ -385,6 +390,7 @@ static const char *editor_type[2] = { "node-based", "text-based" };
 
 	// general
 	STRUCT_TO_STRING( N_CULL_TYPES,				n_cull_type_string				)
+	STRUCT_TO_STRING( N_SORT_MODES,				n_sort_mode_string				)	
 	STRUCT_TO_STRING( N_SORT_TYPES,				n_sort_type_string				)	/* diffrent from vk_sort_string		!! only user definable types */
 	STRUCT_TO_STRING( N_SURFACEPARAMS_TYPES,	n_surface_params_type_string	)
 	STRUCT_TO_STRING( N_MATERIAL_TYPES,			n_material_type_string			)
@@ -426,8 +432,8 @@ static const std::vector<TextEditor::Format> g_shaderGeneralFormats
 	{ "q3map_sun %c %c %c %f %f %f",			"key color:1 color:2 direction:0 direction:1 direction:2" },
 	{ "q3map_sunExt %c %c %c %f %f %f %f %i",	"key color:1 color:2 direction:0 direction:1 direction:2 void" },
 	
-	{ "sort %s",						"key type", { N_SORT_TYPES } },
-	{ "sort %i",						"key integer" },	// todo
+	{ "sort %s",						"key keyword", { N_SORT_TYPES } },
+	{ "sort %i",						"key index" },	// todo
 
 	{ "deform wave %f %s %f %f %f %f",			"key type spread modifier base amplitude phase frequency", { N_MODIFIER_TYPES } },
 	{ "deform move %f %f %f %s %f %f %f %f",	"key type displace:0 displace:1 displace:2 modifier base amplitude phase frequency", { N_MODIFIER_TYPES } },
