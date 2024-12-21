@@ -196,7 +196,6 @@ void vk_imgui_draw_shader_editor( void )
 	// always initililze text editor, formats are shared with node editor
 	vk_imgui_shader_text_editor_initialize();
 
-	static char shaderText[4069];
 	shader_t *sh = tr.shaders[ windows.shader.index ];
 
 	if ( !sh )
@@ -207,17 +206,19 @@ void vk_imgui_draw_shader_editor( void )
 
 	if ( windows.shader.index != windows.shader.prev ) 
 	{	
-		Com_Memset( &shaderText, 0, sizeof(shaderText) );
-		
+		// clear editor states
+		node_editor.unsetFlag();
+		text_editor.unsetFlag();
+
 		// decide which shader text to display
 		if ( sh_updated && sh_updated->shaderText )
-			Q_strncpyz( shaderText, sh_updated->shaderText, strlen(sh_updated->shaderText) * sizeof(char*) );
+			vk_imgui_shader_text_editor_set_text( sh_updated->shaderText );	
 		
 		else if ( sh_remap && sh_remap->shaderText )
-			Q_strncpyz( shaderText, sh_remap->shaderText, strlen(sh_remap->shaderText) * sizeof(char*) );
+			vk_imgui_shader_text_editor_set_text( sh_remap->shaderText );	
 		
 		else if ( sh->shaderText != NULL )
-			Q_strncpyz( shaderText, sh->shaderText, strlen(sh->shaderText) * sizeof(char*) );
+			vk_imgui_shader_text_editor_set_text( sh->shaderText );	
 
 		else {
 			windows.shader.p_open = false;
@@ -225,11 +226,6 @@ void vk_imgui_draw_shader_editor( void )
 			return;
 		}
 
-		// clear editor states
-		node_editor.unsetFlag();
-		text_editor.unsetFlag();
-
-		vk_imgui_shader_text_editor_set_text( shaderText );	
 		text_editor.setTextChanged( false );
 
 		// trigger text/node update
