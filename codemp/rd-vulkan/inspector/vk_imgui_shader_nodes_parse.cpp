@@ -330,11 +330,22 @@ void TextToNodesParser::parse_general( RegexMatchInfo &parms )
 
 		auto node = node_editor.addNode<Q3N_sort>( pos );
 		node->outPin( "sort" )->createLink( base_shader->inPin( "sort" ) );
-		
+
 		l_parms_shift(); // next word/token
 
-		l_parse_type( static_cast<BaseNodeExt*>( node.get() ) );
-		l_parms_shift(); // next word/token
+		if ( Q_stricmp( parms.tokens[0].c_str(), "%i" ) == 0 )
+		{
+			node->setType( N_SORT_MODE_INDEX );
+			node->parseParamValues( parms );
+		}
+		else 
+		{
+			node->setType( N_SORT_MODE_KEYWORD );
+
+			for ( uint32_t i = 0; i < ARRAY_LEN(n_sort_type_string); ++i )
+				if ( Q_stricmp( parms.words[0].c_str(), n_sort_type_string[i] ) == 0 )
+					node->setCombo<nodeValueCombo>( "keyword", i );
+		}
 
 		node->setDrawActive();
 		l_set_general_height( 50.0f );

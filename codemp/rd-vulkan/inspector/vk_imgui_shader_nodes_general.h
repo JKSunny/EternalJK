@@ -111,12 +111,45 @@ public:
 	{
 		setTitle( "Sort" );
 		setStyle( NodeStyle::cool_gray() );
-		setTypes( n_sort_type_string, ARRAY_LEN(n_sort_type_string) );
+		setTypes(n_sort_mode_string, ARRAY_LEN(n_sort_mode_string) );
+
+		// values
+		addValue<nodeValueCombo>(	0, "keyword", { 0, n_sort_type_string, ARRAY_LEN(n_sort_type_string) } );
+		addValue<int>(				1, "index", 0 );
 
 		// pins
 		addOUT<std::string>("sort", PinStyle::cyan())->behaviour([this]() {
-			return "sort " + getTypeStr();
+			std::string params;
+
+			if ( getType() == N_SORT_MODE_KEYWORD )
+			{
+				auto option = getValue<nodeValueCombo>("keyword");
+				params.append( option.selectables[option.active_idx] );
+			}
+			else if ( getType() == N_SORT_MODE_INDEX )
+			{
+				int index = getValue<int>( "index" );
+				params.append( va( "%d", index ) );
+			}
+
+			return "sort " + params;
 		});
+	}
+
+	void typeChanged( void )
+	{
+		if ( !isTypeChanged() )
+			return;
+
+		setValueDraw( "keyword", (getType() == N_SORT_MODE_KEYWORD) ? true : false );
+		setValueDraw( "index", (getType() == N_SORT_MODE_INDEX) ? true : false );
+	}
+
+	void draw() override
+	{
+		drawTypeSelector();
+		drawValues();
+		typeChanged();
 	}
 };
 
