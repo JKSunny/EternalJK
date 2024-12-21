@@ -888,7 +888,9 @@ void TextEditor::FormatInit(void)
 					++c;
 					pattern += ")(";
 					pattern += "\\S{1,63}";
-					if( string_equal_prefix_nocase( f.key.c_str(), "animMap" ) ){ // special case... variable num of paths
+					if( string_equal_prefix_nocase( f.key.c_str(), "animMap" ) ||
+						string_equal_prefix_nocase( f.key.c_str(), "clampanimMap" ) || 
+						string_equal_prefix_nocase( f.key.c_str(), "oneshotanimMap" ) ){ // special case... variable num of paths
 						pattern += "(?:\\s+\\S{1,63})+";
 						break;
 					}

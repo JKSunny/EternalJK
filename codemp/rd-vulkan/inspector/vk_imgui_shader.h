@@ -215,6 +215,8 @@ static const char *editor_type[2] = { "node-based", "text-based" };
 	TYPE_DO( N_VIDEOMAP			, videoMap			) \
 	/* types allow multiple textures: */ \
 	TYPE_DO( N_ANIMMAP			, animMap			) \
+	TYPE_DO( N_CLAMPANIMMAP		, clampanimMap		) \
+	TYPE_DO( N_ONESHOTANIMMAP	, oneshotanimMap	) \
 
 #define N_NORMAL_MAP_TYPES \
 	TYPE_DO( N_NORMALMAP		, normalMap			) \
@@ -499,7 +501,9 @@ static const std::vector<TextEditor::Format> g_shaderStageFormats
 	{ "map %t",							"key texture" },
 	{ "clampMap %t",					"key texture" },
 	{ "videoMap %p",					"key texture" },
-	{ "animMap %f %t %t %t %t %t %t %t %t", "key speed textures" },	// texture will be split by spaces
+	{ "animMap %f %t %t %t %t %t %t %t %t",			"key speed textures" },	// texture will be split by spaces
+	{ "clampanimMap %f %t %t %t %t %t %t %t %t",	"key speed textures" },	// texture will be split by spaces
+	{ "oneshotanimMap %f %t %t %t %t %t %t %t %t",	"key speed textures" },	// texture will be split by spaces
 	{ "blendFunc %s",					"key src", { N_BLENDFUNC_SRC_MACRO_TYPES } },
 	{
 		"blendFunc %s %s",				"key src dst", {
