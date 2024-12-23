@@ -335,6 +335,9 @@ static void RE_AddDynamicLightToScene( const vec3_t org, float intensity, float 
 	dl->color[2] = b;
 	dl->additive = additive;
 	dl->linear = qfalse;
+//#ifdef USE_RTX
+//	dl->intensity = intensity;
+//#endif
 }
 
 /*

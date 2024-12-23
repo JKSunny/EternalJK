@@ -497,7 +497,6 @@ get_direct_illumination(
 		// in order to kill some fireflies in locations with many sphere lights.
 		// Example: green wall-lamp corridor in the "train" map.
 		float max_solid_angle = (bounce == 0) ? 2 * M_PI : 0.02;
-#if 0	
 		sample_dynamic_lights(
 			position,
 			normal,
@@ -506,7 +505,6 @@ get_direct_illumination(
 			pos_on_light_dynamic,
 			contrib_dynamic,
 			rng);
-#endif
 	}
 
 	float spec_polygonal = phong(normal, normalize(pos_on_light_polygonal - position), view_direction, phong_exp) * phong_scale;

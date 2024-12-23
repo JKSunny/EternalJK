@@ -158,6 +158,20 @@ typedef enum
 	DLIGHT_PROJECTED
 } eDLightTypes;
 
+#ifdef USE_RTX
+typedef enum dlight_type_e
+{
+    DLIGHT_SPHERE = 0,
+    DLIGHT_SPOT
+} dlight_type;
+
+typedef enum dlight_spot_emission_profile_e
+{
+    DLIGHT_SPOT_EMISSION_PROFILE_FALLOFF = 0,
+    DLIGHT_SPOT_EMISSION_PROFILE_AXIS_ANGLE_TEXTURE
+} dlight_spot_emission_profile;
+#endif
+
 typedef struct dlight_s {
 	eDLightTypes	mType;
 
@@ -188,6 +202,35 @@ typedef struct dlight_s {
 	vec3_t			mTransDirection;
 	vec3_t			mTransBasis2;
 	vec3_t			mTransBasis3;
+
+#ifdef USE_RTX
+    // VKPT light types support
+    dlight_type light_type;
+	//float		intensity;		// use radius
+    // Spotlight options
+    struct {
+        // Spotlight emission profile
+        dlight_spot_emission_profile emission_profile;
+        // Spotlight direction
+        vec3_t  direction;
+        union {
+            // Options for DLIGHT_SPOT_EMISSION_PROFILE_FALLOFF
+            struct {
+                // Cosine of angle of spotlight cone width (no emission beyond that)
+                float   cos_total_width;
+                // Cosine of angle of start of falloff (full emission below that)
+                float   cos_falloff_start;
+            };
+            // Options for DLIGHT_SPOT_EMISSION_PROFILE_AXIS_ANGLE_TEXTURE
+            struct {
+                // Angle of spotlight cone width (no emission beyond that), in radians
+                float   total_width;
+                // Emission profile texture, indexed by 'angle / total_width'
+                qhandle_t texture;
+            };
+        };
+    } spot;
+#endif
 } dlight_t;
 
 

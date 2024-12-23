@@ -22,6 +22,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "tr_local.h"
+#include "conversion.h"
 #include "ghoul2/g2_local.h"
 
 typedef struct entity_hash_s {
@@ -214,6 +215,50 @@ static inline uint32_t fill_model_instance( const trRefEntity_t* entity, const i
 	instance->is_mdxm = is_mdxm ? 1 : 0;
 
 	return material_id;
+}
+
+static void add_dlight_spot(const dlight_t* light, DynLightData* dynlight_data)
+{
+	// Copy spot data
+	VectorCopy(light->spot.direction, dynlight_data->spot_direction);
+	switch(light->spot.emission_profile)
+	{
+	case DLIGHT_SPOT_EMISSION_PROFILE_FALLOFF:
+		dynlight_data->type |= DYNLIGHT_SPOT_EMISSION_PROFILE_FALLOFF << 16;
+		dynlight_data->spot_data = floatToHalf(light->spot.cos_total_width) | (floatToHalf(light->spot.cos_falloff_start) << 16);
+		break;
+	case DLIGHT_SPOT_EMISSION_PROFILE_AXIS_ANGLE_TEXTURE:
+		dynlight_data->type |= DYNLIGHT_SPOT_EMISSION_PROFILE_AXIS_ANGLE_TEXTURE << 16;
+		dynlight_data->spot_data = floatToHalf(light->spot.total_width) | (light->spot.texture << 16);
+		break;
+	}
+}
+
+static void add_dlights(const dlight_t* lights, int num_lights, vkUniformRTX_t* ubo)
+{
+	ubo->num_dyn_lights = 0;
+
+	for (int i = 0; i < num_lights; i++)
+	{
+		const dlight_t* light = lights + i;
+
+		DynLightData* dynlight_data = ubo->dyn_light_data + ubo->num_dyn_lights;
+		VectorCopy(light->origin, dynlight_data->center);
+		VectorScale(light->color, light->radius / 25.f, dynlight_data->color);
+
+		dynlight_data->radius = light->radius;
+		switch(light->light_type) {
+		case DLIGHT_SPHERE:
+			dynlight_data->type = DYNLIGHT_SPHERE;
+			break;
+		case DLIGHT_SPOT:
+			dynlight_data->type = DYNLIGHT_SPOT;
+			add_dlight_spot(light, dynlight_data);
+			break;
+		}
+
+		ubo->num_dyn_lights++;
+	}
 }
 
 #define MESH_FILTER_TRANSPARENT 1
@@ -823,6 +868,9 @@ static void vk_rtx_prepare_ubo( trRefdef_t *refdef, world_t *world, vkUniformRTX
 	VectorCopy( sky_matrix[0], ubo->environment_rotation_matrix + 0 );
 	VectorCopy( sky_matrix[1], ubo->environment_rotation_matrix + 4 );
 	VectorCopy( sky_matrix[2], ubo->environment_rotation_matrix + 8 );
+
+	add_dlights( refdef->dlights, refdef->num_dlights, ubo );
+	//add_dlights( backEnd.viewParms.dlights, backEnd.viewParms.num_dlights, ubo );
 
 	ubo->pt_cameras = 0;
 	//ubo->num_cameras = 0;
