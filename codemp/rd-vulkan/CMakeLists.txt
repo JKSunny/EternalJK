@@ -142,6 +142,7 @@ source_group("renderer\\utils" FILES ${MPVulkanRendererUtils})
 set(MPVulkanRendererFiles ${MPVulkanRendererFiles} ${MPVulkanRendererUtils})
 
 set(MPVulkanRendererRTX
+	"${MPDir}/rd-vulkan/rtx/conversion.h"
 	"${MPDir}/rd-vulkan/rtx/vk_rtx.h"
 	"${MPDir}/rd-vulkan/rtx/vk_rtx.cpp"
 	"${MPDir}/rd-vulkan/rtx/vk_rtx_as.cpp"
