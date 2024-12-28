@@ -270,41 +270,6 @@ void get_triangle_norm( const float* positions, float* normal )
 	CrossProduct(e1, e2, normal);
 	VectorNormalize(normal);
 }
-// Computes a point at a small distance above the center of the triangle.
-// Returns qfalse if the triangle is degenerate, qtrue otherwise.
-qboolean get_triangle_off_center(const float* positions, float* center, float* anti_center)
-{
-	const float* v0 = positions + 0;
-	const float* v1 = positions + 3;
-	const float* v2 = positions + 6;
-
-	// Compute the triangle center
-
-	VectorCopy(v0, center);
-	VectorAdd(center, v1, center);
-	VectorAdd(center, v2, center);
-	VectorScale(center, 1.f / 3.f, center);
-
-	// Compute the normal
-
-	vec3_t e1, e2, normal;
-	VectorSubtract(v1, v0, e1);
-	VectorSubtract(v2, v0, e2);
-	CrossProduct(e1, e2, normal);
-	float length = VectorNormalize(normal);
-
-	// Offset the center by one normal to make sure that the point is
-	// inside a BSP leaf and not on a boundary plane.
-
-	VectorAdd(center, normal, center);
-
-	if (anti_center)
-	{
-		VectorMA(center, -2.f, normal, anti_center);
-	}
-
-	return (qboolean)(length > 0.f);
-}
 
 static void RB_UploadCluster( world_t &worldData, vkbuffer_t *buffer, uint32_t offsetIDX, int defaultC ) 
 {
@@ -355,7 +320,6 @@ static void RB_UploadCluster( world_t &worldData, vkbuffer_t *buffer, uint32_t o
 	free(clusterData);
 }
 
-#ifdef USE_RTX
 // multiple different ways to find a cluster
  int R_FindClusterForPos( world_t &worldData, const vec3_t p) {
 	mnode_t* node;
@@ -820,109 +784,43 @@ remove_collinear_edges(float* positions, float* tex_coords, int* num_vertices)
 	*num_vertices = num_vertices_local;
 }
 
-
-static light_poly_t*
-append_light_poly( int *num_lights, int *allocated, light_poly_t **lights )
+// Computes a point at a small distance above the center of the triangle.
+// Returns qfalse if the triangle is degenerate, qtrue otherwise.
+qboolean 
+get_triangle_off_center(const float* positions, float* center, float* anti_center)
 {
-	if (*num_lights == *allocated)
-	{
-		*allocated = MAX(*allocated * 2, 128);
+	const float* v0 = positions + 0;
+	const float* v1 = positions + 3;
+	const float* v2 = positions + 6;
 
-		// fail ?
-		*lights = (light_poly_t*)realloc(*lights, *allocated * sizeof(light_poly_t));
+	// Compute the triangle center
+
+	VectorCopy(v0, center);
+	VectorAdd(center, v1, center);
+	VectorAdd(center, v2, center);
+	VectorScale(center, 1.f / 3.f, center);
+
+	// Compute the normal
+
+	vec3_t e1, e2, normal;
+	VectorSubtract(v1, v0, e1);
+	VectorSubtract(v2, v0, e2);
+	CrossProduct(e1, e2, normal);
+	float length = VectorNormalize(normal);
+
+	// Offset the center by one normal to make sure that the point is
+	// inside a BSP leaf and not on a boundary plane.
+
+	VectorAdd(center, normal, center);
+
+	if (anti_center)
+	{
+		VectorMA(center, -2.f, normal, anti_center);
 	}
-	return *lights + (*num_lights)++;
+
+	return (qboolean)(length > 0.f);
 }
 
-static void collect_one_light_poly_entire_texture(  world_t &worldData, srfSurfaceFace_t *surf, shader_t *shader,
-													const vec3_t light_color, float emissive_factor, int light_style,
-													int* num_lights, int* allocated_lights, light_poly_t** lights )
-{
-	float positions[3 * /*max_vertices / face->numPoints*/ 32];
-
-	for ( int i = 0; i < surf->numPoints; i++ )
-	{
-		float *p = positions + i * 3;
-		VectorCopy( surf->points[i], p );
-	}
-
-	int num_vertices = surf->numPoints;
-	remove_collinear_edges( positions, NULL, &num_vertices );
-			
-	const int num_triangles = surf->numPoints - 2;
-
-	for (  int i = 0; i < num_triangles; i++ )
-	{
-		const int e = surf->numPoints;
-
-		int i1 = (i + 2) % e;
-		int i2 = (i + 1) % e;
-
-		light_poly_t light;
-		VectorCopy( positions,			light.positions + 0 );
-		VectorCopy( positions + i1 * 3,	light.positions + 3 );
-		VectorCopy( positions + i2 * 3,	light.positions + 6 );
-		VectorScale(light_color, emissive_factor, light.color);
-
-		light.material = (void*)vk_rtx_get_material( shader->index );
-		light.style = 0;
-
-		if ( !get_triangle_off_center( light.positions, light.off_center, NULL ) )
-			continue;
-
-		light.emissive_factor = emissive_factor;
-
-		//if (model_idx >= 0)
-		//	light.cluster = -1; // Cluster will be determined when the model is instanced
-		//else
-		light.cluster = BSP_PointLeaf( worldData.nodes, light.off_center )->cluster;
-
-		if ( /*model_idx >= 0 ||*/ light.cluster >= 0 )
-		{
-			light_poly_t *list_light = append_light_poly(num_lights, allocated_lights, lights);
-			memcpy( list_light, &light, sizeof(light_poly_t) );
-		}
-	}
-}
-
-static bool
-collect_frames_emissive_info( shader_t *shader, bool* entire_texture_emissive, vec2_t min_light_texcoord, vec2_t max_light_texcoord, vec3_t light_color )
-{
-	*entire_texture_emissive = false;
-	min_light_texcoord[0] = min_light_texcoord[1] = 1.0f;
-	max_light_texcoord[0] = max_light_texcoord[1] = 0.0f;
-
-	bool any_emissive_valid = false;
-
-	uint32_t emissive_image_index = vk_rtx_find_emissive_texture( shader );
-
-	if ( !emissive_image_index )
-		return false;
-
-	image_t *image = tr.images[emissive_image_index];
-
-	if ( !image )
-		return false;
-
-	if(!any_emissive_valid)
-	{
-		// emissive light color of first frame
-		memcpy(light_color, image->light_color, sizeof(vec3_t));
-		//VectorSet( light_color, 255.0, 255.0, 255.0 );
-	}
-	any_emissive_valid = true;
-
-	*entire_texture_emissive |= image->entire_texture_emissive;
-	//*entire_texture_emissive = true;
-	min_light_texcoord[0] = MIN(min_light_texcoord[0], image->min_light_texcoord[0]);
-	min_light_texcoord[1] = MIN(min_light_texcoord[1], image->min_light_texcoord[1]);
-	max_light_texcoord[0] = MAX(max_light_texcoord[0], image->max_light_texcoord[0]);
-	max_light_texcoord[1] = MAX(max_light_texcoord[1], image->max_light_texcoord[1]);
-
-	return any_emissive_valid;
-}
-
-#if 0
 static bool
 get_surf_plane_equation(srfSurfaceFace_t *surf , float* plane )
 {
@@ -967,31 +865,242 @@ get_surf_plane_equation(srfSurfaceFace_t *surf , float* plane )
 	return (maxlen > 0.f);
 }
 
-static void collect_one_light_poly( world_t &worldData, srfSurfaceFace_t *surf, shader_t *shader, const vec4_t plane,
+typedef struct {
+	float x, y;
+
+} point2_t;
+#define MAX_POLY_VERTS 32
+typedef struct {
+	point2_t v[MAX_POLY_VERTS];
+	int len;
+} rt_poly_t;
+
+static inline float
+dot2(point2_t* a, point2_t* b)
+{
+	return a->x * b->x + a->y * b->y;
+}
+
+static inline float
+cross2(point2_t* a, point2_t* b)
+{
+	return a->x * b->y - a->y * b->x;
+}
+
+static inline point2_t
+vsub(point2_t* a, point2_t* b)
+{
+	point2_t res;
+	res.x = a->x - b->x;
+	res.y = a->y - b->y;
+	return res;
+}
+
+/* tells if vec c lies on the left side of directed edge a->b
+ * 1 if left, -1 if right, 0 if colinear
+ */
+static int
+left_of(point2_t* a, point2_t* b, point2_t* c)
+{
+	float x;
+	point2_t tmp1 = vsub(b, a);
+	point2_t tmp2 = vsub(c, b);
+	x = cross2(&tmp1, &tmp2);
+	return x < 0 ? -1 : x > 0;
+}
+
+static int
+line_sect(point2_t* x0, point2_t* x1, point2_t* y0, point2_t* y1, point2_t* res)
+{
+	point2_t dx, dy, d;
+	dx = vsub(x1, x0);
+	dy = vsub(y1, y0);
+	d = vsub(x0, y0);
+	/* x0 + a dx = y0 + b dy ->
+	   x0 X dx = y0 X dx + b dy X dx ->
+	   b = (x0 - y0) X dx / (dy X dx) */
+	float dyx = cross2(&dy, &dx);
+	if (!dyx) return 0;
+	dyx = cross2(&d, &dx) / dyx;
+	if (dyx <= 0 || dyx >= 1) return 0;
+
+	res->x = y0->x + dyx * dy.x;
+	res->y = y0->y + dyx * dy.y;
+	return 1;
+}
+
+static void
+poly_append(rt_poly_t* p, point2_t* v)
+{
+	assert(p->len < MAX_POLY_VERTS - 1);
+	p->v[p->len++] = *v;
+}
+
+static int
+poly_winding(rt_poly_t* p)
+{
+	return left_of(p->v, p->v + 1, p->v + 2);
+}
+
+static void
+poly_edge_clip(rt_poly_t* sub, point2_t* x0, point2_t* x1, int left, rt_poly_t* res)
+{
+	int i, side0, side1;
+	point2_t tmp;
+	point2_t* v0 = sub->v + sub->len - 1;
+	point2_t* v1;
+	res->len = 0;
+
+	side0 = left_of(x0, x1, v0);
+	if (side0 != -left) poly_append(res, v0);
+
+	for (i = 0; i < sub->len; i++) {
+		v1 = sub->v + i;
+		side1 = left_of(x0, x1, v1);
+		if (side0 + side1 == 0 && side0)
+			/* last point and current straddle the edge */
+			if (line_sect(x0, x1, v0, v1, &tmp))
+				poly_append(res, &tmp);
+		if (i == sub->len - 1) break;
+		if (side1 != -left) poly_append(res, v1);
+		v0 = v1;
+		side0 = side1;
+	}
+}
+
+static void
+clip_polygon(rt_poly_t* input, rt_poly_t* clipper, rt_poly_t* output)
+{
+	int i;
+	rt_poly_t p1_m, p2_m;
+	rt_poly_t* p1 = &p1_m;
+	rt_poly_t* p2 = &p2_m;
+	rt_poly_t* tmp;
+
+	int dir = poly_winding(clipper);
+	poly_edge_clip(input, clipper->v + clipper->len - 1, clipper->v, dir, p2);
+	for (i = 0; i < clipper->len - 1; i++) {
+		tmp = p2; p2 = p1; p1 = tmp;
+		if (p1->len == 0) {
+			p2->len = 0;
+			break;
+		}
+		poly_edge_clip(p1, clipper->v + i, clipper->v + i + 1, dir, p2);
+	}
+
+	output->len = p2->len;
+	if (output->len)
+		memcpy(output->v, p2->v, p2->len * sizeof(point2_t));
+}
+
+static light_poly_t*
+append_light_poly( int *num_lights, int *allocated, light_poly_t **lights )
+{
+	if (*num_lights == *allocated)
+	{
+		*allocated = MAX(*allocated * 2, 128);
+
+		// fail ?
+		*lights = (light_poly_t*)realloc(*lights, *allocated * sizeof(light_poly_t));
+	}
+	return *lights + (*num_lights)++;
+}
+
+static void collect_one_light_poly_entire_texture(  world_t &worldData, srfSurfaceFace_t *surf, shader_t *shader, int model_idx, 
+													const vec3_t light_color, float emissive_factor, int light_style,
+													int* num_lights, int* allocated_lights, light_poly_t** lights )
+{
+	float positions[3 * /*max_vertices / face->numPoints*/ 32];
+
+	for ( int i = 0; i < surf->numPoints; i++ )
+	{
+		float *p = positions + i * 3;
+		VectorCopy( surf->points[i], p );
+	}
+
+	int num_vertices = surf->numPoints;
+	remove_collinear_edges( positions, NULL, &num_vertices );
+			
+	const int num_triangles = surf->numPoints - 2;
+
+	for (  int i = 0; i < num_triangles; i++ )
+	{
+		const int e = surf->numPoints;
+
+		int i1 = (i + 2) % e;
+		int i2 = (i + 1) % e;
+
+		light_poly_t light;
+		VectorCopy( positions,			light.positions + 0 );
+		VectorCopy( positions + i1 * 3,	light.positions + 3 );
+		VectorCopy( positions + i2 * 3,	light.positions + 6 );
+		VectorScale(light_color, emissive_factor, light.color);
+
+		light.material = (void*)vk_rtx_get_material( shader->index );
+		light.style = 0;
+
+		if ( !get_triangle_off_center( light.positions, light.off_center, NULL ) )
+			continue;
+
+		light.emissive_factor = emissive_factor;
+
+		if (model_idx >= 0)
+			light.cluster = -1; // Cluster will be determined when the model is instanced
+		else
+			light.cluster = BSP_PointLeaf( worldData.nodes, light.off_center )->cluster;
+
+		if ( model_idx >= 0 || light.cluster >= 0 )
+		{
+			light_poly_t *list_light = append_light_poly(num_lights, allocated_lights, lights);
+			memcpy( list_light, &light, sizeof(light_poly_t) );
+		}
+	}
+}
+
+static void 
+collect_one_light_poly( world_t &worldData, srfSurfaceFace_t *surf, shader_t *shader, int model_idx, const vec4_t plane,
 									const float tex_scale[], const vec2_t min_light_texcoord, const vec2_t max_light_texcoord,
 									const vec3_t light_color, float emissive_factor, int light_style,
 									int* num_lights, int* allocated_lights, light_poly_t** lights )
 {
 	// https://github.com/demoth/jake2/blob/main/info/BSP.md#texture-information-lump
-
-	vec2_t tex_min = { FLT_MAX, FLT_MAX };
-	vec2_t tex_max = { -FLT_MAX, -FLT_MAX };
-
-	int *indices = ( (int*)( (byte*)surf + surf->ofsIndices ) );
-	for ( int  i = 0; i < surf->numPoints; i ++ )
-	{
-		vec2_t t;
-		Com_Memcpy( t, surf->points[i]+6, sizeof(vec2_t) );
-		
-		tex_min[0] = MIN(tex_min[0], t[0]);
-		tex_min[1] = MIN(tex_min[1], t[1]);
-		tex_max[0] = MAX(tex_max[0], t[0]);
-		tex_max[1] = MAX(tex_max[1], t[1]);
-	}
-
-	// continue porting here..
 }
-#endif
+
+static bool
+collect_frames_emissive_info( shader_t *shader, bool* entire_texture_emissive, vec2_t min_light_texcoord, vec2_t max_light_texcoord, vec3_t light_color )
+{
+	*entire_texture_emissive = false;
+	min_light_texcoord[0] = min_light_texcoord[1] = 1.0f;
+	max_light_texcoord[0] = max_light_texcoord[1] = 0.0f;
+
+	bool any_emissive_valid = false;
+
+	uint32_t emissive_image_index = vk_rtx_find_emissive_texture( shader );
+
+	if ( !emissive_image_index )
+		return false;
+
+	image_t *image = tr.images[emissive_image_index];
+
+	if ( !image )
+		return false;
+
+	if(!any_emissive_valid)
+	{
+		// emissive light color of first frame
+		memcpy(light_color, image->light_color, sizeof(vec3_t));
+		//VectorSet( light_color, 255.0, 255.0, 255.0 );
+	}
+	any_emissive_valid = true;
+
+	*entire_texture_emissive |= image->entire_texture_emissive;
+	min_light_texcoord[0] = MIN(min_light_texcoord[0], image->min_light_texcoord[0]);
+	min_light_texcoord[1] = MIN(min_light_texcoord[1], image->min_light_texcoord[1]);
+	max_light_texcoord[0] = MAX(max_light_texcoord[0], image->max_light_texcoord[0]);
+	max_light_texcoord[1] = MAX(max_light_texcoord[1], image->max_light_texcoord[1]);
+
+	return any_emissive_valid;
+}
 
 static void collect_light_polys( world_t &worldData, int model_idx, int* num_lights, int* allocated_lights, light_poly_t** lights )
 {
@@ -1005,7 +1114,7 @@ static void collect_light_polys( world_t &worldData, int model_idx, int* num_lig
 		if ( surf->surfaceType != SF_FACE )
 			continue;
 
-		bool entire_texture_emissive = true;
+		bool entire_texture_emissive;
 		vec2_t min_light_texcoord;
 		vec2_t max_light_texcoord;
 		vec3_t light_color;
@@ -1024,12 +1133,11 @@ static void collect_light_polys( world_t &worldData, int model_idx, int* num_lig
 		entire_texture_emissive = true;	// force it until collect_one_light_poly is implemented
 		if ( entire_texture_emissive )
 		{
-			collect_one_light_poly_entire_texture(  worldData, surf, sf->shader, light_color, emissive_factor, light_style,
+			collect_one_light_poly_entire_texture(  worldData, surf, sf->shader, model_idx, light_color, emissive_factor, light_style,
 													num_lights, allocated_lights, lights );
 			continue;
 		}
 
-#if 0
 		vec4_t plane;
 		if ( !get_surf_plane_equation( surf, plane ) )
 		{
@@ -1042,11 +1150,10 @@ static void collect_light_polys( world_t &worldData, int model_idx, int* num_lig
 		image_t *base_image = tr.images[base_image_id];
 		float tex_scale[2] = { 1.0f / base_image->uploadWidth, 1.0f / base_image->uploadHeight };
 
-		collect_one_light_poly( worldData, surf, sf->shader , plane,
+		collect_one_light_poly( worldData, surf, sf->shader, model_idx, plane,
 							   tex_scale, min_light_texcoord, max_light_texcoord,
 							   light_color, emissive_factor, light_style,
 							   num_lights, allocated_lights, lights );
-#endif
 	}
 }
 
@@ -1392,4 +1499,3 @@ void R_PreparePT( world_t &worldData )
 
 	vk.worldASInit = qtrue;
 }
-#endif
