@@ -469,12 +469,9 @@ static VkResult vk_rtx_uniform_precomputed_buffer_update( void )
 {
 	vkbuffer_t *ubo = &atmosphere_params_buffer;
 
-	uint32_t idx, prev_idx;
-	vk_rtx_get_descriptor_index( idx, prev_idx );
-
 	assert( ubo->memory != VK_NULL_HANDLE );
 	assert( ubo->buffer != VK_NULL_HANDLE );
-	assert( idx < VK_MAX_SWAPCHAIN_SIZE );
+	assert( vk.current_frame_index < VK_MAX_SWAPCHAIN_SIZE );
 
 	struct AtmosphereParameters *mapped_ubo = (AtmosphereParameters*)buffer_map(ubo);
 	assert( mapped_ubo );

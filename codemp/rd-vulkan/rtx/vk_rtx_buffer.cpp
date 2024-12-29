@@ -343,10 +343,10 @@ static void copy_bsp_lights( world_t *world, LightBuffer *lbo )
 	buffer_unmap( vk.buf_light_counts_history + history_index );
 }
 
-VkResult vkpt_light_buffer_upload_to_staging( const uint32_t idx, qboolean render_world, 
+VkResult vkpt_light_buffer_upload_to_staging( qboolean render_world, 
 	world_t *world, int num_model_lights, light_poly_t *transformed_model_lights, const float* sky_radiance )
 {
-	vkbuffer_t *staging = vk.buf_light_staging + idx;
+	vkbuffer_t *staging = vk.buf_light_staging + vk.current_frame_index;
 
 	LightBuffer *lbo = (LightBuffer *)buffer_map(staging);
 	assert(lbo);
@@ -389,7 +389,7 @@ VkResult vkpt_light_buffer_upload_to_staging( const uint32_t idx, qboolean rende
 
 	{
 		// moved to vk_rtx_material.cpp
-		vk_rtx_upload_materials( idx, lbo );
+		vk_rtx_upload_materials( lbo );
 	}
 
 	memcpy( lbo->cluster_debug_mask, vk.cluster_debug_mask, MAX_LIGHT_LISTS / 8 );
@@ -572,10 +572,7 @@ void vk_rtx_upload_indices( vkbuffer_t *buffer, uint32_t offsetIDX, uint32_t off
 
 VkResult vk_rtx_readback( ReadbackBuffer *dst )
 {
-	uint32_t idx, prev_idx;
-	vk_rtx_get_descriptor_index( idx, prev_idx );
-
-	vkbuffer_t *buffer = &vk.buf_readback_staging[idx];
+	vkbuffer_t *buffer = &vk.buf_readback_staging[vk.current_frame_index];
 	void *mapped = buffer_map(buffer);
 
 	if  ( mapped == NULL )

@@ -110,11 +110,8 @@ void vk_destroy_asvgf_pipelines( void )
 
 VkResult vkpt_asvgf_gradient_reproject( VkCommandBuffer cmd_buf )
 {
-	uint32_t idx, prev_idx;
-	vk_rtx_get_descriptor_index( idx, prev_idx );
-
 	VkDescriptorSet desc_sets[] = {
-		vk.desc_set_vertex_buffer[idx].set,
+		vk.desc_set_vertex_buffer[vk.current_frame_index].set,
 		vk_rtx_get_current_desc_set_textures(),
 		vk.imageDescriptor.set,
 		vk.desc_set_ubo
@@ -131,21 +128,19 @@ VkResult vkpt_asvgf_gradient_reproject( VkCommandBuffer cmd_buf )
 		(glConfig.vidHeight + group_size_pixels - 1) / group_size_pixels,
 		1 );
 
-	int frame_idx = idx;
 
-	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_ASVGF_RNG_SEED_A + frame_idx] );
-	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_ASVGF_GRAD_SMPL_POS_A + frame_idx] ); 
+	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_ASVGF_RNG_SEED_A + (vk.frame_counter & 1)] );
+	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_ASVGF_GRAD_SMPL_POS_A  + (vk.frame_counter & 1)] ); 
 
 	return VK_SUCCESS;
 }
 
 VkResult vkpt_asvgf_filter( VkCommandBuffer cmd_buf, qboolean enable_lf )
 {
-	uint32_t i, idx, prev_idx;
-	vk_rtx_get_descriptor_index( idx, prev_idx );
+	uint32_t i;
 
 	VkDescriptorSet desc_sets[] = {
-		vk.desc_set_vertex_buffer[idx].set,
+		vk.desc_set_vertex_buffer[vk.current_frame_index].set,
 		vk_rtx_get_current_desc_set_textures(),
 		vk.imageDescriptor.set,
 		vk.desc_set_ubo
@@ -212,14 +207,12 @@ VkResult vkpt_asvgf_filter( VkCommandBuffer cmd_buf, qboolean enable_lf )
 			(vk.extent_render.height + 14) / 15,
 			1 );
 
-	int frame_idx = idx;
-
 	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_ASVGF_ATROUS_PING_LF_SH] );
 	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_ASVGF_ATROUS_PING_LF_COCG] );
 	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_ASVGF_ATROUS_PING_HF] );
 	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_ASVGF_ATROUS_PING_MOMENTS] );
 
-	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_ASVGF_FILTERED_SPEC_A + frame_idx] );
+	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_ASVGF_FILTERED_SPEC_A + (vk.frame_counter & 1)] );
 	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_ASVGF_HIST_MOMENTS_HF_A] );
 	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_ASVGF_HIST_MOMENTS_HF_B] ); // B aka prev
 
@@ -289,11 +282,8 @@ VkResult vkpt_asvgf_filter( VkCommandBuffer cmd_buf, qboolean enable_lf )
 
 VkResult vkpt_compositing( VkCommandBuffer cmd_buf )
 {
-	uint32_t idx, prev_idx;
-	vk_rtx_get_descriptor_index( idx, prev_idx );
-
 	VkDescriptorSet desc_sets[] = {
-		vk.desc_set_vertex_buffer[idx].set,
+		vk.desc_set_vertex_buffer[vk.current_frame_index].set,
 		vk_rtx_get_current_desc_set_textures(),
 		vk.imageDescriptor.set,
 		vk.desc_set_ubo
@@ -326,11 +316,8 @@ VkResult vkpt_compositing( VkCommandBuffer cmd_buf )
 
 VkResult vkpt_interleave( VkCommandBuffer cmd_buf )
 {
-	uint32_t idx, prev_idx;
-	vk_rtx_get_descriptor_index( idx, prev_idx );
-
 	VkDescriptorSet desc_sets[] = {
-		vk.desc_set_vertex_buffer[idx].set,
+		vk.desc_set_vertex_buffer[vk.current_frame_index].set,
 		vk_rtx_get_current_desc_set_textures(),
 		vk.imageDescriptor.set,
 		vk.desc_set_ubo
@@ -394,11 +381,8 @@ VkResult vkpt_interleave( VkCommandBuffer cmd_buf )
 
 VkResult vkpt_taa( VkCommandBuffer cmd_buf )
 {
-	uint32_t idx, prev_idx;
-	vk_rtx_get_descriptor_index( idx, prev_idx );
-
 	VkDescriptorSet desc_sets[] = {
-		vk.desc_set_vertex_buffer[idx].set,
+		vk.desc_set_vertex_buffer[vk.current_frame_index].set,
 		vk_rtx_get_current_desc_set_textures(),
 		vk.imageDescriptor.set,
 		vk.desc_set_ubo

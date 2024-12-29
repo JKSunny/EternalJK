@@ -280,7 +280,7 @@ VkResult vk_rtx_shader_to_material( shader_t *shader, uint32_t &index, uint32_t 
 	return VK_SUCCESS;
 }
 
-VkResult vk_rtx_upload_materials( const uint32_t idx, LightBuffer *lbo )
+VkResult vk_rtx_upload_materials( LightBuffer *lbo )
 {
 	uint32_t i;
 	rtx_material_t *mat;
@@ -289,7 +289,7 @@ VkResult vk_rtx_upload_materials( const uint32_t idx, LightBuffer *lbo )
 	{
 		mat = vk_rtx_get_material( i );
 
-		if ( !mat || !mat->active || mat->uploaded[idx] ) 
+		if ( !mat || !mat->active || mat->uploaded[vk.current_frame_index] ) 
 			continue;
 
 		uint32_t *data = lbo->material_table + i * MATERIAL_UINTS;
@@ -306,7 +306,7 @@ VkResult vk_rtx_upload_materials( const uint32_t idx, LightBuffer *lbo )
 
 		data[4] =	mat->remappedIndex;
 
-		mat->uploaded[idx] = qtrue;
+		mat->uploaded[vk.current_frame_index] = qtrue;
 	}
 
 	return VK_SUCCESS;

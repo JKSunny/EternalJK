@@ -1049,6 +1049,9 @@ typedef struct {
 
 	vk_tess_t tess[NUM_COMMAND_BUFFERS], *cmd;
 	int cmd_index;
+#ifdef USE_RTX
+	uint32_t current_frame_index;
+#endif
 
 	// render passes
 	struct {

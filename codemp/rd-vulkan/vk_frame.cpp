@@ -1382,11 +1382,8 @@ void vk_begin_post_refraction_extract_render_pass( void )
 VkResult
 vkpt_final_blit_filtered(VkCommandBuffer cmd_buf)
 {
-	uint32_t idx, prev_idx;
-	vk_rtx_get_descriptor_index( idx, prev_idx );
-
 	VkDescriptorSet desc_sets[] = {
-		vk.rt_descriptor_set[idx].set,
+		vk.rt_descriptor_set[vk.current_frame_index].set,
         vk_rtx_get_current_desc_set_textures(),
 		vk.imageDescriptor.set,
         vk.desc_set_ubo
@@ -1419,7 +1416,10 @@ void vk_begin_frame( void )
 
         vk.cmd = &vk.tess[vk.cmd_index++];
         vk.cmd_index %= NUM_COMMAND_BUFFERS;
-        
+#ifdef USE_RTX
+        vk.current_frame_index =  vk.frame_counter % NUM_COMMAND_BUFFERS;
+#endif
+
         vk_imgui_profiler_begin_frame();
         size_t wait_for_fence_task = vk_imgui_profiler_start_task( "WaitForFence", RGBA_LE(0x2980b9ffu) );
 

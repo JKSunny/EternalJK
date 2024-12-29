@@ -25,17 +25,10 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 VkDescriptorSet vk_rtx_get_current_desc_set_textures()
 {
-	return vk.swapchain_image_index ? vk.desc_set_textures_odd : vk.desc_set_textures_even;
-}
-
-void vk_rtx_get_descriptor_index( uint32_t &idx, uint32_t &prev_idx ) 
-{
-#if 0
-	idx = (vk.frame_counter & 1);
-	prev_idx = ((vk.frame_counter - 1) & 1);
+#if 1
+	return (vk.frame_counter & 1) ? vk.desc_set_textures_odd : vk.desc_set_textures_even;
 #else
-	idx = vk.swapchain_image_index;
-	prev_idx = (idx + (vk.swapchain_image_count - 1)) % vk.swapchain_image_count;
+	return vk.swapchain_image_index ? vk.desc_set_textures_odd : vk.desc_set_textures_even;
 #endif
 }
 

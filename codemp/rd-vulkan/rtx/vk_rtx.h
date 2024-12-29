@@ -367,7 +367,6 @@ void		vk_rtx_begin_frame( void );
 void		vk_rtx_show_pvs_f( void );
 
 VkDescriptorSet vk_rtx_get_current_desc_set_textures( void);
-void			vk_rtx_get_descriptor_index( uint32_t &idx, uint32_t &prev_idx);
 
 void		R_PreparePT( world_t &worldData ) ;
 
@@ -408,7 +407,7 @@ void		vk_rtx_destroy_pipeline( vkpipeline_t *pipeline );
 // uniform
 VkResult	vkpt_uniform_buffer_create( void );
 VkResult	vkpt_uniform_buffer_destroy( void );
-VkResult	vkpt_uniform_buffer_update( VkCommandBuffer command_buffer, uint32_t idx );
+VkResult	vkpt_uniform_buffer_update( VkCommandBuffer command_buffer);
 
 // buffer
 VkResult	allocate_gpu_memory( VkMemoryRequirements mem_req, VkDeviceMemory *pMemory );
@@ -421,7 +420,7 @@ void		VK_CreateImageMemory( VkMemoryPropertyFlags properties, VkImage *image, Vk
 void		VK_CreateAttributeBuffer( vkbuffer_t *buffer, VkDeviceSize size, VkBufferUsageFlagBits usage );
 void		vk_rtx_upload_buffer_data_offset( vkbuffer_t *buffer, VkDeviceSize offset, VkDeviceSize size, const byte *data );
 void		vk_rtx_upload_buffer_data( vkbuffer_t *buffer, const byte *data );
-VkResult	vkpt_light_buffer_upload_to_staging( const uint32_t idx, qboolean render_world, 
+VkResult	vkpt_light_buffer_upload_to_staging( qboolean render_world, 
 												 world_t *world, int num_model_lights, light_poly_t *transformed_model_lights, const float* sky_radiance );
 VkResult	vk_rtx_readback( ReadbackBuffer *dst );
 VkResult	vkpt_light_buffers_create( world_t &world );
@@ -481,7 +480,7 @@ qboolean	RB_SkipObject( shader_t *shader );
 qboolean	RB_IsTransparent( shader_t *shader );
 void		vk_rtx_update_shader_material( shader_t *shader, shader_t *updatedShader );
 VkResult	vk_rtx_shader_to_material( shader_t *shader, uint32_t &index, uint32_t &flags );
-VkResult	vk_rtx_upload_materials( const uint32_t idx, LightBuffer *lbo );
+VkResult	vk_rtx_upload_materials( LightBuffer *lbo );
 
 // image
 void		vk_rtx_create_image( const char *name, vkimage_t *image, uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage, uint32_t mipLevels );

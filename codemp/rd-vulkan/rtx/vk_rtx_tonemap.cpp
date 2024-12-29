@@ -186,11 +186,10 @@ void vk_destroy_tonemap_pipelines( void )
 // in-place, given the time between this frame and the previous frame.
 VkResult vkpt_tone_mapping_record_cmd_buffer( VkCommandBuffer cmd_buf, float frame_time )
 {
-	uint32_t i, idx, prev_idx;
-	vk_rtx_get_descriptor_index( idx, prev_idx );
+	uint32_t i;
 
 	VkDescriptorSet desc_sets[] = {
-		vk.desc_set_vertex_buffer[idx].set,
+		vk.desc_set_vertex_buffer[vk.current_frame_index].set,
 		vk_rtx_get_current_desc_set_textures(),
 		vk.imageDescriptor.set,
 		vk.desc_set_ubo

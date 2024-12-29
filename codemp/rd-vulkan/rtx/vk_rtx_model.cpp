@@ -187,11 +187,8 @@ VkResult vk_rtx_model_vbo_create_pipelines( void )
 
 void vkpt_instance_geometry( VkCommandBuffer cmd_buf, uint32_t num_instances, qboolean update_world_animations ) 
 {
-	uint32_t idx, prev_idx;
-	vk_rtx_get_descriptor_index( idx, prev_idx );
-
 	VkDescriptorSet desc_sets[] = {
-		vk.desc_set_vertex_buffer[idx].set,
+		vk.desc_set_vertex_buffer[vk.current_frame_index].set,
 		vk_rtx_get_current_desc_set_textures(),
 		vk.model_instance.descriptor.vbos,
 		vk.desc_set_ubo,

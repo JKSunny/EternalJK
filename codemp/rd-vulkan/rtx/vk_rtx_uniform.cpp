@@ -148,14 +148,14 @@ VkResult vkpt_uniform_buffer_destroy( void )
 	return VK_SUCCESS;
 }
 
-VkResult vkpt_uniform_buffer_update( VkCommandBuffer command_buffer, uint32_t idx )
+VkResult vkpt_uniform_buffer_update( VkCommandBuffer command_buffer )
 {
-	vkbuffer_t *ubo = host_uniform_buffers + idx;
+	vkbuffer_t *ubo = host_uniform_buffers + vk.current_frame_index;
 
 	assert(ubo);
 	assert(ubo->memory != VK_NULL_HANDLE);
 	assert(ubo->buffer != VK_NULL_HANDLE);
-	assert(idx < VK_MAX_SWAPCHAIN_SIZE);
+	assert(vk.current_frame_index < VK_MAX_SWAPCHAIN_SIZE);
 
 	vkUniformRTX_t *mapped_ubo = (vkUniformRTX_t*)buffer_map( ubo );
 	assert(mapped_ubo);

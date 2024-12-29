@@ -155,16 +155,13 @@ vk_rtx_god_rays_noop( void )
 
 void vk_rtx_record_god_rays_trace_command_buffer( VkCommandBuffer command_buffer, int pass )
 {
-	uint32_t idx, prev_idx;
-	vk_rtx_get_descriptor_index( idx, prev_idx );
-
 	BARRIER_COMPUTE( command_buffer, vk.img_rtx[RTX_IMG_PT_GODRAYS_THROUGHPUT_DIST] );
 	BARRIER_COMPUTE( command_buffer, vk.img_rtx[RTX_IMG_ASVGF_COLOR] );
 
 	qvkCmdBindPipeline( command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, god_rays.pipelines[0] );
 
 	VkDescriptorSet desc_sets[] = {
-		vk.desc_set_vertex_buffer[idx].set,
+		vk.desc_set_vertex_buffer[vk.current_frame_index].set,
 		vk_rtx_get_current_desc_set_textures(),
 		vk.imageDescriptor.set,
 		vk.desc_set_ubo,
@@ -188,9 +185,6 @@ void vk_rtx_record_god_rays_trace_command_buffer( VkCommandBuffer command_buffer
 
 void vk_rtx_record_god_rays_filter_command_buffer( VkCommandBuffer command_buffer )
 {
-	uint32_t idx, prev_idx;
-	vk_rtx_get_descriptor_index( idx, prev_idx );
-
 	BARRIER_COMPUTE( command_buffer, vk.img_rtx[RTX_IMG_PT_TRANSPARENT] );
 
 	VkImageSubresourceRange subresource_range;
@@ -202,7 +196,7 @@ void vk_rtx_record_god_rays_filter_command_buffer( VkCommandBuffer command_buffe
 	qvkCmdBindPipeline( command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, god_rays.pipelines[1] );
 
 	VkDescriptorSet desc_sets[] = {
-		vk.desc_set_vertex_buffer[idx].set,
+		vk.desc_set_vertex_buffer[vk.current_frame_index].set,
 		vk_rtx_get_current_desc_set_textures(),
 		vk.imageDescriptor.set,
 		vk.desc_set_ubo,

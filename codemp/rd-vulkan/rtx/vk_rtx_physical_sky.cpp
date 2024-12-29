@@ -461,11 +461,8 @@ VkResult vkpt_physical_sky_record_cmd_buffer( VkCommandBuffer cmd_buf )
 	if ( !skyNeedsUpdate )
 		return VK_SUCCESS;
 
-	uint32_t idx, prev_idx;
-	vk_rtx_get_descriptor_index( idx, prev_idx );
-
 	VkDescriptorSet desc_sets[] = {
-		vk.desc_set_vertex_buffer[idx].set,
+		vk.desc_set_vertex_buffer[vk.current_frame_index].set,
 		vk_rtx_get_current_desc_set_textures(),
 		vk.imageDescriptor.set,
 		vk.desc_set_ubo,

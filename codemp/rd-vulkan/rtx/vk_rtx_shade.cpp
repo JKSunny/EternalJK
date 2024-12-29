@@ -876,26 +876,26 @@ static void vk_rtx_prepare_ubo( trRefdef_t *refdef, world_t *world, vkUniformRTX
 	//ubo->num_cameras = 0;
 }
 
-static void vk_rtx_setup_rt_pipeline( VkCommandBuffer cmd_buf, uint32_t idx, VkPipelineBindPoint bind_point, uint32_t index )
+static void vk_rtx_setup_rt_pipeline( VkCommandBuffer cmd_buf, VkPipelineBindPoint bind_point, uint32_t index )
 {
+	// https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/8038
+	qvkCmdBindPipeline( cmd_buf, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, vk.rt_pipelines[index] );
+
 	VkDescriptorSet desc_sets[] = {
-		vk.rt_descriptor_set[idx].set,
+		vk.rt_descriptor_set[vk.current_frame_index].set,
         vk_rtx_get_current_desc_set_textures(),
 		vk.imageDescriptor.set,
         vk.desc_set_ubo,
-		vk.desc_set_vertex_buffer[idx].set,
+		vk.desc_set_vertex_buffer[vk.current_frame_index].set,
 	};
-
-	// https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/8038
-	qvkCmdBindPipeline( cmd_buf, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, vk.rt_pipelines[index] );
 
 	qvkCmdBindDescriptorSets( cmd_buf, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR,
 			vk.rt_pipeline_layout, 0, ARRAY_LEN(desc_sets), desc_sets, 0, 0);
 }
 
-static void dispatch_rays( VkCommandBuffer cmd_buf, uint32_t idx, uint32_t pipeline_index, pt_push_constants_t push, uint32_t height ) 
+static void dispatch_rays( VkCommandBuffer cmd_buf, uint32_t pipeline_index, pt_push_constants_t push, uint32_t height ) 
 {
-	vk_rtx_setup_rt_pipeline( cmd_buf, idx, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline_index );
+	vk_rtx_setup_rt_pipeline( cmd_buf, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline_index );
 
 	assert( vk.buf_shader_binding_table.address );
 
@@ -926,8 +926,10 @@ static void dispatch_rays( VkCommandBuffer cmd_buf, uint32_t idx, uint32_t pipel
 		vk.extent_render.width / 2, height, vk.device_count == 1 ? 2 : 1);
 }
 
-static void vk_rtx_trace_primary_rays( VkCommandBuffer cmd_buf, uint32_t idx )
+static void vk_rtx_trace_primary_rays( VkCommandBuffer cmd_buf )
 {
+	int frame_idx = vk.frame_counter & 1;
+
 	BUFFER_BARRIER( cmd_buf,
 		VK_ACCESS_TRANSFER_READ_BIT,
 		VK_ACCESS_SHADER_WRITE_BIT,
@@ -942,11 +944,9 @@ static void vk_rtx_trace_primary_rays( VkCommandBuffer cmd_buf, uint32_t idx )
 	push.gpu_index = -1; // vk.device_count == 1 ? -1 : i;
 	push.bounce = 0;	
 		
-	dispatch_rays( cmd_buf, idx, PIPELINE_PRIMARY_RAYS, push, vk.extent_render.height );
+	dispatch_rays( cmd_buf, PIPELINE_PRIMARY_RAYS, push, vk.extent_render.height );
 
 	END_PERF_MARKER( cmd_buf, PROFILER_PRIMARY_RAYS );
-
-	int frame_idx = idx;
 
 	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_VISBUF_PRIM_A + frame_idx] );
 	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_VISBUF_BARY_A + frame_idx] );
@@ -968,17 +968,17 @@ static void vk_rtx_trace_primary_rays( VkCommandBuffer cmd_buf, uint32_t idx )
 #endif
 }
 
-static void vk_rtx_trace_reflections( VkCommandBuffer cmd_buf, uint32_t idx, int bounce ) 
+static void vk_rtx_trace_reflections( VkCommandBuffer cmd_buf, int bounce ) 
 {
+	int frame_idx = vk.frame_counter & 1;
+
 	uint32_t pipeline_index = (bounce == 0) ? PIPELINE_REFLECT_REFRACT_1 : PIPELINE_REFLECT_REFRACT_2;
 
 	pt_push_constants_t push;
 	push.gpu_index = -1; // vk.device_count == 1 ? -1 : i;
 	push.bounce = bounce;
 
-	dispatch_rays( cmd_buf, idx, pipeline_index, push, vk.extent_render.height );
-
-	int frame_idx = idx;
+	dispatch_rays( cmd_buf, pipeline_index, push, vk.extent_render.height );
 
 	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_TRANSPARENT] );
 	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_MOTION] );
@@ -996,7 +996,7 @@ static void vk_rtx_trace_reflections( VkCommandBuffer cmd_buf, uint32_t idx, int
 #endif
 }
 
-static void vk_rxt_trace_lighting( VkCommandBuffer cmd_buf, uint32_t idx, float num_bounce_rays )
+static void vk_rxt_trace_lighting( VkCommandBuffer cmd_buf, float num_bounce_rays )
 {
 	// direct lighting
 	BEGIN_PERF_MARKER(cmd_buf, PROFILER_DIRECT_LIGHTING);
@@ -1008,7 +1008,7 @@ static void vk_rxt_trace_lighting( VkCommandBuffer cmd_buf, uint32_t idx, float 
 		push.gpu_index = -1; // vk.device_count == 1 ? -1 : i;
 		push.bounce = 0;
 
-		dispatch_rays( cmd_buf, idx, pipeline_index, push, vk.extent_render.height );
+		dispatch_rays( cmd_buf, pipeline_index, push, vk.extent_render.height );
 	}
 
 	END_PERF_MARKER(cmd_buf, PROFILER_DIRECT_LIGHTING);
@@ -1045,7 +1045,7 @@ static void vk_rxt_trace_lighting( VkCommandBuffer cmd_buf, uint32_t idx, float 
 			push.gpu_index = -1; // vk.device_count == 1 ? -1 : i;
 			push.bounce = 0;
 		
-			dispatch_rays( cmd_buf, idx, pipeline_index, push, height );
+			dispatch_rays( cmd_buf, pipeline_index, push, height );
 		}
 
 		BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_COLOR_LF_SH] );
@@ -1131,9 +1131,9 @@ static VkResult vkpt_final_blit_simple( VkCommandBuffer cmd_buf )
 }
 
 VkResult
-vkpt_light_buffer_upload_staging( VkCommandBuffer cmd_buf, uint32_t idx )
+vkpt_light_buffer_upload_staging( VkCommandBuffer cmd_buf )
 {
-	vkbuffer_t *staging = vk.buf_light_staging + idx;
+	vkbuffer_t *staging = vk.buf_light_staging + vk.current_frame_index;
 
 	assert( !staging->is_mapped );
 
@@ -1141,14 +1141,11 @@ vkpt_light_buffer_upload_staging( VkCommandBuffer cmd_buf, uint32_t idx )
 
 	qvkCmdCopyBuffer( cmd_buf, staging->buffer, vk.buf_light.buffer, 1, &copyRegion );
 
-	// sunny this is questionable, were not using frame_counter for frame idx
-	// see vk_rtx_get_descriptor_index()
 	int buffer_idx = vk.frame_counter % 3;
 	if ( vk.buf_light_stats[buffer_idx].buffer )
 	{
 		qvkCmdFillBuffer(cmd_buf, vk.buf_light_stats[buffer_idx].buffer, 0, vk.buf_light_stats[buffer_idx].size, 0);
 	}
-
 
 	BUFFER_BARRIER( cmd_buf,
 		VK_ACCESS_NONE_KHR,
@@ -1198,6 +1195,14 @@ static void vk_rtx_end_command_buffer(
 //#define VK_RTX_INVESTIGATE_SLOW_CMD_BUF
 #define VK_RTX_SHADOWMAP
 
+static VkResult vkpt_pt_update_descripter_set_bindings( int idx )
+{
+	vk_rtx_bind_descriptor_as( &vk.rt_descriptor_set[idx], RAY_GEN_DESCRIPTOR_SET_IDX, VK_SHADER_STAGE_RAYGEN_BIT_KHR, &vk.tlas_geometry[idx].accel );
+	vk_rtx_update_descriptor( &vk.rt_descriptor_set[idx] );
+
+	return VK_SUCCESS;
+}
+
 static void vk_begin_trace_rays( trRefdef_t *refdef, reference_mode_t *ref_mode, 
 	vkUniformRTX_t *ubo, drawSurf_t *drawSurfs, int numDrawSurfs, 
 	float *shadowmap_view_proj, qboolean god_rays_enabled, qboolean render_world, 
@@ -1209,14 +1214,8 @@ static void vk_begin_trace_rays( trRefdef_t *refdef, reference_mode_t *ref_mode,
 	VkPipelineStageFlags		wait_stages;
 	VkCommandBuffer				transfer_cmd_buf;
 	VkCommandBufferBeginInfo	begin_info;
-	uint32_t					idx, prev_idx;
-
-	uint32_t command_index = (uint32_t)vk.cmd_index;
-	uint32_t prev_command_index = ( command_index - 1 ) % NUM_COMMAND_BUFFERS;
-	qboolean *prev_trace_signaled = &vk.tess[prev_command_index].semaphores.trace_signaled;
-	qboolean *curr_trace_signaled = &vk.tess[command_index].semaphores.trace_signaled;
-	
-	vk_rtx_get_descriptor_index( idx, prev_idx );
+	qboolean *prev_trace_signaled = &vk.tess[(vk.current_frame_index - 1) % NUM_COMMAND_BUFFERS].semaphores.trace_signaled;
+	qboolean *curr_trace_signaled = &vk.tess[vk.current_frame_index].semaphores.trace_signaled;
 
 	{
 		// Transfer the light buffer from staging into device memory.
@@ -1231,13 +1230,13 @@ static void vk_begin_trace_rays( trRefdef_t *refdef, reference_mode_t *ref_mode,
 
 		VK_CHECK( qvkBeginCommandBuffer( transfer_cmd_buf, &begin_info ) );
 
-		vkpt_light_buffer_upload_staging( transfer_cmd_buf, idx );
+		vkpt_light_buffer_upload_staging( transfer_cmd_buf );
 
 		for ( int gpu = 0; gpu < vk.device_count; gpu++ )	// multi-gpu not implemented
 		{
-			transfer_semaphores		= vk.tess[command_index].semaphores.transfer_finished;
-			trace_semaphores		= vk.tess[command_index].semaphores.trace_finished;
-			prev_trace_semaphores	= vk.tess[prev_command_index].semaphores.trace_finished;
+			transfer_semaphores		= vk.tess[vk.current_frame_index].semaphores.transfer_finished;
+			trace_semaphores		= vk.tess[vk.current_frame_index].semaphores.trace_finished;
+			prev_trace_semaphores	= vk.tess[(vk.current_frame_index - 1) % NUM_COMMAND_BUFFERS].semaphores.trace_finished;
 			wait_stages = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 		}
 
@@ -1258,7 +1257,15 @@ static void vk_begin_trace_rays( trRefdef_t *refdef, reference_mode_t *ref_mode,
 
 		VK_CHECK( qvkBeginCommandBuffer( trace_cmd_buf, &begin_info ) );
 
-		VK_CHECK( vkpt_uniform_buffer_update( trace_cmd_buf, idx ) );
+
+
+
+
+		VK_CHECK( vkpt_uniform_buffer_update( trace_cmd_buf ) );
+
+
+
+
 
 		BEGIN_PERF_MARKER( trace_cmd_buf, PROFILER_UPDATE_ENVIRONMENT );
 		if ( render_world )
@@ -1272,10 +1279,9 @@ static void vk_begin_trace_rays( trRefdef_t *refdef, reference_mode_t *ref_mode,
 		END_PERF_MARKER( trace_cmd_buf, PROFILER_INSTANCE_GEOMETRY );
 
 		BEGIN_PERF_MARKER( trace_cmd_buf, PROFILER_BVH_UPDATE );
-		vkpt_pt_create_all_dynamic( trace_cmd_buf, idx, upload_info );
-		vkpt_pt_create_toplevel( trace_cmd_buf, idx, drawSurfs, numDrawSurfs );
-		vk_rtx_bind_descriptor_as( &vk.rt_descriptor_set[idx], RAY_GEN_DESCRIPTOR_SET_IDX, VK_SHADER_STAGE_RAYGEN_BIT_KHR, &vk.tlas_geometry[idx].accel );
-		vk_rtx_update_descriptor( &vk.rt_descriptor_set[idx] );
+		vkpt_pt_create_all_dynamic( trace_cmd_buf, vk.current_frame_index, upload_info );
+		vkpt_pt_create_toplevel( trace_cmd_buf, vk.current_frame_index, drawSurfs, numDrawSurfs );
+		vkpt_pt_update_descripter_set_bindings( vk.current_frame_index );
 		END_PERF_MARKER( trace_cmd_buf, PROFILER_BVH_UPDATE );
 
 		BEGIN_PERF_MARKER( trace_cmd_buf, PROFILER_SHADOW_MAP );
@@ -1288,7 +1294,12 @@ static void vk_begin_trace_rays( trRefdef_t *refdef, reference_mode_t *ref_mode,
 		}
 		END_PERF_MARKER( trace_cmd_buf, PROFILER_SHADOW_MAP );
 
-		vk_rtx_trace_primary_rays( trace_cmd_buf, idx );
+		vk_rtx_trace_primary_rays( trace_cmd_buf );
+
+
+
+
+
 
 		vk_rtx_end_command_buffer( trace_cmd_buf, 
 			1, &transfer_semaphores, &wait_stages,
@@ -1318,7 +1329,7 @@ static void vk_begin_trace_rays( trRefdef_t *refdef, reference_mode_t *ref_mode,
 		if ( ref_mode->reflect_refract > 0 )
 		{
 			BEGIN_PERF_MARKER( cmd_buf_trace_post, PROFILER_REFLECT_REFRACT_1 );
-			vk_rtx_trace_reflections( cmd_buf_trace_post, idx, 0 );
+			vk_rtx_trace_reflections( cmd_buf_trace_post, 0 );
 			END_PERF_MARKER( cmd_buf_trace_post, PROFILER_REFLECT_REFRACT_1 );
 		}
 
@@ -1341,7 +1352,7 @@ static void vk_begin_trace_rays( trRefdef_t *refdef, reference_mode_t *ref_mode,
 			BEGIN_PERF_MARKER( cmd_buf_trace_post, PROFILER_REFLECT_REFRACT_2 );
 			for (int pass = 0; pass < ref_mode->reflect_refract - 1; pass++)
 			{
-				vk_rtx_trace_reflections( cmd_buf_trace_post, idx, pass );
+				vk_rtx_trace_reflections( cmd_buf_trace_post, pass );
 			}
 			END_PERF_MARKER( cmd_buf_trace_post, PROFILER_REFLECT_REFRACT_2 );
 		}
@@ -1352,7 +1363,7 @@ static void vk_begin_trace_rays( trRefdef_t *refdef, reference_mode_t *ref_mode,
 			vkpt_asvgf_gradient_reproject( cmd_buf_trace_post );
 			END_PERF_MARKER( cmd_buf_trace_post, PROFILER_ASVGF_GRADIENT_REPROJECT );
 		}
-		vk_rxt_trace_lighting( cmd_buf_trace_post, idx, ref_mode->num_bounce_rays );
+		vk_rxt_trace_lighting( cmd_buf_trace_post, ref_mode->num_bounce_rays );
 
 #ifdef VK_RTX_INVESTIGATE_SLOW_CMD_BUF
 		vk_rtx_end_command_buffer( cmd_buf_trace_post, 
@@ -1404,7 +1415,7 @@ static void vk_begin_trace_rays( trRefdef_t *refdef, reference_mode_t *ref_mode,
 
 		{
 			VkBufferCopy copyRegion = { 0, 0, sizeof(ReadbackBuffer) };
-			qvkCmdCopyBuffer( cmd_buf_trace_post, vk.buf_readback.buffer, vk.buf_readback_staging[idx].buffer, 1, &copyRegion);
+			qvkCmdCopyBuffer( cmd_buf_trace_post, vk.buf_readback.buffer, vk.buf_readback_staging[vk.current_frame_index].buffer, 1, &copyRegion);
 		}
 
 #ifdef VK_RTX_INVESTIGATE_SLOW_CMD_BUF
@@ -1434,10 +1445,7 @@ void vk_rtx_begin_scene( trRefdef_t *refdef, drawSurf_t *drawSurfs, int numDrawS
 	sun_light_t			sun_light;
 	vec3_t				sky_matrix[3];
 	qboolean			render_world = qfalse;
-	uint32_t			idx, prev_idx;
 	mnode_t				*viewleaf;
-
-	vk_rtx_get_descriptor_index( idx, prev_idx );
 
 	if ( tr.world )
 		render_world = qtrue;
@@ -1520,7 +1528,7 @@ void vk_rtx_begin_scene( trRefdef_t *refdef, drawSurf_t *drawSurfs, int numDrawS
 	vec3_t sky_radiance;
 	VectorScale( avg_envmap_color, ubo->pt_env_scale, sky_radiance );
 
-	vkpt_light_buffer_upload_to_staging( idx, render_world, tr.world, num_model_lights, model_lights, sky_radiance );
+	vkpt_light_buffer_upload_to_staging( render_world, tr.world, num_model_lights, model_lights, sky_radiance );
 
 	float shadowmap_view_proj[16];
 	float shadowmap_depth_scale;
