@@ -168,7 +168,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define SHADER_MAX_BSP_ENTITIES	128
 
 #ifndef M_PI
-	#define M_PI 3.14159265358979323846264338327950288f
+#define M_PI 3.1415926535897932384626433832795
 #endif
 
 // Dynamic light types

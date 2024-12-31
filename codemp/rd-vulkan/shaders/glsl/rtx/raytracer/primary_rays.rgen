@@ -201,17 +201,17 @@ main()
 		vec2 motion = prev_screen_pos - inUV;
 
 		// Store an empty surface into the G-buffer
-		imageStore( IMG_PT_NORMAL_A,			ipos, uvec4(0) );
-		imageStore( IMG_PT_GEO_NORMAL_A,		ipos, uvec4(0) );
-		imageStore( IMG_PT_VIEW_DEPTH_A,		ipos, vec4(PRIMARY_RAY_T_MAX) );
-		imageStore( IMG_PT_GODRAYS_THROUGHPUT_DIST, ipos, vec4(1, 1, 1, PRIMARY_RAY_T_MAX) );
-		imageStore( IMG_PT_VIEW_DIRECTION,		ipos, vec4(direction, 0) );
-		imageStore( IMG_PT_SHADING_POSITION,	ipos, vec4(global_ubo.cam_pos.xyz + direction * PRIMARY_RAY_T_MAX, 0) );
-		imageStore( IMG_PT_MOTION,				ipos, vec4(motion, 0, 0) );
-		imageStore( IMG_PT_VISBUF_PRIM_A,		ipos, uvec4(0));
-		imageStore( IMG_PT_VISBUF_BARY_A,		ipos, vec4(0));
-		imageStore( IMG_PT_BASE_COLOR_A,		ipos, vec4(0.0) );
-		imageStore( IMG_PT_TRANSPARENT,			ipos, transparent );
+		imageStore(IMG_PT_NORMAL_A, ipos, uvec4(0));
+		imageStore(IMG_PT_GEO_NORMAL_A, ipos, uvec4(0));
+		imageStore(IMG_PT_VIEW_DEPTH_A, ipos, vec4(PRIMARY_RAY_T_MAX));
+		imageStore(IMG_PT_GODRAYS_THROUGHPUT_DIST, ipos, vec4(1, 1, 1, PRIMARY_RAY_T_MAX));
+		imageStore(IMG_PT_VIEW_DIRECTION, ipos, vec4(direction, 0));
+		imageStore(IMG_PT_SHADING_POSITION, ipos, vec4(global_ubo.cam_pos.xyz + direction * PRIMARY_RAY_T_MAX, 0));
+		imageStore(IMG_PT_MOTION, ipos, vec4(motion, 0, 0));
+		imageStore(IMG_PT_VISBUF_PRIM_A, ipos, uvec4(0));
+		imageStore(IMG_PT_VISBUF_BARY_A, ipos, vec4(0));
+		imageStore(IMG_PT_BASE_COLOR_A, ipos, vec4(0));
+		imageStore(IMG_PT_TRANSPARENT, ipos, transparent);
 #ifdef USE_RTX_INSPECT_TANGENTS
 		imageStore( IMG_PT_TANGENT_A,			ipos, uvec4(0) );
 #endif
@@ -339,8 +339,7 @@ main()
 	{
 		material_id = (material_id & ~MATERIAL_KIND_MASK) | MATERIAL_KIND_SCREEN;
 	}
-	
-	//int checkerboard_flags = CHECKERBOARD_FLAG_PRIMARY | CHECKERBOARD_FLAG_REFLECTION | CHECKERBOARD_FLAG_REFRACTION;
+
 	int checkerboard_flags = CHECKERBOARD_FLAG_PRIMARY;
 
 	if(is_camera(material_id))
@@ -350,9 +349,6 @@ main()
 			material_id = (material_id & ~MATERIAL_KIND_MASK) | MATERIAL_KIND_REGULAR;
 		}
 	}
-
-	// sunny lol
-	//material_id = (material_id & ~MATERIAL_KIND_MASK) | MATERIAL_KIND_REGULAR;
 
 	bool primary_is_screen = is_screen(material_id);
 
@@ -429,15 +425,15 @@ main()
 		checkerboard_flags |= CHECKERBOARD_FLAG_WEAPON;
 #endif
 
-	imageStore( IMG_PT_GEO_NORMAL_A,		ipos, uvec4( encode_normal( geo_normal ) ) );
-	imageStore( IMG_PT_SHADING_POSITION,	ipos, vec4 ( position.xyz, uintBitsToFloat( material_id ) ) );
-	imageStore( IMG_PT_VIEW_DIRECTION,		ipos, vec4 ( direction, float( checkerboard_flags ) ) );
-	imageStore( IMG_PT_THROUGHPUT,			ipos, vec4 ( throughput, distance_curr ) );
-	imageStore( IMG_PT_BOUNCE_THROUGHPUT,	ipos, vec4 ( 1, 1, 1, half_cone_angle ) );
-	imageStore( IMG_PT_CLUSTER_A,			ipos, ivec4( triangle.cluster ) );
-	imageStore( IMG_PT_BASE_COLOR_A,		ipos, vec4( primary_base_color, primary_specular_factor ) );
-	imageStore( IMG_PT_METALLIC_A,			ipos, vec4 ( primary_metallic, primary_roughness, 0,  0) );
-	imageStore( IMG_PT_GODRAYS_THROUGHPUT_DIST, ipos, vec4(1, 1, 1, distance_curr));
+	imageStore(IMG_PT_GEO_NORMAL_A, ipos, uvec4(encode_normal(geo_normal)));
+	imageStore(IMG_PT_SHADING_POSITION, ipos, vec4(position.xyz, uintBitsToFloat(material_id)));
+	imageStore(IMG_PT_VIEW_DIRECTION, ipos, vec4(direction, float(checkerboard_flags)));
+	imageStore(IMG_PT_THROUGHPUT, ipos, vec4(throughput, distance_curr));
+	imageStore(IMG_PT_BOUNCE_THROUGHPUT, ipos, vec4(1, 1, 1, half_cone_angle));
+	imageStore(IMG_PT_CLUSTER_A, ipos, ivec4(triangle.cluster));
+	imageStore(IMG_PT_BASE_COLOR_A, ipos, vec4(primary_base_color, primary_specular_factor));
+	imageStore(IMG_PT_METALLIC_A, ipos, vec4(primary_metallic, primary_roughness, 0, 0));
+	imageStore(IMG_PT_GODRAYS_THROUGHPUT_DIST, ipos, vec4(1, 1, 1, distance_curr));
 #ifdef USE_RTX_INSPECT_TANGENTS
 	imageStore( IMG_PT_TANGENT_A,			ipos, uvec4( encode_normal( geo_tangent ) ) );
 #endif

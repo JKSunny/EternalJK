@@ -61,7 +61,7 @@ main()
 
 	// Load the other image channels
 	vec3 base_color = texelFetch(TEX_PT_BASE_COLOR_A, ipos, 0).rgb;
-	vec2 metal_rough = texelFetch(TEX_PT_METALLIC_A, ipos, 0).rg;	// twice? metallic_roughness obove
+	vec2 metal_rough = texelFetch(TEX_PT_METALLIC_A, ipos, 0).rg;
 	vec4 transparent = texelFetch(TEX_PT_TRANSPARENT, ipos, 0);
 
 	// Composite

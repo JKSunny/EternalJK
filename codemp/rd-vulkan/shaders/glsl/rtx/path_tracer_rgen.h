@@ -43,10 +43,10 @@ layout( set = 0, binding = RAY_GEN_DESCRIPTOR_SET_IDX ) uniform accelerationStru
 #define RNG_SEED_SHIFT_ISODD    16u
 #define RNG_SEED_SHIFT_FRAME    17u
 
-#define RNG_PRIMARY_OFF_X			0
-#define RNG_PRIMARY_OFF_Y			1
-#define RNG_PRIMARY_APERTURE_X		2
-#define RNG_PRIMARY_APERTURE_Y		3
+#define RNG_PRIMARY_OFF_X   0
+#define RNG_PRIMARY_OFF_Y   1
+#define RNG_PRIMARY_APERTURE_X   2
+#define RNG_PRIMARY_APERTURE_Y   3
 
 #define RNG_NEE_LIGHT_SELECTION(bounce)   (4 + 0 + 9 * bounce)
 #define RNG_NEE_TRI_X(bounce)             (4 + 1 + 9 * bounce)
@@ -75,30 +75,29 @@ struct Ray {
 };
 
 vec3
-env_map( vec3 direction, bool remove_sun )
+env_map(vec3 direction, bool remove_sun)
 {
-	direction = ( global_ubo.environment_rotation_matrix * vec4(direction, 0) ).xyz;
+	direction = (global_ubo.environment_rotation_matrix * vec4(direction, 0)).xyz;
 
-    vec3 envmap = vec3( 0 );
-    if ( global_ubo.environment_type == ENVIRONMENT_DYNAMIC )
+    vec3 envmap = vec3(0);
+    if (global_ubo.environment_type == ENVIRONMENT_DYNAMIC)
     {
 	    envmap = textureLod(TEX_PHYSICAL_SKY, direction.xzy, 0).rgb;
 
-	    if ( remove_sun )
+	    if(remove_sun)
 	    {
 			// roughly remove the sun from the env map
-			envmap = min( envmap, vec3( ( 1 - dot( direction, global_ubo.sun_direction_envmap ) ) * 200 ) );
+			envmap = min(envmap, vec3((1 - dot(direction, global_ubo.sun_direction_envmap)) * 200));
 		}
 	}
-    else if ( global_ubo.environment_type == ENVIRONMENT_STATIC )
+    else if (global_ubo.environment_type == ENVIRONMENT_STATIC)
     {
-        envmap = textureLod( TEX_ENVMAP, direction.xzy, 0 ).rgb;
+        envmap = textureLod(TEX_ENVMAP, direction.xzy, 0).rgb;
 #if DESATURATE_ENVIRONMENT_MAP
-        float avg = ( envmap.x + envmap.y + envmap.z ) / 3.0;
-        envmap = mix( envmap, avg.xxx, 0.1 ) * 0.5;
+        float avg = (envmap.x + envmap.y + envmap.z) / 3.0;
+        envmap = mix(envmap, avg.xxx, 0.1) * 0.5;
 #endif
     }
-
 	return envmap;
 }
 
@@ -108,14 +107,14 @@ ivec2 get_image_position()
 {
 	ivec2 pos;
 	bool is_even_checkerboard = gl_LaunchIDEXT.z == 0;
-
-	if ( global_ubo.pt_swap_checkerboard != 0 )
+	if(global_ubo.pt_swap_checkerboard != 0)
 		is_even_checkerboard = !is_even_checkerboard;
 
-	if ( is_even_checkerboard )
+	if (is_even_checkerboard) {
 		pos.x = int(gl_LaunchIDEXT.x * 2) + int(gl_LaunchIDEXT.y & 1);
-	else
+	} else {
 		pos.x = int(gl_LaunchIDEXT.x * 2 + 1) - int(gl_LaunchIDEXT.y & 1);
+	}
 
 	pos.y = int(gl_LaunchIDEXT.y);
 	return pos;
@@ -198,57 +197,57 @@ isSeeThroughNoAlpha( in uint material)
 
 // material kinds
 bool
-is_water( in uint material )
+is_water(uint material )
 {
 	return (material & MATERIAL_KIND_MASK) == MATERIAL_KIND_WATER;
 }
 
 bool
-is_slime( in uint material )
+is_slime(uint material)
 {
 	return (material & MATERIAL_KIND_MASK) == MATERIAL_KIND_SLIME;
 }
 
 bool
-is_lava( in uint material )
+is_lava(uint material)
 {
 	return (material & MATERIAL_KIND_MASK) == MATERIAL_KIND_LAVA;
 }
 
 bool
-is_glass( in uint material )
+is_glass(uint material)
 {
 	return (material & MATERIAL_KIND_MASK) == MATERIAL_KIND_GLASS;
 }
 
 bool
-is_transparent( in uint material )
+is_transparent(uint material )
 {
 	return (material & MATERIAL_KIND_MASK) == MATERIAL_KIND_TRANSPARENT;
 }
 
 bool
-is_chrome( in uint material )
+is_chrome(uint material)
 {
 	uint kind = material & MATERIAL_KIND_MASK;
 	return kind == MATERIAL_KIND_CHROME || kind == MATERIAL_KIND_CHROME_MODEL;
 }
 
 bool
-is_sky( in uint material )
+is_sky(uint material)
 {
 	uint kind = material & MATERIAL_KIND_MASK;
 	return kind == MATERIAL_KIND_SKY;
 }
 
 bool
-is_screen( in uint material )
+is_screen(uint material)
 {
 	return (material & MATERIAL_KIND_MASK) == MATERIAL_KIND_SCREEN;
 }
 
 bool
-is_camera( in uint material )
+is_camera(uint material)
 {
 	return (material & MATERIAL_KIND_MASK) == MATERIAL_KIND_CAMERA;
 }
@@ -294,7 +293,7 @@ Ray get_shadow_ray( vec3 p1, vec3 p2, float tmin )
 }
 
 float
-trace_shadow_ray( Ray ray, int cull_mask )
+trace_shadow_ray(Ray ray, int cull_mask)
 {
 	const uint rayFlags = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipProceduralPrimitives;
 
@@ -415,7 +414,7 @@ float
 get_specular_sampled_lighting_weight(float roughness, vec3 N, vec3 V, vec3 L, float pdfw)
 {
     float ggxVndfPdf = ImportanceSampleGGX_VNDF_PDF(max(roughness, 0.01), N, V, L);
-
+  
     // Balance heuristic assuming one sample from each strategy: light sampling and BRDF sampling
     return clamp(pdfw / (pdfw + ggxVndfPdf), 0, 1);
 }
@@ -455,7 +454,7 @@ get_direct_illumination(
 	float alpha = square(roughness);
 	float phong_exp = RoughnessSquareToSpecPower(alpha);
 	float phong_scale = min(100, 1 / (M_PI * square(alpha)));
-	float phong_weight = clamp(specular_factor *luminance(base_reflectivity) / (luminance(base_reflectivity) + luminance(albedo)), 0, 0.9);
+	float phong_weight = clamp(specular_factor * luminance(base_reflectivity) / (luminance(base_reflectivity) + luminance(albedo)), 0, 0.9);
 
 	int polygonal_light_index = -1;
 	float polygonal_light_pdfw = 0;
@@ -491,7 +490,7 @@ get_direct_illumination(
 	float vis = 1;
 
 	/* dynamic light illumination */
-	if(enable_dynamic) 
+	if(enable_dynamic)
 	{
 		// Limit the solid angle of sphere lights for indirect lighting 
 		// in order to kill some fireflies in locations with many sphere lights.
@@ -550,6 +549,7 @@ get_direct_illumination(
 		polygon lights do not have polygonal indices, and it would be difficult to map them 
 		between frames.
 	*/
+	
 	if(global_ubo.pt_light_stats != 0 
 		&& is_polygonal 
 		&& !null_light

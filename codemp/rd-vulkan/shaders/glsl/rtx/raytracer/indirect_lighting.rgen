@@ -113,7 +113,7 @@ indirect_lighting(
     vec3 primary_albedo, primary_base_reflectivity;
     get_reflectivity(primary_base_color.rgb, primary_metallic, primary_albedo, primary_base_reflectivity);
 
-	bool primary_is_weapon = (material_id & MATERIAL_FLAG_WEAPON) != 0;		// weapon only ..
+	bool primary_is_weapon = (material_id & MATERIAL_FLAG_WEAPON) != 0;
 
 	float direct_specular_weight = smoothstep(
 		global_ubo.pt_direct_roughness_threshold - 0.02, 
@@ -334,7 +334,7 @@ indirect_lighting(
 		vec3 bary         = get_hit_barycentric(ray_payload_brdf);
 		vec2 tex_coord    = triangle.tex_coords0 * bary;
 		uint bounce_material_id = triangle.material_id;
-	
+
 #if 0
 		if((bounce_material_id & MATERIAL_FLAG_WARP) != 0)
 		{
@@ -342,20 +342,20 @@ indirect_lighting(
 		}
 #endif
 
-		MaterialInfo bounce_minfo = get_material_info( triangle.material_id );
+		MaterialInfo bounce_minfo = get_material_info(triangle.material_id);
 
 		// world-space
-		vec3 bounce_position	= triangle.positions * bary;
-		vec3 bounce_geo_normal	= normalize( triangle.normals * bary );
-
+		vec3 bounce_position = triangle.positions * bary;
+		vec3 bounce_geo_normal = normalize(triangle.normals * bary);
+			
 		vec3 bounce_flat_normal = normalize(cross(
 			triangle.positions[1] - triangle.positions[0],
 			triangle.positions[2] - triangle.positions[1]));
-
+		
 		//if (dot(bounce_flat_normal, bounce_direction) > 0)
 		//	bounce_geo_normal = -bounce_geo_normal;
-
-		vec3 bounce_normal		= bounce_geo_normal;
+		
+		vec3 bounce_normal  = bounce_geo_normal;
 		vec3 bounce_base_color = vec3(bounce_minfo.base_factor);
 		if (bounce_minfo.base_texture != 0)
 			bounce_base_color *= global_textureLod(bounce_minfo.base_texture, tex_coord, 2).rgb;
@@ -363,7 +363,7 @@ indirect_lighting(
 		uint bounce_cluster_idx    = triangle.cluster;
 
 
-		vec3 emissive = sample_emissive_texture(triangle.material_id, bounce_minfo, tex_coord, vec2(0), vec2(0), is_specular_ray ? 2 : 3);    
+		vec3 emissive = sample_emissive_texture(triangle.material_id, bounce_minfo, tex_coord, vec2(0), vec2(0), is_specular_ray ? 2 : 3);
 		emissive *= triangle.emissive_factor;
 
 		emissive += get_emissive_shell(triangle.material_id, 0 /*triangle.shell*/) * bounce_base_color;
@@ -423,16 +423,16 @@ indirect_lighting(
 				shadow_cull_mask, 
 				bounce_direction, 
 				bounce_base_color,
-				vec3(0),	// base_reflectivity
+				vec3(0), // base_reflectivity
 				0.0, // specular_factor
-				1.0,		// roughness
+				1.0, // roughness
 				MEDIUM_NONE, 
-				false,		// enable_caustics
-				0.0,		// direct_specular_weight
+				false, // enable_caustics
+				0.0, // direct_specular_weight
 		    	global_ubo.pt_indirect_polygon_lights > 0,
 		    	global_ubo.pt_indirect_dyn_lights > 0,
 		    	is_gradient,
-		    	1,			// bounce
+		    	1, // bounce
 		    	bounce_diffuse,
 				bounce_specular);
 
