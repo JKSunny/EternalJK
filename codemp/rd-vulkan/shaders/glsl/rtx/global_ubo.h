@@ -249,7 +249,7 @@ STRUCT (
 #define BSPMESHINSTANCE(n) BspMeshInstance n;
 
 STRUCT ( 
-	UINT			( tlas_instance_type		[1000]						)	// could probably pack this in ray_payload_brdf
+	UINT			( tlas_instance_type		[1000]						)	// could probably pack this in ray_payload_geometry
 	INT				( model_indices				[SHADER_MAX_ENTITIES + SHADER_MAX_BSP_ENTITIES] )
 	UINT			( model_current_to_prev		[SHADER_MAX_ENTITIES]		)
 	UINT			( model_prev_to_current		[SHADER_MAX_ENTITIES]		)

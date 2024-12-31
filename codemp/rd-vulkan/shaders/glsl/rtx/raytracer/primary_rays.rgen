@@ -165,26 +165,25 @@ main()
 
 	Triangle triangle;
 
-	if (found_intersection(ray_payload_brdf))
+	if (found_intersection(ray_payload_geometry))
 	{
-		ray.t_max = ray_payload_brdf.hit_distance;
-		triangle = get_hit_triangle(ray_payload_brdf);
+		ray.t_max = ray_payload_geometry.hit_distance;
+		triangle = get_hit_triangle(ray_payload_geometry);
 	}
 
 	direction = ray.direction;
 
 	// If the primary ray didn't hit anything, or it hit a sky polygon and pt_show_sky is disabled, 
 	// store the sky color and motion vectors. Doesn't apply to gradient samples because their rays intentionally miss.
-	//if((!found_intersection(ray_payload_brdf) || (is_sky(ray_payload_brdf) && (global_ubo.pt_show_sky == 0))))
-	if(!found_intersection(ray_payload_brdf) || is_sky(triangle.material_id) && (global_ubo.pt_show_sky == 0))
+	if(!found_intersection(ray_payload_geometry) || is_sky(triangle.material_id) && (global_ubo.pt_show_sky == 0))
 	{
 		vec3 env = env_map(ray.direction, false);	
 		env *= global_ubo.pt_env_scale;
 
 #if 0
-		vec4 transparent = alpha_blend( unpackHalf4x16( ray_payload_brdf.transparency ), vec4( env, 1 ) );
+		vec4 transparent = alpha_blend( unpackHalf4x16( ray_payload_geometry.transparency ), vec4( env, 1 ) );
 #else
-		vec4 transparent = alpha_blend( ray_payload_brdf.transparency, vec4( env, 1 ) );
+		vec4 transparent = alpha_blend( ray_payload_geometry.transparency, vec4( env, 1 ) );
 #endif
 
 		if(is_readback_pixel)
@@ -218,15 +217,15 @@ main()
 		return;
 	}
 
-	vec3 bary = get_hit_barycentric(ray_payload_brdf);
-	uint primitive_id = get_primitive(ray_payload_brdf);
-	bool is_dynamic_primitive = is_dynamic_instance(ray_payload_brdf);
+	vec3 bary = get_hit_barycentric(ray_payload_geometry);
+	uint primitive_id = get_primitive(ray_payload_geometry);
+	bool is_dynamic_primitive = is_dynamic_instance(ray_payload_geometry);
 
 	{
 		uvec2 vis_buf;
 		vis_buf.x = is_dynamic_primitive ? 
 			get_instance_id_instanced( primitive_id ) : 
-			visbuf_pack_static_instance( ray_payload_brdf.instanceID );
+			visbuf_pack_static_instance( ray_payload_geometry.instanceID );
 		vis_buf.y = primitive_id;
 		imageStore(IMG_PT_VISBUF_PRIM_A, ipos, uvec4(vis_buf, 0, 0));
 		imageStore(IMG_PT_VISBUF_BARY_A, ipos, vec4(bary.yz, 0, 0));
@@ -267,7 +266,7 @@ main()
 	vec2 tex_coord_x[4], tex_coord_y[4];
 	float fwidth_depth;
 	compute_anisotropic_texture_gradients(position, flat_normal, ray.direction, 
-		ray_payload_brdf.hit_distance * half_cone_angle, triangle.positions, 
+		ray_payload_geometry.hit_distance * half_cone_angle, triangle.positions, 
 		triangle.tex_coords0, tex_coord, tex_coord_x, tex_coord_y, fwidth_depth);
 
 	if(global_ubo.pt_texture_lod_bias != 0)

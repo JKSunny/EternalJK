@@ -141,7 +141,7 @@ layout (push_constant) uniform push_constant_block {
     int bounce_index;
 } push_constants;
 
-struct RayPayload {
+struct RayPayloadGeometry {
 	vec2 barycentric;
 	uint instanceID;
 	uint instance_prim;

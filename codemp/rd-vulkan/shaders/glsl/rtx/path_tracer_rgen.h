@@ -65,7 +65,7 @@ layout( set = 0, binding = RAY_GEN_DESCRIPTOR_SET_IDX ) uniform accelerationStru
 // this ..
 #define RT_PAYLOAD_GEOMETRY 0
 
-layout(location = RT_PAYLOAD_GEOMETRY) rayPayloadEXT RayPayload ray_payload_brdf;
+layout(location = RT_PAYLOAD_GEOMETRY) rayPayloadEXT RayPayloadGeometry ray_payload_geometry;
 
 uint rng_seed;
 
@@ -126,24 +126,24 @@ ivec2 get_image_size()
 }
 
 bool
-is_dynamic_instance(RayPayload rp)
+is_dynamic_instance(RayPayloadGeometry rp)
 {
 	return (rp.instance_prim & INSTANCE_DYNAMIC_FLAG) > 0;
 }
 
 uint
-get_primitive(RayPayload rp)
+get_primitive(RayPayloadGeometry rp)
 {
 	return rp.instance_prim & PRIM_ID_MASK;
 }
 
 bool
-found_intersection(RayPayload rp)
+found_intersection(RayPayloadGeometry rp)
 {
 	return rp.instanceID != ~0u;
 }
 
-Triangle get_hit_triangle(RayPayload rp)
+Triangle get_hit_triangle(RayPayloadGeometry rp)
 {
 	uint prim = get_primitive(rp);
 
@@ -153,7 +153,7 @@ Triangle get_hit_triangle(RayPayload rp)
 }
 
 vec3
-get_hit_barycentric( RayPayload rp )
+get_hit_barycentric( RayPayloadGeometry rp )
 {
 	vec3 bary;
 	bary.yz = rp.barycentric;
@@ -266,11 +266,11 @@ void trace_ray( Ray ray, bool cull_back_faces, uint cullMask )
 		rayFlags |= gl_RayFlagsCullBackFacingTrianglesEXT;
 	rayFlags |= gl_RayFlagsSkipProceduralPrimitives;
 
-	ray_payload_brdf.barycentric = vec2(0);
-	ray_payload_brdf.instanceID = ~0u;
-	ray_payload_brdf.instance_prim = ~0u;
-	ray_payload_brdf.transparency = vec4(0);
-	ray_payload_brdf.hit_distance = 0;
+	ray_payload_geometry.barycentric = vec2(0);
+	ray_payload_geometry.instanceID = ~0u;
+	ray_payload_geometry.instance_prim = ~0u;
+	ray_payload_geometry.transparency = vec4(0);
+	ray_payload_geometry.hit_distance = 0;
 
 	traceRayEXT( topLevelAS, rayFlags, cullMask,
 			SBT_RCHIT_GEOMETRY /*sbtRecordOffset*/, 0 /*sbtRecordStride*/, SBT_RMISS_EMPTY /*missIndex*/,
@@ -297,28 +297,28 @@ trace_shadow_ray(Ray ray, int cull_mask)
 {
 	const uint rayFlags = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipProceduralPrimitives;
 
-	ray_payload_brdf.barycentric = vec2(0);
-	ray_payload_brdf.instanceID = ~0u;
-	ray_payload_brdf.instance_prim = ~0u;
-	ray_payload_brdf.transparency = vec4(0);
-	ray_payload_brdf.hit_distance = -1;
+	ray_payload_geometry.barycentric = vec2(0);
+	ray_payload_geometry.instanceID = ~0u;
+	ray_payload_geometry.instance_prim = ~0u;
+	ray_payload_geometry.transparency = vec4(0);
+	ray_payload_geometry.hit_distance = -1;
 
 	traceRayEXT( topLevelAS, rayFlags, cull_mask,
 			SBT_RCHIT_GEOMETRY /*sbtRecordOffset*/, 0 /*sbtRecordStride*/, SBT_RMISS_EMPTY /*missIndex*/,
 			ray.origin, ray.t_min, ray.direction, ray.t_max, RT_PAYLOAD_GEOMETRY);
 
-	return found_intersection(ray_payload_brdf) ? 0.0 : 1.0;
+	return found_intersection(ray_payload_geometry) ? 0.0 : 1.0;
 }
 
 
 vec3
 trace_caustic_ray( Ray ray, int surface_medium )
 {
-	ray_payload_brdf.barycentric = vec2(0);
-	ray_payload_brdf.instanceID = ~0u;
-	ray_payload_brdf.instance_prim = ~0u;
-	ray_payload_brdf.transparency = vec4(0);
-	ray_payload_brdf.hit_distance = -1;
+	ray_payload_geometry.barycentric = vec2(0);
+	ray_payload_geometry.instanceID = ~0u;
+	ray_payload_geometry.instance_prim = ~0u;
+	ray_payload_geometry.transparency = vec4(0);
+	ray_payload_geometry.hit_distance = -1;
 
 	uint rayFlags = gl_RayFlagsCullBackFacingTrianglesEXT | gl_RayFlagsOpaqueEXT | gl_RayFlagsSkipProceduralPrimitives;
 	uint instance_mask = RAY_FIRST_PERSON_OPAQUE_VISIBLE;
@@ -329,9 +329,9 @@ trace_caustic_ray( Ray ray, int surface_medium )
 	float extinction_distance = ray.t_max - ray.t_min;
 	vec3 throughput = vec3(1);
 
-	if(found_intersection(ray_payload_brdf))
+	if(found_intersection(ray_payload_geometry))
 	{
-		Triangle triangle = get_hit_triangle(ray_payload_brdf);	
+		Triangle triangle = get_hit_triangle(ray_payload_geometry);	
 
 		vec3 geo_normal = triangle.normals[0];
 		bool is_vertical = abs(geo_normal.z) < 0.1;
@@ -339,16 +339,16 @@ trace_caustic_ray( Ray ray, int surface_medium )
 #if 0
 		if((is_water(triangle.material_id) || is_slime(triangle.material_id)) && !is_vertical)
 		{
-			vec3 position = ray.origin + ray.direction * ray_payload_brdf.hit_distance;
+			vec3 position = ray.origin + ray.direction * ray_payload_geometry.hit_distance;
 			vec3 w = get_water_normal(triangle.material_id, geo_normal, triangle.tangents, position, true);
 
 			float caustic = clamp((1 - pow(clamp(1 - length(w.xz), 0, 1), 2)) * 100, 0, 8);
-			caustic = mix(1, caustic, clamp(ray_payload_brdf.hit_distance * 0.02, 0, 1));
+			caustic = mix(1, caustic, clamp(ray_payload_geometry.hit_distance * 0.02, 0, 1));
 			throughput = vec3(caustic);
 
 			if(surface_medium != MEDIUM_NONE)
 			{
-				extinction_distance = ray_payload_brdf.hit_distance;
+				extinction_distance = ray_payload_geometry.hit_distance;
 			}
 			else
 			{
@@ -357,14 +357,14 @@ trace_caustic_ray( Ray ray, int surface_medium )
 				else
 					surface_medium = MEDIUM_SLIME;
 
-				extinction_distance = max(0, ray.t_max - ray_payload_brdf.hit_distance);
+				extinction_distance = max(0, ray.t_max - ray_payload_geometry.hit_distance);
 			}
 		}
 		else 
 #endif			
 		if(is_glass(triangle.material_id) || is_water(triangle.material_id) && is_vertical)
 		{
-			vec3 bary = get_hit_barycentric(ray_payload_brdf);
+			vec3 bary = get_hit_barycentric(ray_payload_geometry);
 			vec2 tex_coord = triangle.tex_coords0 * bary;
 
 			MaterialInfo minfo = get_material_info(triangle.material_id);

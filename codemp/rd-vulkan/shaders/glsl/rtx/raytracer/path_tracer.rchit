@@ -22,24 +22,24 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 #include "../path_tracer.h"	// contains global_ubo.h -> constants.h
 
-layout(location = 0) rayPayloadInEXT RayPayload ray_payload_brdf;
+layout(location = 0) rayPayloadInEXT RayPayloadGeometry ray_payload_geometry;
 
 hitAttributeEXT vec2 hit_attribs;
 
 void 
 main()
 {
-    ray_payload_brdf.barycentric = hit_attribs;
+    ray_payload_geometry.barycentric = hit_attribs;
 
-    ray_payload_brdf.instance_prim = gl_PrimitiveID + gl_InstanceCustomIndexEXT & AS_INSTANCE_MASK_OFFSET;
+    ray_payload_geometry.instance_prim = gl_PrimitiveID + gl_InstanceCustomIndexEXT & AS_INSTANCE_MASK_OFFSET;
 
 	if((gl_InstanceCustomIndexEXT & AS_INSTANCE_FLAG_DYNAMIC) != 0)
-		ray_payload_brdf.instance_prim |= INSTANCE_DYNAMIC_FLAG;
+		ray_payload_geometry.instance_prim |= INSTANCE_DYNAMIC_FLAG;
 
 	if((gl_InstanceCustomIndexEXT & AS_INSTANCE_FLAG_SKY) != 0)
-		ray_payload_brdf.instance_prim |= INSTANCE_SKY_FLAG;
+		ray_payload_geometry.instance_prim |= INSTANCE_SKY_FLAG;
 
-    ray_payload_brdf.instanceID = gl_InstanceID;
+    ray_payload_geometry.instanceID = gl_InstanceID;
 
-    ray_payload_brdf.hit_distance = gl_RayTmaxEXT;
+    ray_payload_geometry.hit_distance = gl_RayTmaxEXT;
 }  

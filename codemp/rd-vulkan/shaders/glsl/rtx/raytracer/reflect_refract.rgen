@@ -513,19 +513,19 @@ main()
 	// Add the transparency encountered along the reflection ray
 	Triangle triangle;
 
-	if (found_intersection(ray_payload_brdf))
+	if (found_intersection(ray_payload_geometry))
 	{
-		reflection_ray.t_max = ray_payload_brdf.hit_distance;
-		triangle = get_hit_triangle(ray_payload_brdf);
+		reflection_ray.t_max = ray_payload_geometry.hit_distance;
+		triangle = get_hit_triangle(ray_payload_geometry);
 	}
 
 #if 0
-	transparent = alpha_blend(transparent, unpackHalf4x16(ray_payload_brdf.transparency) * vec4(throughput, 1));
+	transparent = alpha_blend(transparent, unpackHalf4x16(ray_payload_geometry.transparency) * vec4(throughput, 1));
 #else
-	transparent = alpha_blend(transparent, ray_payload_brdf.transparency * vec4(throughput, 1));
+	transparent = alpha_blend(transparent, ray_payload_geometry.transparency * vec4(throughput, 1));
 #endif
 
-	if ( !found_intersection( ray_payload_brdf ) || is_sky( triangle.material_id ) ) 
+	if ( !found_intersection( ray_payload_geometry ) || is_sky( triangle.material_id ) ) 
 	{
 		// Reflection ray hit the sky - store an empty surface into the G-buffer,
 		// blend the environment under the transparency.
@@ -551,15 +551,15 @@ main()
 	}
 
 	// Throughput before extinction
-	imageStore(IMG_PT_GODRAYS_THROUGHPUT_DIST, ipos, vec4(throughput, ray_payload_brdf.hit_distance));
+	imageStore(IMG_PT_GODRAYS_THROUGHPUT_DIST, ipos, vec4(throughput, ray_payload_geometry.hit_distance));
 
 	if( primary_medium != MEDIUM_NONE )
 	{
 		// Extinction along the reflected/refracted ray
-		throughput *= extinction(primary_medium, ray_payload_brdf.hit_distance);
+		throughput *= extinction(primary_medium, ray_payload_geometry.hit_distance);
 	}
 
-	vec3 bary			= get_hit_barycentric( ray_payload_brdf );
+	vec3 bary			= get_hit_barycentric( ray_payload_geometry );
 	vec3 geo_tangent;
 	vec2 tex_coord[4];
 	{ // for stage ..
@@ -585,7 +585,7 @@ main()
 	// We don't have texture gradients here, so just estimate the LOD
 	// based on the ray "cone size" and distance. The "cone size" is computed
 	// in `primary_rays.rgen` and stored in the throughput texture.
-	optical_path_length += ray_payload_brdf.hit_distance;
+	optical_path_length += ray_payload_geometry.hit_distance;
 
 	float half_cone_angle = texelFetch(TEX_PT_BOUNCE_THROUGHPUT, ipos, 0).a;
 
@@ -732,13 +732,13 @@ main()
 		transparent = alpha_blend_premultiplied(transparent, vec4(primary_emissive * throughput, 0));
 	}
 
-	bool is_dynamic_primitive = is_dynamic_instance(ray_payload_brdf);
-	uint primitive_id = get_primitive(ray_payload_brdf);
+	bool is_dynamic_primitive = is_dynamic_instance(ray_payload_geometry);
+	uint primitive_id = get_primitive(ray_payload_geometry);
 
 	uvec2 vis_buf;
 	vis_buf.x = is_dynamic_primitive ? 
 		get_instance_id_instanced( primitive_id ) : 
-		visbuf_pack_static_instance( ray_payload_brdf.instanceID );
+		visbuf_pack_static_instance( ray_payload_geometry.instanceID );
 	vis_buf.y = primitive_id;
 	imageStore(IMG_PT_VISBUF_PRIM_A, ipos, uvec4(vis_buf, 0, 0));
 	imageStore(IMG_PT_VISBUF_BARY_A, ipos, vec4(bary.yz, 0, 0));

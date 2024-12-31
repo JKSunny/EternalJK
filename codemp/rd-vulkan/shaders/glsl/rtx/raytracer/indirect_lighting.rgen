@@ -252,13 +252,13 @@ indirect_lighting(
 
 	if(is_specular_ray)
 	{
-		if (found_intersection(ray_payload_brdf))
-			bounce_ray.t_max = ray_payload_brdf.hit_distance;
+		if (found_intersection(ray_payload_geometry))
+			bounce_ray.t_max = ray_payload_geometry.hit_distance;
 
 		#if 0
-		vec4 transparency = unpackHalf4x16( ray_payload_brdf.transparency );
+		vec4 transparency = unpackHalf4x16( ray_payload_geometry.transparency );
 		#else
-		vec4 transparency = ray_payload_brdf.transparency;
+		vec4 transparency = ray_payload_geometry.transparency;
 		#endif
 		bounce_contrib += transparency.rgb * transparency.a * bounce_throughput * (1.0 - direct_specular_weight);
 	}
@@ -267,7 +267,7 @@ indirect_lighting(
 
 	bool bounce_is_sky_light = false;
 
-	if(!found_intersection(ray_payload_brdf)) 
+	if(!found_intersection(ray_payload_geometry)) 
 	{
 		if(spec_bounce_index < global_ubo.pt_num_bounce_rays - 1)
 		{
@@ -276,12 +276,12 @@ indirect_lighting(
 		return;
 	}
 
-	triangle = get_hit_triangle(ray_payload_brdf);
+	triangle = get_hit_triangle(ray_payload_geometry);
 
 	float indirect_specular_weight = 1;
 	if(is_specular_ray)
 	{
-		float cone_size = ray_payload_brdf.hit_distance * primary_roughness;
+		float cone_size = ray_payload_geometry.hit_distance * primary_roughness;
 		indirect_specular_weight = 1 - fake_specular_weight;
 		indirect_specular_weight /= max(1, cone_size * global_ubo.pt_specular_anti_flicker * 0.01);
 	}
@@ -331,7 +331,7 @@ indirect_lighting(
 	}
 	else
 	{
-		vec3 bary         = get_hit_barycentric(ray_payload_brdf);
+		vec3 bary         = get_hit_barycentric(ray_payload_geometry);
 		vec2 tex_coord    = triangle.tex_coords0 * bary;
 		uint bounce_material_id = triangle.material_id;
 
@@ -376,7 +376,7 @@ indirect_lighting(
 			float spotlight = sqrt(max(0, -dot(bounce_direction, bounce_normal)));
 			emissive *= spotlight;
 
-			// See the comment for `is_analytic_light` above under `if(is_sky(ray_payload_brdf))`
+			// See the comment for `is_analytic_light` above under `if(is_sky(ray_payload_geometry))`
 			// Same logic applies.
 
 			bool is_analytic_light = (bounce_material_id & MATERIAL_FLAG_LIGHT) != 0 && 
@@ -407,7 +407,7 @@ indirect_lighting(
 		if(is_specular_ray)
 			sun_bounce_range *= (1 - sqrt(primary_roughness));
 		
-		float sun_attenuation = square(clamp(1.0 - square(square(ray_payload_brdf.hit_distance / sun_bounce_range)), 0, 1));
+		float sun_attenuation = square(clamp(1.0 - square(square(ray_payload_geometry.hit_distance / sun_bounce_range)), 0, 1));
 
 		if(spec_bounce_index == 0)
 		{

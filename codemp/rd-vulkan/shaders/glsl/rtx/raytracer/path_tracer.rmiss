@@ -23,11 +23,11 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define NO_GLOBAL_UBO
 #include "../path_tracer.h"	// contains global_ubo.h -> constants.h
 
-layout(location = 0) rayPayloadInEXT RayPayload ray_payload_brdf;
+layout(location = 0) rayPayloadInEXT RayPayloadGeometry ray_payload_geometry;
 
 void
 main()
 {
-	ray_payload_brdf.instanceID = ~0u;
-	ray_payload_brdf.instance_prim = ~0u;
+	ray_payload_geometry.instanceID = ~0u;
+	ray_payload_geometry.instance_prim = ~0u;
 }
