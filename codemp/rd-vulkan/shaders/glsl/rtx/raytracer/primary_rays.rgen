@@ -152,14 +152,10 @@ main()
 	}
 
 	{
-#if 0
 		int cull_mask = PRIMARY_RAY_CULL_MASK;
 		
 		if ( global_ubo.pt_show_sky != 0 )
 			cull_mask |= AS_FLAG_CUSTOM_SKY;
-#else
-		int cull_mask = RAY_FIRST_PERSON_OPAQUE_VISIBLE | RAY_FIRST_PERSON_PARTICLE_VISIBLE;
-#endif
 		trace_ray(ray, true, cull_mask);	
 	}
 

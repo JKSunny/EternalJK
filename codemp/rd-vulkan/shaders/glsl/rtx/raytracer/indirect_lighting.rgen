@@ -220,12 +220,10 @@ indirect_lighting(
 
 	bounce_ray.origin -= view_direction.xyz * 0.01;
 
-#if 0
 	int bounce_cull_mask = BOUNCE_RAY_CULL_MASK;
 	int shadow_cull_mask = SHADOW_RAY_CULL_MASK;
-	if(is_specular_ray)
-		bounce_cull_mask |= AS_FLAG_EXPLOSIONS;
-	if (global_ubo.first_person_model != 0 && !primary_is_weapon)
+
+	if(global_ubo.first_person_model != 0 && !primary_is_weapon)
 	{
 		bounce_cull_mask |= AS_FLAG_VIEWER_MODELS;
 		shadow_cull_mask |= AS_FLAG_VIEWER_MODELS;
@@ -237,16 +235,6 @@ indirect_lighting(
 	}
 	
 	trace_ray( bounce_ray, true, bounce_cull_mask );
-#else
-	int bounce_cull_mask = RAY_MIRROR_OPAQUE_VISIBLE;	// hmm
-	int shadow_cull_mask = RAY_MIRROR_OPAQUE_VISIBLE;	// hmm
-
-	int cull_mask = RAY_FIRST_PERSON_OPAQUE_VISIBLE | RAY_FIRST_PERSON_PARTICLE_VISIBLE;
-
-	trace_ray( bounce_ray, true, cull_mask );
-#endif
-
-
 
 	bounce_contrib = vec3(0);
 

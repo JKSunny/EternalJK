@@ -484,7 +484,6 @@ main()
 		}
 	}
 
-#if 0
 	int reflection_cull_mask = REFLECTION_RAY_CULL_MASK;
 	if(global_ubo.first_person_model != 0 && include_player_model)
 		reflection_cull_mask |= AS_FLAG_VIEWER_MODELS;
@@ -493,9 +492,6 @@ main()
 
 	if(push_constants.bounce_index < int(global_ubo.pt_reflect_refract - 1))
 		reflection_cull_mask |= AS_FLAG_TRANSPARENT;
-#else
-	int reflection_cull_mask = RAY_FIRST_PERSON_OPAQUE_VISIBLE | RAY_FIRST_PERSON_PARTICLE_VISIBLE;
-#endif
 
 	Ray reflection_ray;
 	reflection_ray.origin = position;

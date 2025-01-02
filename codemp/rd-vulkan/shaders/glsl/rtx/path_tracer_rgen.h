@@ -58,6 +58,11 @@ layout( set = 0, binding = RAY_GEN_DESCRIPTOR_SET_IDX ) uniform accelerationStru
 #define RNG_SUNLIGHT_X(bounce)			  (4 + 7 + 9 * bounce)
 #define RNG_SUNLIGHT_Y(bounce)			  (4 + 8 + 9 * bounce)
 
+#define PRIMARY_RAY_CULL_MASK        (AS_FLAG_OPAQUE | AS_FLAG_TRANSPARENT | AS_FLAG_VIEWER_WEAPON | AS_FLAG_SKY)
+#define REFLECTION_RAY_CULL_MASK     (AS_FLAG_OPAQUE | AS_FLAG_SKY)
+#define BOUNCE_RAY_CULL_MASK         (AS_FLAG_OPAQUE | AS_FLAG_SKY | AS_FLAG_CUSTOM_SKY)
+#define SHADOW_RAY_CULL_MASK         (AS_FLAG_OPAQUE)
+
 #define BOUNCE_SPECULAR 1
 
 #define MAX_OUTPUT_VALUE 1000
@@ -321,7 +326,7 @@ trace_caustic_ray( Ray ray, int surface_medium )
 	ray_payload_geometry.hit_distance = -1;
 
 	uint rayFlags = gl_RayFlagsCullBackFacingTrianglesEXT | gl_RayFlagsOpaqueEXT | gl_RayFlagsSkipProceduralPrimitives;
-	uint instance_mask = RAY_FIRST_PERSON_OPAQUE_VISIBLE;
+	uint instance_mask = AS_FLAG_TRANSPARENT;
 
 	traceRayEXT(topLevelAS, rayFlags, instance_mask, SBT_RCHIT_GEOMETRY, 0, SBT_RMISS_EMPTY,
 			ray.origin, ray.t_min, ray.direction, ray.t_max, RT_PAYLOAD_GEOMETRY);

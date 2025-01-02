@@ -100,7 +100,7 @@ void append_blas( vk_geometry_instance_t *instances, int *num_instances, uint32_
 	Com_Memset( &instance, 0, sizeof(vk_geometry_instance_t) );
 
 	instance.instance_id = instance_id;
-	instance.mask = RAY_FIRST_PERSON_MIRROR_OPAQUE_VISIBLE;
+	instance.mask = mask;
 	instance.instance_offset = sbt_offset;
 	instance.flags = flags;
 	
@@ -155,18 +155,18 @@ static void vkpt_pt_create_toplevel( VkCommandBuffer cmd_buf, uint32_t idx, draw
 	//
 	// world instances ( static & dynamic, no model/entity )
 	//
-	append_blas( instances, &num_instances, BLAS_WORLD_STATIC,		&vk.blas_static.world, 0, 0, 0, 0 );
+	append_blas( instances, &num_instances, BLAS_WORLD_STATIC,		&vk.blas_static.world, 0, AS_FLAG_OPAQUE, 0, 0 );
 	
-	append_blas( instances, &num_instances, BLAS_WORLD_DYNAMIC_DATA,	&vk.blas_dynamic.data_world, 0, 0, 0, 0 );
+	append_blas( instances, &num_instances, BLAS_WORLD_DYNAMIC_DATA,	&vk.blas_dynamic.data_world, 0, AS_FLAG_OPAQUE, 0, 0 );
 	//append_blas( instances, &num_instances, BLAS_WORLD_DYNAMIC_DATA,	&vk.blas_dynamic.data_world_transparent, 0, 0, 0, 0 );
 	
-	append_blas( instances, &num_instances, BLAS_WORLD_DYNAMIC_AS,	&vk.blas_dynamic.as_world[idx], 0, 0, 0, 0 );
+	append_blas( instances, &num_instances, BLAS_WORLD_DYNAMIC_AS,	&vk.blas_dynamic.as_world[idx], 0, AS_FLAG_OPAQUE, 0, 0 );
 	//append_blas( instances, &num_instances, BLAS_WORLD_DYNAMIC_AS,	&vk.blas_dynamic.as_world_transparent[idx], 0, 0, 0, 0 );
 	
 	//
 	// model/entity instances
 	//
-	append_blas( instances, &num_instances, BLAS_ENTITY_DYNAMIC,		&vk.model_instance.blas.dynamic[idx], AS_INSTANCE_FLAG_DYNAMIC, 0, 0, 0 );
+	append_blas( instances, &num_instances, BLAS_ENTITY_DYNAMIC,		&vk.model_instance.blas.dynamic[idx], AS_INSTANCE_FLAG_DYNAMIC, AS_FLAG_OPAQUE, 0, 0 );
 
 	void *instance_data = buffer_map(vk.buf_instances + idx);
 	memcpy(instance_data, &instances, sizeof(vk_geometry_instance_t) * num_instances);

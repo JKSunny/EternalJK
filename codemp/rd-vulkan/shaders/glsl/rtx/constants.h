@@ -72,15 +72,12 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define TEXTURE_MUL 								0x00000002
 
 // cullMask
-#define RAY_FIRST_PERSON_OPAQUE_VISIBLE 			0x00000001
-#define RAY_MIRROR_OPAQUE_VISIBLE 					0x00000002
-#define RAY_FIRST_PERSON_MIRROR_OPAQUE_VISIBLE 		0x00000003
-
-#define RAY_FIRST_PERSON_PARTICLE_VISIBLE 			0x00000004
-#define RAY_MIRROR_PARTICLE_VISIBLE 				0x00000008
-#define RAY_FIRST_PERSON_MIRROR_PARTICLE_VISIBLE 	0x0000000c
-
-#define RAY_GLASS_VISIBLE 	                        0x00000010
+#define AS_FLAG_OPAQUE          (1 << 0)
+#define AS_FLAG_TRANSPARENT     (1 << 1)
+#define AS_FLAG_VIEWER_MODELS   (1 << 2)
+#define AS_FLAG_VIEWER_WEAPON   (1 << 3)
+#define AS_FLAG_SKY             (1 << 4)
+#define AS_FLAG_CUSTOM_SKY      (1 << 5)
 
 #define MATERIAL_KIND_MASK							0xf0000000
 #define MATERIAL_KIND_INVALID						0x00000000

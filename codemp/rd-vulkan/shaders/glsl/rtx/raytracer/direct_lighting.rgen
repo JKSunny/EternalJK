@@ -67,17 +67,13 @@ direct_lighting(ivec2 ipos, bool is_odd_checkerboard, out vec3 high_freq, out ve
 
 	bool primary_is_weapon = (material_id & MATERIAL_FLAG_WEAPON) != 0;
 	int primary_medium = int((material_id & MATERIAL_LIGHT_STYLE_MASK) >> MATERIAL_LIGHT_STYLE_SHIFT);
-#if 1	
-	int shadow_cull_mask = RAY_MIRROR_OPAQUE_VISIBLE;
-	//int shadow_cull_mask = RAY_FIRST_PERSON_OPAQUE_VISIBLE | RAY_FIRST_PERSON_PARTICLE_VISIBLE;
-#else
+
 	int shadow_cull_mask = SHADOW_RAY_CULL_MASK;
 
 	if(global_ubo.first_person_model != 0 && !primary_is_weapon)
 		shadow_cull_mask |= AS_FLAG_VIEWER_MODELS;
 	else
 		shadow_cull_mask |= AS_FLAG_VIEWER_WEAPON;
-#endif
 
 	float direct_specular_weight = smoothstep(
 		global_ubo.pt_direct_roughness_threshold - 0.02, 
