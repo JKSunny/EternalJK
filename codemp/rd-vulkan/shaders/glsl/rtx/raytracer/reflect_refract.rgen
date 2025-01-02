@@ -33,7 +33,6 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define ENABLE_SUN_SHAPE
 #include "../path_tracer_rgen.h"
 
-// Bindings
 layout(constant_id = 0) const uint spec_bounce_index = 0;
 
 #include "../projection.glsl"
@@ -48,9 +47,8 @@ float ray_distance_to_plane(vec3 plane_pt, vec3 plane_normal, vec3 ray_origin, v
 	return dot(plane_pt - ray_origin, plane_normal) / dot(ray_direction, plane_normal);
 }
 
-
 Ray
-get_primary_ray( vec2 screen_pos )
+get_primary_ray(vec2 screen_pos)
 {
 	vec3 view_dir = projection_screen_to_view(screen_pos, 1, false);
 	view_dir = normalize((global_ubo.invV * vec4(view_dir, 0)).xyz);
@@ -99,15 +97,15 @@ main()
 	vec4 view_direction = imageLoad(IMG_PT_VIEW_DIRECTION, ipos);
 	vec3 direction = view_direction.xyz;
 	int checkerboard_flags = int(view_direction.w);
-
-	vec4 throughput_distance		= imageLoad( IMG_PT_THROUGHPUT, ipos );
-	vec3 throughput					= throughput_distance.rgb;
-	float optical_path_length		= throughput_distance.a;
-	vec4 transparent				= imageLoad( IMG_PT_TRANSPARENT, ipos );
-	vec3 primary_base_color			= imageLoad( IMG_PT_BASE_COLOR_A, ipos ).rgb;
-	vec3 geo_normal					= decode_normal( imageLoad( IMG_PT_GEO_NORMAL_A, ipos ).x );
-	vec3 normal						= decode_normal( imageLoad( IMG_PT_NORMAL_A, ipos ).x );
-	uint cluster_idx				= imageLoad( IMG_PT_CLUSTER_A, ipos).r;
+	
+	vec4 throughput_distance = imageLoad(IMG_PT_THROUGHPUT, ipos);
+	vec3 throughput = throughput_distance.rgb;
+	float optical_path_length = throughput_distance.a;
+	vec4 transparent = imageLoad(IMG_PT_TRANSPARENT, ipos);
+	vec3 primary_base_color = imageLoad(IMG_PT_BASE_COLOR_A, ipos).rgb;
+	vec3 geo_normal = decode_normal(imageLoad(IMG_PT_GEO_NORMAL_A, ipos).x);
+	vec3 normal = decode_normal(imageLoad(IMG_PT_NORMAL_A, ipos).x);
+	uint cluster_idx = imageLoad(IMG_PT_CLUSTER_A, ipos).r;
 	
 	int primary_medium = int(material_id & MATERIAL_LIGHT_STYLE_MASK) >> MATERIAL_LIGHT_STYLE_SHIFT;
 	bool primary_is_weapon = (material_id & MATERIAL_FLAG_WEAPON) != 0;

@@ -553,7 +553,7 @@ ivec3 get_bsp_triangle_indices_and_data( in uint instance_id, in uint prim_id, o
 	uint prim = prim_id * 3;
 	ivec3 indices;
 
-	if ( instance_buffer.tlas_instance_type[instance_id] == BLAS_WORLD_STATIC )
+	if ( instance_buffer.tlas_instance_type[instance_id] == AS_TYPE_WORLD_STATIC )
 	{
 		indices = ivec3(	
 			indices_world_static.i[prim + 0], 
@@ -565,7 +565,7 @@ ivec3 get_bsp_triangle_indices_and_data( in uint instance_id, in uint prim_id, o
 		triangle[2] = vertices_world_static.v[indices.z];
 	}
 	
-	else if ( instance_buffer.tlas_instance_type[instance_id] == BLAS_WORLD_DYNAMIC_DATA )
+	else if ( instance_buffer.tlas_instance_type[instance_id] == AS_TYPE_WORLD_DYNAMIC_DATA )
 	{
 		indices = ivec3(	
 			indices_dynamic_data.i[prim + 0], 
@@ -577,7 +577,7 @@ ivec3 get_bsp_triangle_indices_and_data( in uint instance_id, in uint prim_id, o
 		triangle[2] = vertices_dynamic_data.v[indices.z];
 	}
 	
-	else if ( instance_buffer.tlas_instance_type[instance_id] == BLAS_WORLD_DYNAMIC_AS )
+	else if ( instance_buffer.tlas_instance_type[instance_id] == AS_TYPE_WORLD_DYNAMIC_AS )
 	{
 		indices = ivec3(	
 			indices_dynamic_as.i[prim + 0], 
@@ -597,7 +597,7 @@ mat3x3 get_dynamic_bsp_positions_prev( in uint instance_id, in uint prim_id  )
 	uint prim = prim_id * 3;
 	mat3x3 position;
 
-	if ( instance_buffer.tlas_instance_type[instance_id] == BLAS_WORLD_DYNAMIC_DATA )
+	if ( instance_buffer.tlas_instance_type[instance_id] == AS_TYPE_WORLD_DYNAMIC_DATA )
 	{
 		ivec3 indices = ivec3( 
 			indices_dynamic_data_prev.i[prim + 0], 
@@ -609,7 +609,7 @@ mat3x3 get_dynamic_bsp_positions_prev( in uint instance_id, in uint prim_id  )
 		position[2] = vertices_dynamic_data_prev.v[indices.z].pos.xyz;
 	}
 	
-	else if ( instance_buffer.tlas_instance_type[instance_id] == BLAS_WORLD_DYNAMIC_AS )
+	else if ( instance_buffer.tlas_instance_type[instance_id] == AS_TYPE_WORLD_DYNAMIC_AS )
 	{
 		ivec3 indices = ivec3(
 			indices_dynamic_as_prev.i[prim + 0], 
@@ -635,7 +635,7 @@ Triangle get_bsp_triangle( in uint instance_id, in uint prim_id )
 	t.positions[1] = triangle[1].pos.xyz;
 	t.positions[2] = triangle[2].pos.xyz;
 	
-	if ( instance_buffer.tlas_instance_type[instance_id] == BLAS_WORLD_STATIC )
+	if ( instance_buffer.tlas_instance_type[instance_id] == AS_TYPE_WORLD_STATIC )
 		t.positions_prev = t.positions;
 	else 
 		t.positions_prev = get_dynamic_bsp_positions_prev( instance_id, prim_id ); 
@@ -699,21 +699,21 @@ Triangle get_bsp_triangle( in uint instance_id, in uint prim_id )
 
 	switch( instance_buffer.tlas_instance_type[instance_id] )
 	{
-		case BLAS_WORLD_STATIC:
+		case AS_TYPE_WORLD_STATIC:
 			t.tex0 = vertices_world_static.v[indices.x].texIdx0;
 			t.tex1 = vertices_world_static.v[indices.x].texIdx1;
 
 			t.cluster = cluster_world_static.c[prim_id];
 			t.material_id = vertices_world_static.v[indices.x].material;	// same as triangle[0].material ?
 			break;
-		case BLAS_WORLD_DYNAMIC_DATA:
+		case AS_TYPE_WORLD_DYNAMIC_DATA:
 			t.tex0 = vertices_dynamic_data.v[indices.x].texIdx0;
 			t.tex1 = vertices_dynamic_data.v[indices.x].texIdx1;
 
 			t.cluster = cluster_world_dynamic_data.c[prim_id];
 			t.material_id = vertices_dynamic_data.v[indices.x].material;
 			break;
-		case BLAS_WORLD_DYNAMIC_AS:
+		case AS_TYPE_WORLD_DYNAMIC_AS:
 			t.tex0 = vertices_dynamic_as.v[indices.x].texIdx0;
 			t.tex1 = vertices_dynamic_as.v[indices.x].texIdx1;
 

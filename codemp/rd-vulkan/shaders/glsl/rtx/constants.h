@@ -25,17 +25,6 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define USE_RTX_INSPECT_TANGENTS
 #endif
 
-#define BLAS_DEFAULT                                 (0)
-#define BLAS_WORLD_STATIC                            (1)
-#define BLAS_WORLD_DYNAMIC_DATA                      (2)
-#define BLAS_WORLD_DYNAMIC_AS                        (3)
-#define BLAS_ENTITY_STATIC                           (4)
-#define BLAS_ENTITY_DYNAMIC                          (5)
-
-#define AS_INSTANCE_FLAG_DYNAMIC					(1 << 23)
-#define AS_INSTANCE_FLAG_SKY						(1 << 22)
-#define AS_INSTANCE_MASK_OFFSET (AS_INSTANCE_FLAG_SKY - 1)
-
 #define GRAD_DWN (3)
 
 #define SHADOWMAP_SIZE 4096
@@ -70,6 +59,18 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define TEXTURE_DEFAULT 							0x00000000
 #define TEXTURE_ADD 								0x00000001
 #define TEXTURE_MUL 								0x00000002
+
+// blas instance type/id
+#define AS_TYPE_DEFAULT                                 (0)
+#define AS_TYPE_WORLD_STATIC                            (1)
+#define AS_TYPE_WORLD_DYNAMIC_DATA                      (2)
+#define AS_TYPE_WORLD_DYNAMIC_AS                        (3)
+#define AS_TYPE_ENTITY_STATIC                           (4)
+#define AS_TYPE_ENTITY_DYNAMIC                          (5)
+
+#define AS_INSTANCE_FLAG_DYNAMIC					(1 << 23)
+#define AS_INSTANCE_FLAG_SKY						(1 << 22)
+#define AS_INSTANCE_MASK_OFFSET (AS_INSTANCE_FLAG_SKY - 1)
 
 // cullMask
 #define AS_FLAG_OPAQUE          (1 << 0)
