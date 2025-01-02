@@ -665,6 +665,7 @@ static void vk_create_vertex_buffer_descriptor( uint32_t index, uint32_t prev_in
 	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_LIGHT_BUFFER, VK_SHADER_STAGE_ALL, vk.buf_light.buffer );
 	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_TONEMAP_BUFFER, VK_SHADER_STAGE_ALL, vk.buf_tonemap.buffer );
 	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_SUN_COLOR_BUFFER, VK_SHADER_STAGE_ALL, vk.buf_sun_color.buffer );
+	vk_bind_uniform_buffer( descriptor, BINDING_OFFSET_SUN_COLOR_UBO, VK_SHADER_STAGE_ALL, vk.buf_sun_color.buffer );
 
 	// light stats
 	{

@@ -119,7 +119,7 @@ float getStep(float t, float density)
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 void main()
 {
-	vec3 sun_color = global_ubo.sun_color;
+	vec3 sun_color = sun_color_ubo.sun_color;
 	if(luminance(sun_color) == 0)
 	{
 		imageStore(IMG_GODRAYS_INTERMEDIATE, ivec2(gl_GlobalInvocationID.xy), vec4(0));
@@ -224,7 +224,7 @@ void main()
 		throughput *= exp(-(stepLength * density) * extinction_factors);
 	}
 
-	vec3 inscatterColor = inscatter * global_ubo.sun_color * global_ubo.god_rays_intensity * 0.0001;
+	vec3 inscatterColor = inscatter * sun_color_ubo.sun_color * global_ubo.god_rays_intensity * 0.0001;
 
 	if(medium != MEDIUM_NONE)
 		inscatterColor *= global_ubo.pt_water_density * 30;

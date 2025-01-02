@@ -264,7 +264,7 @@ correct_emissive(uint material_id, vec3 emissive)
 }
 
 #ifndef NO_TRACE_EXT
-void trace_ray( Ray ray, bool cull_back_faces, uint cullMask )
+void trace_geometry_ray( Ray ray, bool cull_back_faces, uint cullMask )
 {
 	uint rayFlags = 0; // gl_RayFlagsNoOpaqueEXT
 	if ( !cull_back_faces )	// reversed?
@@ -669,7 +669,7 @@ get_sunlight(
 #else
     // Fetch the average sun color from the resolved UBO - it's faster.
 
-    vec3 radiance = global_ubo.sun_color;
+    vec3 radiance = sun_color_ubo.sun_color;
 #endif
 
 #ifdef ENABLE_SHADOW_CAUSTICS

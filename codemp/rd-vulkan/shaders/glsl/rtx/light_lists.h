@@ -286,7 +286,7 @@ sample_polygonal_lights(
 		{
 			// Set limits on sky luminance to avoid oversampling the sky in shadowed areas, or undersampling at dusk and dawn.
 			// Note: the log -> linear conversion of the cvars happens on the CPU, in main.c
-			m *= clamp(sun_color_buffer.sky_luminance, global_ubo.pt_min_log_sky_luminance, global_ubo.pt_max_log_sky_luminance);
+			m *= clamp(sun_color_ubo.sky_luminance, global_ubo.pt_min_log_sky_luminance, global_ubo.pt_max_log_sky_luminance);
 		}
 		else
 			m *= abs(light_lum); // abs because sky lights have negative color

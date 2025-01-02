@@ -302,7 +302,6 @@ main()
 		// This is a non-physical see-through material.
 		// One ray stops at the primary surface, the other goes through it.
 
-		//checkerboard_flags = CHECKERBOARD_FLAG_PRIMARY | CHECKERBOARD_FLAG_REFRACTION;
 		correct_motion_vector = 2;
 
 		// Apply a very light distortion effect to TRANS walls (but not models with alpha)
@@ -346,7 +345,7 @@ main()
 		if(global_ubo.pt_thick_glass == 2 || global_ubo.pt_thick_glass == 1 && global_ubo.flt_enable == 0)
 		{
 			float rand = get_rng(RNG_BRDF_FRESNEL(push_constants.bounce_index));
-
+					
 			if(primary_medium == MEDIUM_GLASS)
 			{
 				// Adjust N.V to make the Fresnel term blend smoothly with total internal reflection
@@ -501,16 +500,17 @@ main()
 		reflection_ray.origin -= view_direction.xyz * 0.01;
 	else
 		reflection_ray.origin -= normal.xyz * 0.001;
-	
-	trace_ray(reflection_ray, backface_culling, reflection_cull_mask);
+
+	trace_geometry_ray(reflection_ray, backface_culling, reflection_cull_mask);
 
 	// Add the transparency encountered along the reflection ray
+
 	Triangle triangle;
 
 	if (found_intersection(ray_payload_geometry))
 	{
 		reflection_ray.t_max = ray_payload_geometry.hit_distance;
-		triangle = get_hit_triangle(ray_payload_geometry);
+	 	triangle = get_hit_triangle(ray_payload_geometry);
 	}
 
 #if 0
@@ -519,7 +519,7 @@ main()
 	transparent = alpha_blend(transparent, ray_payload_geometry.transparency * vec4(throughput, 1));
 #endif
 
-	if ( !found_intersection( ray_payload_geometry ) || is_sky( triangle.material_id ) ) 
+	if(!found_intersection(ray_payload_geometry) || is_sky(triangle.material_id))
 	{
 		// Reflection ray hit the sky - store an empty surface into the G-buffer,
 		// blend the environment under the transparency.
@@ -547,13 +547,13 @@ main()
 	// Throughput before extinction
 	imageStore(IMG_PT_GODRAYS_THROUGHPUT_DIST, ipos, vec4(throughput, ray_payload_geometry.hit_distance));
 
-	if( primary_medium != MEDIUM_NONE )
+	if(primary_medium != MEDIUM_NONE)
 	{
 		// Extinction along the reflected/refracted ray
 		throughput *= extinction(primary_medium, ray_payload_geometry.hit_distance);
 	}
 
-	vec3 bary			= get_hit_barycentric( ray_payload_geometry );
+	vec3 bary         = get_hit_barycentric(ray_payload_geometry);
 	vec3 geo_tangent;
 	vec2 tex_coord[4];
 	{ // for stage ..
@@ -582,7 +582,7 @@ main()
 	optical_path_length += ray_payload_geometry.hit_distance;
 
 	float half_cone_angle = texelFetch(TEX_PT_BOUNCE_THROUGHPUT, ipos, 0).a;
-
+	
 	// no multi-stage support yet
 	vec2 tex_coord_x[4], tex_coord_y[4];
 	float fwidth_depth;
@@ -655,8 +655,8 @@ main()
 	vec3 primary_emissive = vec3(0);
 	float primary_specular_factor = 1;
 
-	get_material( 
-		triangle,
+	get_material(
+		triangle, 
 		bary,
 		tex_coord, 
 		tex_coord_x, 

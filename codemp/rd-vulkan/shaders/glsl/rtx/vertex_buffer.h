@@ -76,9 +76,10 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 // sky
 #define BINDING_OFFSET_SUN_COLOR_BUFFER						18
+#define BINDING_OFFSET_SUN_COLOR_UBO						19
 
 // light stats
-#define BINDING_OFFSET_LIGHT_STATS_BUFFER					19
+#define BINDING_OFFSET_LIGHT_STATS_BUFFER					20
 
 #define SUN_COLOR_ACCUMULATOR_FIXED_POINT_SCALE 0x100000
 #define SKY_COLOR_ACCUMULATOR_FIXED_POINT_SCALE 0x100
@@ -248,6 +249,7 @@ layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_LIGHT_COUNTS_HISTORY
 
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_TONEMAP_BUFFER )				buffer TONE_MAPPING_BUFFER { ToneMappingBuffer tonemap_buffer; };
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_SUN_COLOR_BUFFER )			buffer SUN_COLOR_BUFFER { SunColorBuffer sun_color_buffer; };
+layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_SUN_COLOR_UBO, std140 )		uniform SUN_COLOR_UBO { SunColorBuffer sun_color_ubo; };
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_LIGHT_STATS_BUFFER )			buffer LIGHT_STATS_BUFFERS { uint stats[]; } light_stats_bufers[3];
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_READBACK_BUFFER )			buffer READBACK_BUFFER { ReadbackBuffer readback; };
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_DYNAMIC_VERTEX )				buffer MODEL_DYNAMIC_VERTEX_BUFFER { ModelDynamicVertexBuffer vbo_model_dynamic; };
