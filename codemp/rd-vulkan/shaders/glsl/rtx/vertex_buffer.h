@@ -406,6 +406,7 @@ struct Triangle {
 	uint cluster;
 	uint material_id;
 	float  emissive_factor;
+	float  alpha;
 	//float  alpha;
 };
 
@@ -434,9 +435,12 @@ get_instanced_triangle( uint prim_id )
 	t.tex_coords0[2] = get_tex_coords_instanced(prim_id * 3 + 2);
 
 	t.material_id = get_materials_instanced(prim_id);
+
 	t.cluster = get_clusters_instanced(prim_id);
+		
+	t.alpha = get_alpha_instanced(prim_id);
+	
 	t.emissive_factor = 1.0;
-	//t.alpha = 1.0;
 
 	return t;
 }
@@ -471,7 +475,7 @@ store_instanced_triangle(Triangle t, uint instance_id, uint prim_id)
 
 	set_clusters_instanced(prim_id, t.cluster);
 
-	//set_alpha_instanced(prim_id, t.alpha);
+	set_alpha_instanced(prim_id, t.alpha);
 }
 #endif
 
@@ -730,6 +734,7 @@ Triangle get_bsp_triangle( in uint instance_id, in uint prim_id )
 	}
 
 	t.emissive_factor = 1.0;
+	t.alpha = 1.0;
 
 	return t;
 }

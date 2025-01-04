@@ -484,7 +484,7 @@ main()
 	int reflection_cull_mask = REFLECTION_RAY_CULL_MASK;
 	if(global_ubo.first_person_model != 0 && include_player_model)
 		reflection_cull_mask |= AS_FLAG_VIEWER_MODELS;
-	else
+	else if (!(primary_is_weapon && primary_is_transparent))
 		reflection_cull_mask |= AS_FLAG_VIEWER_WEAPON;
 
 	if(push_constants.bounce_index < int(global_ubo.pt_reflect_refract - 1))
@@ -673,7 +673,11 @@ main()
 
 	primary_is_weapon = false;
 
-	if((is_chrome(material_id) || is_screen(material_id) || is_camera(material_id)) && primary_roughness >= MAX_MIRROR_ROUGHNESS)
+	// will be used in case of transparency, to retain difference between TRANSPARENT and TRANSP_MODEL
+	// default to TRANSP_MODEL so transparency on other material kind works (needed for eg gunalpha)
+	uint transparency_kind = (material_id & MATERIAL_KIND_MASK) == MATERIAL_KIND_TRANSPARENT ? MATERIAL_KIND_TRANSPARENT : MATERIAL_KIND_TRANSP_MODEL;
+
+	if((is_chrome(material_id) || is_screen(material_id) || is_camera(material_id)) && primary_roughness >= MAX_MIRROR_ROUGHNESS || is_transparent(material_id))
 	{
 		material_id = (material_id & ~MATERIAL_KIND_MASK) | MATERIAL_KIND_REGULAR;
 	}
@@ -720,6 +724,49 @@ main()
 		}
 	}
 #endif
+
+	if (triangle.alpha < 1.0)
+	{
+		// Translucent objects.
+#if 0
+		if (bitCount(checkerboard_flags & CHECKERBOARD_FLAG_FIELD_MASK) == 1)
+#else
+		if (bitCount(checkerboard_flags) == 1)
+#endif
+		{
+			// Split the path if it wasn't split before.
+			throughput *= 2;
+			checkerboard_flags = CHECKERBOARD_FLAG_PRIMARY | CHECKERBOARD_FLAG_REFRACTION;
+
+			if (!is_odd_checkerboard)
+			{
+				// This field stays on the surface.
+				throughput *= triangle.alpha;
+			}
+			else
+			{
+				// This field goes through the surface.
+				material_id = (material_id & ~MATERIAL_KIND_MASK) | transparency_kind;
+				throughput *= 1.0 - triangle.alpha;
+			}
+		}
+		else
+		{
+			// If the path was split *on the same model* before, continue tracing.
+			// We don't want to show the internal geometry of a translucent model.
+			uint primary_instance_index = imageLoad(IMG_PT_VISBUF_PRIM_A, ipos).x;
+			bool is_dynamic_primitive = is_dynamic_instance(ray_payload_geometry);
+			uint primitive_id = get_primitive(ray_payload_geometry);
+			uint triangle_instance_id = is_dynamic_primitive ? 
+				get_instance_id_instanced( primitive_id ) : 
+				visbuf_pack_static_instance( ray_payload_geometry.instanceID );
+
+			if (primary_instance_index == triangle_instance_id)
+			{
+				material_id = (material_id & ~MATERIAL_KIND_MASK) | transparency_kind;
+			}
+		}
+	}
 
 	if(luminance(primary_emissive) > 0) {
     	// Emissive component on the reflected/refracted surface - blend it with zero alpha

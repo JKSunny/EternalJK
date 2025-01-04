@@ -228,7 +228,8 @@ is_glass(uint material)
 bool
 is_transparent(uint material )
 {
-	return (material & MATERIAL_KIND_MASK) == MATERIAL_KIND_TRANSPARENT;
+	uint kind = material & MATERIAL_KIND_MASK;
+	return kind == MATERIAL_KIND_TRANSPARENT || kind == MATERIAL_KIND_TRANSP_MODEL;
 }
 
 bool
@@ -381,12 +382,10 @@ trace_caustic_ray( Ray ray, int surface_medium )
 
 			throughput = base_color;
 		}
-#if 0
 		else
 		{
 			throughput = vec3(clamp(1.0 - triangle.alpha, 0.0, 1.0));
 		}
-#endif
 	}
 
 	//return vec3(caustic);

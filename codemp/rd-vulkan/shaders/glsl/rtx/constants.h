@@ -95,6 +95,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define MATERIAL_KIND_SCREEN						0xb0000000
 #define MATERIAL_KIND_CAMERA						0xc0000000
 #define MATERIAL_KIND_CHROME_MODEL					0xd0000000
+#define MATERIAL_KIND_TRANSP_MODEL					0xe0000000 // Transparent models. No distortion, just "see through".
 
 #define MATERIAL_FLAG_MASK          				0x000ffff0
 #define MATERIAL_FLAG_LIGHT 						0x00000010

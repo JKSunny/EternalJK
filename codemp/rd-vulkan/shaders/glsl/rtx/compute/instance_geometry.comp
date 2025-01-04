@@ -134,9 +134,10 @@ get_model_triangle(uint model_id, uint prim_id, uint idx_offset, uint vert_offse
 #if 0
 	if(tangent.w < 0)
 		t.material_id |= MATERIAL_FLAG_HANDEDNESS;
-
-	t.alpha = 1.0;
 #endif
+
+	t.emissive_factor = 1.0;
+	t.alpha = 1.0;
 
 	return t;
 }
@@ -207,9 +208,10 @@ get_mxdm_triangle(uint model_id, uint prim_id, uint idx_offset, uint vert_offset
 #if 0
 	if(tangent.w < 0)
 		t.material_id |= MATERIAL_FLAG_HANDEDNESS;
-
-	t.alpha = 1.0;
 #endif
+
+	t.emissive_factor = 1.0;
+	t.alpha = 1.0;
 
 	return t;
 }
@@ -247,7 +249,6 @@ void main()
 		Triangle t_i;
 		mat4 M_curr = mat4(1.0);
 		mat4 M_prev = mat4(1.0);
-		//const int is_mdxm = 1;	// only format supported
 
 #if 0
 		if(is_world) {
@@ -284,6 +285,8 @@ void main()
 
 #if 0
 				t_i.alpha = mi_curr.alpha.x;
+#else
+				// alpha & emsisive set in get_mxdm_triangle() ..
 #endif
 				t_i.material_id = mi_curr.material;
 				// t_i.material_id |= MATERIAL_FLAG_HANDEDNESS; // not sure
@@ -313,6 +316,9 @@ void main()
 					t_i.tangents[2] = mix(t.tangents[2], t_prev.tangents[2], backlerp);
 	#if 0
 					t_i.alpha = mi_curr.alpha.x;
+	#else
+					t_i.alpha = t.alpha;
+					t_i.emissive_factor = t.emissive_factor;
 	#endif
 					t_i.tex_coords0  = t.tex_coords0;
 
