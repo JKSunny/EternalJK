@@ -125,7 +125,7 @@ main()
 
 		grad_hf = get_gradient(luminance(curr_hf), prev_hf_spec_lum.x);
 		grad_spec = get_gradient(luminance(curr_spec), prev_hf_spec_lum.y);
-#if 0
+
 		// First person weapon moves a lot, which creates gradients and makes noise.
 		// Slow-changing lighting is better than noise on the weapon, so reduce the gradients.
 		int checkerboard_flags = int(texelFetch(TEX_PT_VIEW_DIRECTION, grad_sample_pos_curr, 0).w);
@@ -134,7 +134,6 @@ main()
 		{
 			grad_spec *= global_ubo.flt_grad_weapon;
 		}
-#endif
 	}
 
 	// Process all LF samples in the 3x3 square, accumulate the luminances
