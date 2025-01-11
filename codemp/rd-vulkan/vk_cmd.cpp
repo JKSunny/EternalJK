@@ -34,6 +34,10 @@ void vk_create_command_pool( void )
     VK_CHECK( qvkCreateCommandPool( vk.device, &desc, NULL, &vk.command_pool ) );
     VK_SET_OBJECT_NAME( vk.command_pool, "command pool", VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_POOL_EXT );
 
+#ifdef USE_RTX
+	vk_rtx_create_command_pool();
+#endif
+
     vk_debug("Create command pool: vk.command_pool \n");
 }
 

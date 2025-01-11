@@ -213,7 +213,7 @@ VkResult UploadImage( void *FirstPixel, size_t total_size, unsigned int Width, u
 	VK_CHECK( qvkCreateImageView( vk.device, &img_view_info, NULL, &vk.img_physical_sky[binding_offset].view ) );
 	VK_SET_OBJECT_NAME( &vk.img_physical_sky[binding_offset].view, DebugName, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT );
 
-	VkCommandBuffer cmd_buf = vk_begin_command_buffer();
+	VkCommandBuffer cmd_buf = vkpt_begin_command_buffer( &vk.cmd_buffers_graphics );
 
 	VkImageSubresourceRange subresource_range;
 	subresource_range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -257,7 +257,7 @@ VkResult UploadImage( void *FirstPixel, size_t total_size, unsigned int Width, u
 		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
 		);
 
-	vk_end_command_buffer( cmd_buf );
+	vkpt_submit_command_buffer_simple(cmd_buf, vk.queue, true);
 
 	VkDescriptorImageInfo desc_img_info;
 	desc_img_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -790,11 +790,7 @@ struct ShadowmapGeometry FillVertexAndIndexBuffers( const char* FileName, unsign
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 	//ATTACH_LABEL_VARIABLE_NAME(result.Indexes.buffer, BUFFER, "Shadowmap Index Buffer");
 
-#if 0
-	VkCommandBuffer cmd_buf = vkpt_begin_command_buffer(&qvk.cmd_buffers_transfer);
-#else
-	VkCommandBuffer cmd_buf = vk_begin_command_buffer();
-#endif
+	VkCommandBuffer cmd_buf = vkpt_begin_command_buffer( &vk.cmd_buffers_transfer );
 
 	BUFFER_BARRIER( cmd_buf, 
 		VK_ACCESS_NONE, 
@@ -865,14 +861,8 @@ struct ShadowmapGeometry FillVertexAndIndexBuffers( const char* FileName, unsign
 		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
 	);
 
-#if 0
-	vkpt_submit_command_buffer_simple(cmd_buf, qvk.queue_transfer, qtrue);
-	qvkQueueWaitIdle(qvk.queue_transfer);
-#else
-	vk_end_command_buffer( cmd_buf );
+	vkpt_submit_command_buffer_simple( cmd_buf, vk.queue, qtrue );
 	qvkQueueWaitIdle( vk.queue );
-#endif
-
 	vk_rtx_buffer_destroy(&upload_buffer);
 
 done:

@@ -1146,7 +1146,7 @@ vkpt_light_buffer_upload_staging( VkCommandBuffer cmd_buf )
 	{
 		qvkCmdFillBuffer(cmd_buf, vk.buf_light_stats[buffer_idx].buffer, 0, vk.buf_light_stats[buffer_idx].size, 0);
 	}
-
+#if 0
 	BUFFER_BARRIER( cmd_buf,
 		VK_ACCESS_NONE_KHR,
 		VK_ACCESS_SHADER_WRITE_BIT,
@@ -1154,7 +1154,7 @@ vkpt_light_buffer_upload_staging( VkCommandBuffer cmd_buf )
 		0,
 		VK_WHOLE_SIZE
 	);
-
+#endif
 	return VK_SUCCESS;
 }
 
@@ -1214,26 +1214,22 @@ static void vk_begin_trace_rays( trRefdef_t *refdef, reference_mode_t *ref_mode,
 	VkPipelineStageFlags		wait_stages;
 	VkCommandBuffer				transfer_cmd_buf;
 	VkCommandBufferBeginInfo	begin_info;
-	qboolean *prev_trace_signaled = &vk.tess[(vk.current_frame_index - 1) % NUM_COMMAND_BUFFERS].semaphores.trace_signaled;
-	qboolean *curr_trace_signaled = &vk.tess[vk.current_frame_index].semaphores.trace_signaled;
+	uint32_t device_indices[2];
+	uint32_t all_device_mask = (1 << vk.device_count) - 1;
+	bool *prev_trace_signaled = &vk.tess[(vk.current_frame_index - 1) % NUM_COMMAND_BUFFERS].semaphores.trace_signaled;
+	bool *curr_trace_signaled = &vk.tess[vk.current_frame_index].semaphores.trace_signaled;
 
 	{
 		// Transfer the light buffer from staging into device memory.
 		// Previous frame's tracing still uses device memory, so only do the copy after that is finished.
 			
-		transfer_cmd_buf = vk.cmd->command_buffer_transfer;
-
-		begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		begin_info.pNext = VK_NULL_HANDLE;
-		begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-		begin_info.pInheritanceInfo = VK_NULL_HANDLE;
-
-		VK_CHECK( qvkBeginCommandBuffer( transfer_cmd_buf, &begin_info ) );
+		VkCommandBuffer transfer_cmd_buf = vkpt_begin_command_buffer(&vk.cmd_buffers_transfer);
 
 		vkpt_light_buffer_upload_staging( transfer_cmd_buf );
 
 		for ( int gpu = 0; gpu < vk.device_count; gpu++ )	// multi-gpu not implemented
 		{
+			device_indices[gpu]		= gpu;
 			transfer_semaphores		= vk.tess[vk.current_frame_index].semaphores.transfer_finished;
 			trace_semaphores		= vk.tess[vk.current_frame_index].semaphores.trace_finished;
 			prev_trace_semaphores	= vk.tess[(vk.current_frame_index - 1) % NUM_COMMAND_BUFFERS].semaphores.trace_finished;
@@ -1241,29 +1237,27 @@ static void vk_begin_trace_rays( trRefdef_t *refdef, reference_mode_t *ref_mode,
 		}
 
 		vk_rtx_end_command_buffer( transfer_cmd_buf, 
-			(*prev_trace_signaled) ? 1 : 0, &prev_trace_semaphores, &wait_stages,
+			(*prev_trace_signaled) ? vk.device_count : 0, &prev_trace_semaphores, &wait_stages,
 			1, &transfer_semaphores 
 		);
 
-		*prev_trace_signaled = qfalse;
+		vkpt_submit_command_buffer(
+			transfer_cmd_buf, 
+			vk.queue, 
+			all_device_mask, 
+			(*prev_trace_signaled) ? vk.device_count : 0, &prev_trace_semaphores, &wait_stages, device_indices, 
+			vk.device_count, &transfer_semaphores, device_indices, 
+			VK_NULL_HANDLE);
+
+		*prev_trace_signaled = false;
 	}
 
 	{
-		VkCommandBuffer trace_cmd_buf = vk.cmd->command_buffer_trace2;	// temp
-		begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		begin_info.pNext = VK_NULL_HANDLE;
-		begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-		begin_info.pInheritanceInfo = VK_NULL_HANDLE;
-
-		VK_CHECK( qvkBeginCommandBuffer( trace_cmd_buf, &begin_info ) );
-
-
+		VkCommandBuffer trace_cmd_buf = vkpt_begin_command_buffer(&vk.cmd_buffers_graphics);
 
 
 
 		VK_CHECK( vkpt_uniform_buffer_update( trace_cmd_buf ) );
-
-
 
 
 
@@ -1296,110 +1290,100 @@ static void vk_begin_trace_rays( trRefdef_t *refdef, reference_mode_t *ref_mode,
 
 		vk_rtx_trace_primary_rays( trace_cmd_buf );
 
-
-
-
-
-
-		vk_rtx_end_command_buffer( trace_cmd_buf, 
-			1, &transfer_semaphores, &wait_stages,
-			0, 0 
-		);
+		vkpt_submit_command_buffer(
+			trace_cmd_buf,
+			vk.queue,
+			all_device_mask,
+			vk.device_count, &transfer_semaphores, &wait_stages, device_indices,
+			0, 0, 0,
+			VK_NULL_HANDLE);
 	}
 
-	VkCommandBuffer cmd_buf_trace_post;	//  split into two causing fps drops?
 
 	{
-		cmd_buf_trace_post = vk.cmd->command_buffer_trace;
-
-		begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		begin_info.pNext = VK_NULL_HANDLE;
-		begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-		begin_info.pInheritanceInfo = VK_NULL_HANDLE;
-
-		VK_CHECK( qvkBeginCommandBuffer( cmd_buf_trace_post, &begin_info ) );
+		VkCommandBuffer trace_cmd_buf = vkpt_begin_command_buffer( &vk.cmd_buffers_graphics );
 
 		if ( god_rays_enabled )
 		{
-			BEGIN_PERF_MARKER( cmd_buf_trace_post, PROFILER_GOD_RAYS );
-			vk_rtx_record_god_rays_trace_command_buffer( cmd_buf_trace_post, 0 );
-			END_PERF_MARKER( cmd_buf_trace_post, PROFILER_GOD_RAYS );
+			BEGIN_PERF_MARKER( trace_cmd_buf, PROFILER_GOD_RAYS );
+			vk_rtx_record_god_rays_trace_command_buffer( trace_cmd_buf, 0 );
+			END_PERF_MARKER( trace_cmd_buf, PROFILER_GOD_RAYS );
 		}
 
 		if ( ref_mode->reflect_refract > 0 )
 		{
-			BEGIN_PERF_MARKER( cmd_buf_trace_post, PROFILER_REFLECT_REFRACT_1 );
-			vk_rtx_trace_reflections( cmd_buf_trace_post, 0 );
-			END_PERF_MARKER( cmd_buf_trace_post, PROFILER_REFLECT_REFRACT_1 );
+			BEGIN_PERF_MARKER( trace_cmd_buf, PROFILER_REFLECT_REFRACT_1 );
+			vk_rtx_trace_reflections( trace_cmd_buf, 0 );
+			END_PERF_MARKER( trace_cmd_buf, PROFILER_REFLECT_REFRACT_1 );
 		}
 
 		if ( god_rays_enabled )
 		{
 			if ( ref_mode->reflect_refract > 0 )
 			{
-				BEGIN_PERF_MARKER( cmd_buf_trace_post, PROFILER_GOD_RAYS_REFLECT_REFRACT );
-				vk_rtx_record_god_rays_trace_command_buffer( cmd_buf_trace_post, 1 );
-				END_PERF_MARKER(cmd_buf_trace_post, PROFILER_GOD_RAYS_REFLECT_REFRACT );
+				BEGIN_PERF_MARKER( trace_cmd_buf, PROFILER_GOD_RAYS_REFLECT_REFRACT );
+				vk_rtx_record_god_rays_trace_command_buffer( trace_cmd_buf, 1 );
+				END_PERF_MARKER(trace_cmd_buf, PROFILER_GOD_RAYS_REFLECT_REFRACT );
 			}
 
-			BEGIN_PERF_MARKER( cmd_buf_trace_post, PROFILER_GOD_RAYS_FILTER );
-			vk_rtx_record_god_rays_filter_command_buffer( cmd_buf_trace_post );
-			END_PERF_MARKER( cmd_buf_trace_post, PROFILER_GOD_RAYS_FILTER );
+			BEGIN_PERF_MARKER( trace_cmd_buf, PROFILER_GOD_RAYS_FILTER );
+			vk_rtx_record_god_rays_filter_command_buffer( trace_cmd_buf );
+			END_PERF_MARKER( trace_cmd_buf, PROFILER_GOD_RAYS_FILTER );
 		}
 
 		if ( ref_mode->reflect_refract > 1 )
 		{
-			BEGIN_PERF_MARKER( cmd_buf_trace_post, PROFILER_REFLECT_REFRACT_2 );
+			BEGIN_PERF_MARKER( trace_cmd_buf, PROFILER_REFLECT_REFRACT_2 );
 			for (int pass = 0; pass < ref_mode->reflect_refract - 1; pass++)
 			{
-				vk_rtx_trace_reflections( cmd_buf_trace_post, pass );
+				vk_rtx_trace_reflections( trace_cmd_buf, pass );
 			}
-			END_PERF_MARKER( cmd_buf_trace_post, PROFILER_REFLECT_REFRACT_2 );
+			END_PERF_MARKER( trace_cmd_buf, PROFILER_REFLECT_REFRACT_2 );
 		}
 
 		if ( ref_mode->enable_denoiser ) 
 		{
-			BEGIN_PERF_MARKER( cmd_buf_trace_post, PROFILER_ASVGF_GRADIENT_REPROJECT );
-			vkpt_asvgf_gradient_reproject( cmd_buf_trace_post );
-			END_PERF_MARKER( cmd_buf_trace_post, PROFILER_ASVGF_GRADIENT_REPROJECT );
+			BEGIN_PERF_MARKER( trace_cmd_buf, PROFILER_ASVGF_GRADIENT_REPROJECT );
+			vkpt_asvgf_gradient_reproject( trace_cmd_buf );
+			END_PERF_MARKER( trace_cmd_buf, PROFILER_ASVGF_GRADIENT_REPROJECT );
 		}
-		vk_rxt_trace_lighting( cmd_buf_trace_post, ref_mode->num_bounce_rays );
+		vk_rxt_trace_lighting( trace_cmd_buf, ref_mode->num_bounce_rays );
 
-#ifdef VK_RTX_INVESTIGATE_SLOW_CMD_BUF
-		vk_rtx_end_command_buffer( cmd_buf_trace_post, 
-			0, 0, 0,
-			1, &trace_semaphores 
-		);
+		vkpt_submit_command_buffer(
+			trace_cmd_buf,
+			vk.queue,
+			all_device_mask,
+			0, 0, 0, 0,
+			vk.device_count, &trace_semaphores, device_indices,
+			VK_NULL_HANDLE);
 
-		*curr_trace_signaled = qtrue;
-#endif
+		*curr_trace_signaled = true;
 	}
 
 	{
-#ifdef VK_RTX_INVESTIGATE_SLOW_CMD_BUF
-		cmd_buf_trace_post = vk_begin_command_buffer();
-#endif
-		BEGIN_PERF_MARKER( cmd_buf_trace_post, PROFILER_ASVGF_FULL );
+		VkCommandBuffer post_cmd_buf = vkpt_begin_command_buffer(&vk.cmd_buffers_graphics);
+
+		BEGIN_PERF_MARKER( post_cmd_buf, PROFILER_ASVGF_FULL );
 		if ( ref_mode->enable_denoiser ) 
-			vkpt_asvgf_filter( cmd_buf_trace_post, sun_pt_num_bounce_rays->value >= 0.5f ? qtrue : qfalse );
+			vkpt_asvgf_filter( post_cmd_buf, sun_pt_num_bounce_rays->value >= 0.5f ? qtrue : qfalse );
 		else
-			vkpt_compositing( cmd_buf_trace_post );
-		END_PERF_MARKER( cmd_buf_trace_post, PROFILER_ASVGF_FULL );
+			vkpt_compositing( post_cmd_buf );
+		END_PERF_MARKER( post_cmd_buf, PROFILER_ASVGF_FULL );
 
-		vkpt_interleave( cmd_buf_trace_post );
+		vkpt_interleave( post_cmd_buf );
 
-		vkpt_taa( cmd_buf_trace_post );
+		vkpt_taa( post_cmd_buf );
 
 #if 0
-		BEGIN_PERF_MARKER(cmd_buf_trace_post, PROFILER_BLOOM);
+		BEGIN_PERF_MARKER(post_cmd_buf, PROFILER_BLOOM);
 		if ( cvar_bloom_enable->integer != 0 || menu_mode )
 		{
-			vkpt_bloom_record_cmd_buffer(cmd_buf_trace_post);
+			vkpt_bloom_record_cmd_buffer(post_cmd_buf);
 		}
-		END_PERF_MARKER(cmd_buf_trace_post, PROFILER_BLOOM);
+		END_PERF_MARKER(post_cmd_buf, PROFILER_BLOOM);
 #endif
 
-		BEGIN_PERF_MARKER( cmd_buf_trace_post, PROFILER_TONE_MAPPING );
+		BEGIN_PERF_MARKER( post_cmd_buf, PROFILER_TONE_MAPPING );
 		if ( sun_tm_enable->integer != 0 )
 		{
 			float frame_time = MIN( 1.f, MAX(0.f, refdef->frametime) );
@@ -1409,37 +1393,27 @@ static void vk_begin_trace_rays( trRefdef_t *refdef, reference_mode_t *ref_mode,
 			float frame_wallclock_time = (previous_wallclock_time != 0) ? (float)(current_wallclock_time - previous_wallclock_time) * 1e-3f : 0.f;
 			previous_wallclock_time = current_wallclock_time;
 
-			vkpt_tone_mapping_record_cmd_buffer( cmd_buf_trace_post, frame_time <= 0.f ? frame_wallclock_time : frame_time );
+			vkpt_tone_mapping_record_cmd_buffer( post_cmd_buf, frame_time <= 0.f ? frame_wallclock_time : frame_time );
 		}
-		END_PERF_MARKER( cmd_buf_trace_post, PROFILER_TONE_MAPPING );
+		END_PERF_MARKER( post_cmd_buf, PROFILER_TONE_MAPPING );
 
 		{
 			VkBufferCopy copyRegion = { 0, 0, sizeof(ReadbackBuffer) };
-			qvkCmdCopyBuffer( cmd_buf_trace_post, vk.buf_readback.buffer, vk.buf_readback_staging[vk.current_frame_index].buffer, 1, &copyRegion);
+			qvkCmdCopyBuffer( post_cmd_buf, vk.buf_readback.buffer, vk.buf_readback_staging[vk.current_frame_index].buffer, 1, &copyRegion);
 		}
 
-#ifdef VK_RTX_INVESTIGATE_SLOW_CMD_BUF
-		vk_end_command_buffer( cmd_buf_trace_post );
-#endif
+		vkpt_submit_command_buffer_simple( post_cmd_buf, vk.queue, true );
 	}
-
-#ifndef VK_RTX_INVESTIGATE_SLOW_CMD_BUF
-	vk_rtx_end_command_buffer( cmd_buf_trace_post, 
-		0, 0, 0,
-		1, &trace_semaphores 
-	);
-
-	*curr_trace_signaled = qtrue;
-#endif
 }
 
 static qboolean frame_ready;
 
 void vk_rtx_begin_scene( trRefdef_t *refdef, drawSurf_t *drawSurfs, int numDrawSurfs ) 
 {
+#if 0
 	// reset offsets
 	vk.scratch_buf_ptr = 0;
-
+#endif
 	reference_mode_t	ref_mode;
 	vkUniformRTX_t		*ubo;
 	sun_light_t			sun_light;

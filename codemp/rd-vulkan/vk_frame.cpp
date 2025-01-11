@@ -46,8 +46,8 @@ void vk_create_sync_primitives( void )
         VK_CHECK(qvkCreateSemaphore(vk.device, &desc, NULL, &vk.tess[i].semaphores.transfer_finished));
 
 
-	    vk.tess[i].semaphores.trace_signaled = qfalse;
-	    vk.tess[i].semaphores.prev_trace_signaled = qfalse;
+	    vk.tess[i].semaphores.trace_signaled = false;
+	    vk.tess[i].semaphores.prev_trace_signaled = false;
 #endif
         fence_desc.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
         fence_desc.pNext = NULL;

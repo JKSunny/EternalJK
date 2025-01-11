@@ -704,6 +704,8 @@ vec3 clamp_output(vec3 c)
 vec3
 sample_emissive_texture(uint material_id, MaterialInfo minfo, vec2 tex_coord, vec2 tex_coord_x, vec2 tex_coord_y, float mip_level)
 {
+	return vec3(0);
+
 	if (minfo.emissive_texture != 0)
     {
         vec4 image3;

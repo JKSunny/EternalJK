@@ -70,7 +70,7 @@ void vkpt_physical_sky_latch_local_time( void )
 
 static void change_image_layouts( VkImage image, const VkImageSubresourceRange* subresource_range )
 {
-	VkCommandBuffer cmd_buf = vk_begin_command_buffer();
+	VkCommandBuffer cmd_buf = vkpt_begin_command_buffer(&vk.cmd_buffers_graphics);
 
 	IMAGE_BARRIER( cmd_buf,
 		image,	// vk.img_physical_sky[binding_offset].handle
@@ -81,8 +81,8 @@ static void change_image_layouts( VkImage image, const VkImageSubresourceRange* 
 		VK_IMAGE_LAYOUT_GENERAL
 	);
 
-	vk_end_command_buffer( cmd_buf );
-	vk_wait_idle();
+	vkpt_submit_command_buffer_simple( cmd_buf, vk.queue, true );
+	vkpt_wait_idle( vk.queue, &vk.cmd_buffers_graphics );
 }
 
 static void vk_rtx_destroy_env_texture( void )

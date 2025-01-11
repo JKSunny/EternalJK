@@ -701,8 +701,8 @@ typedef struct {
 typedef struct semaphore_group_s {
 	VkSemaphore		transfer_finished;
 	VkSemaphore		trace_finished;
-	qboolean		trace_signaled;
-	qboolean		prev_trace_signaled;
+	bool			trace_signaled;
+	bool			prev_trace_signaled;
 } semaphore_group_t;
 #endif
 
@@ -835,6 +835,9 @@ typedef struct {
 	uint32_t		gpu_slice_width_prev;
 
 	vec2_t			taa_samples[NUM_TAA_SAMPLES];
+
+	cmd_buf_group_t cmd_buffers_graphics;
+	cmd_buf_group_t cmd_buffers_transfer;
 
 	bool			supports_fp16;
 	int				effective_aa_mode;
@@ -1571,6 +1574,31 @@ int			vk_imgui_get_shader_editor_index( void );
 
 void		R_GetImGuiContext( void **context );
 uint64_t	R_GetImGuiTexture( qhandle_t hShader );
+
+// cmd
+void vk_rtx_create_command_pool( void );
+VkCommandBuffer vkpt_begin_command_buffer( cmd_buf_group_t* group );
+void vkpt_free_command_buffers( cmd_buf_group_t* group );
+void vkpt_reset_command_buffers( cmd_buf_group_t* group );
+void vkpt_wait_idle( VkQueue queue, cmd_buf_group_t* group );
+
+void vkpt_submit_command_buffer(
+	VkCommandBuffer cmd_buf,
+	VkQueue queue,
+	uint32_t execute_device_mask,
+	int wait_semaphore_count,
+	VkSemaphore* wait_semaphores,
+	VkPipelineStageFlags* wait_stages,
+	uint32_t* wait_device_indices,
+	int signal_semaphore_count,
+	VkSemaphore* signal_semaphores,
+	uint32_t* signal_device_indices,
+	VkFence fence);
+
+void vkpt_submit_command_buffer_simple(
+	VkCommandBuffer cmd_buf,
+	VkQueue queue,
+	bool all_gpus);
 
 // profiler
 #define		RGBA_LE(col) (((col & 0xff000000) >> (3 * 8)) + ((col & 0x00ff0000) >> (1 * 8)) + ((col & 0x0000ff00) << (1 * 8)) + ((col & 0x000000ff) << (3 * 8)))

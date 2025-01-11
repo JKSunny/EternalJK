@@ -150,6 +150,7 @@ set(MPVulkanRendererRTX
 	"${MPDir}/rd-vulkan/rtx/vk_rtx_asvgf.cpp"
 	"${MPDir}/rd-vulkan/rtx/vk_rtx_buffer.cpp"
 	"${MPDir}/rd-vulkan/rtx/vk_rtx_bsp.cpp"
+	"${MPDir}/rd-vulkan/rtx/vk_rtx_cmd.cpp"
 	"${MPDir}/rd-vulkan/rtx/vk_rtx_descriptor.cpp"
 	"${MPDir}/rd-vulkan/rtx/vk_rtx_god_rays.cpp"
 	"${MPDir}/rd-vulkan/rtx/vk_rtx_physical_sky.h"

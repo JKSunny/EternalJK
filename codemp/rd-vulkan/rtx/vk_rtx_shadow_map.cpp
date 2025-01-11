@@ -165,7 +165,7 @@ VkResult vk_rtx_shadow_map_initialize( void )
 	img_view_info.subresourceRange.layerCount = 2;
 	VK_CHECK( qvkCreateImageView( vk.device, &img_view_info, NULL, &imv_smap_depth_array ) );
 
-	VkCommandBuffer cmd_buf = vk_begin_command_buffer();
+	VkCommandBuffer cmd_buf = vkpt_begin_command_buffer( &vk.cmd_buffers_graphics );
 
 	VkImageSubresourceRange range;
 	Com_Memset( &range, 0, sizeof(VkImageSubresourceRange) ); 
@@ -182,7 +182,7 @@ VkResult vk_rtx_shadow_map_initialize( void )
 		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
 	);
 
-	vk_end_command_buffer( cmd_buf );
+	vkpt_submit_command_buffer_simple( cmd_buf, vk.queue, true );
 
 	return VK_SUCCESS;
 }

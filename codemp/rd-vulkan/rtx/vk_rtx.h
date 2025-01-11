@@ -144,6 +144,15 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 				1, &barrier ); \
 	} while(0)
 
+typedef struct cmd_buf_group_s {
+	uint32_t count_per_frame;
+	uint32_t used_this_frame;
+	VkCommandBuffer* buffers;
+	VkCommandPool command_pool;
+#ifdef _DEBUG
+	void** buffer_begin_addrs;
+#endif
+} cmd_buf_group_t;
 
 // shared model-mesh vbo structure (mdxm, mdv)
 typedef struct
