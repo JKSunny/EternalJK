@@ -81,8 +81,8 @@ static void change_image_layouts( VkImage image, const VkImageSubresourceRange* 
 		VK_IMAGE_LAYOUT_GENERAL
 	);
 
-	vkpt_submit_command_buffer_simple( cmd_buf, vk.queue, true );
-	vkpt_wait_idle( vk.queue, &vk.cmd_buffers_graphics );
+	vkpt_submit_command_buffer_simple( cmd_buf, vk.queue_graphics, true );
+	vkpt_wait_idle( vk.queue_graphics, &vk.cmd_buffers_graphics );
 }
 
 static void vk_rtx_destroy_env_texture( void )
@@ -581,8 +581,7 @@ void vk_rtx_evaluate_sun_light( sun_light_t *light, const vec3_t sky_matrix[3], 
 
 	if ( skyIndex != current_preset )
 	{
-		//vkQueueWaitIdle(vk.queue_graphics);
-		vk_wait_idle();
+		qvkQueueWaitIdle( vk.queue_graphics );
 		SkyLoadScatterParameters( skyDesc->preset );
 		current_preset = skyIndex;
 	}

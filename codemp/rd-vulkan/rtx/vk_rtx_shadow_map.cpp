@@ -121,8 +121,7 @@ VkResult vk_rtx_shadow_map_initialize( void )
 	img_info.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
 		    | VK_IMAGE_USAGE_SAMPLED_BIT,
 	img_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	img_info.queueFamilyIndexCount = 0;
-	//img_info.queueFamilyIndexCount = vk.queue_family_index;
+	img_info.queueFamilyIndexCount = vk.queue_idx_graphics;
 	img_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
 	VK_CHECK( qvkCreateImage( vk.device, &img_info, NULL, &img_smap ) );
@@ -182,7 +181,7 @@ VkResult vk_rtx_shadow_map_initialize( void )
 		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
 	);
 
-	vkpt_submit_command_buffer_simple( cmd_buf, vk.queue, true );
+	vkpt_submit_command_buffer_simple( cmd_buf, vk.queue_graphics, true );
 
 	return VK_SUCCESS;
 }

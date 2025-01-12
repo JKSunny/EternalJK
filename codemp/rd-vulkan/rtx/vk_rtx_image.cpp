@@ -171,8 +171,7 @@ void vk_rtx_extract_emissive_texture_info( image_t *image )
 
 static void vk_rtx_copy_buffer_to_image(vkimage_t* image, uint32_t width, uint32_t height, VkBuffer *buffer, uint32_t mipLevel, uint32_t arrayLayer)
 {
-	VkCommandBuffer command_buffer;
-	command_buffer = vk_begin_command_buffer();
+	VkCommandBuffer cmd_buf = vkpt_begin_command_buffer( &vk.cmd_buffers_graphics );
 
 	VkImageMemoryBarrier barrier;
 	Com_Memset( &barrier, 0, sizeof(VkImageMemoryBarrier) );
@@ -190,7 +189,7 @@ static void vk_rtx_copy_buffer_to_image(vkimage_t* image, uint32_t width, uint32
 	barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 	barrier.image = image->handle;
 
-	qvkCmdPipelineBarrier(command_buffer,
+	qvkCmdPipelineBarrier(cmd_buf,
 		VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
 		VK_PIPELINE_STAGE_TRANSFER_BIT,
 		0, 0, NULL, 0, NULL,
@@ -213,7 +212,7 @@ static void vk_rtx_copy_buffer_to_image(vkimage_t* image, uint32_t width, uint32
 	region.imageExtent.height = height;
 	region.imageExtent.depth = 1;
 
-	qvkCmdCopyBufferToImage(command_buffer, *buffer, image->handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+	qvkCmdCopyBufferToImage(cmd_buf, *buffer, image->handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
 	// transition to VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
 
@@ -222,13 +221,13 @@ static void vk_rtx_copy_buffer_to_image(vkimage_t* image, uint32_t width, uint32
 	barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 	barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 	barrier.image = image->handle;
-	qvkCmdPipelineBarrier(command_buffer,
+	qvkCmdPipelineBarrier(cmd_buf,
 		VK_PIPELINE_STAGE_TRANSFER_BIT,
 		VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
 		0, 0, NULL, 0, NULL,
 		1, &barrier);
 
-	vk_end_command_buffer(command_buffer);
+	vkpt_submit_command_buffer_simple( cmd_buf, vk.queue_graphics, true );
 }
 
 static void vk_rtx_create_image_array( const char *name, vkimage_t *image, uint32_t width, uint32_t height, 
@@ -329,14 +328,15 @@ void vk_rtx_upload_image_data( vkimage_t *image, uint32_t width, uint32_t height
 
 	vk_rtx_copy_buffer_to_image( image, width, height, &staging.buffer, mipLevel, arrayLayer );
 
+	qvkQueueWaitIdle( vk.queue_graphics );
+
 	qvkDestroyBuffer( vk.device, staging.buffer, NULL );
 	qvkFreeMemory( vk.device, staging.memory, NULL );
 }
 
 static void vk_rtx_record_image_layout_transition( vkimage_t *image, VkImageLayout oldLayout, VkImageLayout newLayout )
 {
-	VkCommandBuffer command_buffer;
-	command_buffer = vk_begin_command_buffer();
+	VkCommandBuffer cmd_buf = vkpt_begin_command_buffer( &vk.cmd_buffers_graphics );
 
 	VkImageMemoryBarrier barrier;
 	Com_Memset( &barrier, 0, sizeof(VkImageMemoryBarrier) );
@@ -451,13 +451,13 @@ static void vk_rtx_record_image_layout_transition( vkimage_t *image, VkImageLayo
 	barrier.newLayout = newLayout;
 	barrier.image = image->handle;
 
-	qvkCmdPipelineBarrier( command_buffer,
+	qvkCmdPipelineBarrier( cmd_buf,
 		VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
 		VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
 		0, 0, NULL, 0, NULL,
 		1, &barrier );
 
-	vk_end_command_buffer( command_buffer );
+	vkpt_submit_command_buffer_simple( cmd_buf, vk.queue_graphics, true );
 }
 
 #define IMG_FLAGS	VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT  | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT

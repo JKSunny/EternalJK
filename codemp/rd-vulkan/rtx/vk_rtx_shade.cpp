@@ -87,6 +87,9 @@ void temporal_cvar_changed( void )
 
 void VK_BeginRenderClear()
 {
+	vkpt_reset_command_buffers( &vk.cmd_buffers_graphics );
+	vkpt_reset_command_buffers( &vk.cmd_buffers_transfer );
+
 	if ( vk.imageDescriptor.needsUpdate == qtrue ) 
 	{
 		vk_rtx_update_descriptor( &vk.imageDescriptor );
@@ -1192,9 +1195,6 @@ static void vk_rtx_end_command_buffer(
 	VK_CHECK( qvkQueueSubmit( vk.queue, 1, &submit_info, VK_NULL_HANDLE ) );
 };
 
-//#define VK_RTX_INVESTIGATE_SLOW_CMD_BUF
-#define VK_RTX_SHADOWMAP
-
 static VkResult vkpt_pt_update_descripter_set_bindings( int idx )
 {
 	vk_rtx_bind_descriptor_as( &vk.rt_descriptor_set[idx], RAY_GEN_DESCRIPTOR_SET_IDX, VK_SHADER_STAGE_RAYGEN_BIT_KHR, &vk.tlas_geometry[idx].accel );
@@ -1236,14 +1236,9 @@ static void vk_begin_trace_rays( trRefdef_t *refdef, reference_mode_t *ref_mode,
 			wait_stages = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 		}
 
-		vk_rtx_end_command_buffer( transfer_cmd_buf, 
-			(*prev_trace_signaled) ? vk.device_count : 0, &prev_trace_semaphores, &wait_stages,
-			1, &transfer_semaphores 
-		);
-
 		vkpt_submit_command_buffer(
 			transfer_cmd_buf, 
-			vk.queue, 
+			vk.queue_transfer, 
 			all_device_mask, 
 			(*prev_trace_signaled) ? vk.device_count : 0, &prev_trace_semaphores, &wait_stages, device_indices, 
 			vk.device_count, &transfer_semaphores, device_indices, 
@@ -1281,10 +1276,8 @@ static void vk_begin_trace_rays( trRefdef_t *refdef, reference_mode_t *ref_mode,
 		BEGIN_PERF_MARKER( trace_cmd_buf, PROFILER_SHADOW_MAP );
 		if ( god_rays_enabled )
 		{
-#ifdef VK_RTX_SHADOWMAP
 			vk_rtx_shadow_map_render( trace_cmd_buf, shadowmap_view_proj,
 				vk.geometry.idx_world_static_offset, 0, 0, 0 );
-#endif
 		}
 		END_PERF_MARKER( trace_cmd_buf, PROFILER_SHADOW_MAP );
 
@@ -1292,7 +1285,7 @@ static void vk_begin_trace_rays( trRefdef_t *refdef, reference_mode_t *ref_mode,
 
 		vkpt_submit_command_buffer(
 			trace_cmd_buf,
-			vk.queue,
+			vk.queue_graphics,
 			all_device_mask,
 			vk.device_count, &transfer_semaphores, &wait_stages, device_indices,
 			0, 0, 0,
@@ -1351,7 +1344,7 @@ static void vk_begin_trace_rays( trRefdef_t *refdef, reference_mode_t *ref_mode,
 
 		vkpt_submit_command_buffer(
 			trace_cmd_buf,
-			vk.queue,
+			vk.queue_graphics,
 			all_device_mask,
 			0, 0, 0, 0,
 			vk.device_count, &trace_semaphores, device_indices,
@@ -1402,7 +1395,7 @@ static void vk_begin_trace_rays( trRefdef_t *refdef, reference_mode_t *ref_mode,
 			qvkCmdCopyBuffer( post_cmd_buf, vk.buf_readback.buffer, vk.buf_readback_staging[vk.current_frame_index].buffer, 1, &copyRegion);
 		}
 
-		vkpt_submit_command_buffer_simple( post_cmd_buf, vk.queue, true );
+		vkpt_submit_command_buffer_simple( post_cmd_buf, vk.queue_graphics, true );
 	}
 }
 

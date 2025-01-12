@@ -257,7 +257,7 @@ VkResult UploadImage( void *FirstPixel, size_t total_size, unsigned int Width, u
 		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
 		);
 
-	vkpt_submit_command_buffer_simple(cmd_buf, vk.queue, true);
+	vkpt_submit_command_buffer_simple(cmd_buf, vk.queue_graphics, true);
 
 	VkDescriptorImageInfo desc_img_info;
 	desc_img_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -282,9 +282,7 @@ VkResult UploadImage( void *FirstPixel, size_t total_size, unsigned int Width, u
 	s.dstSet = vk.desc_set_textures_odd;
 	qvkUpdateDescriptorSets( vk.device, 1, &s, 0, NULL );
 
-	//vk_wait_idle();
-	qvkQueueWaitIdle( vk.queue );
-
+	qvkQueueWaitIdle( vk.queue_graphics );
 	vk_rtx_buffer_destroy( &buf_img_upload );
 
 	return VK_SUCCESS;
@@ -790,7 +788,7 @@ struct ShadowmapGeometry FillVertexAndIndexBuffers( const char* FileName, unsign
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 	//ATTACH_LABEL_VARIABLE_NAME(result.Indexes.buffer, BUFFER, "Shadowmap Index Buffer");
 
-	VkCommandBuffer cmd_buf = vkpt_begin_command_buffer( &vk.cmd_buffers_transfer );
+	VkCommandBuffer cmd_buf = vkpt_begin_command_buffer( &vk.cmd_buffers_graphics );
 
 	BUFFER_BARRIER( cmd_buf, 
 		VK_ACCESS_NONE, 
@@ -861,8 +859,8 @@ struct ShadowmapGeometry FillVertexAndIndexBuffers( const char* FileName, unsign
 		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
 	);
 
-	vkpt_submit_command_buffer_simple( cmd_buf, vk.queue, qtrue );
-	qvkQueueWaitIdle( vk.queue );
+	vkpt_submit_command_buffer_simple( cmd_buf, vk.queue_graphics, qtrue );
+	qvkQueueWaitIdle( vk.queue_graphics );
 	vk_rtx_buffer_destroy(&upload_buffer);
 
 done:

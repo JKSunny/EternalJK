@@ -54,11 +54,6 @@ void vk_create_command_buffer( void )
         alloc_info.commandBufferCount = 1;
 
         VK_CHECK( qvkAllocateCommandBuffers( vk.device, &alloc_info, &vk.tess[i].command_buffer ) );
-#ifdef USE_RTX
-        VK_CHECK( qvkAllocateCommandBuffers( vk.device, &alloc_info, &vk.tess[i].command_buffer_trace ) );
-        VK_CHECK( qvkAllocateCommandBuffers( vk.device, &alloc_info, &vk.tess[i].command_buffer_trace2 ) );
-        VK_CHECK( qvkAllocateCommandBuffers( vk.device, &alloc_info, &vk.tess[i].command_buffer_transfer ) );
-#endif
 
         vk_debug( va("Create command buffer: vk.cmd->command_buffer[%d] \n", i ) );
     }

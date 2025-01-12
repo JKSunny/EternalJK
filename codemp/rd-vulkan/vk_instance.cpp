@@ -627,6 +627,74 @@ qboolean vk_select_surface_format( VkPhysicalDevice physical_device, VkSurfaceKH
         vk.capture_format = vk.color_format;
 }
 
+ #ifdef USE_RTX
+static void vk_rtx_create_queues( VkPhysicalDevice physical_device, 
+	int &num_create_queues,
+	VkDeviceQueueCreateInfo *queue_create_info )
+{
+	/* queue family and create physical device */
+	uint32_t num_queue_families = 0;
+	qvkGetPhysicalDeviceQueueFamilyProperties( physical_device, &num_queue_families, NULL);
+	VkQueueFamilyProperties *queue_families = (VkQueueFamilyProperties*)malloc(num_queue_families * sizeof(VkQueueFamilyProperties));
+	qvkGetPhysicalDeviceQueueFamilyProperties( physical_device, &num_queue_families, queue_families);
+
+	// Com_Printf("num queue families: %d\n", num_queue_families);
+
+	vk.queue_idx_graphics = -1;
+	vk.queue_idx_transfer = -1;
+
+	for ( int i = 0; i < num_queue_families; i++ ) 
+	{
+		if ( !queue_families[i].queueCount )
+			continue;
+		VkBool32 present_support = 0;
+		qvkGetPhysicalDeviceSurfaceSupportKHR( physical_device, i, vk.surface, &present_support);
+
+		const int supports_graphics = queue_families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT;
+		const int supports_compute = queue_families[i].queueFlags & VK_QUEUE_COMPUTE_BIT;
+		const int supports_transfer = queue_families[i].queueFlags & VK_QUEUE_TRANSFER_BIT;
+
+		if ( supports_graphics && supports_compute && vk.queue_idx_graphics < 0 ) {
+			if ( !present_support )
+				continue;
+			vk.queue_idx_graphics = i;
+		}
+		if ( supports_transfer && ( vk.queue_idx_transfer < 0 || vk.queue_idx_graphics == vk.queue_idx_transfer ) ) {
+			vk.queue_idx_transfer = i;
+		}
+	}
+
+	if ( vk.queue_idx_graphics < 0 || vk.queue_idx_transfer < 0 ) {
+		ri.Printf(PRINT_ERROR, "...failed to find graphics queue family\n");
+		return;
+	}
+
+	float queue_priorities = 1.0f;
+	{
+		VkDeviceQueueCreateInfo q;
+		Com_Memset( &q, 0, sizeof(VkDeviceQueueCreateInfo) );
+		q.sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+		q.pNext            = NULL;
+		q.queueCount       = 1;
+		q.pQueuePriorities = &queue_priorities;
+		q.queueFamilyIndex = vk.queue_idx_graphics;
+
+		queue_create_info[num_create_queues++] = q;
+	}
+
+	if ( vk.queue_idx_transfer != vk.queue_idx_graphics ) {
+		VkDeviceQueueCreateInfo q;
+		Com_Memset( &q, 0, sizeof(VkDeviceQueueCreateInfo) );
+		q.sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+		q.pNext            = NULL;
+		q.queueCount       = 1;
+		q.pQueuePriorities = &queue_priorities;
+		q.queueFamilyIndex = vk.queue_idx_transfer;
+		queue_create_info[num_create_queues++] = q;
+	};
+}
+#endif
+
 static qboolean vk_create_device( VkPhysicalDevice physical_device, int device_index ) {
 
 	ri.Printf(PRINT_ALL, "selected physical device: %i\n\n", device_index);
@@ -668,6 +736,14 @@ static qboolean vk_create_device( VkPhysicalDevice physical_device, int device_i
 			return qfalse;
 		}
 	}
+
+#ifdef USE_RTX
+	int num_create_queues = 0;
+	VkDeviceQueueCreateInfo queue_create_info[3];
+
+	if ( vk.rtxActive )
+		vk_rtx_create_queues( physical_device, num_create_queues, queue_create_info );
+#endif
 
 	// create VkDevice
 	{
@@ -820,6 +896,8 @@ static qboolean vk_create_device( VkPhysicalDevice physical_device, int device_i
 
 			Com_Printf(" \n\n RAYTRACING SUPPORT: \n\n ");
 		}
+		else
+			vk.rtxActive = qfalse;
 #endif
 
 		qvkGetPhysicalDeviceFeatures(physical_device, &device_features);
@@ -880,6 +958,11 @@ static qboolean vk_create_device( VkPhysicalDevice physical_device, int device_i
 		device_desc.ppEnabledExtensionNames = device_extension_list;
 
 #ifdef USE_RTX
+		if ( vk.rtxActive ) {
+			device_desc.queueCreateInfoCount = num_create_queues;
+			device_desc.pQueueCreateInfos = queue_create_info;
+		}
+
 		// query device 16-bit float capabilities
 		VkPhysicalDevice16BitStorageFeatures features_16bit_storage;
 		Com_Memset( &features_16bit_storage, 0, sizeof(VkPhysicalDevice16BitStorageFeatures) );
@@ -1040,6 +1123,12 @@ __initStart:
 #endif
 
 	Com_Memset(&vk, 0, sizeof(vk));
+
+#ifdef USE_RTX
+	// Raytracing
+	if ( r_vertexLight->value == 2 )
+		vk.rtxActive = qtrue;
+#endif
 
 	qvkGetInstanceProcAddr = (PFN_vkGetInstanceProcAddr)ri.VK_GetInstanceProcAddress();
 	if (qvkGetInstanceProcAddr == NULL)

@@ -29,13 +29,13 @@ void vk_rtx_create_command_pool( void )
 	Com_Memset( &cmd_pool_create_info, 0, sizeof(VkCommandPoolCreateInfo) );
 	cmd_pool_create_info.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	cmd_pool_create_info.pNext            = NULL;
-	cmd_pool_create_info.queueFamilyIndex = vk.queue_family_index;
+	cmd_pool_create_info.queueFamilyIndex = vk.queue_idx_graphics;
 	cmd_pool_create_info.flags            = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
 	/* command pool and buffers */
 	VK_CHECK( qvkCreateCommandPool( vk.device, &cmd_pool_create_info, NULL, &vk.cmd_buffers_graphics.command_pool) );
 	
-	cmd_pool_create_info.queueFamilyIndex = vk.queue_family_index;
+	cmd_pool_create_info.queueFamilyIndex = vk.queue_idx_transfer;
 	VK_CHECK( qvkCreateCommandPool( vk.device, &cmd_pool_create_info, NULL, &vk.cmd_buffers_transfer.command_pool) );
 }
 

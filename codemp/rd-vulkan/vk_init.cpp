@@ -373,7 +373,15 @@ void vk_initialize( void )
 
 	vk_init_library();
 
-	qvkGetDeviceQueue( vk.device, vk.queue_family_index, 0, &vk.queue );
+#ifdef USE_RTX
+	if ( vk.rtxActive ) {
+		qvkGetDeviceQueue( vk.device, vk.queue_idx_graphics, 0, &vk.queue );
+		qvkGetDeviceQueue( vk.device, vk.queue_idx_graphics, 0, &vk.queue_graphics);
+		qvkGetDeviceQueue( vk.device, vk.queue_idx_transfer, 0, &vk.queue_transfer);
+	}
+	else
+#endif
+		qvkGetDeviceQueue( vk.device, vk.queue_family_index, 0, &vk.queue );
 
 	vk_get_vulkan_properties(&props);
 
@@ -418,10 +426,6 @@ void vk_initialize( void )
 	ri.Printf( PRINT_ALL, "VK_MAX_TEXTURE_UNITS: %d\n", glConfig.maxActiveTextures );
 
 #ifdef USE_RTX
-	// Raytracing
-	if ( vk.rtxSupport && r_vertexLight->value == 2 )
-		vk.rtxActive = qtrue;
-
 	// sunny
 	// rtx emissive/glow extraction on compressed textures is not implemented.
 	// I doubt you run compression with rtx hardware ..

@@ -708,9 +708,6 @@ typedef struct semaphore_group_s {
 
 typedef struct vk_tess_s {
 	VkCommandBuffer		command_buffer;
-	VkCommandBuffer		command_buffer_trace;
-	VkCommandBuffer		command_buffer_trace2;
-	VkCommandBuffer		command_buffer_transfer;
 
 	VkSemaphore			image_acquired;
 	VkSemaphore			rendering_finished;
@@ -803,11 +800,15 @@ typedef struct {
 	uint32_t		queue_family_index;
 	VkDevice		device;
 	VkQueue			queue;
-	VkQueue			queue_new;
 
 	VkPhysicalDeviceMemoryProperties devMemProperties;
 
 #ifdef USE_RTX
+	VkQueue			queue_graphics;
+	VkQueue			queue_transfer;
+	int32_t			queue_idx_graphics;
+	int32_t			queue_idx_transfer;
+
 	uint64_t		frame_counter;
 	vkgeometry_t	geometry;
 

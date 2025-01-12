@@ -1266,8 +1266,8 @@ void R_PreparePT( world_t &worldData )
 	tess.numIndexes = 0;
 	R_RecursiveCreateAS( worldData, worldData.nodes, &num_indices_static, &num_vertices_static, &num_indices_dynamic_data, &num_vertices_dynamic_data, &num_indices_dynamic_as, &num_vertices_dynamic_as, qfalse);
 
-	VkCommandBuffer cmd_buf = vk_begin_command_buffer();
-	
+	VkCommandBuffer cmd_buf = vkpt_begin_command_buffer(&vk.cmd_buffers_graphics);
+
 	const qboolean instanced = qfalse;
 
 	accel_build_batch_t batch;
@@ -1342,8 +1342,7 @@ void R_PreparePT( world_t &worldData )
 	qvkCmdBuildAccelerationStructuresKHR( cmd_buf, batch.numBuilds, batch.buildInfos, batch.rangeInfoPtrs );
 	MEM_BARRIER_BUILD_ACCEL(cmd_buf); /* probably not needed here but doesn't matter */
 
-	vk_end_command_buffer( cmd_buf );
-
+	vkpt_submit_command_buffer(cmd_buf, vk.queue_graphics, (1 << vk.device_count) - 1, 0, NULL, NULL, NULL, 0, NULL, NULL, NULL);
 
 	vk_rtx_reset_envmap();
 	vk_rtx_prepare_envmap( worldData );
