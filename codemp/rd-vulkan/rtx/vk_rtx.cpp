@@ -206,6 +206,9 @@ void vk_rtx_begin_frame( void )
 	{
 		vk.extent_screen_images = extent_screen_images;
 	}
+
+	vk.extent_taa_images.width = MAX(vk.extent_screen_images.width, vk.extent_unscaled.width);
+	vk.extent_taa_images.height = MAX(vk.extent_screen_images.height, vk.extent_unscaled.height);
 }
 
 void vk_rtx_initialize( void )

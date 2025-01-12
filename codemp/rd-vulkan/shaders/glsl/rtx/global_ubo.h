@@ -189,7 +189,8 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 	GLOBAL_UBO_VAR_LIST_DO( FLOAT,	 god_rays_intensity				) \
 	GLOBAL_UBO_VAR_LIST_DO( FLOAT,	 god_rays_eccentricity			) \
 	\
-	GLOBAL_UBO_VAR_LIST_DO( VEC2,	 pad0							) \
+	GLOBAL_UBO_VAR_LIST_DO( FLOAT,   cylindrical_hfov				) \
+	GLOBAL_UBO_VAR_LIST_DO( FLOAT,   cylindrical_hfov_prev			) \
 	GLOBAL_UBO_VAR_LIST_DO( FLOAT,	 tonemap_hdr_clamp_strength		) \
 	GLOBAL_UBO_VAR_LIST_DO( INT,	 num_dyn_lights					) \
 	\
@@ -202,6 +203,12 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 	GLOBAL_UBO_VAR_LIST_DO( INT	,	 prev_taa_output_width			) \
 	GLOBAL_UBO_VAR_LIST_DO( INT	,	 prev_taa_output_height			) \
 	GLOBAL_UBO_VAR_LIST_DO( FLOAT,	 bloom_intensity				) \
+	\
+	GLOBAL_UBO_VAR_LIST_DO( VEC2,    projection_fov_scale			) \
+	GLOBAL_UBO_VAR_LIST_DO( VEC2,    projection_fov_scale_prev		) \
+	\
+	GLOBAL_UBO_VAR_LIST_DO( VEC3,    pad1							) \
+	GLOBAL_UBO_VAR_LIST_DO( INT,     pt_projection					) \
 	\
 	GLOBAL_UBO_VAR_LIST_DO( FLOAT,   sky_transmittance				) \
 	GLOBAL_UBO_VAR_LIST_DO( FLOAT,   sky_phase_g					) \

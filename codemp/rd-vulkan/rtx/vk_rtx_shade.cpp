@@ -692,7 +692,7 @@ static void evaluate_taa_settings( const reference_mode_t* ref_mode )
 	}
 }
 
-static void vk_rtx_prepare_ubo( trRefdef_t *refdef, world_t *world, vkUniformRTX_t *ubo, mnode_t *viewleaf, reference_mode_t *ref_mode, const vec3_t sky_matrix[3], qboolean render_world ) 
+static void vk_rtx_prepare_ubo( trRefdef_t *refdef, world_t *world, mnode_t *viewleaf, reference_mode_t *ref_mode, const vec3_t sky_matrix[3], qboolean render_world ) 
 {
 	float			P[16];
 	float			V[16];
@@ -701,10 +701,11 @@ static void vk_rtx_prepare_ubo( trRefdef_t *refdef, world_t *world, vkUniformRTX
 
 	viewParms_t		*vkpt_refdef = &backEnd.viewParms;
 	
+	vkUniformRTX_t *ubo = &vk.uniform_buffer;
 	memcpy( ubo->V_prev, ubo->V, sizeof(float) * 16 );
 	memcpy( ubo->P_prev, ubo->P, sizeof(float) * 16 );
 	memcpy( ubo->invP_prev, ubo->invP, sizeof(float) * 16 );
-	//ubo->cylindrical_hfov_prev = ubo->cylindrical_hfov;
+	ubo->cylindrical_hfov_prev = ubo->cylindrical_hfov;
 	ubo->prev_taa_output_width = ubo->taa_output_width;
 	ubo->prev_taa_output_height = ubo->taa_output_height;
 
@@ -725,14 +726,47 @@ static void vk_rtx_prepare_ubo( trRefdef_t *refdef, world_t *world, vkUniformRTX
 		viewport_proj[15] = 1.f;
 
 		mult_matrix_matrix( P, viewport_proj, raw_proj );
-	
-		create_view_matrix( V, refdef );
-		memcpy( ubo->V, V, sizeof(float) * 16 );
-		memcpy( ubo->P, P, sizeof(float) * 16 );
-		inverse( V, ubo->invV );
-		inverse( P, ubo->invP );
+	}
+	create_view_matrix( V, refdef );
+	memcpy( ubo->V, V, sizeof(float) * 16 );
+	memcpy( ubo->P, P, sizeof(float) * 16 );
+	inverse( V, ubo->invV );
+	inverse( P, ubo->invP );
+
+	float vfov = refdef->fov_y * (float)M_PI / 180.f;
+	float unscaled_aspect = (float)vk.extent_unscaled.width / (float)vk.extent_unscaled.height;
+	float rad_per_pixel;
+	float fov_scale[2] = { 0.f, 0.f };
+
+	switch (pt_projection->integer)
+	{
+	case PROJECTION_PANINI:
+		fov_scale[1] = tanf(vfov / 2.f);
+		fov_scale[0] = fov_scale[1] * unscaled_aspect;
+		break;
+	case PROJECTION_STEREOGRAPHIC:
+		fov_scale[1] = tanf(vfov / 2.f * STEREOGRAPHIC_ANGLE);
+		fov_scale[0] = fov_scale[1] * unscaled_aspect;
+		break;
+	case PROJECTION_CYLINDRICAL:
+		rad_per_pixel = atanf(tanf(refdef->fov_y * (float)M_PI / 360.f) / ((float)vk.extent_unscaled.height * 0.5f));
+		ubo->cylindrical_hfov = rad_per_pixel * (float)vk.extent_unscaled.width;
+		break;
+	case PROJECTION_EQUIRECTANGULAR:
+		fov_scale[1] = vfov / 2.f;
+		fov_scale[0] = fov_scale[1] * unscaled_aspect;
+		break;
+	case PROJECTION_MERCATOR:
+		fov_scale[1] = logf(tanf((float)M_PI * 0.25f + (vfov / 2.f) * 0.5f));
+		fov_scale[0] = fov_scale[1] * unscaled_aspect;
+		break;
 	}
 
+	ubo->projection_fov_scale_prev[0] = ubo->projection_fov_scale[0];
+	ubo->projection_fov_scale_prev[1] = ubo->projection_fov_scale[1];
+	ubo->projection_fov_scale[0] = fov_scale[0];
+	ubo->projection_fov_scale[1] = fov_scale[1];
+	ubo->pt_projection = render_world ? pt_projection->integer : 0; // always use rectilinear projection when rendering the player setup view
 	ubo->current_frame_idx = vk.frame_counter;	// tr.frameCount, vk.swapchain_image_index;
 #ifdef USE_VK_IMGUI
 	ubo->render_mode = vk_imgui_get_render_mode();
@@ -1462,7 +1496,7 @@ void vk_rtx_begin_scene( trRefdef_t *refdef, drawSurf_t *drawSurfs, int numDrawS
 #endif
 
 	ubo = &vk.uniform_buffer;
-	vk_rtx_prepare_ubo( refdef, tr.world, ubo, viewleaf, &ref_mode, sky_matrix, render_world );
+	vk_rtx_prepare_ubo( refdef, tr.world, viewleaf, &ref_mode, sky_matrix, render_world );
 	ubo->prev_adapted_luminance = prev_adapted_luminance;
 
 #if 0
