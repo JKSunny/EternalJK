@@ -683,8 +683,14 @@ static void vk_create_vertex_buffer_descriptor( uint32_t index, uint32_t prev_in
 		light_count_history_index = vk_rtx_add_descriptor_buffer( descriptor, LIGHT_COUNT_HISTORY, BINDING_LIGHT_COUNTS_HISTORY_BUFFER, VK_SHADER_STAGE_ALL, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER );
 		vk_rtx_set_descriptor_update_size( descriptor, BINDING_LIGHT_COUNTS_HISTORY_BUFFER, VK_SHADER_STAGE_ALL, LIGHT_COUNT_HISTORY );
 
-		for (i = 0; i < LIGHT_COUNT_HISTORY; i++)
-			descriptor->data[light_count_history_index].buffer[i] = { vk.buf_light_counts_history[i].buffer, 0, vk.buf_light_counts_history[i].size };
+		for ( i = 0; i < LIGHT_COUNT_HISTORY; i++ ) 
+		{
+			descriptor->data[light_count_history_index].buffer[i] = { 
+				vk.buf_light_counts_history[i].buffer, 
+				0, 
+				vk.buf_light_counts_history[i].size 
+			};
+		}
 	}
 
 	vk_rtx_create_descriptor( descriptor );
@@ -1266,6 +1272,8 @@ void R_PreparePT( world_t &worldData )
 	tess.numIndexes = 0;
 	R_RecursiveCreateAS( worldData, worldData.nodes, &num_indices_static, &num_vertices_static, &num_indices_dynamic_data, &num_vertices_dynamic_data, &num_indices_dynamic_as, &num_vertices_dynamic_as, qfalse);
 
+	vkpt_light_buffers_create( worldData );
+
 	VkCommandBuffer cmd_buf = vkpt_begin_command_buffer(&vk.cmd_buffers_graphics);
 
 	const qboolean instanced = qfalse;
@@ -1341,6 +1349,12 @@ void R_PreparePT( world_t &worldData )
 
 	qvkCmdBuildAccelerationStructuresKHR( cmd_buf, batch.numBuilds, batch.buildInfos, batch.rangeInfoPtrs );
 	MEM_BARRIER_BUILD_ACCEL(cmd_buf); /* probably not needed here but doesn't matter */
+
+	if ( vk.buf_light_stats[0].buffer )
+	{
+		for ( i = 0; i < NUM_LIGHT_STATS_BUFFERS; i++ )
+			qvkCmdFillBuffer( cmd_buf, vk.buf_light_stats[i].buffer, 0, vk.buf_light_stats[i].size, 0 );
+	}
 
 	vkpt_submit_command_buffer(cmd_buf, vk.queue_graphics, (1 << vk.device_count) - 1, 0, NULL, NULL, NULL, 0, NULL, NULL, NULL);
 
@@ -1475,23 +1489,6 @@ void R_PreparePT( world_t &worldData )
 	}
 
 	vk.scratch_buf_ptr = 0;
-	
-
-	// the descriptor system is slightly different compared to Q2RTX.
-	// valid image and samper handles are required to create the primary rtx and compute pipelines and descriptors.
-	vkpt_light_buffers_create( worldData );
-
-	{
-		VkCommandBuffer cmd_buf = vk_begin_command_buffer();
-
-		if ( vk.buf_light_stats[0].buffer )
-		{
-			for ( i = 0; i < NUM_LIGHT_STATS_BUFFERS; i++ )
-				qvkCmdFillBuffer( cmd_buf, vk.buf_light_stats[i].buffer, 0, vk.buf_light_stats[i].size, 0 );
-		}
-
-		vk_end_command_buffer( cmd_buf );
-	}
 
 	vkpt_physical_sky_initialize();
 

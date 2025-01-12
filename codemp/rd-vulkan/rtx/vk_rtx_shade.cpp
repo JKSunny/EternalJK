@@ -1149,15 +1149,7 @@ vkpt_light_buffer_upload_staging( VkCommandBuffer cmd_buf )
 	{
 		qvkCmdFillBuffer(cmd_buf, vk.buf_light_stats[buffer_idx].buffer, 0, vk.buf_light_stats[buffer_idx].size, 0);
 	}
-#if 0
-	BUFFER_BARRIER( cmd_buf,
-		VK_ACCESS_NONE_KHR,
-		VK_ACCESS_SHADER_WRITE_BIT,
-		vk.buf_light.buffer,
-		0,
-		VK_WHOLE_SIZE
-	);
-#endif
+
 	return VK_SUCCESS;
 }
 
