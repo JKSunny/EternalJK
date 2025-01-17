@@ -27,7 +27,6 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 #version 460
 #extension GL_GOOGLE_include_directive    : enable
-#extension GL_EXT_nonuniform_qualifier : enable
 #pragma optionNV(unroll all)
 
 #define ENABLE_SHADOW_CAUSTICS

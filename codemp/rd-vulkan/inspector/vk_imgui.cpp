@@ -400,6 +400,8 @@ static void vk_imgui_draw_viewport( void )
 			else 
 				index = 0; // TAA_OUTPUT + TONEMAPPING;
 
+			index = 0; // debug with tonemapping applied.
+
 			ImGui::Image( (ImU64)inspector.render_mode.rtx_image.bound[index], 
 				{ (float)gls.windowWidth, (float)gls.windowHeight } );
 		}

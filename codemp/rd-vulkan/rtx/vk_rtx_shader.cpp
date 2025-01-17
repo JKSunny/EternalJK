@@ -24,9 +24,6 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "tr_local.h"
 #include "shaders/spirv/shader_data_rtx.c"
 
-static VkSpecializationMapEntry specEntry;
-static VkSpecializationInfo		specInfo[2];
-
 static VkShaderModule vk_rtx_create_shader( const uint8_t *bytes, const int count )
 {
     VkShaderModuleCreateInfo desc;
@@ -204,12 +201,14 @@ void vk_rtx_create_pipelines( void )
 {
 	Com_Memset( &vk.rt_pipelines, 0, sizeof(VkPipeline) * PIPELINE_COUNT );
 
-	uint32_t numbers[2] = { 0, 1 };
-
+	VkSpecializationMapEntry specEntry;
 	specEntry.constantID = 0;
 	specEntry.offset = 0;
 	specEntry.size = sizeof(uint32_t);
 
+	uint32_t numbers[2] = { 0, 1 };
+
+	VkSpecializationInfo specInfo[2];
 	specInfo[0].mapEntryCount = 1;
 	specInfo[0].pMapEntries = &specEntry;
 	specInfo[0].dataSize = sizeof(uint32_t);

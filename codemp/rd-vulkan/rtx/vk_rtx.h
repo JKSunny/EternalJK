@@ -298,6 +298,13 @@ typedef struct {
 	vkbuffer_t	xyz_world_static;
 	vkbuffer_t	cluster_world_static;
 
+	uint32_t	idx_sky_static_offset;
+	uint32_t	xyz_sky_static_offset;
+	uint32_t	cluster_sky_static_offset;
+	vkbuffer_t	idx_sky_static;
+	vkbuffer_t	xyz_sky_static;
+	vkbuffer_t	cluster_sky_static;
+
 	uint32_t	idx_world_dynamic_data_offset;
 	uint32_t	xyz_world_dynamic_data_offset;
 	uint32_t	cluster_world_dynamic_data_offset;

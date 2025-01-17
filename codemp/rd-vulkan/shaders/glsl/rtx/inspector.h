@@ -40,6 +40,11 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 	IMG_DO( THROUGHPUT,			"Troughput",				14,	true ) \
 	IMG_DO( BOUNCE_THROUGHPUT,	"Bounce troughput",			15,	true ) \
 	IMG_DO( FLAT_COLOR,	        "Flat color",			    16,	true ) \
+	IMG_DO( ASVGF_GRAD_LF_PING,	"LF ping",			        17,	true ) \
+	IMG_DO( ASVGF_GRAD_LF_PONG,	"LF pong",			        18,	true ) \
+	IMG_DO( ASVGF_ATROUS_PING_LF_SH, "Atrous SH LF ping",	19,	true ) \
+	IMG_DO( ASVGF_ATROUS_PONG_LF_SH, "Atrous SH LF pong",	20,	true ) \
+    IMG_DO( PT_COLOR_LF_COCG,    "Indirect cocg",	        21,	true ) \
 
 #ifdef GLSL
 const bool render_mode_interleave[] = {
@@ -60,7 +65,7 @@ vec4 prepare_render_mode_input( in int index, in ivec2 ipos, out bool is_interle
     switch( index ) 
     {
         case IS_ALBEDO:             color.rgb = texelFetch( TEX_PT_BASE_COLOR_A,            ipos, 0 ).rgb;              break;
-        case IS_NORMAL:             color.rgb = decode_normal(texelFetch(TEX_PT_NORMAL_A,   ipos, 0 ).x) * 0.5 + 0.5;   break;
+        case IS_NORMAL:             color.rgb = decode_normal(texelFetch(TEX_PT_NORMAL_A,   ipos, 0 ).x);   break;
 #ifdef USE_RTX_INSPECT_TANGENTS		
         case IS_TANGENT:            color.rgb = decode_normal(texelFetch(TEX_PT_TANGENT_A,  ipos, 0 ).x);  				break;
 #endif
@@ -73,10 +78,15 @@ vec4 prepare_render_mode_input( in int index, in ivec2 ipos, out bool is_interle
         case IS_COLOR_SPEC:         color.rgb = unpackRGBE( texelFetch( TEX_PT_COLOR_SPEC,  ipos, 0 ).x ).rgb / STORAGE_SCALE_SPEC; break;
         case IS_DIRECT_ILL:         color.rgb = unpackRGBE( texelFetch( TEX_PT_COLOR_HF,    ipos, 0 ).x ).rgb / STORAGE_SCALE_HF;   break;
         case IS_INDIRECT_ILL:       color.rgb = texelFetch( TEX_PT_COLOR_LF_SH, ipos, 0 ).rgb / STORAGE_SCALE_LF;                   break;
-        case IS_MOTION:             color.rg  = texelFetch( TEX_FLAT_MOTION,                ipos, 0 ).rg;               break;
+        case IS_MOTION:             color.rg  = texelFetch( TEX_PT_MOTION,                ipos, 0 ).rg;               break;
         case IS_THROUGHPUT:         color.rgb = texelFetch( TEX_PT_THROUGHPUT,              ipos, 0 ).rgb;              break;
         case IS_BOUNCE_THROUGHPUT:  color.rgb = texelFetch( TEX_PT_BOUNCE_THROUGHPUT,       ipos, 0 ).rgb;              break;
         case IS_FLAT_COLOR:         color.rgb = texelFetch( TEX_FLAT_COLOR,                 ipos, 0 ).rgb;              break;
+        case IS_ASVGF_GRAD_LF_PING: color.rgb = texelFetch( TEX_ASVGF_GRAD_LF_PING,             ipos, 0 ).rgb;              break;
+        case IS_ASVGF_GRAD_LF_PONG: color.rgb = texelFetch( TEX_ASVGF_GRAD_LF_PONG,             ipos, 0 ).rgb;              break;
+        case IS_ASVGF_ATROUS_PING_LF_SH: color.rgb = texelFetch( TEX_ASVGF_ATROUS_PING_LF_SH,   ipos, 0 ).rgb;              break;
+        case IS_ASVGF_ATROUS_PONG_LF_SH: color.rgb = texelFetch( TEX_ASVGF_ATROUS_PONG_LF_SH,   ipos, 0 ).rgb;              break;
+        case IS_PT_COLOR_LF_COCG: color.rgb = texelFetch( TEX_PT_COLOR_LF_COCG,   ipos, 0 ).rgb;              break;
 
         case IS_TAA_OUTPUT:
         default: color.rgba = imageLoad( IMG_ASVGF_COLOR, ipos ); break;

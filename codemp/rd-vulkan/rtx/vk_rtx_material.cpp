@@ -78,9 +78,10 @@ qboolean RB_SkipObject(shader_t* shader) {
 	if ( strstr( shader->name, "glass" ) )
 		return qfalse;
 
+	if (shader->isSky || (shader->surfaceFlags & SURF_SKY) )
+		return qfalse;
 
 	if ( strstr( shader->name, "Shadow" )
-		|| shader->isSky
 		|| shader->surfaceFlags == SURF_NODRAW /*|| shader->surfaceFlags == SURF_NONE*///SURF_SKIP
 		|| shader->stages[0] == NULL 
 		|| !shader->stages[0]->active )
@@ -144,6 +145,9 @@ uint32_t RB_GetMaterial( shader_t *shader )
 
 	if ( ( backEnd.currentEntity->e.renderfx & RF_FIRST_PERSON ) )
 		material |= MATERIAL_FLAG_WEAPON;
+
+	if (shader->isSky || (shader->surfaceFlags & SURF_SKY))
+		material |= MATERIAL_KIND_SKY;
 
 	// sunny
 	if ( strstr( shader->name, "botton") || strstr( shader->name, "door02") ) 

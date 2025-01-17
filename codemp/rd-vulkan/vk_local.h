@@ -922,6 +922,7 @@ typedef struct {
 	struct {
 		// world static (world geometry that does not requiere updates)
 		vk_blas_t	world;
+		vk_blas_t	sky;
 		vk_blas_t	world_transparent;
 	} blas_static;
 

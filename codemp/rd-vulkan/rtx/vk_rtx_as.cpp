@@ -75,6 +75,7 @@ void vk_rtx_reset_accel_offsets( void )
 
 	// cluster
 	vk.geometry.cluster_world_static_offset = 0;
+	vk.geometry.cluster_sky_static_offset = 0;
 	vk.geometry.cluster_world_dynamic_data_offset = 0;
 	vk.geometry.cluster_world_dynamic_as_offset = 0;
 }

@@ -666,6 +666,11 @@ void vk_rtx_create_buffers( void )
 	VK_CreateAttributeBuffer( &vk.geometry.cluster_world_dynamic_data, RTX_WORLD_DYNAMIC_DATA_IDX_SIZE / 3 * sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT );	
 	VK_CreateAttributeBuffer( &vk.geometry.cluster_world_dynamic_as, RTX_WORLD_DYNAMIC_AS_IDX_SIZE / 3 * sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT );
 
+	VK_CreateAttributeBuffer( &vk.geometry.idx_sky_static, RTX_WORLD_STATIC_IDX_SIZE * sizeof(uint32_t), VkBufferUsageFlagBits( AS_BUFFER_FLAGS | VK_BUFFER_USAGE_INDEX_BUFFER_BIT ) );
+	VK_CreateAttributeBuffer( &vk.geometry.xyz_sky_static, RTX_WORLD_STATIC_XYZ_SIZE * sizeof(VertexBuffer), AS_BUFFER_FLAGS );
+	VK_CreateAttributeBuffer( &vk.geometry.cluster_sky_static, RTX_WORLD_STATIC_IDX_SIZE/3 * sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT );
+
+
 	// readback
 	vk_rtx_buffer_create( &vk.buf_readback, sizeof(ReadbackBuffer),
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,

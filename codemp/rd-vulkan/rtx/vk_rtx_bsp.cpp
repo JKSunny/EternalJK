@@ -402,15 +402,22 @@ int R_GetClusterFromSurface( world_t &worldData, surfaceType_t *surf)
 
 void R_RecursiveCreateAS( world_t &worldData, mnode_t* node, 
 	uint32_t* countIDXstatic, uint32_t* countXYZstatic,
+	uint32_t* countIDXsky, uint32_t* countXYZsky,
 	uint32_t* countIDXdynamicData, uint32_t* countXYZdynamicData, 
-	uint32_t* countIDXdynamicAS, uint32_t* countXYZdynamicAS, qboolean transparent) 
+	uint32_t* countIDXdynamicAS, uint32_t* countXYZdynamicAS, 
+	qboolean transparent) 
 {	
 	do 
 	{
 		if (node->contents != -1)
 			break;
 
-		R_RecursiveCreateAS( worldData, node->children[0], countIDXstatic, countXYZstatic, countIDXdynamicData, countXYZdynamicData, countIDXdynamicAS, countXYZdynamicAS, transparent);
+		R_RecursiveCreateAS( worldData, node->children[0], 
+			countIDXstatic, countXYZstatic, 
+			countIDXsky, countXYZsky, 
+			countIDXdynamicData, countXYZdynamicData, 
+			countIDXdynamicAS, countXYZdynamicAS, 
+			transparent);
 		node = node->children[1];
 	} while (1);
 	{
@@ -438,7 +445,6 @@ void R_RecursiveCreateAS( world_t &worldData, mnode_t* node,
 			}
 
 			if (strstr(shader->name, "fog")) {
-				continue;
 				shader->stages[1]->active = qfalse;
 			}
 			if (strstr(shader->name, "console/sphere2")) {
@@ -478,7 +484,9 @@ void R_RecursiveCreateAS( world_t &worldData, mnode_t* node,
 				}*/
 
 				// if as is static we need one buffer
-				if (!RB_ASDynamic(tess.shader) && !RB_ASDataDynamic(tess.shader)) {
+				qboolean isSky = (shader->isSky || (shader->surfaceFlags & SURF_SKY) ) ? qtrue : qfalse;
+
+				if (!RB_ASDynamic(tess.shader) && !RB_ASDataDynamic(tess.shader) && !isSky) {
 					countIDX = countIDXstatic;
 					countXYZ = countXYZstatic;
 					idx_buffer = &vk.geometry.idx_world_static;
@@ -490,6 +498,19 @@ void R_RecursiveCreateAS( world_t &worldData, mnode_t* node,
 
 					RB_UploadCluster( worldData, &vk.geometry.cluster_world_static, vk.geometry.cluster_world_static_offset, node->cluster);
 					vk.geometry.cluster_world_static_offset += (tess.numIndexes/3);
+				}
+				else if ( isSky && !transparent ) {
+					countIDX = countIDXsky;
+					countXYZ = countXYZsky;
+					idx_buffer = &vk.geometry.idx_sky_static;
+					xyz_buffer = &vk.geometry.xyz_sky_static;
+					idx_buffer_offset = &vk.geometry.idx_sky_static_offset;
+					xyz_buffer_offset = &vk.geometry.xyz_sky_static_offset;
+
+					//if ( RB_IsLight(tess.shader) ) 
+
+					RB_UploadCluster( worldData, &vk.geometry.cluster_sky_static, vk.geometry.cluster_sky_static_offset, node->cluster);
+					vk.geometry.cluster_sky_static_offset += (tess.numIndexes/3);
 				}
 				// if the data of an object changes we need one as buffer but #swapchain object data buffers
 				else if (!RB_ASDynamic(tess.shader) && RB_ASDataDynamic(tess.shader)) {
@@ -653,6 +674,10 @@ static void vk_create_vertex_buffer_descriptor( uint32_t index, uint32_t prev_in
 	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_CLUSTER_WORLD_STATIC, VK_SHADER_STAGE_ALL, vk.geometry.cluster_world_static.buffer );
 	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_CLUSTER_WORLD_DYNAMIC_DATA, VK_SHADER_STAGE_ALL, vk.geometry.cluster_world_dynamic_data.buffer );
 	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_CLUSTER_WORLD_DYNAMIC_AS, VK_SHADER_STAGE_ALL, vk.geometry.cluster_world_dynamic_as.buffer );
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_CLUSTER_SKY, VK_SHADER_STAGE_ALL, vk.geometry.cluster_sky_static.buffer );
+
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_XYZ_SKY, VK_SHADER_STAGE_ALL, vk.geometry.xyz_sky_static.buffer );
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_IDX_SKY, VK_SHADER_STAGE_ALL, vk.geometry.idx_sky_static.buffer );
 
 	// previous
 	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_XYZ_WORLD_DYNAMIC_DATA_PREV, VK_SHADER_STAGE_ALL, vk.geometry.xyz_world_dynamic_data[prev_index].buffer );
@@ -715,20 +740,25 @@ static void vk_create_primary_rays_pipelines()
 }
 
 static uint32_t num_vertices_static;
+static uint32_t num_vertices_static_sky;
 static uint32_t num_vertices_dynamic_data;
 static uint32_t num_vertices_dynamic_as;
+
 static uint32_t num_indices_static;
+static uint32_t num_indices_static_sky;
 static uint32_t num_indices_dynamic_data;
 static uint32_t num_indices_dynamic_as;
 
 static void vk_clear_as_vertices_count( void ) 
 {
 	num_vertices_static			= 0;
+	num_vertices_static_sky		= 0;
 	num_vertices_dynamic_data	= 0;
 	num_vertices_dynamic_as		= 0;
 
 	num_indices_static			= 0; // aint indices just vertices * 3?
-	num_indices_dynamic_data		= 0;
+	num_indices_static_sky		= 0; // aint indices just vertices * 3?
+	num_indices_dynamic_data	= 0;
 	num_indices_dynamic_as		= 0;
 
 	return;
@@ -1270,7 +1300,12 @@ void R_PreparePT( world_t &worldData )
 
 	tess.numVertexes = 0;
 	tess.numIndexes = 0;
-	R_RecursiveCreateAS( worldData, worldData.nodes, &num_indices_static, &num_vertices_static, &num_indices_dynamic_data, &num_vertices_dynamic_data, &num_indices_dynamic_as, &num_vertices_dynamic_as, qfalse);
+	R_RecursiveCreateAS( worldData, worldData.nodes, 
+		&num_indices_static, &num_vertices_static, 
+		&num_indices_static_sky, &num_vertices_static_sky, 
+		&num_indices_dynamic_data, &num_vertices_dynamic_data, 
+		&num_indices_dynamic_as, &num_vertices_dynamic_as, 
+		qfalse);
 
 	vkpt_light_buffers_create( worldData );
 
@@ -1287,6 +1322,15 @@ void R_PreparePT( world_t &worldData )
 			&vk.geometry.xyz_world_static, 0, &vk.geometry.idx_world_static, 0, 
 			num_vertices_static, num_indices_static,
 			&vk.blas_static.world,
+			qfalse, qtrue, qfalse, instanced );
+	}
+
+	// sky
+	{	
+		vk_rtx_create_blas( &batch, 
+			&vk.geometry.xyz_sky_static, 0, &vk.geometry.idx_sky_static, 0, 
+			num_vertices_static_sky, num_indices_static_sky,
+			&vk.blas_static.sky,
 			qfalse, qtrue, qfalse, instanced );
 	}
 
@@ -1315,7 +1359,12 @@ void R_PreparePT( world_t &worldData )
 
 	tess.numVertexes = 0;
 	tess.numIndexes = 0;	
-	R_RecursiveCreateAS( worldData, worldData.nodes, &num_indices_static, &num_vertices_static, &num_indices_dynamic_data, &num_vertices_dynamic_data, &num_indices_dynamic_as, &num_vertices_dynamic_as, qtrue);
+	R_RecursiveCreateAS( worldData, worldData.nodes, 
+		&num_indices_static, &num_vertices_static, 
+		&num_indices_static_sky, &num_vertices_static_sky,		// not needed
+		&num_indices_dynamic_data, &num_vertices_dynamic_data, 
+		&num_indices_dynamic_as, &num_vertices_dynamic_as, 
+		qtrue);
 	
 	// world static trans
 	{

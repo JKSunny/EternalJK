@@ -27,15 +27,11 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 #version 460
 #extension GL_GOOGLE_include_directive    : enable
-#extension GL_EXT_nonuniform_qualifier : enable
 #pragma optionNV(unroll all)
 
 #include "../path_tracer_rgen.h"
 
 layout(constant_id = 0) const uint spec_bounce_index = 0;
-
-// hmm
-#include "../projection.glsl"
 
 void
 indirect_lighting(
@@ -233,8 +229,9 @@ indirect_lighting(
 		bounce_cull_mask |= AS_FLAG_VIEWER_WEAPON;
 		shadow_cull_mask |= AS_FLAG_VIEWER_WEAPON;
 	}
-	
 	trace_geometry_ray( bounce_ray, true, bounce_cull_mask );
+
+	trace_geometry_ray(bounce_ray, true, bounce_cull_mask);
 
 	bounce_contrib = vec3(0);
 
@@ -484,7 +481,7 @@ main()
 		// size is only half of the frame, so rename the threads.
 		// This is more efficient than launching an entire frame of 
 		// threads and then doing nothing in every other row.
-		ipos.y = ipos.y * 2 + global_ubo.current_frame_idx & 1;
+		ipos.y = ipos.y * 2 + (global_ubo.current_frame_idx & 1);
 	}
 
 	vec3 bounce_direction;

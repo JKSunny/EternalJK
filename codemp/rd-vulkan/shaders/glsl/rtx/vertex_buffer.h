@@ -81,6 +81,10 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 // light stats
 #define BINDING_OFFSET_LIGHT_STATS_BUFFER					20
 
+#define BINDING_OFFSET_XYZ_SKY								21
+#define BINDING_OFFSET_IDX_SKY								22
+#define BINDING_OFFSET_CLUSTER_SKY                			23
+
 #define SUN_COLOR_ACCUMULATOR_FIXED_POINT_SCALE 0x100000
 #define SKY_COLOR_ACCUMULATOR_FIXED_POINT_SCALE 0x100
 
@@ -226,6 +230,10 @@ layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_XYZ_WORLD_DYN
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_CLUSTER_WORLD_STATIC )		BUFFER_T Cluster_World_static { uint c[]; } cluster_world_static;
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_CLUSTER_WORLD_DYNAMIC_DATA )	BUFFER_T Cluster_World_dynamic_data { uint c[]; } cluster_world_dynamic_data;
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_CLUSTER_WORLD_DYNAMIC_AS )	BUFFER_T Cluster_World_dynamic_as { uint c[]; } cluster_world_dynamic_as;
+
+layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_CLUSTER_SKY )				BUFFER_T Cluster_Sky_static { uint c[]; } cluster_sky_static;
+layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_IDX_SKY )					BUFFER_T Indices_Sky_static { uint i[]; } indices_sky_static;
+layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_XYZ_SKY )					BUFFER_T Vertices_Sky_static { VertexBuffer v[]; } vertices_sky_static;
 
 //prev
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_IDX_WORLD_DYNAMIC_DATA_PREV ) BUFFER_T Indices_dynamic_data_prev { uint i[]; } indices_dynamic_data_prev;
@@ -571,6 +579,18 @@ ivec3 get_bsp_triangle_indices_and_data( in uint instance_id, in uint prim_id, o
 		triangle[2] = vertices_world_static.v[indices.z];
 	}
 	
+	else if ( instance_buffer.tlas_instance_type[instance_id] == AS_TYPE_SKY )
+	{
+		indices = ivec3(	
+			indices_sky_static.i[prim + 0], 
+			indices_sky_static.i[prim + 1], 
+			indices_sky_static.i[prim + 2] );
+
+		triangle[0] = vertices_sky_static.v[indices.x];
+		triangle[1] = vertices_sky_static.v[indices.y];
+		triangle[2] = vertices_sky_static.v[indices.z];
+	}
+	
 	else if ( instance_buffer.tlas_instance_type[instance_id] == AS_TYPE_WORLD_DYNAMIC_DATA )
 	{
 		indices = ivec3(	
@@ -711,6 +731,13 @@ Triangle get_bsp_triangle( in uint instance_id, in uint prim_id )
 
 			t.cluster = cluster_world_static.c[prim_id];
 			t.material_id = vertices_world_static.v[indices.x].material;	// same as triangle[0].material ?
+			break;
+		case AS_TYPE_SKY:
+			t.tex0 = vertices_sky_static.v[indices.x].texIdx0;
+			t.tex1 = vertices_sky_static.v[indices.x].texIdx1;
+
+			t.cluster = cluster_sky_static.c[prim_id];
+			t.material_id = vertices_sky_static.v[indices.x].material;	// same as triangle[0].material ?
 			break;
 		case AS_TYPE_WORLD_DYNAMIC_DATA:
 			t.tex0 = vertices_dynamic_data.v[indices.x].texIdx0;

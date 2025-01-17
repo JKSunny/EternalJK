@@ -137,8 +137,6 @@ VkResult vkpt_asvgf_gradient_reproject( VkCommandBuffer cmd_buf )
 
 VkResult vkpt_asvgf_filter( VkCommandBuffer cmd_buf, qboolean enable_lf )
 {
-	uint32_t i;
-
 	VkDescriptorSet desc_sets[] = {
 		vk.desc_set_vertex_buffer[vk.current_frame_index].set,
 		vk_rtx_get_current_desc_set_textures(),
@@ -175,7 +173,7 @@ VkResult vkpt_asvgf_filter( VkCommandBuffer cmd_buf, qboolean enable_lf )
 
 	/* reconstruct gradient image */
 	const int num_atrous_iterations_gradient = 7;
-	for ( i = 0; i < num_atrous_iterations_gradient; i++ ) 
+	for ( int i = 0; i < num_atrous_iterations_gradient; i++ ) 
 	{
 		uint32_t push_constants[1] = {
 			i
@@ -221,7 +219,7 @@ VkResult vkpt_asvgf_filter( VkCommandBuffer cmd_buf, qboolean enable_lf )
 
 	/* spatial reconstruction filtering */
 	const int num_atrous_iterations = 4;
-	for ( i = 0; i < num_atrous_iterations; i++ ) 
+	for ( int i = 0; i < num_atrous_iterations; i++ ) 
 	{
 		if ( enable_lf )
 		{

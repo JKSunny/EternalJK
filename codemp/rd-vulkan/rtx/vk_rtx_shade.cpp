@@ -160,6 +160,9 @@ static void vkpt_pt_create_toplevel( VkCommandBuffer cmd_buf, uint32_t idx, draw
 	//
 	append_blas( instances, &num_instances, AS_TYPE_WORLD_STATIC,		&vk.blas_static.world, 0, AS_FLAG_OPAQUE, 0, 0 );
 	
+	// sky
+	append_blas( instances, &num_instances, AS_TYPE_SKY,				&vk.blas_static.sky, 0, AS_FLAG_SKY, 0, 0 );
+	
 	append_blas( instances, &num_instances, AS_TYPE_WORLD_DYNAMIC_DATA,	&vk.blas_dynamic.data_world, 0, AS_FLAG_OPAQUE, 0, 0 );
 	//append_blas( instances, &num_instances, AS_TYPE_WORLD_DYNAMIC_DATA,	&vk.blas_dynamic.data_world_transparent, 0, 0, 0, 0 );
 	
@@ -1038,11 +1041,12 @@ static void vk_rxt_trace_lighting( VkCommandBuffer cmd_buf, float num_bounce_ray
 	// direct lighting
 	BEGIN_PERF_MARKER(cmd_buf, PROFILER_DIRECT_LIGHTING);
 
+	for ( int i = 0; i < vk.device_count; i++ )
 	{
 		uint32_t pipeline_index = (pt_caustics->value != 0) ? PIPELINE_DIRECT_LIGHTING_CAUSTICS : PIPELINE_DIRECT_LIGHTING;
 
 		pt_push_constants_t push;
-		push.gpu_index = -1; // vk.device_count == 1 ? -1 : i;
+		push.gpu_index = vk.device_count == 1 ? -1 : i;
 		push.bounce = 0;
 
 		dispatch_rays( cmd_buf, pipeline_index, push, vk.extent_render.height );
@@ -1068,28 +1072,31 @@ static void vk_rxt_trace_lighting( VkCommandBuffer cmd_buf, float num_bounce_ray
 
 	if ( num_bounce_rays > 0 ) 
 	{
-		uint32_t height;
-		if (num_bounce_rays == 0.5f)
-			height = vk.extent_render.height / 2;
-		else
-			height = vk.extent_render.height;	
-
-		for (int bounce_ray = 0; bounce_ray < (int)ceilf(num_bounce_rays); bounce_ray++)
+		for (int i = 0; i < vk.device_count; i++)
 		{
-			uint32_t pipeline_index = (bounce_ray == 0) ? PIPELINE_INDIRECT_LIGHTING_FIRST : PIPELINE_INDIRECT_LIGHTING_SECOND;
+			int height;
+			if (num_bounce_rays == 0.5f)
+				height = vk.extent_render.height / 2;
+			else
+				height = vk.extent_render.height;	
 
-			pt_push_constants_t push;
-			push.gpu_index = -1; // vk.device_count == 1 ? -1 : i;
-			push.bounce = 0;
+			for (int bounce_ray = 0; bounce_ray < (int)ceilf(num_bounce_rays); bounce_ray++)
+			{
+				uint32_t pipeline_index = (bounce_ray == 0) ? PIPELINE_INDIRECT_LIGHTING_FIRST : PIPELINE_INDIRECT_LIGHTING_SECOND;
+
+				pt_push_constants_t push;
+				push.gpu_index = vk.device_count == 1 ? -1 : i;
+				push.bounce = 0;
 		
-			dispatch_rays( cmd_buf, pipeline_index, push, height );
-		}
+				dispatch_rays( cmd_buf, pipeline_index, push, height );
 
-		BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_COLOR_LF_SH] );
-		BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_COLOR_LF_COCG] );
-		BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_COLOR_HF] );
-		BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_COLOR_SPEC] );
-		BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_BOUNCE_THROUGHPUT] );
+				BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_COLOR_LF_SH] );
+				BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_COLOR_LF_COCG] );
+				BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_COLOR_HF] );
+				BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_COLOR_SPEC] );
+				BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_BOUNCE_THROUGHPUT] );
+			}
+		}
 	}
 
 	END_PERF_MARKER( cmd_buf, PROFILER_INDIRECT_LIGHTING );
