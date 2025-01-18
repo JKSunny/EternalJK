@@ -33,17 +33,18 @@ void vk_create_sync_primitives( void )
     desc.pNext = NULL;
     desc.flags = 0;
 
-    for (i = 0; i < NUM_COMMAND_BUFFERS; i++) {
+    for ( i = 0; i < NUM_COMMAND_BUFFERS; i++ )
+    {
         desc.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
         desc.pNext = NULL;
         desc.flags = 0;
 
         // swapchain image acquired
-        VK_CHECK(qvkCreateSemaphore(vk.device, &desc, NULL, &vk.tess[i].image_acquired));
-        VK_CHECK(qvkCreateSemaphore(vk.device, &desc, NULL, &vk.tess[i].rendering_finished));
+        VK_CHECK( qvkCreateSemaphore( vk.device, &desc, NULL, &vk.tess[i].image_acquired ) );
+        VK_CHECK( qvkCreateSemaphore( vk.device, &desc, NULL, &vk.tess[i].rendering_finished ) );
 #ifdef USE_RTX
-        VK_CHECK(qvkCreateSemaphore(vk.device, &desc, NULL, &vk.tess[i].semaphores.trace_finished));
-        VK_CHECK(qvkCreateSemaphore(vk.device, &desc, NULL, &vk.tess[i].semaphores.transfer_finished));
+        VK_CHECK( qvkCreateSemaphore( vk.device, &desc, NULL, &vk.tess[i].semaphores.trace_finished ) );
+        VK_CHECK( qvkCreateSemaphore( vk.device, &desc, NULL, &vk.tess[i].semaphores.transfer_finished ) );
 
 
 	    vk.tess[i].semaphores.trace_signaled = false;
@@ -51,18 +52,20 @@ void vk_create_sync_primitives( void )
 #endif
         fence_desc.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
         fence_desc.pNext = NULL;
-        fence_desc.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-        VK_CHECK(qvkCreateFence(vk.device, &fence_desc, NULL, &vk.tess[i].rendering_finished_fence));
+		//fence_desc.flags = VK_FENCE_CREATE_SIGNALED_BIT; // so it can be used to start rendering
+		fence_desc.flags = 0; // so it can be used to start rendering
+        VK_CHECK( qvkCreateFence( vk.device, &fence_desc, NULL, &vk.tess[i].rendering_finished_fence ) );
 
         vk_debug("Created sync primitives \n");
-        vk.tess[i].waitForFence = qtrue;
+		//vk.tess[i].waitForFence = qtrue;
+		vk.tess[i].waitForFence = qfalse;
 
-        VK_SET_OBJECT_NAME(vk.tess[i].image_acquired, va("image_acquired semaphore %i", i), VK_DEBUG_REPORT_OBJECT_TYPE_SEMAPHORE_EXT);
-        VK_SET_OBJECT_NAME(vk.tess[i].rendering_finished, "rendering_finished semaphore", VK_DEBUG_REPORT_OBJECT_TYPE_SEMAPHORE_EXT);
-        VK_SET_OBJECT_NAME(vk.tess[i].rendering_finished_fence, "rendering_finished fence", VK_DEBUG_REPORT_OBJECT_TYPE_FENCE_EXT);
+        VK_SET_OBJECT_NAME( vk.tess[i].image_acquired, va("image_acquired semaphore %i", i), VK_DEBUG_REPORT_OBJECT_TYPE_SEMAPHORE_EXT );
+        VK_SET_OBJECT_NAME( vk.tess[i].rendering_finished, "rendering_finished semaphore", VK_DEBUG_REPORT_OBJECT_TYPE_SEMAPHORE_EXT );
+        VK_SET_OBJECT_NAME( vk.tess[i].rendering_finished_fence, "rendering_finished fence", VK_DEBUG_REPORT_OBJECT_TYPE_FENCE_EXT );
 #ifdef USE_RTX       
-        VK_SET_OBJECT_NAME(vk.tess[i].semaphores.trace_finished, "trace_finished fence", VK_DEBUG_REPORT_OBJECT_TYPE_FENCE_EXT);
-        VK_SET_OBJECT_NAME(vk.tess[i].semaphores.transfer_finished, "transfer_finished fence", VK_DEBUG_REPORT_OBJECT_TYPE_FENCE_EXT);
+        VK_SET_OBJECT_NAME( vk.tess[i].semaphores.trace_finished, "trace_finished fence", VK_DEBUG_REPORT_OBJECT_TYPE_FENCE_EXT );
+        VK_SET_OBJECT_NAME( vk.tess[i].semaphores.transfer_finished, "transfer_finished fence", VK_DEBUG_REPORT_OBJECT_TYPE_FENCE_EXT );
 #endif
     }
 }
@@ -1406,62 +1409,50 @@ vkpt_final_blit_filtered(VkCommandBuffer cmd_buf)
 
 void vk_begin_frame( void )
 {
-    VkCommandBufferBeginInfo begin_info;
-    VkResult result;
+	VkCommandBufferBeginInfo begin_info;
+	//VkFramebuffer frameBuffer;
+	VkResult res;
 
-    if ( vk.frame_count++ ) // might happen during stereo rendering
-        return;
+	vk_flush_staging_command_buffer(); // finish any pending texture uploads
 
-    if ( vk.cmd->waitForFence ) {
+	if ( vk.frame_count++ ) // might happen during stereo rendering
+		return;
 
-        vk.cmd = &vk.tess[vk.cmd_index++];
-        vk.cmd_index %= NUM_COMMAND_BUFFERS;
-#ifdef USE_RTX
-        vk.current_frame_index =  vk.frame_counter % NUM_COMMAND_BUFFERS;
-#endif
+	vk.cmd = &vk.tess[ vk.cmd_index ];
 
-        vk_imgui_profiler_begin_frame();
-        size_t wait_for_fence_task = vk_imgui_profiler_start_task( "WaitForFence", RGBA_LE(0x2980b9ffu) );
-
-        vk.cmd->waitForFence = qfalse;
-		result = qvkWaitForFences( vk.device, 1, &vk.cmd->rendering_finished_fence, VK_FALSE, 1e10 );
-		if ( result != VK_SUCCESS ) {
-			if ( result == VK_ERROR_DEVICE_LOST ) {
+	if ( vk.cmd->waitForFence ) {
+		vk.cmd->waitForFence = qfalse;
+		res = qvkWaitForFences( vk.device, 1, &vk.cmd->rendering_finished_fence, VK_FALSE, 1e10 );
+		if ( res != VK_SUCCESS ) {
+			if ( res == VK_ERROR_DEVICE_LOST ) {
 				// silently discard previous command buffer
-				ri.Printf( PRINT_WARNING, "Vulkan: %s returned %s", "vkWaitForfences", vk_result_string( result ) );
-			} else {
-				ri.Error( ERR_FATAL, "Vulkan: %s returned %s", "vkWaitForfences", vk_result_string( result ) );
+				ri.Printf( PRINT_WARNING, "Vulkan: %s returned %s", "vkWaitForFences", vk_result_string( res ) );
+			}
+			else {
+				ri.Error( ERR_FATAL, "Vulkan: %s returned %s", "vkWaitForFences", vk_result_string( res ) );
 			}
 		}
         vk_imgui_profiler_end_task( wait_for_fence_task );
+		VK_CHECK( qvkResetFences( vk.device, 1, &vk.cmd->rendering_finished_fence ) );
+	}
 
-#ifdef USE_RTX
-        // and 
-       // VK_CHECK( qvkWaitForFences( vk.device, 1, 
-        //    &vk.tess[(vk.swapchain_image_index - 1) % vk.swapchain_image_count].rendering_finished_fence, VK_TRUE, 1e10 ) );
-#endif
-        vk_imgui_profiler_end_task( wait_for_fence_task );
-
-        if ( !ri.VK_IsMinimized() ) {
-            size_t acquire_task = vk_imgui_profiler_start_task( "ImageAcquire",	RGBA_LE(0xd35400ffu) );
-            //result = qvkAcquireNextImageKHR( vk.device, vk.swapchain, UINT64_MAX, vk.image_acquired, VK_NULL_HANDLE, &vk.swapchain_image_index );
-            result = qvkAcquireNextImageKHR( vk.device, vk.swapchain, 5 * 1000000000LLU, vk.cmd->image_acquired, VK_NULL_HANDLE, &vk.swapchain_image_index );
-            vk_imgui_profiler_end_task( acquire_task );
-            if ( result < 0 ) {
-                switch ( result ) {
-                case VK_ERROR_OUT_OF_DATE_KHR: vk_restart_swapchain(__func__); break;
-                default: ri.Error(ERR_FATAL, "vkAcquireNextImageKHR returned %s", vk_result_string(result)); break;
-                }
-            }
-        } else {
-             vk.swapchain_image_index++;
-             vk.swapchain_image_index %= vk.swapchain_image_count;
-        }
-
-        
-    }
-    
-    VK_CHECK( qvkResetFences( vk.device, 1, &vk.cmd->rendering_finished_fence ) );
+	if ( !ri.VK_IsMinimized() ) {
+		res = qvkAcquireNextImageKHR( vk.device, vk.swapchain, 1 * 1000000000ULL, vk.cmd->image_acquired, VK_NULL_HANDLE, &vk.swapchain_image_index );
+        vk_imgui_profiler_end_task( acquire_task );
+		// when running via RDP: "Application has already acquired the maximum number of images (0x2)"
+		// probably caused by "device lost" errors
+		if ( res < 0 ) {
+			if ( res == VK_ERROR_OUT_OF_DATE_KHR ) {
+				// swapchain re-creation needed
+				vk_restart_swapchain( __func__ );
+			} else {
+				ri.Error( ERR_FATAL, "vkAcquireNextImageKHR returned %s", vk_result_string( res ) );
+			}
+		}
+	} else {
+		vk.swapchain_image_index++;
+		vk.swapchain_image_index %= vk.swapchain_image_count;
+	}
 
     begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     begin_info.pNext = VK_NULL_HANDLE;
@@ -1491,9 +1482,11 @@ void vk_begin_frame( void )
         vk_begin_main_render_pass();
     }
 
+	// dynamic vertex buffer layout 
     vk.cmd->vertex_buffer_offset = 0;
     vk.cmd->indirect_buffer_offset = 0;
-    Com_Memset(vk.cmd->buf_offset, 0, sizeof(vk.cmd->buf_offset));
+    Com_Memset( vk.cmd->buf_offset, 0, sizeof( vk.cmd->buf_offset ) );
+    Com_Memset( vk.cmd->vbo_offset, 0, sizeof( vk.cmd->vbo_offset ) );
     vk.cmd->curr_index_buffer = VK_NULL_HANDLE;
     vk.cmd->curr_index_offset = 0;
 
@@ -1631,6 +1624,8 @@ void vk_end_frame( void )
     if ( vk.geometry_buffer_size_new )
     {
         vk_resize_geometry_buffer();
+		// issue: one frame may be lost during video recording
+		// solution: re-record all commands again? (might be complicated though)
         return;
     }
 
@@ -1728,6 +1723,10 @@ void vk_present_frame( void )
 {
 	VkPresentInfoKHR present_info;
 	VkResult res;
+
+	// pickup next command buffer for rendering
+	vk.cmd_index++;
+	vk.cmd_index %= NUM_COMMAND_BUFFERS;
 
 	if ( ri.VK_IsMinimized() )
 		return;
