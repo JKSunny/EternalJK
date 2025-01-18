@@ -837,6 +837,8 @@ byte *vk_resample_image_data( const int target_format, byte *data, const int dat
 	}
 }
 
+static int batch_by_format = 0;
+
 void vk_upload_image_data( image_t *image, int x, int y, int width, 
 	int height, int mipmaps, byte *pixels, int size, qboolean update ) 
 {
@@ -862,6 +864,12 @@ void vk_upload_image_data( image_t *image, int x, int y, int width,
 	image->pix_data = (byte *)ri.Hunk_AllocateTempMemory(sizeof(byte) * 4 * width * height);
 	Com_Memcpy( image->pix_data, pixels, sizeof(byte) * 4 * width * height );
 #endif
+
+	if ( batch_by_format != image->internalFormat )
+	{
+		vk_flush_staging_command_buffer();
+		batch_by_format = image->internalFormat;
+	}
 
 	while (qtrue) {
 		Com_Memset(&region, 0, sizeof(region));
@@ -927,7 +935,7 @@ void vk_upload_image_data( image_t *image, int x, int y, int width,
 	vk_record_image_layout_transition( staging_command_buffer, image->handle, VK_IMAGE_ASPECT_COLOR_BIT, 
 		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL );
 
-	// flush_staging_command_buffer(); // uncomment for old single-image sync behavior
+	//vk_flush_staging_command_buffer(); // uncomment for old single-image sync behavior
 
 	if ( buf != pixels ) {
 		ri.Hunk_FreeTempMemory( buf );

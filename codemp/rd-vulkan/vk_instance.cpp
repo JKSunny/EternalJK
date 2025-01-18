@@ -1120,15 +1120,16 @@ static qboolean vk_create_device( VkPhysicalDevice physical_device, int device_i
 		
 		device_desc.pNext = &device_features2;
 		device_desc.pEnabledFeatures = nullptr;
-
-		pNextPtr = (const void **)&features_16bit_storage.pNext;
 #else
 		device_desc.pEnabledFeatures = &features;
-		
-		pNextPtr = (const void **)&device_desc.pNext;
 #endif
 
 #ifdef _DEBUG
+#ifdef USE_RTX
+		pNextPtr = (const void **)&features_16bit_storage.pNext;
+#else
+		pNextPtr = (const void **)&device_desc.pNext;
+#endif
 		if ( timelineSemaphore ) {
 			*pNextPtr = &timeline_semaphore;
 			timeline_semaphore.pNext = NULL;
