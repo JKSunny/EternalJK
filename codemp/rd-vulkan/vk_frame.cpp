@@ -1311,7 +1311,11 @@ void vk_begin_frame( void )
 
 	vk.cmd = &vk.tess[ vk.cmd_index ];
 
+    vk_imgui_profiler_begin_frame();
+
 	if ( vk.cmd->waitForFence ) {
+        size_t wait_for_fence_task = vk_imgui_profiler_start_task( "WaitForFence", RGBA_LE(0x2980b9ffu) );
+
 		vk.cmd->waitForFence = qfalse;
 		res = qvkWaitForFences( vk.device, 1, &vk.cmd->rendering_finished_fence, VK_FALSE, 1e10 );
 		if ( res != VK_SUCCESS ) {
@@ -1328,6 +1332,7 @@ void vk_begin_frame( void )
 	}
 
 	if ( !ri.VK_IsMinimized() ) {
+        size_t acquire_task = vk_imgui_profiler_start_task( "ImageAcquire",	RGBA_LE(0xd35400ffu) );
 		res = qvkAcquireNextImageKHR( vk.device, vk.swapchain, 1 * 1000000000ULL, vk.cmd->image_acquired, VK_NULL_HANDLE, &vk.swapchain_image_index );
         vk_imgui_profiler_end_task( acquire_task );
 		// when running via RDP: "Application has already acquired the maximum number of images (0x2)"
