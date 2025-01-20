@@ -924,6 +924,9 @@ void ComputeColors( const int b, color4ub_t *dest, const shaderStage_t *pStage, 
 		killGen = qtrue;
 	}
 
+	if ( pStage->bundle[0].rgbGen == CGEN_LIGHTMAPSTYLE )
+		forceRGBGen = CGEN_LIGHTMAPSTYLE;
+
 	//
 	// rgbGen
 	//
@@ -1063,7 +1066,7 @@ void ComputeColors( const int b, color4ub_t *dest, const shaderStage_t *pStage, 
 	case CGEN_LIGHTMAPSTYLE:
 		for (i = 0; i < tess.numVertexes; i++)
 		{
-			*(int *)dest[i] = *(int *)styleColors[pStage->lightmapStyle];
+			*(int *)dest[i] = *(int *)styleColors[pStage->lightmapStyle[b%2]]; 
 		}
 		break;
 	}
