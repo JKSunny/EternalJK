@@ -3776,26 +3776,21 @@ static int CollapseMultitexture( unsigned int st0bits, shaderStage_t *st0, shade
 	{
 		if (st0->mtEnv)
 			st0->bundle[2] = st1->bundle[0]; // add to third bundle
-		else {
+		else
 			st0->bundle[1] = st1->bundle[0];
-			//st0->lightmapStyle[1] = st1->lightmapStyle[0];
-		}
 	}
 
 	// use +cl blend shader for multi-lightmap stage
 	if (st0->bundle[0].isLightmap && st1->bundle[0].isLightmap)
 	{
 		mtEnv = GL_BLEND_ADD;
-		//mtEnv = GL_BLEND_DST_COLOR_SRC_ALPHA;
 	}
-	//else {
+
 	// preserve lightmap style
 	if (st1->lightmapStyle)
 	{
-		//memmove(st0->lightmapStyle, st1->lightmapStyle, sizeof(st1->lightmapStyle[0]) * 2);
 		st0->lightmapStyle[1] = st1->lightmapStyle[0];
 	}
-	//}
 
 	if (st0->mtEnv)
 	{
@@ -4691,7 +4686,7 @@ shader_t *FinishShader( void )
 
 			if ( def.shader_type >= TYPE_GENERIC_BEGIN  )
 			{
-				if ( pStage->numTexBundles > 1 && pStage->bundle[1].isLightmap )
+				if ( pStage->numTexBundles > 1 && pStage->bundle[1].isLightmap && !pStage->bundle[0].isLightmap )
 					def.vk_light_flags |= LIGHTDEF_USE_LIGHTMAP;
 
 				else if ( pStage->bundle[0].rgbGen == CGEN_LIGHTING_DIFFUSE ||

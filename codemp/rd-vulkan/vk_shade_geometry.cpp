@@ -1850,7 +1850,7 @@ static void vk_compute_colors( const int b, const shaderStage_t *pStage, int for
 			}
 			break;
 		case CGEN_LIGHTMAPSTYLE:
-			VectorScale4 (styleColors[pStage->lightmapStyle], 1.0f / 255.0f, baseColor);
+			VectorScale4 (styleColors[pStage->lightmapStyle[b%2]], 1.0f / 255.0f, baseColor);
 			break;
 		case CGEN_IDENTITY:
 		case CGEN_LIGHTING_DIFFUSE:
