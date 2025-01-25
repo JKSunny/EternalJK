@@ -643,7 +643,7 @@ IBO_t *R_CreateIBO( const char *name, const byte *vbo_data, int vbo_size )
 	copyRegion[0].dstOffset = 0;
 	copyRegion[0].size = vbo_size;
 	qvkCmdCopyBuffer( command_buffer, staging_vertex_buffer, tr.ibos[tr.numIBOs]->buffer, 1, &copyRegion[0] );
-	vk_end_command_buffer(command_buffer);
+	vk_end_command_buffer( command_buffer, __func__ );
 
 	qvkDestroyBuffer(vk.device, staging_vertex_buffer, NULL);
 	qvkFreeMemory(vk.device, staging_buffer_memory, NULL);
@@ -745,7 +745,7 @@ VBO_t *R_CreateVBO( const char *name, const byte *vbo_data, int vbo_size )
 	copyRegion[0].dstOffset = 0;
 	copyRegion[0].size = vbo_size;
 	qvkCmdCopyBuffer( command_buffer, staging_vertex_buffer, tr.vbos[tr.numVBOs]->buffer, 1, &copyRegion[0] );
-	vk_end_command_buffer(command_buffer);
+	vk_end_command_buffer( command_buffer, __func__ );
 
 	qvkDestroyBuffer(vk.device, staging_vertex_buffer, NULL);
 	qvkFreeMemory(vk.device, staging_buffer_memory, NULL);
@@ -1850,7 +1850,7 @@ qboolean vk_alloc_vbo( const char *name, const byte *vbo_data, int vbo_size )
 	copyRegion[0].dstOffset = 0;
 	copyRegion[0].size = vbo_size;
 	qvkCmdCopyBuffer( command_buffer, staging_vertex_buffer, vk.vbo.vertex_buffer, 1, &copyRegion[0] );
-	vk_end_command_buffer(command_buffer);
+	vk_end_command_buffer( command_buffer, __func__ );
 
 	qvkDestroyBuffer(vk.device, staging_vertex_buffer, NULL);
 	qvkFreeMemory(vk.device, staging_buffer_memory, NULL);
