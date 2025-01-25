@@ -189,8 +189,9 @@ static void vk_create_prefilter_framebuffer( filterDef *def ) {
 	command_buffer = vk_begin_command_buffer();
 	vk_record_image_layout_transition( command_buffer, def->offscreen.image, VK_IMAGE_ASPECT_COLOR_BIT, 
 		VK_IMAGE_LAYOUT_UNDEFINED, 
-		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL );
-	vk_end_command_buffer( command_buffer );
+		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+		0 ,0 );
+	vk_end_command_buffer( command_buffer, __func__ );
 }
 
 static void vk_create_prefilter_pipeline( filterDef *def ) 
@@ -363,7 +364,8 @@ static void vk_copy_to_cubemap( filterDef *def, VkImage *image, uint32_t mipLeve
 	// change image layout for all offsceen faces to transfer source
 	vk_record_image_layout_transition( vk.cmd->command_buffer, def->offscreen.image, VK_IMAGE_ASPECT_COLOR_BIT, 
 		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-		VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL );
+		VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+		0 ,0 );
 
 	Com_Memset( &region, 0, sizeof( VkImageCopy ) );
 	region.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -385,7 +387,8 @@ static void vk_copy_to_cubemap( filterDef *def, VkImage *image, uint32_t mipLeve
 
 	vk_record_image_layout_transition( vk.cmd->command_buffer, def->offscreen.image, VK_IMAGE_ASPECT_COLOR_BIT, 
 		VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 
-		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL );
+		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+		0 ,0 );
 }
 
 void vk_generate_cubemaps( cubemap_t *cube ) 
@@ -405,8 +408,9 @@ void vk_generate_cubemaps( cubemap_t *cube )
 	command_buffer = vk_begin_command_buffer();
 	vk_record_image_layout_transition( command_buffer, vk.cubeMap.color_image, VK_IMAGE_ASPECT_COLOR_BIT, 
 		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 
-		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL );
-	vk_end_command_buffer( command_buffer );
+		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+		0 ,0 );
+	vk_end_command_buffer( command_buffer, __func__ );
 
 	for ( i = 0; i < PREFILTEREDENV + 1; i++ ) 
 	{
@@ -442,7 +446,8 @@ void vk_generate_cubemaps( cubemap_t *cube )
 		// change image layout for all cubemap faces to transfer destination
 		vk_record_image_layout_transition( vk.cmd->command_buffer, cubemap->handle, VK_IMAGE_ASPECT_COLOR_BIT, 
 			VK_IMAGE_LAYOUT_UNDEFINED, 
-			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL );
+			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			0 ,0 );
 			
 		for ( j = 0; j < def->mipLevels; j++ ) {
 			qvkCmdSetViewport( vk.cmd->command_buffer, 0, 1, &viewport );
@@ -469,14 +474,16 @@ void vk_generate_cubemaps( cubemap_t *cube )
 
 		vk_record_image_layout_transition( vk.cmd->command_buffer, cubemap->handle, VK_IMAGE_ASPECT_COLOR_BIT, 
 			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
-			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL );
+			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+			0 ,0 );
 	}
 
 	command_buffer = vk_begin_command_buffer();
 	vk_record_image_layout_transition( command_buffer, vk.cubeMap.color_image, VK_IMAGE_ASPECT_COLOR_BIT, 
 		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 
-		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL );
-	vk_end_command_buffer( command_buffer );
+		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+		0 ,0 );
+	vk_end_command_buffer( command_buffer, __func__ );
 
 	vk_begin_main_render_pass();
 }
