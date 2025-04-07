@@ -170,6 +170,13 @@ void vk_bind_index_buffer( VkBuffer buffer, uint32_t offset )
 	vk.cmd->curr_index_offset = offset;
 }
 
+#ifdef USE_VBO
+void vk_draw_indexed( uint32_t indexCount, uint32_t firstIndex )
+{
+	qvkCmdDrawIndexed( vk.cmd->command_buffer, indexCount, 1, firstIndex, 0, 0 );
+}
+#endif
+
 void vk_bind_index( void )
 {
 #ifdef USE_VBO
@@ -412,74 +419,38 @@ void vk_bind_lighting( int stage, int bundle )
 	}
 }
 
-static void vk_write_uniform_descriptor( VkWriteDescriptorSet *desc, VkDescriptorBufferInfo *info, VkDescriptorSet descriptor, const uint32_t binding )
+static void vk_write_uniform_descriptor( VkWriteDescriptorSet *desc, VkDescriptorBufferInfo *info, 
+	VkBuffer buffer, VkDescriptorSet descriptor, const uint32_t binding, const size_t size )
 {
-	desc->sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	desc->dstSet = descriptor;
-	desc->dstBinding = binding;
-	desc->dstArrayElement = 0;
-	desc->descriptorCount = 1;
-	desc->pNext = NULL;
-	desc->descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-	desc->pImageInfo = NULL;
-	desc->pBufferInfo = info;
-	desc->pTexelBufferView = NULL;
+	info[binding].buffer = buffer;
+	info[binding].offset = 0;
+	info[binding].range = size;
+
+	desc[binding].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	desc[binding].dstSet = descriptor;
+	desc[binding].dstBinding = binding;
+	desc[binding].dstArrayElement = 0;
+	desc[binding].descriptorCount = 1;
+	desc[binding].pNext = NULL;
+	desc[binding].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+	desc[binding].pImageInfo = NULL;
+	desc[binding].pBufferInfo = &info[binding];
+	desc[binding].pTexelBufferView = NULL;
 }
 
 void vk_update_uniform_descriptor( VkDescriptorSet descriptor, VkBuffer buffer )
 {
-	uint32_t count = 0;
-	VkDescriptorBufferInfo info[6];
-	VkWriteDescriptorSet desc[6];
+	VkDescriptorBufferInfo info[VK_DESC_UNIFORM_COUNT];
+	VkWriteDescriptorSet desc[VK_DESC_UNIFORM_COUNT];
 
-	info[count].buffer = buffer;
-	info[count].offset = 0;
-	info[count].range = sizeof(vkUniform_t);
+	vk_write_uniform_descriptor( desc, info, buffer, descriptor, VK_DESC_UNIFORM_MAIN_BINDING, sizeof(vkUniform_t) );
+	vk_write_uniform_descriptor( desc, info, buffer, descriptor, VK_DESC_UNIFORM_CAMERA_BINDING, sizeof(vkUniformCamera_t) );
+	vk_write_uniform_descriptor( desc, info, buffer, descriptor, VK_DESC_UNIFORM_LIGHT_BINDING, sizeof(vkUniformLight_t) );
+	vk_write_uniform_descriptor( desc, info, buffer, descriptor, VK_DESC_UNIFORM_ENTITY_BINDING, sizeof(vkUniformEntity_t) );
+	vk_write_uniform_descriptor( desc, info, buffer, descriptor, VK_DESC_UNIFORM_BONES_BINDING, sizeof(vkUniformBones_t) );
+	vk_write_uniform_descriptor( desc, info, buffer, descriptor, VK_DESC_UNIFORM_GLOBAL_BINDING, sizeof(vkUniformGlobal_t) );
 
-	vk_write_uniform_descriptor( desc + 0, info + 0, descriptor, 0 );
-	count++;
-
-	// 1: camera
-	info[count].buffer = buffer;
-	info[count].offset = 0;
-	info[count].range = sizeof(vkUniformCamera_t);
-
-	vk_write_uniform_descriptor( desc + 1, info + 1, descriptor, 1 );
-	count++;
-
-	// 2: light
-	info[count].buffer = buffer;
-	info[count].offset = 0;
-	info[count].range = sizeof(vkUniformLight_t);
-
-	vk_write_uniform_descriptor( desc + 2, info + 2, descriptor, 2 );
-	count++;
-
-	// 3: entity
-	info[count].buffer = buffer;
-	info[count].offset = 0;
-	info[count].range = sizeof(vkUniformEntity_t);
-
-	vk_write_uniform_descriptor( desc + 3, info + 3, descriptor, 3 );
-	count++;
-
-	// 4: bones
-	info[count].buffer = buffer;
-	info[count].offset = 0;
-	info[count].range = sizeof(vkUniformBones_t);
-
-	vk_write_uniform_descriptor( desc + 4, info + 4, descriptor, 4 );
-	count++;
-
-	// 5: global
-	info[count].buffer = buffer;
-	info[count].offset = 0;
-	info[count].range = sizeof(vkUniformGlobal_t);
-
-	vk_write_uniform_descriptor( desc + 5, info + 5, descriptor, 5 );
-	count++;
-
-	qvkUpdateDescriptorSets(vk.device, count, desc, 0, NULL);
+	qvkUpdateDescriptorSets(vk.device, VK_DESC_UNIFORM_COUNT, desc, 0, NULL);
 }
 
 void vk_create_storage_buffer( uint32_t size )
@@ -865,8 +836,8 @@ void vk_update_descriptor_offset( int index, uint32_t offset )
 
 void vk_bind_descriptor_sets( void ) 
 {
-	uint32_t offsets[6], offset_count;
-	uint32_t start, end, count;
+	uint32_t offsets[VK_DESC_UNIFORM_COUNT], offset_count;
+	uint32_t start, end, count, i;
 
 	start = vk.cmd->descriptor_set.start;
 	if (start == ~0U)
@@ -875,19 +846,23 @@ void vk_bind_descriptor_sets( void )
 	end = vk.cmd->descriptor_set.end;
 
 	offset_count = 0;
-	if ( start == VK_DESC_STORAGE || start == VK_DESC_UNIFORM ) { // uniform offset or storage offset
+	if ( /*start == VK_DESC_STORAGE ||*/ start == VK_DESC_UNIFORM ) { // uniform offset or storage offset
 		offsets[offset_count++] = vk.cmd->descriptor_set.offset[start];
-
-		if ( start == 1 ){
-			offsets[offset_count++] = vk.cmd->descriptor_set.offset[start+1];	// 1: camera
-			offsets[offset_count++] = vk.cmd->descriptor_set.offset[start+2];	// 2: entity
-			offsets[offset_count++] = vk.cmd->descriptor_set.offset[start+3];	// 3: light
-			offsets[offset_count++] = vk.cmd->descriptor_set.offset[start+4];	// 4: bones
-			offsets[offset_count++] = vk.cmd->descriptor_set.offset[start+5];	// 5: global
-		}
+		offsets[offset_count++] = vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_CAMERA_BINDING];
+		offsets[offset_count++] = vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_LIGHT_BINDING];	
+		offsets[offset_count++] = vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_ENTITY_BINDING];
+		offsets[offset_count++] = vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_BONES_BINDING];	
+		offsets[offset_count++] = vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_GLOBAL_BINDING];
 	}
 
 	count = end - start + 1;
+
+	// fill NULL descriptor gaps
+	for ( i = start + 1; i < end; i++ ) {
+		if ( vk.cmd->descriptor_set.current[i] == VK_NULL_HANDLE ) {
+			vk.cmd->descriptor_set.current[i] = tr.whiteImage->descriptor_set;
+		}
+	}
 
 	qvkCmdBindDescriptorSets(vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
 		vk.pipeline_layout, start, count, vk.cmd->descriptor_set.current + start, offset_count, offsets);
@@ -909,48 +884,69 @@ void vk_bind_pipeline( uint32_t pipeline ) {
 	vk_world.dirty_depth_attachment |= (vk.pipelines[pipeline].def.state_bits & GLS_DEPTHMASK_TRUE);
 }
 
-void vk_draw_geometry( Vk_Depth_Range depRg, qboolean indexed )
+static void vk_update_depth_range( Vk_Depth_Range depth_range )
 {
+	if ( vk.cmd->depth_range == depth_range )
+		return;
+
+	// configure pipeline's dynamic state
 	VkViewport viewport;
 	VkRect2D scissor_rect;
 
+	vk.cmd->depth_range = depth_range;
+
+	get_scissor_rect( &scissor_rect );
+
+	if ( memcmp( &vk.cmd->scissor_rect, &scissor_rect, sizeof( scissor_rect ) ) != 0 ) {
+		qvkCmdSetScissor( vk.cmd->command_buffer, 0, 1, &scissor_rect );
+		vk.cmd->scissor_rect = scissor_rect;
+	}
+
+	get_viewport( &viewport, depth_range);
+	qvkCmdSetViewport( vk.cmd->command_buffer, 0, 1, &viewport );
+}
+
+void vk_draw_geometry( Vk_Depth_Range depth_range, qboolean indexed )
+{
 	// geometry buffer overflow happened this frame
-	if (vk.geometry_buffer_size_new)
+	if ( vk.geometry_buffer_size_new )
 		return;
 
 	vk_bind_descriptor_sets();
 
 	// configure pipeline's dynamic state
-	if (vk.cmd->depth_range != depRg) {
-		vk.cmd->depth_range = depRg;
+	vk_update_depth_range( depth_range );
 
-		get_scissor_rect(&scissor_rect);
-
-		if (memcmp(&vk.cmd->scissor_rect, &scissor_rect, sizeof(scissor_rect)) != 0) {
-			qvkCmdSetScissor(vk.cmd->command_buffer, 0, 1, &scissor_rect);
-			vk.cmd->scissor_rect = scissor_rect;
-		}
-
-		get_viewport(&viewport, depRg);
-		qvkCmdSetViewport(vk.cmd->command_buffer, 0, 1, &viewport);
-	}
-
-	if (tess.shader->polygonOffset) {
-		qvkCmdSetDepthBias(vk.cmd->command_buffer, r_offsetUnits->value, 0.0f, r_offsetFactor->value);
+	if ( tess.shader->polygonOffset ) {
+		qvkCmdSetDepthBias( vk.cmd->command_buffer, r_offsetUnits->value, 0.0f, r_offsetFactor->value );
 	}
 
 	// issue draw call(s)
 #ifdef USE_VBO
-	if (tess.vbo_world_index)
+	if ( tess.vbo_world_index )
 		VBO_RenderIBOItems();
 	else
 #endif
 	{
 		if (indexed)
-			qvkCmdDrawIndexed(vk.cmd->command_buffer, vk.cmd->num_indexes, 1, 0, 0, 0);
+			qvkCmdDrawIndexed( vk.cmd->command_buffer, vk.cmd->num_indexes, 1, 0, 0, 0 );
 		else
-			qvkCmdDraw(vk.cmd->command_buffer, tess.numVertexes, 1, 0, 0);
+			qvkCmdDraw( vk.cmd->command_buffer, tess.numVertexes, 1, 0, 0 );
 	}
+}
+
+void vk_draw_dot( uint32_t storage_offset )
+{
+	// geometry buffer overflow happened this frame
+	if ( vk.geometry_buffer_size_new )
+		return;
+
+	qvkCmdBindDescriptorSets( vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout_storage, VK_DESC_STORAGE, 1, &vk.storage.descriptor, 1, &storage_offset );
+
+	// configure pipeline's dynamic state
+	vk_update_depth_range( DEPTH_RANGE_NORMAL );
+
+	qvkCmdDraw( vk.cmd->command_buffer, tess.numVertexes, 1, 0, 0 );
 }
 
 void ComputeColors( const int b, color4ub_t *dest, const shaderStage_t *pStage, int forceRGBGen )
@@ -1245,7 +1241,7 @@ static uint32_t vk_push_uniform( const vkUniform_t *uniform )
 
 	vk_reset_descriptor( VK_DESC_UNIFORM );
 	vk_update_descriptor( VK_DESC_UNIFORM, vk.cmd->uniform_descriptor );
-	vk_update_descriptor_offset( VK_DESC_UNIFORM, offset );
+	vk_update_descriptor_offset( VK_DESC_UNIFORM_MAIN_BINDING, offset );
 
 	return offset;
 }
@@ -1262,7 +1258,7 @@ static uint32_t vk_push_uniform_global( const vkUniformGlobal_t *uniform ) {
 	//vk_reset_descriptor( VK_DESC_UNIFORM );
 	//vk_update_descriptor( VK_DESC_UNIFORM, vk.cmd->uniform_descriptor );
 	//vk_update_descriptor_offset( VK_DESC_UNIFORM, 0 );
-	vk_update_descriptor_offset( 6, offset );
+	vk_update_descriptor_offset( VK_DESC_UNIFORM_GLOBAL_BINDING, offset );
 
 	return 0;
 }
@@ -2137,30 +2133,30 @@ void RB_AddDrawItemUniformBinding( DrawItem &item, const trRefEntity_t *refEntit
 	{
 		vk_reset_descriptor( VK_DESC_UNIFORM );	// to set start/end
 		vk_update_descriptor( VK_DESC_UNIFORM, vk.cmd->uniform_descriptor );
-		vk.cmd->descriptor_set.offset[1] = 0;
+		vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM] = 0;
 	}
 
-	vk.cmd->descriptor_set.offset[2] = vk.cmd->camera_ubo_offset;
-	vk.cmd->descriptor_set.offset[3] = vk.cmd->light_ubo_offset;
+	vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_CAMERA_BINDING] = vk.cmd->camera_ubo_offset;
+	vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_LIGHT_BINDING] = vk.cmd->light_ubo_offset;
 
 	if ( backEnd.currentEntity ) 
 	{
 		if ( backEnd.currentEntity == &backEnd.entity2D ) 
 		{
-			vk.cmd->descriptor_set.offset[4] = vk.cmd->entity_ubo_offset[REFENTITYNUM_WORLD];
-			vk.cmd->descriptor_set.offset[5] = 0;
+			vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_ENTITY_BINDING] = vk.cmd->entity_ubo_offset[REFENTITYNUM_WORLD];
+			vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_BONES_BINDING] = 0;
 		}
 		else if ( backEnd.currentEntity == &tr.worldEntity ) 
 		{
-			vk.cmd->descriptor_set.offset[4] = vk.cmd->entity_ubo_offset[REFENTITYNUM_WORLD];
-			vk.cmd->descriptor_set.offset[5] = 0;
+			vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_ENTITY_BINDING] = vk.cmd->entity_ubo_offset[REFENTITYNUM_WORLD];
+			vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_BONES_BINDING] = 0;
 		}
 		else 
 		{
 			const int refEntityNum = backEnd.currentEntity - backEnd.refdef.entities;
 
-			vk.cmd->descriptor_set.offset[4] = vk.cmd->entity_ubo_offset[refEntityNum];
-			vk.cmd->descriptor_set.offset[5] = vk.cmd->bones_ubo_offset;
+			vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_ENTITY_BINDING] = vk.cmd->entity_ubo_offset[refEntityNum];
+			vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_BONES_BINDING] = vk.cmd->bones_ubo_offset;
 		}
 	}
 			
@@ -2506,18 +2502,18 @@ void RB_StageIteratorGeneric( void )
 			qboolean has_cubemap = ( !vk.useFastLight && tr.numCubemaps && tess.cubemapIndex > 0) ? qtrue : qfalse;
 
 			if ( def.vk_light_flags )
-				vk_update_pbr_descriptor(6, vk.brdflut_image_descriptor);
+				vk_update_pbr_descriptor(VK_DESC_PBR_BRDFLUT, vk.brdflut_image_descriptor);
 
 			if ( pStage->vk_pbr_flags & PBR_HAS_NORMALMAP )
-				vk_update_pbr_descriptor(7, pStage->normalMap->descriptor_set);
+				vk_update_pbr_descriptor(VK_DESC_PBR_NORMAL, pStage->normalMap->descriptor_set);
 			else
-				vk_update_pbr_descriptor(7, tr.whiteImage->descriptor_set);
+				vk_update_pbr_descriptor(VK_DESC_PBR_NORMAL, tr.whiteImage->descriptor_set);
 
 			if ( pStage->vk_pbr_flags & PBR_HAS_PHYSICALMAP || pStage->vk_pbr_flags & PBR_HAS_SPECULARMAP )
-				vk_update_pbr_descriptor(8, pStage->physicalMap->descriptor_set);
+				vk_update_pbr_descriptor(VK_DESC_PBR_PHYSICAL, pStage->physicalMap->descriptor_set);
 			else
 			{
-				vk_update_pbr_descriptor(8, tr.whiteImage->descriptor_set);
+				vk_update_pbr_descriptor(VK_DESC_PBR_PHYSICAL, tr.whiteImage->descriptor_set);
 				
 				uniform_global.specularScale[0] = 0.0f;
 				uniform_global.specularScale[2] =
@@ -2526,9 +2522,9 @@ void RB_StageIteratorGeneric( void )
 			}
 
 			if ( !has_cubemap || backEnd.viewParms.targetCube != nullptr )
-				vk_update_pbr_descriptor(9, tr.emptyCubemap->descriptor_set);
+				vk_update_pbr_descriptor(VK_DESC_PBR_CUBEMAP, tr.emptyCubemap->descriptor_set);
 			else 	
-				vk_update_pbr_descriptor(9, tr.cubemaps[tess.cubemapIndex-1].prefiltered_image->descriptor_set);
+				vk_update_pbr_descriptor(VK_DESC_PBR_CUBEMAP, tr.cubemaps[tess.cubemapIndex-1].prefiltered_image->descriptor_set);
 		}
 
 		Vk_Depth_Range depthRange = tess.depthRange;

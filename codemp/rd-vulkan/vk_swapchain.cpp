@@ -107,7 +107,7 @@ void vk_create_swapchain( VkPhysicalDevice physical_device, VkDevice device,
 	if ( image_extent.width < gls.windowWidth) image_extent.width = gls.windowWidth;
 	if ( image_extent.height < gls.windowHeight) image_extent.height = gls.windowHeight;
 
-    vk.fastSky = qtrue;
+    vk.clearAttachment = qtrue;
 
     // determine present mode and swapchain image count
     VK_CHECK( qvkGetPhysicalDeviceSurfacePresentModesKHR( physical_device, surface, &present_mode_count, NULL ) );
