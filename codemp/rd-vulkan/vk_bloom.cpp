@@ -91,13 +91,12 @@ qboolean vk_bloom( void )
 
 					offsets[offset_count++] = vk.cmd->descriptor_set.offset[i];
 
-					if ( i == VK_DESC_UNIFORM ) {
-						offsets[offset_count++] = vk.cmd->descriptor_set.offset[i + 1];	// 1: camera
-						offsets[offset_count++] = vk.cmd->descriptor_set.offset[i + 2];	// 2: light
-						offsets[offset_count++] = vk.cmd->descriptor_set.offset[i + 3];	// 3: entity
-						offsets[offset_count++] = vk.cmd->descriptor_set.offset[i + 4];	// 4: bones
-						offsets[offset_count++] = vk.cmd->descriptor_set.offset[i + 5];	// 5: global
-					}
+					// not required for dot storage flare test, chances are slim thats the previous pipeline.
+					offsets[offset_count++] = vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_CAMERA_BINDING];
+					offsets[offset_count++] = vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_LIGHT_BINDING];
+					offsets[offset_count++] = vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_ENTITY_BINDING];
+					offsets[offset_count++] = vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_BONES_BINDING];
+					offsets[offset_count++] = vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_GLOBAL_BINDING];
 
 					qvkCmdBindDescriptorSets( vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, i, 1, &vk.cmd->descriptor_set.current[i], offset_count, offsets );
 				}

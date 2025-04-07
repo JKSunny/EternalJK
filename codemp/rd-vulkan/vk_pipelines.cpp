@@ -41,10 +41,10 @@ static void vk_create_layout_binding( int binding, VkDescriptorType type,
     VkShaderStageFlags flags, VkDescriptorSetLayout *layout, qboolean is_uniform ) 
 {
     uint32_t count = 0;
-    VkDescriptorSetLayoutBinding bind[6];
+    VkDescriptorSetLayoutBinding bind[VK_DESC_UNIFORM_COUNT];
     VkDescriptorSetLayoutCreateInfo desc;
 
-    bind[count].binding = binding;  // 0: data
+    bind[count].binding = binding;
     bind[count].descriptorType = type;
     bind[count].descriptorCount = 1;
     bind[count].stageFlags = flags;
@@ -52,35 +52,35 @@ static void vk_create_layout_binding( int binding, VkDescriptorType type,
     count++;
 
     if ( is_uniform ) {
-        bind[count].binding = binding + 1; // 1: camera 
+        bind[count].binding = VK_DESC_UNIFORM_CAMERA_BINDING;
         bind[count].descriptorType = type;
         bind[count].descriptorCount = 1;
         bind[count].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
         bind[count].pImmutableSamplers = NULL;
         count++;    
 
-        bind[count].binding = binding + 2; // 2: lights 
+        bind[count].binding = VK_DESC_UNIFORM_LIGHT_BINDING;
         bind[count].descriptorType = type;
         bind[count].descriptorCount = 1;
         bind[count].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         bind[count].pImmutableSamplers = NULL;
         count++;
 
-        bind[count].binding = binding + 3; // 3: entity 
+        bind[count].binding = VK_DESC_UNIFORM_ENTITY_BINDING;
         bind[count].descriptorType = type;
         bind[count].descriptorCount = 1;
         bind[count].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
         bind[count].pImmutableSamplers = NULL;
         count++;
  
-        bind[count].binding = binding + 4; // 4: bones
+        bind[count].binding = VK_DESC_UNIFORM_BONES_BINDING;
         bind[count].descriptorType = type;
         bind[count].descriptorCount = 1;
         bind[count].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
         bind[count].pImmutableSamplers = NULL;
         count++;  
         
-        bind[count].binding = binding + 5; // 5: global
+        bind[count].binding = VK_DESC_UNIFORM_GLOBAL_BINDING;
         bind[count].descriptorType = type;
         bind[count].descriptorCount = 1;
         bind[count].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
@@ -158,16 +158,15 @@ void vk_create_pipeline_layout( void )
     push_range.size = sizeof(pushConst); // 16 mvp floats + 16
 
     // Main pipeline layout
-    set_layouts[0] = vk.set_layout_storage; // storage for testing flare visibility
-    set_layouts[1] = vk.set_layout_uniform; // fog/dlight parameters
-    set_layouts[2] = vk.set_layout_sampler; // diffuse
-    set_layouts[3] = vk.set_layout_sampler; // lightmap / fog-only
-    set_layouts[4] = vk.set_layout_sampler; // blend
-    set_layouts[5] = vk.set_layout_sampler; // collapsed fog texture
-    set_layouts[6] = vk.set_layout_sampler; // empty or brdfLUT
-    set_layouts[7] = vk.set_layout_sampler; // normalMap
-    set_layouts[8] = vk.set_layout_sampler; // physicalMap
-    set_layouts[9] = vk.set_layout_sampler; // prefiltered envmap
+    set_layouts[0] = vk.set_layout_uniform; // fog/dlight parameters
+    set_layouts[1] = vk.set_layout_sampler; // diffuse
+    set_layouts[2] = vk.set_layout_sampler; // lightmap / fog-only
+    set_layouts[3] = vk.set_layout_sampler; // blend
+    set_layouts[4] = vk.set_layout_sampler; // collapsed fog texture
+    set_layouts[5] = vk.set_layout_sampler; // empty or brdfLUT
+    set_layouts[6] = vk.set_layout_sampler; // normalMap
+    set_layouts[7] = vk.set_layout_sampler; // physicalMap
+    set_layouts[8] = vk.set_layout_sampler; // prefiltered envmap
     //set_layouts[10] = vk.set_layout_sampler; // irradiance envmap
 
     desc.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -181,7 +180,8 @@ void vk_create_pipeline_layout( void )
     VK_SET_OBJECT_NAME(vk.pipeline_layout, "pipeline layout - main", VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT);
 
     // flare test pipeline
-   /* set_layouts[0] = vk.set_layout; // dynamic storage buffer
+    set_layouts[0] = vk.set_layout_storage; // dynamic storage buffer
+
     desc.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     desc.pNext = NULL;
     desc.flags = 0;
@@ -189,7 +189,8 @@ void vk_create_pipeline_layout( void )
     desc.pSetLayouts = set_layouts;
     desc.pushConstantRangeCount = 1;
     desc.pPushConstantRanges = &push_range;
-    VK_CHECK(qvkCreatePipelineLayout(vk.device, &desc, NULL, &vk.pipeline_layout_storage));*/
+
+    VK_CHECK( qvkCreatePipelineLayout( vk.device, &desc, NULL, &vk.pipeline_layout_storage ) );
 
     // post-processing pipeline
     set_layouts[0] = vk.set_layout_sampler; // sampler
@@ -1276,7 +1277,11 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
     create_info.pDepthStencilState = &depth_stencil_state;
     create_info.pColorBlendState = &blend_state;
     create_info.pDynamicState = &dynamic_state;
-    create_info.layout = vk.pipeline_layout;
+
+	if ( def->shader_type == TYPE_DOT )
+		create_info.layout = vk.pipeline_layout_storage;
+	else
+		create_info.layout = vk.pipeline_layout;
 
     if ( renderPassIndex == RENDER_PASS_SCREENMAP )
         create_info.renderPass = vk.render_pass.screenmap;
@@ -1815,7 +1820,7 @@ static void vk_create_blur_pipeline( char *name, int program_index, uint32_t ind
     VK_SET_OBJECT_NAME( *pipeline, va( "%s %s blur pipeline %i", name, horizontal_pass ? "horizontal" : "vertical", index / 2 + 1 ), VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT );
 }
 
-uint32_t vk_alloc_pipeline( const Vk_Pipeline_Def *def ) {
+static uint32_t vk_alloc_pipeline( const Vk_Pipeline_Def *def ) {
     VK_Pipeline_t* pipeline;
 
     if (vk.pipelines_count >= MAX_VK_PIPELINES) {
@@ -1955,8 +1960,11 @@ void vk_alloc_persistent_pipelines( void )
         //    GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE | GLS_DEPTHFUNC_EQUAL			// additive
         //};
         qboolean polygon_offset[2] = { qfalse, qtrue };
-        int i, j, k, l;
- 
+        int i, j, k;
+#ifdef USE_PMLIGHT
+		int l;
+#endif
+
         Com_Memset(&def, 0, sizeof(def));
         def.shader_type = TYPE_SINGLE_TEXTURE;
         def.mirror = qfalse;
