@@ -15,7 +15,7 @@ layout(push_constant) uniform Transform {
 
 
 #if defined(USE_FOG) || defined(USE_ENV)
-layout(set = 1, binding = 0) uniform UBO {
+layout(set = 0, binding = 0) uniform UBO {
 	// light/env/material parameters:
 	vec4 eyePos;
 	vec4 lightPos;
@@ -70,7 +70,7 @@ struct vkDeform_t {
 	int		func;
 };
 
-layout(set = 1, binding = 1) uniform UBOG2 {
+layout(set = 0, binding = 1) uniform UBOG2 {
 	vec4 u_localViewOrigin;
 	vec4 ambientLight;
 	vec4 directedLight;
@@ -85,7 +85,7 @@ layout(set = 1, binding = 1) uniform UBOG2 {
 	mat4 u_ModelMatrix;
 };	
 
-layout(set = 1, binding = 2) uniform Bones {
+layout(set = 0, binding = 2) uniform Bones {
 	mat3x4 u_BoneMatrices[72];
 };
 

@@ -102,9 +102,10 @@ qboolean vk_begin_dglow_blur( void )
 
 					offsets[offset_count++] = vk.cmd->descriptor_set.offset[i];
 #ifdef USE_VBO_GHOUL2
-					if ( vk.vboGhoul2Active && i == VK_DESC_UNIFORM ) {
-						offsets[offset_count++] = vk.cmd->descriptor_set.offset[i + 1];
-						offsets[offset_count++] = vk.cmd->descriptor_set.offset[i + 2];
+					if ( vk.vboGhoul2Active ) 
+					{
+						offsets[offset_count++] = vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_ENTITY_BINDING];
+						offsets[offset_count++] = vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_BONES_BINDING];
 					}
 #endif
 					qvkCmdBindDescriptorSets( vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, i, 1, &vk.cmd->descriptor_set.current[i], offset_count, offsets );
