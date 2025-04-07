@@ -6,7 +6,7 @@ layout(push_constant) uniform Transform {
 	float renderMode;
 };
 
-layout(set = 1, binding = 0) uniform UBO {
+layout(set = 0, binding = 0) uniform UBO {
 	// VERTEX
 	vec4 eyePos;
 	vec4 lightPos;
@@ -21,7 +21,7 @@ layout(set = 1, binding = 0) uniform UBO {
 	vec4 lightVector;
 };
 
-layout(set = 1, binding = 4) uniform Bones {
+layout(set = 0, binding = 4) uniform Bones {
 	mat3x4 u_BoneMatrices[72];
 };	
 

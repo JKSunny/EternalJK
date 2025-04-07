@@ -6,7 +6,7 @@ layout(push_constant) uniform Transform {
 	float renderMode;
 };
 
-layout(set = 1, binding = 4) uniform Bones {
+layout(set = 0, binding = 4) uniform Bones {
 	mat3x4 u_BoneMatrices[72];
 };	
 

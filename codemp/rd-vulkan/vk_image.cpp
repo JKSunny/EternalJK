@@ -78,9 +78,9 @@ textureMode_t *GetTextureMode( const char *name )
 
 void vk_texture_mode( const char *string, const qboolean init ) {
 	const textureMode_t *mode;
-	image_t	*img;
-	uint32_t		i;
-	
+	image_t		*img;
+	uint32_t	i;
+
 	mode = GetTextureMode( string );
 
 	if ( mode == NULL ) {
@@ -437,9 +437,6 @@ static void vk_clear_cube_color( image_t *image, VkClearColorValue color )
 }
 
 static void vk_upload_cube( image_t *image ) {
-	image->handle = VK_NULL_HANDLE;
-	image->view = VK_NULL_HANDLE;
-	image->descriptor_set = VK_NULL_HANDLE;
 
 	image->uploadWidth = image->uploadHeight = image->width;
 	image->layers = 6;
@@ -459,10 +456,6 @@ void vk_upload_image( image_t *image, byte *pic ) {
 
 	w = upload_data.base_level_width;
 	h = upload_data.base_level_height;
-
-	image->handle = VK_NULL_HANDLE;
-	image->view = VK_NULL_HANDLE;
-	image->descriptor_set = VK_NULL_HANDLE;
 
 	image->uploadWidth = w;
 	image->uploadHeight = h;
@@ -1262,6 +1255,9 @@ image_t *R_CreateImage( const char *name, byte *pic, int width, int height, imgF
 		image->flags &= ~(IMGFLAG_PICMIP);
 	}
 
+	image->handle = VK_NULL_HANDLE;
+	image->view = VK_NULL_HANDLE;
+	image->descriptor_set = VK_NULL_HANDLE;
 	image->internalFormat = format;
 
 	if ( image->flags & IMGFLAG_CUBEMAP )

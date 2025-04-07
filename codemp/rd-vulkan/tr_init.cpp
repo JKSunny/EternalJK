@@ -1146,6 +1146,7 @@ void R_Init( void ) {
 	// init function tables
 	//
 	for (i = 0; i < FUNCTABLE_SIZE; i++) {
+#if 0
 		if (i == 0) {
 			tr.sinTable[i] = EPSILON;
 		}
@@ -1155,6 +1156,9 @@ void R_Init( void ) {
 		else {
 			tr.sinTable[i] = sin(DEG2RAD(i * 360.0f / ((float)(FUNCTABLE_SIZE - 1))));
 		}
+#else
+		tr.sinTable[i] = sin( DEG2RAD( i * 360.0f / FUNCTABLE_SIZE ) + 0.0001f );
+#endif
 		tr.squareTable[i] = (i < FUNCTABLE_SIZE / 2) ? 1.0f : -1.0f;
 		if (i == 0) {
 			tr.sawToothTable[i] = EPSILON;

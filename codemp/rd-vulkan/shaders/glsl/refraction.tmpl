@@ -46,7 +46,7 @@ struct vkDeform_t {
 	int		func;
 };
 
-layout(set = 1, binding = 0) uniform UBO {
+layout(set = 0, binding = 0) uniform UBO {
 	// light/env/material parameters:
 	vec4 eyePos;
 	vec4 lightPos;
@@ -60,11 +60,11 @@ layout(set = 1, binding = 0) uniform UBO {
 #endif
 };
 
-layout(set = 1, binding = 1) uniform Camera {
+layout(set = 0, binding = 1) uniform Camera {
 	vec4 u_ViewOrigin;
 };
 
-layout(set = 1, binding = 3) uniform Entity {
+layout(set = 0, binding = 3) uniform Entity {
 	vec4 u_ambientLight;
 	vec4 u_directedLight;
 	vec4 u_LocalLightOrigin;
@@ -72,7 +72,7 @@ layout(set = 1, binding = 3) uniform Entity {
 	mat4 u_ModelMatrix;
 };
 
-layout(set = 1, binding = 5) uniform Global {
+layout(set = 0, binding = 5) uniform Global {
 	vkBundle_t			u_bundle[3];
 	vkDisintegration_t	u_disintegration;
 	vkDeform_t			u_deform;
@@ -82,7 +82,7 @@ layout(set = 1, binding = 5) uniform Global {
 };
 
 #if defined(USE_VBO_GHOUL2)
-layout(set = 1, binding = 4) uniform Bones {
+layout(set = 0, binding = 4) uniform Bones {
 	mat3x4 u_BoneMatrices[72];
 };
 
