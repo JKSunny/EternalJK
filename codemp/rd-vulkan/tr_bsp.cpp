@@ -3241,4 +3241,6 @@ void RE_LoadWorldMap( const char *name )
 #endif
 
 	ri.CM_SetUsingCache( qfalse );
+
+	vk_set_clearcolor();
 }

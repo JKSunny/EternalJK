@@ -1681,7 +1681,7 @@ typedef struct trGlobals_s {
 	drawSurfsCommand_t		*drawSurfCmd;
 	int						lastRenderCommand;
 
-	vec4_t					*fastskyColor;
+	vec4_t					clearColor;
 } trGlobals_t;
 
 struct glconfigExt_t
