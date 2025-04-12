@@ -1544,10 +1544,7 @@ void JKG_CG_FillACISlot(int itemNum, int slot)
 	if (cg.playerACI[slot] > 0 && cg.playerACI[slot] < cg.playerInventory->size()) {
 		itemData_t* itemInThisSlot;
 		itemInThisSlot = (*cg.playerInventory)[cg.playerACI[slot]].id;
-		if (itemInThisSlot->itemType == ITEM_SHIELD) {
-			JKG_CG_ClearACISlot(slot);
-		}
-		else if (itemInThisSlot->itemType == ITEM_JETPACK) {
+		if (itemInThisSlot->itemType == ITEM_SHIELD || itemInThisSlot->itemType == ITEM_JETPACK) {
 			JKG_CG_ClearACISlot(slot);
 		}
 	}
