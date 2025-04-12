@@ -1156,7 +1156,7 @@ void R_Init( void ) {
 	vk_create_brfdlut();
 #endif
 
-	vk_set_fastsky_color();
+	vk_set_clearcolor();
 
 	R_InitShaders(qfalse);
 	R_InitSkins();
