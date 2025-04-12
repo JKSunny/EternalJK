@@ -836,6 +836,10 @@ static void CG_DrawTopLeftHUD ( menuDef_t *menuHUD, vec4_t opacity )
 		ps = &cg.predictedPlayerState;
 		static vec4_t fullcolor = { 0.2f, 1, 0.3f, 1 };		//use this color when the resource is full (greenish)
 
+		//if the UI element is supposed to be transparent/hidden, override
+		if(opacity[3] < 1)
+			fullcolor[3] = opacity[3];
+
 		focusItem = Menu_FindItemByName(menuHUD, "frame");
 		if (focusItem)
 		{
