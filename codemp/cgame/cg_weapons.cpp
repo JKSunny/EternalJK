@@ -1539,15 +1539,16 @@ void JKG_CG_FillACISlot(int itemNum, int slot)
 		JKG_RemoveACIItemsOfType(ITEM_JETPACK);
 		activateJetpack = true;
 	}
-	else if (cg.playerACI[slot] > 0 && cg.playerACI[slot] < cg.playerInventory->size()) {
-		// Check to see if we're overwriting a shield/jetpack (if so, unequip it)
+
+	// Check to see if we're overwriting a shield/jetpack (if so, unequip it)
+	if (cg.playerACI[slot] > 0 && cg.playerACI[slot] < cg.playerInventory->size()) {
 		itemData_t* itemInThisSlot;
 		itemInThisSlot = (*cg.playerInventory)[cg.playerACI[slot]].id;
 		if (itemInThisSlot->itemType == ITEM_SHIELD) {
-			trap->SendClientCommand("unequipShield");
+			JKG_CG_ClearACISlot(slot);
 		}
 		else if (itemInThisSlot->itemType == ITEM_JETPACK) {
-			trap->SendClientCommand("unequipJetpack");
+			JKG_CG_ClearACISlot(slot);
 		}
 	}
 
