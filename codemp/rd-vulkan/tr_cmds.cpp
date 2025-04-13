@@ -362,6 +362,7 @@ void RE_BeginFrame( stereoFrame_t stereoFrame ) {
 	ResetGhoul2RenderableSurfaceHeap();
 
 	backEnd.doneBloom = qfalse;
+	backEnd.doneGlow = qfalse;
 
 	tr.frameCount++;
 	tr.frameSceneNum = 0;

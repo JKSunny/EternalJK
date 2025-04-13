@@ -1274,9 +1274,7 @@ typedef struct backEndState_s {
 	qboolean doneSurfaces;						// done any 3d surfaces already
 	qboolean screenMapDone;
 	qboolean doneBloom;
-
-	qboolean hasGlowSurfaces;					// renderdoc shows empty dglow pass, or passes with 2 or 3 surfaces. maybe use a min surf count instead?
-	qboolean isGlowPass;
+	qboolean doneGlow;
 
 	qboolean hasRefractionSurfaces;
 	qboolean refractionFill;

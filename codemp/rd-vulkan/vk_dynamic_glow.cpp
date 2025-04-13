@@ -30,8 +30,10 @@ qboolean vk_begin_dglow_blur( void )
 	if ( vk.renderPassIndex == RENDER_PASS_SCREENMAP )
 		return qfalse;
 
-	vk_clear_depthstencil_attachments( qtrue );
-	vk_end_render_pass(); // end dglow extract
+	if ( backEnd.doneGlow || !backEnd.doneSurfaces || !vk.fboActive )
+		return qfalse;
+
+	vk_end_render_pass(); // end main
 
 	vk_record_image_layout_transition( vk.cmd->command_buffer, vk.dglow_image[0],
 		VK_IMAGE_ASPECT_COLOR_BIT,
@@ -102,6 +104,8 @@ qboolean vk_begin_dglow_blur( void )
 			}
 		}
 	}
+
+	backEnd.doneGlow = qtrue;
 
 	return qtrue;
 }

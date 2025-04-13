@@ -68,6 +68,7 @@ layout(location = 4) in vec2 fog_tex_coord;
 layout(depth_less) out float gl_FragDepth;
 #else
 layout(location = 0) out vec4 out_color;
+layout(location = 1) out vec4 out_glow;
 #endif
 
 #ifdef USE_ATEST
@@ -94,6 +95,8 @@ layout (constant_id = 9) const float identity_alpha = 1.0;
 #ifdef USE_FOG
 layout (constant_id = 10) const int acff = 0; // NONE, RGB, RGBA, ALPHA
 #endif
+
+layout (constant_id = 11) const uint glow_flags = 0;
 
 #ifdef USE_ATEST
 float CorrectAlpha(float threshold, float alpha, vec2 tc)
@@ -492,5 +495,20 @@ void main() {
 	gl_FragDepth = gl_FragCoord.z;
 #else
 	out_color = base;
+
+		out_glow = vec4( 0.0, 0.0, 0.0, out_color.w );
+
+		if ( (glow_flags & (1 << 0)) != 0 )
+			out_glow += color0;
+	
+	#ifdef USE_TX1	
+		if ( (glow_flags & (1 << 1)) != 0 )
+			out_glow += texture( texture1, frag_tex_coord1 );
+	#endif
+
+	#ifdef USE_TX2
+		if ( (glow_flags & (1 << 2)) != 0 )
+			out_glow += texture( texture2, frag_tex_coord2 );
+	#endif					
 #endif
 }

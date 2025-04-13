@@ -311,16 +311,17 @@ void vk_create_attachments( void )
             }
         }
 
-        if( vk.dglowActive ){
+        if ( vk.dglowActive )
+        {
             uint32_t width = gls.captureWidth;
             uint32_t height = gls.captureHeight;
 
             create_color_attachment( width, height, VK_SAMPLE_COUNT_1_BIT, vk.color_format,
-                usage, &vk.dglow_image[0], &vk.dglow_image_view[0], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, qfalse );
+             usage | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, &vk.dglow_image[0], &vk.dglow_image_view[0], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, qfalse );
 
-            if( vk.msaaActive ){
+            if ( vk.msaaActive ) {
                 create_color_attachment( width, height, (VkSampleCountFlagBits)vkSamples, vk.color_format,
-                usage, &vk.dglow_msaa_image, &vk.dglow_msaa_image_view, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, qfalse );          
+                VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, &vk.dglow_msaa_image, &vk.dglow_msaa_image_view, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, qfalse );          
             }
 
             for ( i = 1; i < ARRAY_LEN(vk.dglow_image); i += 2 ) {

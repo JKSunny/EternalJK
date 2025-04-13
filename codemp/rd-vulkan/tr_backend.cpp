@@ -210,11 +210,6 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 
 #ifdef USE_VANILLA_SHADOWFINISH
 	qboolean		didShadowPass;
-
-	if ( backEnd.isGlowPass )
-	{ //only shadow on initial passes
-		didShadowPass = true;
-	}
 #endif
 
 	// save original time for entity shader offsets
@@ -246,20 +241,6 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 		R_DecomposeSort(drawSurf->sort, &entityNum, &shader, &fogNum, &dlighted);
 
 		if (vk.renderPassIndex == RENDER_PASS_SCREENMAP && entityNum != REFENTITYNUM_WORLD && backEnd.refdef.entities[entityNum].e.renderfx & RF_DEPTHHACK) {
-			continue;
-		}
-
-		// check if we have amy dynamic glow surfaces before dglow pass
-		if( !backEnd.hasGlowSurfaces && vk.dglowActive && !backEnd.isGlowPass && shader->hasGlow )
-			backEnd.hasGlowSurfaces = qtrue;
-
-		// if we're rendering glowing objects, but this shader has no stages with glow, skip it!
-		if ( backEnd.isGlowPass && !shader->hasGlow )
-		{
-			shader = oldShader;
-			entityNum = oldEntityNum;
-			fogNum = oldFogNum;
-			dlighted = oldDlighted;
 			continue;
 		}
 
@@ -629,13 +610,16 @@ const void *RB_StretchPic ( const void *data ) {
 	VBO_UnBind();
 #endif
 
-	if ( !backEnd.projection2D )
-	{
+	if ( !backEnd.projection2D ) {
 		vk_set_2d();
-	}	
+	}
 
 	if ( vk.bloomActive ) {
 		vk_bloom();
+	}
+
+	if ( vk.dglowActive ) {
+		vk_begin_dglow_blur();
 	}
 
 	RB_AddQuadStamp2( cmd->x, cmd->y, cmd->w, cmd->h, cmd->s1, cmd->t1, 
@@ -877,9 +861,6 @@ const void	*RB_DrawSurfs( const void *data ) {
 	backEnd.refdef = cmd->refdef;
 	backEnd.viewParms = cmd->viewParms;
 
-	backEnd.hasGlowSurfaces = qfalse;
-	backEnd.isGlowPass = qfalse;
-
 	backEnd.hasRefractionSurfaces = qfalse;
 
 #ifdef USE_VBO
@@ -935,20 +916,6 @@ const void	*RB_DrawSurfs( const void *data ) {
 		backEnd.refractionFill = qfalse;
 	}
 
-	// checked in previous RB_RenderDrawSurfList() if there is at least one glowing surface
-	if ( vk.dglowActive && !( backEnd.refdef.rdflags & RDF_NOWORLDMODEL ) && backEnd.hasGlowSurfaces )
-	{
-		vk_end_render_pass();
-		
-		backEnd.isGlowPass = qtrue;
-		vk_begin_dglow_extract_render_pass();
-
-		RB_RenderDrawSurfList( cmd->drawSurfs, cmd->numDrawSurfs );
-		
-		vk_begin_dglow_blur();
-		backEnd.isGlowPass = qfalse;
-	}
-	
 	//TODO Maybe check for rdf_noworld stuff but q3mme has full 3d ui
 	backEnd.doneSurfaces = qtrue; // for bloom
 
@@ -1046,6 +1013,7 @@ const void	*RB_SwapBuffers( const void *data ) {
 	backEnd.projection2D = qfalse;
 	backEnd.doneSurfaces = qfalse;
 	backEnd.doneBloom = qfalse;
+	backEnd.doneGlow = qfalse;
 	//backEnd.drawConsole = qfalse;
 
 	return (const void *)(cmd + 1);

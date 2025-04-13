@@ -4419,9 +4419,14 @@ shader_t *FinishShader( void )
 				}
 			}
 
-
 			if (pStage->ss && pStage->ss->surfaceSpriteType) {
 				def.face_culling = CT_TWO_SIDED;
+			}
+
+			for ( n = 0; n < pStage->numTexBundles; n++ ) 
+			{
+				if (pStage->bundle[n].image[0] != NULL && pStage->bundle[n].glow )
+					def.glow_flags |= (1 << n);
 			}
 
 			def.mirror = qfalse;

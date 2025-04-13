@@ -521,7 +521,7 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
     VkPipelineRasterizationStateCreateInfo rasterization_state;
     VkPipelineMultisampleStateCreateInfo multisample_state;
     VkPipelineDepthStencilStateCreateInfo depth_stencil_state;
-    VkPipelineColorBlendAttachmentState attachment_blend_state = {};
+    VkPipelineColorBlendAttachmentState attachment_blend_state[3] = {};
     VkPipelineColorBlendStateCreateInfo blend_state;
     VkPipelineDynamicStateCreateInfo dynamic_state;
     VkDynamicState dynamic_state_array[3] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR, VK_DYNAMIC_STATE_DEPTH_BIAS };
@@ -540,8 +540,9 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
         float   identity_color;
         float   identity_alpha;
         int32_t acff;
+        int32_t glow_flags;
     } frag_spec_data; 
-    VkSpecializationMapEntry spec_entries[12];
+    VkSpecializationMapEntry spec_entries[13];
     VkSpecializationInfo frag_spec_info;
     VkBool32 alphaToCoverage = VK_FALSE;
     unsigned int atest_bits;
@@ -887,6 +888,11 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
 		frag_spec_data.acff = 0;
 	}
 
+    if ( def->glow_flags )
+        frag_spec_data.glow_flags = def->glow_flags;
+    else
+        frag_spec_data.glow_flags = 0;
+
 	//
 	// vertex module specialization data
 	//
@@ -950,7 +956,11 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
     spec_entries[11].offset = offsetof(struct FragSpecData, acff);
     spec_entries[11].size = sizeof(frag_spec_data.acff);
 
-    frag_spec_info.mapEntryCount = 11;
+    spec_entries[12].constantID = 11;
+    spec_entries[12].offset = offsetof(struct FragSpecData, glow_flags);
+    spec_entries[12].size = sizeof(frag_spec_data.glow_flags);
+
+    frag_spec_info.mapEntryCount = 12;
     frag_spec_info.pMapEntries = spec_entries + 1;
     frag_spec_info.dataSize = sizeof( frag_spec_data );
     frag_spec_info.pData = &frag_spec_data;
@@ -1107,30 +1117,34 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
 
     // attachment color blending state
     Com_Memset(&attachment_blend_state, 0, sizeof(attachment_blend_state));
-    attachment_blend_state.blendEnable = (def->state_bits & (GLS_SRCBLEND_BITS | GLS_DSTBLEND_BITS)) ? VK_TRUE : VK_FALSE;
 
-    if ( def->shadow_phase == SHADOW_EDGES )
-        attachment_blend_state.colorWriteMask = 0;
-    else
-        attachment_blend_state.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-
-    if ( attachment_blend_state.blendEnable )
+    for ( uint32_t i = 0; i < ARRAY_LEN( attachment_blend_state ); i++ ) 
     {
-        // set color blend factor.
-        vk_set_pipeline_color_blend_attachment_factor(def, &attachment_blend_state);
+        attachment_blend_state[i].blendEnable = (def->state_bits & (GLS_SRCBLEND_BITS | GLS_DSTBLEND_BITS)) ? VK_TRUE : VK_FALSE;
 
-        attachment_blend_state.srcAlphaBlendFactor = attachment_blend_state.srcColorBlendFactor;
-        attachment_blend_state.dstAlphaBlendFactor = attachment_blend_state.dstColorBlendFactor;
-        attachment_blend_state.colorBlendOp = VK_BLEND_OP_ADD;
-        attachment_blend_state.alphaBlendOp = VK_BLEND_OP_ADD;
+        if ( def->shadow_phase == SHADOW_EDGES )
+            attachment_blend_state[i].colorWriteMask = 0;
+        else
+            attachment_blend_state[i].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 
-        if ( def->allow_discard ) {
-            // try to reduce pixel fillrate for transparent surfaces, this yields 1..10% fps increase when multisampling in enabled
-            if ( attachment_blend_state.srcColorBlendFactor == VK_BLEND_FACTOR_SRC_ALPHA && attachment_blend_state.dstColorBlendFactor == VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA ) {
-                frag_spec_data.discard_mode = 1;
-            }
-            else if ( attachment_blend_state.srcColorBlendFactor == VK_BLEND_FACTOR_ONE && attachment_blend_state.dstColorBlendFactor == VK_BLEND_FACTOR_ONE ) {
-                frag_spec_data.discard_mode = 2;
+        if ( attachment_blend_state[i].blendEnable )
+        {
+            // set color blend factor.
+            vk_set_pipeline_color_blend_attachment_factor(def, &attachment_blend_state[i]);
+
+            attachment_blend_state[i].srcAlphaBlendFactor = attachment_blend_state[i].srcColorBlendFactor;
+            attachment_blend_state[i].dstAlphaBlendFactor = attachment_blend_state[i].dstColorBlendFactor;
+            attachment_blend_state[i].colorBlendOp = VK_BLEND_OP_ADD;
+            attachment_blend_state[i].alphaBlendOp = VK_BLEND_OP_ADD;
+
+            if ( def->allow_discard ) {
+                // try to reduce pixel fillrate for transparent surfaces, this yields 1..10% fps increase when multisampling in enabled
+                if ( attachment_blend_state[i].srcColorBlendFactor == VK_BLEND_FACTOR_SRC_ALPHA && attachment_blend_state[i].dstColorBlendFactor == VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA ) {
+                    frag_spec_data.discard_mode = 1;
+                }
+                else if ( attachment_blend_state[i].srcColorBlendFactor == VK_BLEND_FACTOR_ONE && attachment_blend_state[i].dstColorBlendFactor == VK_BLEND_FACTOR_ONE ) {
+                    frag_spec_data.discard_mode = 2;
+                }
             }
         }
     }
@@ -1141,8 +1155,8 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
     blend_state.flags = 0;
     blend_state.logicOpEnable = VK_FALSE;
     blend_state.logicOp = VK_LOGIC_OP_COPY;
-    blend_state.attachmentCount = 1;
-    blend_state.pAttachments = &attachment_blend_state;
+    blend_state.attachmentCount = vk.dglowActive ? 2 : 1;
+    blend_state.pAttachments = attachment_blend_state;
     blend_state.blendConstants[0] = 0.0f;
     blend_state.blendConstants[1] = 0.0f;
     blend_state.blendConstants[2] = 0.0f;
@@ -1204,7 +1218,7 @@ static void vk_create_post_process_pipeline( int program_index, uint32_t width, 
     VkPipelineViewportStateCreateInfo viewport_state;
     VkPipelineMultisampleStateCreateInfo multisample_state;
     VkPipelineColorBlendStateCreateInfo blend_state;
-    VkPipelineColorBlendAttachmentState attachment_blend_state;
+    VkPipelineColorBlendAttachmentState attachment_blend_state[3];
     VkGraphicsPipelineCreateInfo create_info;
     VkViewport viewport;
     VkRect2D scissor;
@@ -1230,6 +1244,7 @@ static void vk_create_post_process_pipeline( int program_index, uint32_t width, 
         int depth_g;
         int depth_b;
     } frag_spec_data;
+    uint32_t attachmentCount = 1;
 
     switch ( program_index ) {
         case 1: // bloom extraction
@@ -1267,6 +1282,7 @@ static void vk_create_post_process_pipeline( int program_index, uint32_t width, 
             samples = (VkSampleCountFlagBits)vkSamples;
             pipeline_name = "dglow blend pipeline";
             blend = qtrue;
+            attachmentCount = 2;
             break;
         default: // gamma correction
             pipeline = &vk.gamma_pipeline;
@@ -1445,14 +1461,19 @@ static void vk_create_post_process_pipeline( int program_index, uint32_t width, 
     multisample_state.alphaToOneEnable = VK_FALSE;
 
     Com_Memset(&attachment_blend_state, 0, sizeof(attachment_blend_state));
-    attachment_blend_state.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-    if ( blend ) {
-        attachment_blend_state.blendEnable = VK_TRUE;
-        attachment_blend_state.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
-        attachment_blend_state.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
-    }
-    else {
-        attachment_blend_state.blendEnable = VK_FALSE;
+
+    for ( uint32_t i = 0; i < ARRAY_LEN(attachment_blend_state); i++ )
+    {
+        attachment_blend_state[i].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+       
+        if ( blend ) {
+            attachment_blend_state[i].blendEnable = VK_TRUE;
+            attachment_blend_state[i].srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+            attachment_blend_state[i].dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
+        }
+        else {
+            attachment_blend_state[i].blendEnable = VK_FALSE;
+        }
     }
 
     blend_state.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
@@ -1460,8 +1481,8 @@ static void vk_create_post_process_pipeline( int program_index, uint32_t width, 
     blend_state.flags = 0;
     blend_state.logicOpEnable = VK_FALSE;
     blend_state.logicOp = VK_LOGIC_OP_COPY;
-    blend_state.attachmentCount = 1;
-    blend_state.pAttachments = &attachment_blend_state;
+    blend_state.attachmentCount = attachmentCount;
+    blend_state.pAttachments = attachment_blend_state;
     blend_state.blendConstants[0] = 0.0f;
     blend_state.blendConstants[1] = 0.0f;
     blend_state.blendConstants[2] = 0.0f;

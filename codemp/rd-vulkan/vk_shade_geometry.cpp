@@ -1131,10 +1131,7 @@ static void vk_set_fog_params( vkUniform_t *uniform, int *fogStage )
 			uniform->fog.fogEyeT[1] = 1.0; // fog eye in
 		}
 		// fragment data
-		if ( backEnd.isGlowPass )
-			VectorCopy4( colorBlack, uniform->fog.fogColor );
-		else
-			VectorCopy4( fp->fogColor, uniform->fog.fogColor );
+		VectorCopy4( fp->fogColor, uniform->fog.fogColor );
 
 		*fogStage = 1;
 	}
@@ -1658,23 +1655,6 @@ void RB_StageIteratorGeneric( void )
 			if (pStage->bundle[i].image[0] != NULL) {
 				vk_select_texture(i);
 
-				if ( backEnd.isGlowPass ) 
-				{
-					// use blackimage for non glow bundles during a glowPass
-					if ( !pStage->bundle[i].glow ) 
-					{
-						vk_bind( tr.blackImage );
-						Com_Memset( tess.svars.colors[i], 0xff, tess.numVertexes * 4 );
-						continue;
-					}
-
-					// edge case: ensure tessflags bits are set, could be optimized out if equalTC or equalRGB in
-					// tr_shader: try to avoid redundant per-stage computations.
-					// could result in stale tc or rgb data.
-					if ( stage && !tess.xstages[stage -1]->bundle[i].glow && !(tess_flags & TESS_ENV) )
-						tess_flags |= TESS_RGBA0 | TESS_ST0;
-				}
-
 				R_BindAnimatedImage(&pStage->bundle[i]);
 
 				if (tess_flags & (TESS_ST0 << i))
@@ -1685,10 +1665,6 @@ void RB_StageIteratorGeneric( void )
 			}
 		}
 	
-		// reject this stage if it's not a glow stage but we are doing a glow pass.
-		if ( backEnd.isGlowPass && !pStage->glow )
-			continue;
-
 		vk_select_texture( 0 );
 
 		if ( r_lightmap->integer && pStage->bundle[1].isLightmap ) {

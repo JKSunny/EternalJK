@@ -428,7 +428,6 @@ typedef enum {
 	RENDER_PASS_MAIN = 0,
 	RENDER_PASS_SCREENMAP,
 	RENDER_PASS_POST_BLEND,
-	RENDER_PASS_DGLOW,
 	RENDER_PASS_REFRACTION,
 	RENDER_PASS_COUNT
 } renderPass_t;
@@ -450,6 +449,7 @@ typedef struct {
 	int abs_light;
 	int allow_discard;
 	int	acff; // none, rgb, rgba, alpha
+	uint32_t glow_flags;
 	struct {
 		byte rgb;
 		byte alpha;
@@ -691,7 +691,6 @@ typedef struct {
 
 		struct {
 			VkRenderPass blur[VK_NUM_BLUR_PASSES * 2];
-			VkRenderPass extract;
 			VkRenderPass blend;
 		} dglow;
 	} render_pass;
@@ -1062,7 +1061,6 @@ void		vk_refraction_extract( void );
 void		vk_begin_post_refraction_extract_render_pass( void );
 
 // dynamic glow
-void		vk_begin_dglow_extract_render_pass( void );
 void		vk_begin_dglow_blur_render_pass( uint32_t index );
 qboolean	vk_begin_dglow_blur( void );
 
