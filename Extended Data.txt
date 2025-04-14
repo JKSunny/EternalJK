@@ -137,7 +137,7 @@ Defines several constants. These could be cvars, but I decided not to, in order 
  - ironsightsMoveSpeed (float): Controls how fast players move when they are using ironsights
  - blockingModeMoveSpeed (float): Controls how fast players move when they are using sabers in Blocking or Projectile Blocking mode.
 
-The following modify movement speed
+The following modify movement speed:
  - backwardsSpeedModifier (float): Modifies the player's speed when they are walking backwards.
  - strafeSpeedModifier (float): Modifies the player's speed when they are moving side-to-side.
  - baseSpeedModifier (float): Modifies the run speed.
@@ -145,6 +145,10 @@ The following modify movement speed
  - minimumSpeedModifier (float): Adds up the modifiers. If all of the modifiers fall below this value, they are capped to being this.
  - sprintSpeedModifier (float): Modifies the sprint speed
  - backwardsDiagonalSpeedModifier (float): Modifies the backwards, diagonal movement speed. 
+ 
+The following are miscellaneous modifiers:
+ - consumableTime (int): How many ms clients have to wait between using consumables (default 3000ms)
+ - fallDamageDelta (float): how much fall dmg is reduced by (see ClientEvents() in g_active.cpp for implementation details)
 
  - stamina(object):
   - lossFromRolling (integer): How much stamina is lost from rolling.

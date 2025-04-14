@@ -951,7 +951,7 @@ void ClientEvents( gentity_t *ent, int oldEventSequence ) {
 				}
 				else
 				{
-					damage = delta*0.16; //good enough for now, I guess
+					damage = delta*bgConstants.fallDamageDelta;
 				}
 
 				VectorSet (dir, 0, 0, 1);

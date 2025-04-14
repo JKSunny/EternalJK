@@ -1899,6 +1899,7 @@ typedef struct {
 
 	//Misc Stuff
 	unsigned int consumableTime;
+	float fallDamageDelta;
 
 	// Stuff pertaining to stamina drains
 	struct {
