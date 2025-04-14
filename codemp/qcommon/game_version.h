@@ -29,7 +29,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "../win32/AutoVersion.h"
 #include "../git.h"
 
-#define JKG_COPYRIGHT "�Jedi Knight Galaxies 2009-2025" //update the current year regularly, due to macro limitations we can't use something like:
+#define JKG_COPYRIGHT "©Jedi Knight Galaxies 2009-2025" //update the current year regularly, due to macro limitations we can't use something like:
 //#define DATE_YEAR (__DATE__ + sizeof(__DATE__) - 5)
 
 /*
