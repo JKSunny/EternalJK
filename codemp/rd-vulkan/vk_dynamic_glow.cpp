@@ -97,7 +97,7 @@ qboolean vk_begin_dglow_blur( void )
 		//for ( i = 0; i < ( ( vk.maxBoundDescriptorSets >= 6 ) ? 7 : 4 ); i++ ) {
 		for ( i = 0; i < VK_DESC_COUNT; i++ ) {
 			if ( vk.cmd->descriptor_set.current[i] != VK_NULL_HANDLE ) {
-				if ( i == VK_DESC_STORAGE || i == VK_DESC_UNIFORM ) {
+				if ( /*i == VK_DESC_STORAGE ||*/ i == VK_DESC_UNIFORM ) {
 					offset_count = 0;
 
 					offsets[offset_count++] = vk.cmd->descriptor_set.offset[i];
