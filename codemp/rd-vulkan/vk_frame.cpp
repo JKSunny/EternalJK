@@ -1140,7 +1140,7 @@ void vk_begin_frame( void )
 		VK_CHECK( qvkResetFences( vk.device, 1, &vk.cmd->rendering_finished_fence ) );
     }
 
-	if ( !ri.VK_IsMinimized() ) {
+	if ( !ri.VK_IsMinimized() && !vk.cmd->swapchain_image_acquired ) {
 		res = qvkAcquireNextImageKHR( vk.device, vk.swapchain, 1 * 1000000000ULL, vk.cmd->image_acquired, VK_NULL_HANDLE, &vk.cmd->swapchain_image_index );
 		// when running via RDP: "Application has already acquired the maximum number of images (0x2)"
 		// probably caused by "device lost" errors
