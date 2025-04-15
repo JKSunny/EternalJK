@@ -1716,7 +1716,7 @@ void ForceTelepathy(gentity_t *self);
 qboolean NPC_Humanoid_DodgeEvasion( gentity_t *self, gentity_t *shooter, trace_t *tr, int hitLoc );
 void WP_DeactivateSaber( gentity_t *self, qboolean clearLength );
 void WP_ActivateSaber( gentity_t *self );
-void JKG_NetworkSaberCrystals( playerState_t *ps, int invId, int weaponId );
+void JKG_NetworkSaberCrystals( playerState_t *ps, std::size_t invId, int weaponId );
 void JKG_DoubleCheckWeaponChange( usercmd_t *cmd, playerState_t *ps );
 
 // wp_melee.cpp

@@ -1834,8 +1834,8 @@ static int GLua_Player_PossessingItem(lua_State *L)
 static int GLua_Player_PossessingWeapon(lua_State *L)
 {
 	GLua_Data_Player_t *ply = GLua_CheckPlayer(L,1);
-	int weapon = lua_tointeger(L, 2);
-	int variation = lua_tointeger(L, 3);
+	unsigned int weapon = lua_tointeger(L, 2);
+	unsigned int variation = lua_tointeger(L, 3);
 	gentity_t *ent;
 
 	if(!ply) return 0;
