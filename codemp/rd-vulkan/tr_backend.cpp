@@ -302,7 +302,7 @@ static void RB_SubmitDrawSurfs( drawSurf_t *drawSurfs, int numDrawSurfs, float o
 			cubemapIndex != oldCubemapIndex ||
 			( entityNum != oldEntityNum && !shader->entityMergable ) )
 		{		
-			if ( oldShader != NULL )
+			//if ( oldShader != NULL )
 				RB_EndSurface();
 
 #ifdef USE_PMLIGHT

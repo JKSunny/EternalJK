@@ -1103,7 +1103,7 @@ void vk_begin_cubemap_render_pass( void )
 
 void vk_begin_main_render_pass( void )
 {
-    VkFramebuffer frameBuffer = vk.framebuffers.main[vk.swapchain_image_index];
+    VkFramebuffer frameBuffer = vk.framebuffers.main[vk.cmd->swapchain_image_index];
 
     vk.renderPassIndex = RENDER_PASS_MAIN;
 
@@ -1116,7 +1116,7 @@ void vk_begin_main_render_pass( void )
 
 void vk_begin_post_blend_render_pass( VkRenderPass renderpass, qboolean clearValues )
 {
-    VkFramebuffer frameBuffer = vk.framebuffers.main[vk.swapchain_image_index];
+    VkFramebuffer frameBuffer = vk.framebuffers.main[vk.cmd->swapchain_image_index];
 
     vk.renderPassIndex = RENDER_PASS_POST_BLEND;
 
@@ -1342,26 +1342,25 @@ void vk_begin_frame( void )
 		}
         vk_imgui_profiler_end_task( wait_for_fence_task );
 		VK_CHECK( qvkResetFences( vk.device, 1, &vk.cmd->rendering_finished_fence ) );
-
-	    if ( !ri.VK_IsMinimized() ) {
-            size_t acquire_task = vk_imgui_profiler_start_task( "ImageAcquire",	RGBA_LE(0xd35400ffu) );
-		    res = qvkAcquireNextImageKHR( vk.device, vk.swapchain, 1 * 1000000000ULL, vk.cmd->image_acquired, VK_NULL_HANDLE, &vk.swapchain_image_index );
-            vk_imgui_profiler_end_task( acquire_task );
-		    // when running via RDP: "Application has already acquired the maximum number of images (0x2)"
-		    // probably caused by "device lost" errors
-		    if ( res < 0 ) {
-			    if ( res == VK_ERROR_OUT_OF_DATE_KHR ) {
-				    // swapchain re-creation needed
-				    vk_restart_swapchain( __func__ );
-			    } else {
-				    ri.Error( ERR_FATAL, "vkAcquireNextImageKHR returned %s", vk_result_string( res ) );
-			    }
-		    }
-	    } else {
-		    vk.swapchain_image_index++;
-		    vk.swapchain_image_index %= vk.swapchain_image_count;
-	    }
     }
+
+	if ( !ri.VK_IsMinimized() && !vk.cmd->swapchain_image_acquired ) {
+        size_t acquire_task = vk_imgui_profiler_start_task( "ImageAcquire",	RGBA_LE(0xd35400ffu) );
+		res = qvkAcquireNextImageKHR( vk.device, vk.swapchain, 1 * 1000000000ULL, vk.cmd->image_acquired, VK_NULL_HANDLE, &vk.cmd->swapchain_image_index );
+        vk_imgui_profiler_end_task( acquire_task );
+		// when running via RDP: "Application has already acquired the maximum number of images (0x2)"
+		// probably caused by "device lost" errors
+		if ( res < 0 ) {
+			if ( res == VK_ERROR_OUT_OF_DATE_KHR ) {
+				// swapchain re-creation needed
+				vk_restart_swapchain( __func__ );
+			} else {
+				ri.Error( ERR_FATAL, "vkAcquireNextImageKHR returned %s", vk_result_string( res ) );
+			}
+		}
+        vk.cmd->swapchain_image_acquired = qtrue;
+	}
+    
 
     begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     begin_info.pNext = VK_NULL_HANDLE;
@@ -1592,7 +1591,7 @@ void vk_end_frame( void )
             vk.renderWidth = gls.windowWidth;
             vk.renderHeight = gls.windowHeight;
             vk.renderScaleX = vk.renderScaleY = 1.0;
-            vk_begin_render_pass( vk.render_pass.inspector, vk.framebuffers.inspector[vk.swapchain_image_index],
+            vk_begin_render_pass( vk.render_pass.inspector, vk.framebuffers.inspector[vk.cmd->swapchain_image_index],
                 qtrue, vk.renderWidth, vk.renderHeight );
 #ifdef USE_VK_IMGUI
             vk_imgui_draw();
@@ -1642,7 +1641,7 @@ void vk_present_frame( void )
 	VkPresentInfoKHR present_info;
 	VkResult res;
 
-	if ( ri.VK_IsMinimized() )
+	if ( ri.VK_IsMinimized() || !vk.cmd->swapchain_image_acquired )
 		return;
 
 	if ( !vk.cmd->waitForFence ) {
@@ -1656,8 +1655,10 @@ void vk_present_frame( void )
 	present_info.pWaitSemaphores = &vk.cmd->rendering_finished;
 	present_info.swapchainCount = 1;
 	present_info.pSwapchains = &vk.swapchain;
-	present_info.pImageIndices = &vk.swapchain_image_index;
+	present_info.pImageIndices = &vk.cmd->swapchain_image_index;
 	present_info.pResults = NULL;
+
+    vk.cmd->swapchain_image_acquired = qfalse;
 
     size_t present_task = vk_imgui_profiler_start_task( "Present", RGBA_LE(0xc0392bffu) );
     res = qvkQueuePresentKHR( vk.queue, &present_info );
