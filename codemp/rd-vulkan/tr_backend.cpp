@@ -1307,7 +1307,12 @@ const void	*RB_SwapBuffers( const void *data ) {
 
 	vk_end_frame();
 
+#ifdef USE_RTX
+	// check this later, RTX doesn't skips vanilla scene/view logic
+	if ( !vk.rtxActive && backEnd.doneSurfaces && !glState.finishCalled ) {
+#else
 	if ( backEnd.doneSurfaces && !glState.finishCalled ) {
+#endif
 		vk_queue_wait_idle();
 	}
 
