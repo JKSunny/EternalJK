@@ -2656,7 +2656,7 @@ void ClientSpawn(gentity_t *ent, qboolean respawn) {
 	int					index;
 	vec3_t				spawn_origin, spawn_angles;
 	gclient_t			*client;
-	int					i;
+	unsigned int		i;
 	clientPersistant_t	saved;
 	clientSession_t		savedSess;
 	int					persistant[MAX_PERSISTANT];
@@ -3148,7 +3148,7 @@ void ClientSpawn(gentity_t *ent, qboolean respawn) {
 				if(!haveItem && ent->inventory->size() < 1)
 				{
 					// Don't have any sort of item in our inventory
-					if(ent->client->ps.credits < jkg_startingCredits.integer)
+					if(ent->client->ps.credits < static_cast<unsigned int>(jkg_startingCredits.integer))
 					{
 						itemInstance_t item = BG_ItemInstance(itemID, 1, MAX_DEFAULT_DURABILITY);
 						ent->client->ps.credits = jkg_startingCredits.integer;

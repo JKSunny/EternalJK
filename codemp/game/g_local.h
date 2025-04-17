@@ -1836,7 +1836,7 @@ void		TeamPartyCommandDisband( int clientNum );										// Disbands the party, 
 void		TeamPartyCommandDismiss( int clientNum, int iID );								// Dismisses the target member from the party. The identifier is the slot!
 void		TeamPartyCommandInvite( int clientNum, char *parm );							// Invites a player to join your party. The parameter can be a identifier or name.
 void		TeamPartyCommandLeave( int clientNum, qboolean forceClient );					// Leave your current party. This may not be performed by the leader.
-void		TeamPartyListRefresh( int clientNum, int iTime );								// Refreshes the 'seeking party list', where people register to look for a party.
+void		TeamPartyListRefresh( int clientNum, unsigned int iTime );								// Refreshes the 'seeking party list', where people register to look for a party.
 void		TeamPartyListRegister( int clientNum, char *message );							// Register yourself on the seeking list!
 void		TeamPartyListUnregister( int clientNum, qboolean forcedUpdate );				// Unregister yourself from the seeking list!
 void		TeamPartyCommandReject( int clientNum, int iID );								// Rejects the party invitation in the provided slot.
