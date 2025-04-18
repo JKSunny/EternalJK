@@ -287,13 +287,14 @@ void	CCmd_AddCommand( const char *cmd_name, xccommand_t function ) {
 
 	// fail if the command already exists
 	for ( cmd = ccmd_functions ; cmd ; cmd=cmd->next ) {
-		if (!cmd->name || cmd->name == "")
+		
+		/*if (!cmd->name || cmd->name == "")
 		{
 			Com_Printf("CCmd_AddCommand: null cmd!\n");
 			return;
-		}
+		}*/
 
-		if ( !strcmp( cmd_name, cmd->name) ){
+		if ( !strcmp( cmd_name, cmd->name) ){ //<--crash happens here on 2nd map load
 			Com_Printf ("CCmd_AddCommand: %s already defined\n", cmd_name);
 			return;
 		}
@@ -302,13 +303,12 @@ void	CCmd_AddCommand( const char *cmd_name, xccommand_t function ) {
 	// use a small malloc to avoid zone fragmentation
 	cmd = (ccmd_function_t *)malloc(sizeof(ccmd_function_t));
 	//JKG_Assert(cmd);
-	if (!cmd)
+	/*if (!cmd)
 	{
 		Com_Printf("CCmd_AddCommand: null cmd!\n");
 		free(cmd);
 		return;
-	}
-
+	}*/
 	cmd->name = CopyString( cmd_name );
 	cmd->function = function;
 	cmd->next = ccmd_functions;
