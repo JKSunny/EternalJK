@@ -197,7 +197,7 @@
 				"multiply": 1.35
 			},
 			"heatGenerated": {
-				"multiply": 1.25
+				"multiply": 1.5
 			},
 			"visuals": {
 				"projectile": {
