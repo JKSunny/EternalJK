@@ -15,7 +15,7 @@
 
 
 ### Downloads ###
-The most up to date versions are available on the download page on the website, under the [test releases section](https://www.jkgalaxies.net/download.html#testdiv), but you can also use the following direct links (not frequently updated - may be out of date): [Binaries](https://github.com/JKGDevs/JediKnightGalaxies/releases/) , [Assets](https://uvu.box.com/shared/static/geejtm8xcovvcyt9jra4e6f585beatx1.zip) , 
+The most up to date versions are available on the download page on the website, under the [test releases section](https://www.jkgalaxies.net/download.html#testdiv), but you can also use the following direct links (not frequently updated - may be out of date): [Binaries](https://github.com/JKGDevs/JediKnightGalaxies/releases/) , [Assets](https://icedrive.net/s/CfgDhyf1BSwNbQ9bWgQWu7y22CvQ) , 
 [Map Bundle #1](http://jkhub.org/files/file/2652-jedi-knight-galaxies-map-bundle-1/) , [Map Bundle #2](https://jkhub.org/files/file/3778-jedi-knight-galaxies-map-bundle-2/)
 
 
@@ -33,22 +33,25 @@ Welcome to Jedi Knight Galaxies, where we break the limits!
 [![JKG v1.3.22 Trailer](http://img.youtube.com/vi/X63qy7lONyo/0.jpg)](http://www.youtube.com/watch?v=X63qy7lONyo "JKG v1.3.22 Trailer")
 
 
-## Build Guide ##
-[OpenJK Compilation Guide](https://github.com/JACoders/OpenJK/wiki/Compilation-guide)  
-[Flate's Ubuntu/Debian Guide](https://github.com/JKGDevs/JediKnightGalaxies/wiki/Flate%27s-Debian-Ubuntu-Compiling-Guide)
-
 ## Installation of Game ##
-JKG is available for Windows, but it will compile with most Linux distributions and MacOS; however it is only briefly tested on Ubuntu.
+JKG is available for Windows 10+ and Linux.  It will compile with most Linux distributions and MacOS; however it is only tested on Mint/Ubuntu and Windows.
 
 To install, you will first need Jedi Academy installed. If you don't already own the game you can buy it from online stores such as [Steam](http://store.steampowered.com/app/6020/), [Amazon](http://www.amazon.com/Star-Wars-Jedi-Knight-Academy-Pc/dp/B0000A2MCN), or [GOG](https://www.gog.com/game/star_wars_jedi_knight_jedi_academy).
 
-There are a few ways to actually install JKG itself, the simplest is to just get the [binaries](https://github.com/JKGDevs/JediKnightGalaxies/releases) and [assets](https://uvu.box.com/shared/static/ctdly3jwnhjcji560sx1czfdgnahbtzi.zip), and then follow the directions in the readme included.  Please note that while we try to keep these relatively up to date, the github will always contain the most current version of the source code and you can always compile and pack the pk3s yourself to get a more up to date version.  Most of the JKG assets are not stored on this github repository, only source code and code-like assets.
+There are a few ways to actually install JKG itself, the simplest is to just get the [binaries](https://github.com/JKGDevs/JediKnightGalaxies/releases) and [assets](https://icedrive.net/s/CfgDhyf1BSwNbQ9bWgQWu7y22CvQ), and then follow the directions in the readme included.  Please note that while we try to keep these relatively up to date, the github will always contain the most current version of the source code and you can always compile and pack the pk3s yourself to get a more up to date version.  Most of the JKG assets are not stored on this github repository, only source code and code-like assets.
 
 Alternatively you can install the assets and binaries inside a directory such as C:\JKG\ and then use a batch file/command line arguments to open jkgalaxies.x86.exe while pointing it to the Jedi Academy assets.  This is the recommended setup for developers, as you can then call your exe's location with appropriate args directly from your IDE.  You can do this by setting the fs_basepath arg to be equal to your Jedi Academy install location.  You'll also want to set the fs_cdpath to be equal to JKG's directory.  Optionally you can use fs_homepath to store screenshots and other user specific information, if not specified fs_homepath will be set to "...Documents\My Games\JKGalaxies"  For example, use this batch script on steam installs for windows:
 
 	jkgalaxies.x86.exe +set fs_game "JKG" +set fs_cdpath "." +set fs_basepath "C:\Program Files (x86)\Steam\SteamApps\common\Jedi Academy\GameData" +set r_mode -2
 
 If you're stuck, you can also watch [this video](https://www.youtube.com/watch?v=odx-3f07_eA) to see how to install the game.
+
+
+## Build Guide ##
+Want to build and compile JKG yourself from the source code? Checkout these guides:  
+[JKG Compilation Guide](https://github.com/JKGDevs/JediKnightGalaxies/wiki/Compilation-Guide)  
+[Flate's Ubuntu/Debian Step-By-Step Guide](https://github.com/JKGDevs/JediKnightGalaxies/wiki/Flate%27s-Debian-Ubuntu-Compiling-Guide)
+
 
 ## Dependencies ##
 
@@ -85,7 +88,7 @@ Please be aware of the implications of the GPLv2 licence. In short, be prepared 
 * If you make a nice change, please consider back-porting to upstream via pull request as described above. This is so everyone benefits without having to reinvent the wheel for every project.  The developers are usually more than willing to collaborate with other projects for everyone's benefits.
 * While it is not a requirement to notify us of new projects based on JKG, you must follow the rules of the GPLv2 Licence (see above).  Typically this means making your source code available to the public.  We also enjoy checking out cool new projects based on JKG, so we'd love to hear about what you're doing with it.
 
-Please use discretion when making issue requests on GitHub. The [forum](https://jkhub.org/forum/117-jedi-knight-galaxies/) is a better place for larger discussions on changes that aren't actually bugs.  If you're unsure of how something works or need clarification, it is best to ask the developers on the [Discord](https://discord.gg/YuG8Zks) in the #development channel.
+Please use discretion when making issue requests on GitHub. The [forum](https://jkhub.org/forum/117-jedi-knight-galaxies/) is a better place for larger discussions on changes that aren't actually bugs, especially in relation to new ideas for features/gameplay.  If you're unsure of how something works or need clarification, it is best to ask the developers on the [Discord](https://discord.gg/YuG8Zks) in the #development channel.
 
 
 ## Current Project Goals ##
@@ -113,9 +116,10 @@ JKG uses the following version schema: Phase.Major.Minor with an optional suffix
 If you want to help contribute to JKG there's a lot of ways you can do so, here are some examples:
 * Participate: Joining the [Discord](https://discord.gg/YuG8Zks) and chatting with the developers or community in the #development channel is the most important way to get involved.  You can also find other players here to schedule matches with.
 * Local Play: Host a LAN party with JKG as a featured game.  While JKG works on the internet, it can also be played with your local friends and is a great way to introduce people to the game!
+* Streaming and Recording: Recording gameplay footage or streaming yourself playing JKG is another great way to introduce people to the game.
 * Get the word out: Tell your friends about JKG, invite them to join scrimmage matches - the more the merrier.  Star this repo, the visibility helps!
 * Server Hosting: Host a JKG game server (see [hosting guide here](https://github.com/JKGDevs/JediKnightGalaxies/wiki/Server-Guide-(Phase-I))).
-* Coding: Compile the project and get it running on your own machine first (as outlined in this readme), then take a look at the [issues](https://github.com/JKGDevs/JediKnightGalaxies/issues) list for one that interests you.  (The pinned issue for the next patch covers the most critical issues needed for the next patch).  Feel free to ask questions in the #development channel of the [Discord](https://discord.gg/YuG8Zks) if you get stuck or need clarification.
+* Coding: Compile the project and get it running on your own machine first (as outlined [in the Compilation Guide here](https://github.com/JKGDevs/JediKnightGalaxies/wiki/Compilation-Guide)), then take a look at the [issues](https://github.com/JKGDevs/JediKnightGalaxies/issues) list for one that interests you.  (The pinned issue for the next patch covers the most critical issues needed for the next patch).  Feel free to ask questions in the #development channel of the [Discord](https://discord.gg/YuG8Zks) if you get stuck or need clarification.
 * Modelling, Mapping etc: Join the [Discord](https://discord.gg/YuG8Zks), and ask in the #development channel if you can help contribute.  Providing us examples of your work is appreciated and we can usually suggest things that we need help with.  One of the best ways to show you can help is to mod JKG and show off the results (ie: make a new weapon or new map for the game).  A video is a good way to showcase something like this.
 * Audio/Music: Offer to help in the Discord and post samples of your work, the developers would love to put your talent to good use!
 
