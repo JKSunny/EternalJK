@@ -253,12 +253,6 @@ void	CCmd_AddCommand( const char *cmd_name, xccommand_t function ) {
 	// fail if the command already exists
 	for ( cmd = ccmd_functions ; cmd ; cmd=cmd->next ) 
 	{
-		if (cmd == nullptr)
-		{
-			Com_Printf("CCmd_AddCommand: null cmd!\n");
-			return;
-		}
-
 		if ( !strcmp( cmd_name, cmd->name ) ) {
 			Com_Printf ("CCmd_AddCommand: %s already defined\n", cmd_name);
 			return;
