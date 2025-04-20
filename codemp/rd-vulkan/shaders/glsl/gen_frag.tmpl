@@ -496,10 +496,10 @@ void main() {
 #else
 	out_color = base;
 
-	if ( glow_flags == 0 ) {
+	/*if ( glow_flags == 0 ) {
 		out_glow = vec4( 0.0, 0.0, 0.0, out_color.a );
-	}
-	else {
+	}*/
+	if ( glow_flags > 0 ) {
 		if ( (glow_flags & (1 << 0)) != 0 )
 			out_glow = texture( texture0, frag_tex_coord0 );
 	

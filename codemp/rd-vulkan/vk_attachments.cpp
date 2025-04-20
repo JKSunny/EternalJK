@@ -392,6 +392,11 @@ void vk_create_attachments( void )
         &vk.depth_image, &vk.depth_image_view, 
         ( vk.fboActive && ( vk.bloomActive || vk.dglowActive ) ) ? qfalse : qtrue );
 
+    // depth pre pass
+    create_depth_attachment( glConfig.vidWidth, glConfig.vidHeight, VK_SAMPLE_COUNT_1_BIT,
+        &vk.pre_depth_image, &vk.pre_depth_image_view, 
+        ( vk.fboActive && ( vk.bloomActive || vk.dglowActive ) ) ? qfalse : qtrue );;
+
     vk_alloc_attachment_memory();
 
     for ( i = 0; i < vk.image_memory_count; i++ )
@@ -426,6 +431,8 @@ void vk_create_attachments( void )
     VK_SET_OBJECT_NAME( vk.dglow_msaa_image, "msaa dglow attachment %i", VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT );
     VK_SET_OBJECT_NAME( vk.dglow_msaa_image_view, "msaa dglow attachment view %i", VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT );
 
+    VK_SET_OBJECT_NAME( vk.pre_depth_image, "pre depth attachment", VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT );
+    VK_SET_OBJECT_NAME( vk.pre_depth_image_view, "pre depth attachment", VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT );
 }
 
 void vk_clear_depthstencil_attachments( qboolean clear_stencil ) {

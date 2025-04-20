@@ -244,6 +244,10 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 			continue;
 		}
 
+		if (vk.renderPassIndex == RENDER_PASS_PRE_DEPTH && entityNum != REFENTITYNUM_WORLD && backEnd.refdef.entities[entityNum].e.renderfx & RF_DEPTHHACK) {
+			continue;
+		}
+
 		//oldSort = drawSurf->sort;
 
 		//
@@ -869,6 +873,21 @@ const void	*RB_DrawSurfs( const void *data ) {
 
 	// clear the z buffer, set the modelview, etc
 	RB_BeginDrawingView();
+
+	// depth pre pass
+	{
+		vk_end_render_pass();
+		vk_begin_pre_depth_render_pass();
+
+		RB_RenderDrawSurfList( cmd->drawSurfs, cmd->numDrawSurfs );
+
+		vk_end_render_pass();
+		vk_begin_main_render_pass();
+
+	#ifdef USE_VBO
+		VBO_UnBind();
+	#endif
+	}
 
 	RB_RenderDrawSurfList( cmd->drawSurfs, cmd->numDrawSurfs );
 

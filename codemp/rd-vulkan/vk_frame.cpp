@@ -158,7 +158,8 @@ void vk_create_render_passes()
     attachments[1].flags = 0;
     attachments[1].format = depth_format;
     attachments[1].samples = (VkSampleCountFlagBits)vkSamples;
-    attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    //attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR; 
+    attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; // use depth pre pass depth
     //attachments[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
     attachments[1].stencilLoadOp = glConfig.stencilBits ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     if ( vk.bloomActive || vk.dglowActive || vk.refractionActive ) {
@@ -568,6 +569,56 @@ void vk_create_render_passes()
 
     VK_CHECK(qvkCreateRenderPass(device, &desc, NULL, &vk.render_pass.screenmap));
     VK_SET_OBJECT_NAME(vk.render_pass.screenmap, "render pass - screenmap", VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT);
+
+    // depth prepass
+    {
+        attachments[0].format = vk.depth_format;
+        attachments[0].samples = VK_SAMPLE_COUNT_1_BIT;
+        attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        attachments[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        attachments[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        attachments[0].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        attachments[0].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+		depth_attachment_ref.attachment = 0;
+		depth_attachment_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+        Com_Memset( &subpass, 0, sizeof(subpass) );
+        subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        subpass.colorAttachmentCount = 0;
+        subpass.pDepthStencilAttachment = &depth_attachment_ref;
+
+        deps[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+        deps[0].dstSubpass = 0;
+        deps[0].srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        deps[0].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        deps[0].srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        deps[0].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        deps[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+        deps[1].srcSubpass = 0;
+        deps[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+        deps[1].srcStageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+        deps[1].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        deps[1].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        deps[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        deps[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+        Com_Memset(&desc, 0, sizeof(desc));
+        desc.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+        desc.pNext = NULL;
+        desc.flags = 0;
+        desc.pAttachments = attachments;
+        desc.pSubpasses = &subpass;
+        desc.subpassCount = 1;
+        desc.attachmentCount = 1;
+        desc.dependencyCount = 2;
+        desc.pDependencies = deps;
+
+        VK_CHECK(qvkCreateRenderPass(device, &desc, NULL, &vk.render_pass.pre_depth));
+        VK_SET_OBJECT_NAME(vk.render_pass.pre_depth, "pre depth pass", VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT);
+    }
 }
 
 void vk_create_framebuffers()
@@ -608,7 +659,7 @@ void vk_create_framebuffers()
                 desc.width = glConfig.vidWidth;
                 desc.height = glConfig.vidHeight;
                 attachments[0] = vk.color_image_view;
-                attachments[1] = vk.depth_image_view;
+                attachments[1] = vk.pre_depth_image_view;
 
                 if ( vk.dglowActive ) // attachment 2
                     attachments[desc.attachmentCount++] = vk.dglow_image_view[0];
@@ -764,6 +815,19 @@ void vk_create_framebuffers()
             }
         }
 
+        // depth prepass
+        {
+            desc.renderPass = vk.render_pass.pre_depth;
+            desc.width =  glConfig.vidWidth;
+            desc.height = glConfig.vidHeight;  
+            desc.attachmentCount = 1;
+
+            attachments[0] = vk.pre_depth_image_view;
+
+            VK_CHECK( qvkCreateFramebuffer( vk.device, &desc, NULL, &vk.framebuffers.pre_depth ) );
+            VK_SET_OBJECT_NAME( vk.framebuffers.pre_depth, va( "framebuffer - pre depth pass" ), VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT );
+        }
+
         vk_debug("Created vk.framebuffers with fbo on\n");
     }
 
@@ -829,6 +893,11 @@ void vk_destroy_render_passes( void )
         qvkDestroyRenderPass( vk.device, vk.render_pass.dglow.blend, NULL );
         vk.render_pass.dglow.blend = VK_NULL_HANDLE;
     }
+
+    if ( vk.render_pass.pre_depth != VK_NULL_HANDLE ) {
+        qvkDestroyRenderPass( vk.device, vk.render_pass.pre_depth, NULL );
+        vk.render_pass.pre_depth = VK_NULL_HANDLE;
+    }
 }
 
 void vk_destroy_framebuffers( void )
@@ -883,6 +952,11 @@ void vk_destroy_framebuffers( void )
             qvkDestroyFramebuffer( vk.device, vk.framebuffers.dglow.blur[i], NULL );
             vk.framebuffers.dglow.blur[i] = VK_NULL_HANDLE;
         }
+    }
+
+    if ( vk.framebuffers.pre_depth != VK_NULL_HANDLE ) {
+        qvkDestroyFramebuffer( vk.device, vk.framebuffers.pre_depth, NULL );
+        vk.framebuffers.pre_depth = VK_NULL_HANDLE;
     }
 }
 
@@ -957,6 +1031,11 @@ static void vk_begin_render_pass( VkRenderPass renderPass, VkFramebuffer frameBu
         if ( vk.dglowActive )
             render_pass_begin_info.clearValueCount += vk.msaaActive ? 2 : 1;
 
+        if ( vk.renderPassIndex == RENDER_PASS_PRE_DEPTH ) {
+            clear_values[0].depthStencil = { 1.0f, 0 };
+            render_pass_begin_info.clearValueCount = 1;
+        }
+
         vk_world.dirty_depth_attachment = 0;  
     }
     else {
@@ -984,6 +1063,19 @@ static void vk_begin_screenmap_render_pass( void )
     vk.renderScaleY = (float)vk.renderHeight / (float)glConfig.vidHeight;
 
     vk_begin_render_pass(vk.render_pass.screenmap, frameBuffer, qtrue, vk.renderWidth, vk.renderHeight);
+}
+
+void vk_begin_pre_depth_render_pass( void )
+{
+    VkFramebuffer frameBuffer = vk.framebuffers.pre_depth;
+
+    vk.renderPassIndex = RENDER_PASS_PRE_DEPTH;
+
+    vk.renderWidth = glConfig.vidWidth;
+    vk.renderHeight = glConfig.vidHeight;
+    vk.renderScaleX = vk.renderScaleY = 1.0f;
+
+    vk_begin_render_pass(vk.render_pass.pre_depth, frameBuffer, qtrue, vk.renderWidth, vk.renderHeight);
 }
 
 void vk_begin_main_render_pass( void )

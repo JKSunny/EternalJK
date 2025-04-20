@@ -70,6 +70,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 //#define USE_VANILLA_SHADOWFINISH
 #define USE_VK_STATS
 
+#define VK_PRE_DEPTH_DIM				2048
+
 #define	REFRACTION_EXTRACT_SCALE		2
 #define NUM_COMMAND_BUFFERS				2
 #define VK_NUM_BLUR_PASSES				4
@@ -427,6 +429,7 @@ typedef enum {
 typedef enum {
 	RENDER_PASS_MAIN = 0,
 	RENDER_PASS_SCREENMAP,
+	RENDER_PASS_PRE_DEPTH,
 	RENDER_PASS_POST_BLEND,
 	RENDER_PASS_REFRACTION,
 	RENDER_PASS_COUNT
@@ -638,6 +641,9 @@ typedef struct {
 	VkImage			depth_image;
 	VkImageView		depth_image_view;
 
+	VkImage			pre_depth_image;
+	VkImageView		pre_depth_image_view;
+
 	VkImage			msaa_image;
 	VkImageView		msaa_image_view;
 
@@ -674,6 +680,7 @@ typedef struct {
 
 	// render passes
 	struct {
+		VkRenderPass pre_depth;
 		VkRenderPass main;
 		VkRenderPass gamma;
 		VkRenderPass screenmap;
@@ -703,6 +710,7 @@ typedef struct {
 
 	// framebuffers
 	struct {
+		VkFramebuffer pre_depth;
 		VkFramebuffer main[MAX_SWAPCHAIN_IMAGES];
 		VkFramebuffer gamma[MAX_SWAPCHAIN_IMAGES];
 		VkFramebuffer screenmap;
@@ -853,6 +861,8 @@ typedef struct {
 
 		VkShaderModule refraction_vs;
 		VkShaderModule refraction_fs;
+
+		VkShaderModule predepthpass_vs;	
 	} shaders;
 
 	uint32_t frame_count;
@@ -1026,6 +1036,7 @@ void		vk_update_descriptor( int tmu, VkDescriptorSet curDesSet );
 uint32_t	vk_find_pipeline_ext( uint32_t base, const Vk_Pipeline_Def *def, qboolean use );
 VkPipeline	vk_gen_pipeline( uint32_t index );
 void		vk_end_render_pass( void );
+void		vk_begin_pre_depth_render_pass( void );
 void		vk_begin_main_render_pass( void );
 void		vk_get_pipeline_def( uint32_t pipeline, Vk_Pipeline_Def *def );
 

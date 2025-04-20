@@ -742,6 +742,9 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
 
     vk_debug( "shader used: %s  fog: %s\n", vk_shadertype_string( def->shader_type ), ( def->fog_stage ? "on" : "off" ) );
 
+    if ( renderPassIndex == RENDER_PASS_PRE_DEPTH ) 
+        vs_module = &vk.shaders.predepthpass_vs;
+
     set_shader_stage_desc( shader_stages + 0, VK_SHADER_STAGE_VERTEX_BIT, *vs_module, "main" );
     set_shader_stage_desc( shader_stages + 1, VK_SHADER_STAGE_FRAGMENT_BIT, *fs_module, "main" );
 
@@ -967,7 +970,14 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
     shader_stages[1].pSpecializationInfo = &frag_spec_info;     
 
     // vertex input state (binding and attributes)
-    vk_push_vertex_input_binding_attribute( def );
+    if ( renderPassIndex == RENDER_PASS_PRE_DEPTH ) {
+        num_binds = num_attrs = 0; // reset
+
+        vk_push_bind( 0, sizeof( vec4_t ) );					// xyz array
+        vk_push_attr( 0, 0, VK_FORMAT_R32G32B32A32_SFLOAT );
+    }
+    else
+        vk_push_vertex_input_binding_attribute( def );
 
     vertex_input_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     vertex_input_state.pNext = NULL;
@@ -1073,13 +1083,18 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
     depth_stencil_state.pNext = NULL;
     depth_stencil_state.flags = 0;
     depth_stencil_state.depthTestEnable = (def->state_bits & GLS_DEPTHTEST_DISABLE) ? VK_FALSE : VK_TRUE;
-    depth_stencil_state.depthWriteEnable = (def->state_bits & GLS_DEPTHMASK_TRUE) ? VK_TRUE : VK_FALSE;
+
+    if ( renderPassIndex == RENDER_PASS_PRE_DEPTH ) 
+        depth_stencil_state.depthWriteEnable = (def->state_bits & GLS_DEPTHMASK_TRUE) ? VK_TRUE : VK_FALSE;
+    else
+        depth_stencil_state.depthWriteEnable = VK_FALSE;
 
 #ifdef USE_REVERSED_DEPTH
     depth_stencil_state.depthCompareOp = (def->state_bits & GLS_DEPTHFUNC_EQUAL) ? VK_COMPARE_OP_EQUAL : VK_COMPARE_OP_GREATER_OR_EQUAL;
 #else
     depth_stencil_state.depthCompareOp = (def->state_bits & GLS_DEPTHFUNC_EQUAL) ? VK_COMPARE_OP_EQUAL : VK_COMPARE_OP_LESS_OR_EQUAL;
 #endif
+
     depth_stencil_state.depthBoundsTestEnable = VK_FALSE;
     depth_stencil_state.stencilTestEnable = (def->shadow_phase != SHADOW_DISABLED) ? VK_TRUE : VK_FALSE;
     depth_stencil_state.minDepthBounds = 0.0f;
@@ -1194,6 +1209,18 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
         create_info.renderPass = vk.render_pass.screenmap;
     else if ( renderPassIndex == RENDER_PASS_REFRACTION )
         create_info.renderPass = vk.render_pass.refraction.extract;
+    else if ( renderPassIndex == RENDER_PASS_PRE_DEPTH ) 
+    {
+        rasterization_state.cullMode = VK_CULL_MODE_NONE;
+        rasterization_state.depthBiasEnable = VK_TRUE;
+
+        depth_stencil_state.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+
+        blend_state.attachmentCount = 0;
+
+        create_info.renderPass = vk.render_pass.pre_depth;
+        create_info.stageCount = 1;
+    }
     else
         create_info.renderPass = vk.render_pass.main;
 

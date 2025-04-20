@@ -209,45 +209,52 @@ void vk_bind_geometry( uint32_t flags )
 
 		shade_bufs[0] = shade_bufs[1] = shade_bufs[2] = shade_bufs[3] = shade_bufs[4] = shade_bufs[5] = shade_bufs[6] = shade_bufs[7] = vk.vbo.vertex_buffer;
 
-		if (flags & TESS_XYZ) {  // 0
+		if ( vk.renderPassIndex != RENDER_PASS_PRE_DEPTH ) {
+			if (flags & TESS_XYZ) {  // 0
+				vk.cmd->vbo_offset[0] = tess.shader->vboOffset + 0;
+				vk_bind_index_attr(0);
+			}
+
+			if (flags & TESS_RGBA0) { // 1
+				vk.cmd->vbo_offset[1] = tess.shader->stages[tess.vboStage]->rgb_offset[0];
+				vk_bind_index_attr(1);
+			}
+
+			if (flags & TESS_ST0) {  // 2
+				vk.cmd->vbo_offset[2] = tess.shader->stages[tess.vboStage]->tex_offset[0];
+				vk_bind_index_attr(2);
+			}
+
+			if (flags & TESS_ST1) {  // 3
+				vk.cmd->vbo_offset[3] = tess.shader->stages[tess.vboStage]->tex_offset[1];
+				vk_bind_index_attr(3);
+			}
+
+			if (flags & TESS_ST2) {  // 4
+				vk.cmd->vbo_offset[4] = tess.shader->stages[tess.vboStage]->tex_offset[2];
+				vk_bind_index_attr(4);
+			}
+
+			if (flags & TESS_NNN) { // 5
+				vk.cmd->vbo_offset[5] = tess.shader->normalOffset;
+				vk_bind_index_attr(5);
+			}
+
+			if (flags & TESS_RGBA1) { // 6
+				vk.cmd->vbo_offset[6] = tess.shader->stages[tess.vboStage]->rgb_offset[1];
+				vk_bind_index_attr(6);
+			}
+
+			if (flags & TESS_RGBA2) { // 7
+				vk.cmd->vbo_offset[7] = tess.shader->stages[tess.vboStage]->rgb_offset[2];
+				vk_bind_index_attr(7);
+			}
+		}
+		else {
 			vk.cmd->vbo_offset[0] = tess.shader->vboOffset + 0;
 			vk_bind_index_attr(0);
 		}
 
-		if (flags & TESS_RGBA0) { // 1
-			vk.cmd->vbo_offset[1] = tess.shader->stages[tess.vboStage]->rgb_offset[0];
-			vk_bind_index_attr(1);
-		}
-
-		if (flags & TESS_ST0) {  // 2
-			vk.cmd->vbo_offset[2] = tess.shader->stages[tess.vboStage]->tex_offset[0];
-			vk_bind_index_attr(2);
-		}
-
-		if (flags & TESS_ST1) {  // 3
-			vk.cmd->vbo_offset[3] = tess.shader->stages[tess.vboStage]->tex_offset[1];
-			vk_bind_index_attr(3);
-		}
-
-		if (flags & TESS_ST2) {  // 4
-			vk.cmd->vbo_offset[4] = tess.shader->stages[tess.vboStage]->tex_offset[2];
-			vk_bind_index_attr(4);
-		}
-
-		if (flags & TESS_NNN) { // 5
-			vk.cmd->vbo_offset[5] = tess.shader->normalOffset;
-			vk_bind_index_attr(5);
-		}
-
-		if (flags & TESS_RGBA1) { // 6
-			vk.cmd->vbo_offset[6] = tess.shader->stages[tess.vboStage]->rgb_offset[1];
-			vk_bind_index_attr(6);
-		}
-
-		if (flags & TESS_RGBA2) { // 7
-			vk.cmd->vbo_offset[7] = tess.shader->stages[tess.vboStage]->rgb_offset[2];
-			vk_bind_index_attr(7);
-		}
 		qvkCmdBindVertexBuffers(vk.cmd->command_buffer, bind_base, bind_count, shade_bufs, vk.cmd->vbo_offset + bind_base);
 
 	}
@@ -256,29 +263,35 @@ void vk_bind_geometry( uint32_t flags )
 	{
 		shade_bufs[0] = shade_bufs[1] = shade_bufs[2] = shade_bufs[3] = shade_bufs[4] = shade_bufs[5] = shade_bufs[6] = shade_bufs[7] = vk.cmd->vertex_buffer;
 
-		if (flags & TESS_XYZ)
+		if ( vk.renderPassIndex != RENDER_PASS_PRE_DEPTH ) {
+
+			if (flags & TESS_XYZ)
+				vk_bind_attr(0, sizeof(tess.xyz[0]), &tess.xyz[0]);
+
+			if (flags & TESS_RGBA0)
+				vk_bind_attr(1, sizeof(color4ub_t), tess.svars.colors[0]);
+
+			if (flags & TESS_ST0)
+				vk_bind_attr(2, sizeof(vec2_t), tess.svars.texcoordPtr[0]);
+
+			if (flags & TESS_ST1)
+				vk_bind_attr(3, sizeof(vec2_t), tess.svars.texcoordPtr[1]);
+
+			if (flags & TESS_ST2)
+				vk_bind_attr(4, sizeof(vec2_t), tess.svars.texcoordPtr[2]);
+
+			if (flags & TESS_NNN)
+				vk_bind_attr(5, sizeof(tess.normal[0]), tess.normal);
+
+			if (flags & TESS_RGBA1)
+				vk_bind_attr(6, sizeof(color4ub_t), tess.svars.colors[1]);
+
+			if (flags & TESS_RGBA2)
+				vk_bind_attr(7, sizeof(color4ub_t), tess.svars.colors[2]);
+		}
+		else {
 			vk_bind_attr(0, sizeof(tess.xyz[0]), &tess.xyz[0]);
-
-		if (flags & TESS_RGBA0)
-			vk_bind_attr(1, sizeof(color4ub_t), tess.svars.colors[0]);
-
-		if (flags & TESS_ST0)
-			vk_bind_attr(2, sizeof(vec2_t), tess.svars.texcoordPtr[0]);
-
-		if (flags & TESS_ST1)
-			vk_bind_attr(3, sizeof(vec2_t), tess.svars.texcoordPtr[1]);
-
-		if (flags & TESS_ST2)
-			vk_bind_attr(4, sizeof(vec2_t), tess.svars.texcoordPtr[2]);
-
-		if (flags & TESS_NNN)
-			vk_bind_attr(5, sizeof(tess.normal[0]), tess.normal);
-
-		if (flags & TESS_RGBA1)
-			vk_bind_attr(6, sizeof(color4ub_t), tess.svars.colors[1]);
-
-		if (flags & TESS_RGBA2)
-			vk_bind_attr(7, sizeof(color4ub_t), tess.svars.colors[2]);
+		}
 
 		qvkCmdBindVertexBuffers(vk.cmd->command_buffer, bind_base, bind_count, shade_bufs, vk.cmd->buf_offset + bind_base);
 	}
@@ -697,13 +710,39 @@ void vk_draw_geometry( Vk_Depth_Range depth_range, qboolean indexed )
 
 	vk_bind_descriptor_sets();
 
-	// configure pipeline's dynamic state
-	vk_update_depth_range( depth_range );
+	if ( vk.renderPassIndex == RENDER_PASS_PRE_DEPTH ) 
+	{
+		uint32_t                size;
+		float depthBiasConstant = 1.25f;
+		float depthBiasSlope = 1.75f;
 
-	if ( tess.shader->polygonOffset ) {
-		qvkCmdSetDepthBias( vk.cmd->command_buffer, r_offsetUnits->value, 0.0f, r_offsetFactor->value );
+		size = VK_PRE_DEPTH_DIM;
+		VkViewport viewport;
+		VkRect2D scissor_rect;
+
+		Com_Memset( &viewport, 0, sizeof( viewport ) );
+		viewport.width = (float)glConfig.vidWidth;
+		viewport.height = (float)glConfig.vidHeight;
+		viewport.minDepth = 0.0f;
+		viewport.maxDepth = 1.0f;
+
+		Com_Memset( &scissor_rect, 0, sizeof( scissor_rect ) );
+		scissor_rect.extent.width = scissor_rect.extent.height = size;
+
+		qvkCmdSetScissor( vk.cmd->command_buffer, 0, 1, &scissor_rect );
+		qvkCmdSetViewport( vk.cmd->command_buffer, 0, 1, &viewport ); 
+		qvkCmdSetDepthBias( vk.cmd->command_buffer, depthBiasConstant, 0.0f, depthBiasSlope );
 	}
 
+	else 
+	{
+	// configure pipeline's dynamic state
+		vk_update_depth_range( depth_range );
+
+		if ( tess.shader->polygonOffset ) {
+			qvkCmdSetDepthBias( vk.cmd->command_buffer, r_offsetUnits->value, 0.0f, r_offsetFactor->value );
+		}
+	}
 	// issue draw call(s)
 #ifdef USE_VBO
 	if ( tess.vboIndex )
@@ -1655,13 +1694,17 @@ void RB_StageIteratorGeneric( void )
 			if (pStage->bundle[i].image[0] != NULL) {
 				vk_select_texture(i);
 
-				R_BindAnimatedImage(&pStage->bundle[i]);
+				if ( vk.renderPassIndex != RENDER_PASS_PRE_DEPTH )
+					R_BindAnimatedImage(&pStage->bundle[i]);
 
 				if (tess_flags & (TESS_ST0 << i))
 					ComputeTexCoords(i, &pStage->bundle[i]);
 
-				if ((tess_flags & (TESS_RGBA0 << i)) || forceRGBGen)
+				if ( vk.renderPassIndex != RENDER_PASS_PRE_DEPTH )
+				{
+				if ( (tess_flags & (TESS_RGBA0 << i)) || forceRGBGen)
 					ComputeColors(i, tess.svars.colors[i], pStage, forceRGBGen);
+				}
 			}
 		}
 	
@@ -1691,7 +1734,7 @@ void RB_StageIteratorGeneric( void )
 
 			pipeline = pStage->vk_2d_pipeline;
 		}
-		else if ( backEnd.currentEntity ) {
+		else if ( backEnd.currentEntity && vk.renderPassIndex != RENDER_PASS_PRE_DEPTH ) {
 			vk_get_pipeline_def(pipeline, &def);
 
 			// we want to be able to rip a hole in the thing being disintegrated,

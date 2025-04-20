@@ -244,6 +244,9 @@ void vk_create_shader_modules( void )
     vk.shaders.gamma_vs = SHADER_MODULE(gamma_vert_spv);
     VK_SET_OBJECT_NAME(vk.shaders.gamma_fs, "gamma post-processing fragment module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
     VK_SET_OBJECT_NAME(vk.shaders.gamma_vs, "gamma post-processing vertex module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
+
+    vk.shaders.predepthpass_vs = SHADER_MODULE(offscreen_vert_spv);
+    VK_SET_OBJECT_NAME(vk.shaders.predepthpass_vs, "pre depth pass shader", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
 }
 
 void vk_destroy_shader_modules( void )
@@ -331,4 +334,6 @@ void vk_destroy_shader_modules( void )
 
     qvkDestroyShaderModule(vk.device, vk.shaders.gamma_vs, NULL);
     qvkDestroyShaderModule(vk.device, vk.shaders.gamma_fs, NULL);
+
+    qvkDestroyShaderModule(vk.device, vk.shaders.predepthpass_vs, NULL);
 }

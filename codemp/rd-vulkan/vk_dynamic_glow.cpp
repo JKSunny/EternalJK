@@ -27,6 +27,9 @@ qboolean vk_begin_dglow_blur( void )
 {
 	uint32_t i;
 
+	if ( vk.renderPassIndex == RENDER_PASS_PRE_DEPTH )
+		return qfalse;
+
 	if ( vk.renderPassIndex == RENDER_PASS_SCREENMAP )
 		return qfalse;
 
