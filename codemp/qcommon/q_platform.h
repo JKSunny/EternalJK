@@ -191,10 +191,6 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define NOEXCEPT noexcept
 #define NOEXCEPT_IF(x) noexcept(x)
 #define IS_NOEXCEPT(x) noexcept(x)
-
-//for case-insensitive compare
-#define strncasecmp _strnicmp
-#define strcasecmp _stricmp
 #endif
 
 #if defined(__cplusplus)

@@ -690,7 +690,7 @@ qboolean G_IsLogicalEntity(const char *classname) {
 
 	// check normal spawn functions
 	for ( s=spawns ; s->name ; s++ ) {
-		if ( !strcasecmp(s->name, classname) ) {
+		if ( !Q_stricmp(s->name, classname) ) {
 			// found it
 			if (s->logical) {
 				return qtrue;
