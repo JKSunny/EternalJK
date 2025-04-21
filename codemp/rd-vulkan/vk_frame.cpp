@@ -33,6 +33,11 @@ void vk_create_sync_primitives( void )
     desc.pNext = NULL;
     desc.flags = 0;
 
+#ifdef USE_UPLOAD_QUEUE
+	VK_CHECK( qvkCreateSemaphore( vk.device, &desc, NULL, &vk.image_uploaded2 ) );
+#endif
+
+	// all commands submitted
     for ( i = 0; i < NUM_COMMAND_BUFFERS; i++ )
     {
         desc.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -42,6 +47,10 @@ void vk_create_sync_primitives( void )
         // swapchain image acquired
         VK_CHECK( qvkCreateSemaphore( vk.device, &desc, NULL, &vk.tess[i].image_acquired ) );
         VK_CHECK( qvkCreateSemaphore( vk.device, &desc, NULL, &vk.tess[i].rendering_finished ) );
+#ifdef USE_UPLOAD_QUEUE
+		// second semaphore to synchronize additional tasks (e.g. image upload)
+		VK_CHECK( qvkCreateSemaphore( vk.device, &desc, NULL, &vk.tess[i].rendering_finished2 ) );
+#endif
 #ifdef USE_RTX
         VK_CHECK( qvkCreateSemaphore( vk.device, &desc, NULL, &vk.tess[i].semaphores.trace_finished ) );
         VK_CHECK( qvkCreateSemaphore( vk.device, &desc, NULL, &vk.tess[i].semaphores.transfer_finished ) );
@@ -50,17 +59,22 @@ void vk_create_sync_primitives( void )
 	    vk.tess[i].semaphores.trace_signaled = false;
 	    vk.tess[i].semaphores.prev_trace_signaled = false;
 #endif
+
         fence_desc.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
         fence_desc.pNext = NULL;
 		//fence_desc.flags = VK_FENCE_CREATE_SIGNALED_BIT; // so it can be used to start rendering
-		fence_desc.flags = VK_FENCE_CREATE_SIGNALED_BIT; // so it can be used to start rendering
+		fence_desc.flags = 0; // non-signalled state
         VK_CHECK( qvkCreateFence( vk.device, &fence_desc, NULL, &vk.tess[i].rendering_finished_fence ) );
 
         vk_debug("Created sync primitives \n");
-		vk.tess[i].waitForFence = qtrue;
+		//vk.tess[i].waitForFence = qtrue;
+        vk.tess[i].waitForFence = qfalse;
 
         VK_SET_OBJECT_NAME( vk.tess[i].image_acquired, va("image_acquired semaphore %i", i), VK_DEBUG_REPORT_OBJECT_TYPE_SEMAPHORE_EXT );
-        VK_SET_OBJECT_NAME( vk.tess[i].rendering_finished, "rendering_finished semaphore", VK_DEBUG_REPORT_OBJECT_TYPE_SEMAPHORE_EXT );
+        VK_SET_OBJECT_NAME( vk.tess[i].rendering_finished, "rendering_finished semaphore", VK_DEBUG_REPORT_OBJECT_TYPE_SEMAPHORE_EXT );     
+#ifdef USE_UPLOAD_QUEUE
+		VK_SET_OBJECT_NAME( vk.tess[i].rendering_finished2, va( "rendering_finished2 semaphore %i", i ), VK_DEBUG_REPORT_OBJECT_TYPE_SEMAPHORE_EXT );
+#endif
         VK_SET_OBJECT_NAME( vk.tess[i].rendering_finished_fence, "rendering_finished fence", VK_DEBUG_REPORT_OBJECT_TYPE_FENCE_EXT );
 #ifdef USE_RTX       
         VK_SET_OBJECT_NAME( vk.tess[i].semaphores.trace_finished, "trace_finished fence", VK_DEBUG_REPORT_OBJECT_TYPE_FENCE_EXT );
@@ -71,8 +85,15 @@ void vk_create_sync_primitives( void )
 	fence_desc.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 	fence_desc.pNext = NULL;
 	fence_desc.flags = 0;
+
+#ifdef USE_UPLOAD_QUEUE
 	VK_CHECK( qvkCreateFence( vk.device, &fence_desc, NULL, &vk.aux_fence ) );
 	VK_SET_OBJECT_NAME( vk.aux_fence, "aux fence", VK_DEBUG_REPORT_OBJECT_TYPE_FENCE_EXT );
+
+	vk.rendering_finished = VK_NULL_HANDLE;
+	vk.image_uploaded = VK_NULL_HANDLE;
+	vk.aux_fence_wait = qfalse;
+#endif
 }
 
 void vk_destroy_sync_primitives( void )
@@ -81,18 +102,31 @@ void vk_destroy_sync_primitives( void )
 
     vk_debug("Destroy Sempahore and Fence\n");
 
+#ifdef USE_UPLOAD_QUEUE
+	qvkDestroySemaphore( vk.device, vk.image_uploaded2, NULL );
+#endif
+
     for (i = 0; i < NUM_COMMAND_BUFFERS; i++) {
         qvkDestroySemaphore(vk.device, vk.tess[i].image_acquired, NULL);
         qvkDestroySemaphore(vk.device, vk.tess[i].rendering_finished, NULL);
+#ifdef USE_UPLOAD_QUEUE
+		qvkDestroySemaphore( vk.device, vk.tess[i].rendering_finished2, NULL );
+#endif
 #ifdef USE_RTX
         qvkDestroySemaphore(vk.device, vk.tess[i].semaphores.trace_finished, NULL);
         qvkDestroySemaphore(vk.device, vk.tess[i].semaphores.transfer_finished, NULL);
 #endif
+
         qvkDestroyFence(vk.device, vk.tess[i].rendering_finished_fence, NULL);
         vk.tess[i].waitForFence = qfalse;
     } 
 
-    qvkDestroyFence( vk.device, vk.aux_fence, NULL );
+#ifdef USE_UPLOAD_QUEUE
+	qvkDestroyFence( vk.device, vk.aux_fence, NULL );
+
+	vk.rendering_finished = VK_NULL_HANDLE;
+	vk.image_uploaded = VK_NULL_HANDLE;
+#endif
 }
 
 void vk_create_render_passes()
@@ -1431,6 +1465,10 @@ void vk_begin_frame( void )
 	if ( vk.frame_count++ ) // might happen during stereo rendering
 		return;
 
+#ifdef USE_UPLOAD_QUEUE
+	vk_submit_staging_buffer( qtrue );
+#endif
+
 	vk.cmd = &vk.tess[ vk.cmd_index ];
 
     vk_imgui_profiler_begin_frame();
@@ -1649,7 +1687,12 @@ void vk_release_resources( void ) {
 
 void vk_end_frame( void )
 {
-    const VkPipelineStageFlags wait_dst_stage_mask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+ #ifdef USE_UPLOAD_QUEUE
+	VkSemaphore waits[2], signals[2];
+	const VkPipelineStageFlags wait_dst_stage_mask[2] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+#else
+	const VkPipelineStageFlags wait_dst_stage_mask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+#endif
     VkSubmitInfo submit_info;
 
 
@@ -1731,11 +1774,46 @@ void vk_end_frame( void )
     submit_info.pCommandBuffers = &vk.cmd->command_buffer;
 
     if ( !ri.VK_IsMinimized() ) {
-        submit_info.waitSemaphoreCount = 1;
-        submit_info.pWaitSemaphores = &vk.cmd->image_acquired;
-        submit_info.pWaitDstStageMask = &wait_dst_stage_mask;
-        submit_info.signalSemaphoreCount = 1;
-        submit_info.pSignalSemaphores = &vk.cmd->rendering_finished;
+#ifdef USE_UPLOAD_QUEUE
+		if ( vk.image_uploaded != VK_NULL_HANDLE ) {
+			waits[0] = vk.cmd->image_acquired;
+			waits[1] = vk.image_uploaded;
+			submit_info.waitSemaphoreCount = 2;
+			submit_info.pWaitSemaphores = &waits[0];
+			submit_info.pWaitDstStageMask = &wait_dst_stage_mask[0];
+			signals[0] = vk.cmd->rendering_finished;
+			signals[1] = vk.cmd->rendering_finished2;
+			submit_info.signalSemaphoreCount = 2;
+			submit_info.pSignalSemaphores = &signals[0];
+
+			vk.rendering_finished = vk.cmd->rendering_finished2;
+			vk.image_uploaded = VK_NULL_HANDLE;
+		} else if ( vk.rendering_finished != VK_NULL_HANDLE ) {
+			waits[0] = vk.cmd->image_acquired;
+			waits[1] = vk.rendering_finished;
+			submit_info.waitSemaphoreCount = 2;
+			submit_info.pWaitSemaphores = &waits[0];
+			submit_info.pWaitDstStageMask = &wait_dst_stage_mask[0];
+			signals[0] = vk.cmd->rendering_finished;
+			signals[1] = vk.cmd->rendering_finished2;
+			submit_info.signalSemaphoreCount = 2;
+			submit_info.pSignalSemaphores = &signals[0];
+
+			vk.rendering_finished = vk.cmd->rendering_finished2;
+		} else {
+			submit_info.waitSemaphoreCount = 1;
+			submit_info.pWaitSemaphores = &vk.cmd->image_acquired;
+			submit_info.pWaitDstStageMask = &wait_dst_stage_mask[0];
+			submit_info.signalSemaphoreCount = 1;
+			submit_info.pSignalSemaphores = &vk.cmd->rendering_finished;
+		}
+#else
+		submit_info.waitSemaphoreCount = 1;
+		submit_info.pWaitSemaphores = &vk.cmd->image_acquired;
+		submit_info.pWaitDstStageMask = &wait_dst_stage_mask;
+		submit_info.signalSemaphoreCount = 1;
+		submit_info.pSignalSemaphores = &vk.cmd->rendering_finished;
+#endif
     }
     else {
         submit_info.waitSemaphoreCount = 0;
