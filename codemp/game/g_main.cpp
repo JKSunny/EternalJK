@@ -611,7 +611,9 @@ void G_ShutdownGame( int restart ) {
 
 	GLua_Close();
 
+	JKG_UnbindChatCommands();
 	CCmd_Cleanup();
+	
 
 	/* First save all bans, then clear them to free up the allocated memory) */
 	JKG_Bans_SaveBans();

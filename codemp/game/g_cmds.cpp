@@ -3323,6 +3323,16 @@ void JKG_BindChatCommands( void )
 	CCmd_AddCommand("sayteam", CCmd_Say_Team);
 }
 
+void JKG_UnbindChatCommands (void)
+{
+	CCmd_RemoveCommand("say");
+	CCmd_RemoveCommand("sayglobal");
+	CCmd_RemoveCommand("sayact");
+	CCmd_RemoveCommand("saywhisper");
+	CCmd_RemoveCommand("tell");
+	CCmd_RemoveCommand("sayteam");
+}
+
 /*
 ==================
 ClientNumberFromString

@@ -1350,6 +1350,7 @@ void Cmd_EngageDuel_f(gentity_t *ent);
 void Cmd_Reload_f(gentity_t *ent);
 
 void JKG_BindChatCommands( void );
+void JKG_UnbindChatCommands(void);
 void CCmd_Cleanup();
 
 //
