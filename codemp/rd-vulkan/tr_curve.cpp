@@ -132,9 +132,7 @@ static void MakeMeshNormals( int width, int height, srfVert_t ctrl[MAX_GRID_SIZE
 	qboolean	good[8];
 	qboolean	wrapWidth, wrapHeight;
 	float		len;
-	static	int	neighbors[8][2] = {
-		{0,1}, {1,1}, {1,0}, {1,-1}, {0,-1}, {-1,-1}, {-1,0}, {-1,1}
-	};
+	static const int neighbors[8][2] = { {0,1}, {1,1}, {1,0}, {1,-1}, {0,-1}, {-1,-1}, {-1,0}, {-1,1} };
 
 #ifdef USE_VK_PBR
 	vec3_t	tangent, binormal, sumTangents, sumBinormals;
@@ -243,6 +241,9 @@ static void MakeMeshNormals( int width, int height, srfVert_t ctrl[MAX_GRID_SIZE
 				VectorNormalize2( sum, dv->normal );
 			}
 
+			for ( k = 0; k < 3; k++ ) {
+				dv->normal[k] = R_ClampDenorm( dv->normal[k] );
+			}
 #ifdef USE_VK_PBR
 			R_TBNtoQtangents( sumTangents, sumBinormals, dv->normal, dv->qtangent );
 #endif
