@@ -260,7 +260,7 @@ The following contains information specific to JETPACK items:
  - jetpack (string): The reference to the jetpack
 
 
-##SHIELD FIELDS
+## SHIELD FIELDS
 Each .shield file contains data for one shield.  They may contain the following fields:
  - ref (string): The internal name of this armor.
  - capacity (integer, default 25): How much shield this item has when equipped.
@@ -270,6 +270,7 @@ Each .shield file contains data for one shield.  They may contain the following 
  - brokenSoundEffect (string): The sound effect that is played when the shield loses all of its charge
  - equippedSoundEffect (string): The sound effect that is played when the shield is equipped to the ACI.
  - malfunctionSoundEffect (string): The sound effect that is played when the shield malfunctions (not yet implemented).
+ - overloadScript (string): The lua script to call when the shield takes damage that would overload it (bring its charge to 0). To add a script, include it in JKGalaxies/glua/resources/shields/init.lua and add the lua script itself in JKGalaxies/glua/resources/shields/
  - blockedMODs (array of strings): List of means of damage (eg: ["MOD_SLUGTHROWER", "MOD_BLEEDING"]) this shield can block in addition to standard means of damage types.
  - allowedMODs (array of strings): List of means of damage (eg: ["MOD_BLASTER", "MOD_ION"]) this shield is no longer able to protect from.
  - type (string, default "shell"): What type of physical shape the shield takes.  eg: shell, bubble, handheld, unknown
