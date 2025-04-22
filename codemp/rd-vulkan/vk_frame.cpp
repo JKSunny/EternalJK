@@ -119,6 +119,7 @@ void vk_destroy_sync_primitives( void )
 
         qvkDestroyFence(vk.device, vk.tess[i].rendering_finished_fence, NULL);
         vk.tess[i].waitForFence = qfalse;
+        vk.tess[i].swapchain_image_acquired = qfalse;
     } 
 
 #ifdef USE_UPLOAD_QUEUE
@@ -1496,15 +1497,19 @@ void vk_begin_frame( void )
     }
 
 	if ( !ri.VK_IsMinimized() && !vk.cmd->swapchain_image_acquired ) {
+		qboolean retry = qfalse;
+_retry:
         size_t acquire_task = vk_imgui_profiler_start_task( "ImageAcquire",	RGBA_LE(0xd35400ffu) );
 		res = qvkAcquireNextImageKHR( vk.device, vk.swapchain, 1 * 1000000000ULL, vk.cmd->image_acquired, VK_NULL_HANDLE, &vk.cmd->swapchain_image_index );
         vk_imgui_profiler_end_task( acquire_task );
 		// when running via RDP: "Application has already acquired the maximum number of images (0x2)"
 		// probably caused by "device lost" errors
 		if ( res < 0 ) {
-			if ( res == VK_ERROR_OUT_OF_DATE_KHR ) {
+			if ( res == VK_ERROR_OUT_OF_DATE_KHR && retry == qfalse ) {
 				// swapchain re-creation needed
+				retry = qtrue;
 				vk_restart_swapchain( __func__ );
+				goto _retry;
 			} else {
 				ri.Error( ERR_FATAL, "vkAcquireNextImageKHR returned %s", vk_result_string( res ) );
 			}
