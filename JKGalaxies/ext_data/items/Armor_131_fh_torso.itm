@@ -1,0 +1,10 @@
+{
+	"name":             "Diplomat Outfit",
+	"internal":             "torso_foxhunter",
+	"itemtype":             "armor",
+	"armor":		"fhtorso",
+	"weight":		"1",
+	"cost":			"500",
+	"itemIcon":		"gfx/item_icons/foxhunter_torso.tga",
+	"itemDescription": "Missing Description."
+}

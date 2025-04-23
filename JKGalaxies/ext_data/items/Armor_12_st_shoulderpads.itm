@@ -1,0 +1,10 @@
+{
+	"name":         "Stormtrooper Shoulder Armor",
+	"internal":     "shoulderpads_stormtrooper",
+	"itemtype":     "armor",
+	"armor":		"stshoulderpads",
+	"weight":		"1",
+	"cost":			"250",
+	"itemIcon":		"gfx/item_icons/shoretrooper_shoulders.tga",
+	"itemDescription": "Missing Description."
+}

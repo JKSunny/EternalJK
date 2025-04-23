@@ -1,20 +1,20 @@
 {
-	"ref":		"stgloves",
+	"ref":		"shgloves",
 	"slot":		"gloves",
-	"armor":		50,
+	"armor":		40,
 	"movemodifier":	1.0,
 
 	"visuals": {
-		"model":	"models/players/stormtrooper_armor/model.glm*default",
-		"modelGroup":	"stormtrooper_armor",
+		"model":	"models/players/shoretrooper/model.glm*default",
+		"modelGroup":	"shoretrooper",
 
 		"armorOnSurfaces": [
 			"l_arm_wristarmor",
 			"r_arm_wristarmor",
-			"l_hand",
 			"l_hand_plate",
-			"r_hand",
-			"r_hand_plate"
+			"r_hand_plate",
+			"l_hand",
+			"r_hand"
 		],
 
 		"bodyOffSurfaces": [

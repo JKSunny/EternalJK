@@ -1,0 +1,10 @@
+{
+	"name":         "Shoretrooper Helmet",
+	"internal":     "helmet_shoretrooper",
+	"itemtype":     "armor",
+	"armor":		"shhelmet",
+	"weight":		"3",
+	"cost":			"315",
+	"itemIcon":		"gfx/item_icons/shoretrooper_helmet.tga",
+	"itemDescription": "Missing Description"
+}

@@ -1,0 +1,10 @@
+{
+	"name":         "Sunguard Helmet",
+	"internal":     "helmet_sunguard",
+	"itemtype":     "armor",
+	"armor":		"sghelmet",
+	"weight":		"3",
+	"cost":			"315",
+	"itemIcon":		"gfx/item_icons/sunguard_helmet.tga",
+	"itemDescription": "Missing Description"
+}

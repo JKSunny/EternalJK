@@ -1,0 +1,10 @@
+{
+	"name":         "Sunguard Chestplate ",
+	"internal":     "torso_sunguard",
+	"itemtype":     "armor",
+	"armor":		"sgtorso",
+	"weight":		"5",
+	"cost":			"450",
+	"itemIcon":		"gfx/item_icons/sunguard_torso.tga",
+	"itemDescription": "Missing Description."
+}

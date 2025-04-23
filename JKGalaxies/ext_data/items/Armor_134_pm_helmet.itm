@@ -1,0 +1,10 @@
+{
+	"name":         "Pyromaniac's Helmet",
+	"internal":     "helmet_pyromaniac",
+	"itemtype":     "armor",
+	"armor":		"pmhelmet",
+	"weight":		"3",
+	"cost":			"315",
+	"itemIcon":		"gfx/item_icons/pyromaniac_helmet.tga",
+	"itemDescription": "Missing Description"
+}

@@ -1,0 +1,10 @@
+{
+	"name":         "Shoretrooper Chestplate ",
+	"internal":     "torso_shoretrooper",
+	"itemtype":     "armor",
+	"armor":		"shtorso",
+	"weight":		"5",
+	"cost":			"450",
+	"itemIcon":		"gfx/item_icons/shoretrooper_torso.tga",
+	"itemDescription": "Missing Description."
+}

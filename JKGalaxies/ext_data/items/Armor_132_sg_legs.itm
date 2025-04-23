@@ -1,0 +1,10 @@
+{
+	"name":        "Sunguard Gambesson Trousers",
+	"internal":     "legs_sunguard",
+	"itemtype":     "armor",
+	"armor":		"sglegs",
+	"weight":		"2",
+	"cost":			"350",
+	"itemIcon":		"gfx/item_icons/sunguard_legs.tga",
+	"itemDescription": "Missing Description."
+}

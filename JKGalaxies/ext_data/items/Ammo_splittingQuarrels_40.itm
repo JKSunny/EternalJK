@@ -3,7 +3,7 @@
 	"internal":	"ammo_splittingQuarrels_40",
 	"itemtype":	"ammo",
 	"weight":		"0",
-	"cost":		"75",
+	"cost":		"100",
 	"ammoclass":	"AMMO_QUARREL_SPLITTING",
 	"ammoquantity":	"40",
 	"itemIcon": "gfx/item_icons/ammo_metallic_bolts.tga",	//needs icon!
