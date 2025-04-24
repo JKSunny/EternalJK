@@ -92,7 +92,9 @@ ItemUse_Shield
 */
 void ItemUse_Shield(gentity_t* ent)
 {
+#ifdef _DEBUG
 	trap->SendServerCommand(ent - g_entities, "print \"ItemUse_Shields() not implmented!\n\"");
+#endif
 	return; //disable this function for now it isn't ready!
 
 	assert(ent && ent->client);
