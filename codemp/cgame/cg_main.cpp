@@ -2453,6 +2453,12 @@ void CG_SetupChatCmds() {
 	CCmd_AddCommand ("inventory", CG_OpenInventory);
 }
 
+void CG_UnsetChatCmds()
+{
+	CCmd_RemoveCommand("party");
+	CCmd_RemoveCommand("inventory");
+}
+
 extern void CG_InitializeCrossoverAPI( void );
 extern  performanceSampleData_t cg_performanceData;
 void CG_Init( int serverMessageNum, int serverCommandSequence, int clientNum )
@@ -2801,6 +2807,7 @@ void CG_Shutdown( void )
 	trap->CO_Shutdown();
 
 	JKG_UnloadArmor();
+	CG_UnsetChatCmds();
 
 //	Com_Printf("... FX System Cleanup\n");
 	trap->FX_FreeSystem();
