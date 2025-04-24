@@ -2562,7 +2562,7 @@ void ShieldHitEffect(gentity_t* targ, vec3_t dir, int take)
 			//other overload effects
 			if(targ->client->shieldEquipped)
 			{
-				if(shdInfo->pShieldData->overloadScript != "")
+				if(shdInfo->pShieldData->overloadScript[0])
 				{
 					GLua_ShieldOverloadScript(targ, shdInfo);
 				}
