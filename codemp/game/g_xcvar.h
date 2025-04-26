@@ -209,5 +209,5 @@ XCVAR_DEF( jkg_removenpctime_droid,		"0",			NULL,				CVAR_ARCHIVE|CVAR_LATCH|CVA
 XCVAR_DEF( jkg_allowDebuffKills,		"1",			NULL,				CVAR_ARCHIVE,									true )	//0 == carebear debuffs, 1 == debuffs are deadly as specified by .wpn, 2 == all damaging debuffs are deadly
 XCVAR_DEF( jkg_allowDodge,				"1",			NULL,				CVAR_ARCHIVE,									true ) //allow roll dodging?
 XCVAR_DEF( jkg_heatDissipateTime,		"100",			NULL,				CVAR_ARCHIVE,									true ) // dissipate rate for heat
-XCVAR_DEF( jkg_durability,				"0",			NULL,				CVAR_ARCHIVE|CVAR_LATCH|CVAR_SERVERINFO,		true ) //0 == items do not lose durability (from dmg etc), 1 == items can lose durability
+XCVAR_DEF( jkg_durability,				"1",			NULL,				CVAR_ARCHIVE|CVAR_LATCH|CVAR_SERVERINFO,		true ) //0 == items do not lose durability (from dmg etc), 1 == items can lose durability
 #undef XCVAR_DEF
