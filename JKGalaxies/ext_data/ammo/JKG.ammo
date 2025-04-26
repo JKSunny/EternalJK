@@ -362,7 +362,7 @@
 		"shortname": "Disintegrating ACP Drums",
 		"longname": "Arakyd Industries Disintegrating ACP Belt Drums",
 		"max": 900,
-		"pricePerUnit": 0.5 //total: 450
+		"pricePerUnit": 0.4 //total: 360
 	},
 
 	"AMMO_FLARE": {
