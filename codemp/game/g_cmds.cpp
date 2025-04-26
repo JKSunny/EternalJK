@@ -5273,6 +5273,7 @@ static const command_t commands[] = {
 	{ "credits",				Cmd_Credits_f,				0 },
 	{ "crystal1",				Cmd_Crystal1_f,				CMD_NEEDCHEATS | CMD_NOINTERMISSION | CMD_NOSPECTATOR | CMD_ONLYALIVE },
 	{ "crystal2",				Cmd_Crystal2_f,				CMD_NEEDCHEATS | CMD_NOINTERMISSION | CMD_NOSPECTATOR | CMD_ONLYALIVE },
+	{ "debugammo",				Cmd_MyAmmo_f,				CMD_NOINTERMISSION | CMD_NOSPECTATOR },	//same as myammo
 	{ "debuginventory",			Cmd_ShowInv_f,				CMD_NOINTERMISSION | CMD_NOSPECTATOR },
 	{ "dismember",				Cmd_Dismember_f,			CMD_NEEDCHEATS | CMD_NOINTERMISSION | CMD_NOSPECTATOR | CMD_ONLYALIVE },
 	{ "dumpweaponlist_sv",		Cmd_DumpWeaponList_f,		0 },
@@ -5300,7 +5301,7 @@ static const command_t commands[] = {
 	{ "knockmedown",			Cmd_KnockMeDown_f,			CMD_NEEDCHEATS | CMD_NOINTERMISSION | CMD_NOSPECTATOR | CMD_ONLYALIVE },
 	{ "levelshot",				Cmd_LevelShot_f,			CMD_NEEDCHEATS },
 	{ "loveandpeace",			Cmd_LoveAndPeace_f,			CMD_NEEDCHEATS | CMD_NOINTERMISSION | CMD_NOSPECTATOR | CMD_ONLYALIVE },
-	{ "myammo",					Cmd_MyAmmo_f,				CMD_NOINTERMISSION | CMD_NOSPECTATOR },
+	{ "myammo",					Cmd_MyAmmo_f,				CMD_NOINTERMISSION | CMD_NOSPECTATOR }, //same as debugammo
 	{ "noclip",					Cmd_Noclip_f,				CMD_NEEDCHEATS | CMD_NOINTERMISSION | CMD_ONLYALIVE },
 	{ "notarget",				Cmd_Notarget_f,				CMD_NEEDCHEATS | CMD_NOINTERMISSION | CMD_NOSPECTATOR | CMD_ONLYALIVE },
 	{ "npc",					Cmd_NPC_f,					CMD_NEEDCHEATS },
