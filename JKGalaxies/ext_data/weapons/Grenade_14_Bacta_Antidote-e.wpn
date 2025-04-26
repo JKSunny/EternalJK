@@ -8,8 +8,8 @@
     "visual": {
         "viewmodel":        "models/weapons/Grenade_Bacta/viewmodel.md3",
         "worldmodel":       "models/weapons/Grenade_Bacta/model.glm",
-        "hudicon":          "gfx/Item_Icons/default",
-        "hudnaicon":        "gfx/Item_Icons/default",
+        "hudicon":          "models/weapons/Grenade_Bacta/icon_default",
+        "hudnaicon":        "models/weapons/Grenade_Bacta/icon_default",
         "selectsound":      "sound/weapons/select_grenade.wav",
         
 

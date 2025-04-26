@@ -569,7 +569,7 @@ end
 local function ChangePassword(ply, argc, argv)
 	if ply.isLoggedIn then
 			if argc ~= 3 then
-				SystemReply(ply, "Syntax: /changepassword <oldpass> <newpass>")
+				SystemReply(ply, "^3Syntax: /changepassword <oldpass> <newpass>")
 			else
 				local accountname = ply:GetAccount()
 				local account = accounts[accountname]
@@ -595,7 +595,7 @@ local function Register(ply, argc, argv)
 	if ply.isLoggedIn then
 		-- We are logged in, so no need to re-log us
 		local account = ply:GetAccount()
-		SystemReply(ply, "^4You are already logged in as ^7" .. account .. "")
+		SystemReply(ply, "^4You are already logged in as ^7" .. account .. ".")
 		return
 	end
 	
@@ -661,7 +661,11 @@ local function Kick(ply, argc, argv)
 			SystemReply(ply, "^5Player " .. target:GetName() .. " ^5has been kicked.")
 			target:Kick(reason)
 			return
+		else
+			SystemReply(ply, "^1You don't have permission to perform this action.")
 		end
+	else
+		SystemReply(ply, "^1You are not logged in.")
 	end
 	chatcmds.Ignore()
 end
@@ -678,7 +682,7 @@ local function ChangeDetails(ply, argc, argv)
 				-- Syntax:
 				-- /admchangedetails password <oldpass> <newpass>
 				if argc ~= 4 then
-					SystemReply(ply, "Syntax: /admchangedetails password <oldpass> <newpass>")
+					SystemReply(ply, "^3Syntax: /admchangedetails password <oldpass> <newpass>")
 				else
 					local accountname = ply:GetAccount()
 					local account = accounts[accountname]

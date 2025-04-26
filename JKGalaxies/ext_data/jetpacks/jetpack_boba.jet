@@ -6,11 +6,11 @@
 	// thrustConsumption - how fast units are consumed while thrusting (pressing jump)
 	// fuelRegeneration - scale of how fast fuel gets regenerated
 
-	"ref":			"jetpack_test",
-	"fuelCapacity":		45,
-	"fuelConsumption":	1.5,
-	"thrustConsumption":	2.7,
-	"fuelRegeneration":	0.5,
+	"ref":			"jetpack_boba",
+	"fuelCapacity":		120,
+	"fuelConsumption":	1.0,
+	"thrustConsumption":	2.0,
+	"fuelRegeneration":	1.2,
 	
 	"movement": {
 		// Movement - done on both client and server
@@ -22,20 +22,20 @@
 		// downMove - amount to modify downward movement by
 		// thrustFwd/thrustBack/thrustSide - same as above, but when thrusting
 		// thrustUp - amount to modify upward movement by
-		"cooldown": 1000,
+		"cooldown": 700,
 		"hoverGravity":	"-1.0",
 
-		"forwardMove": 1.5,
-		"backMove": 0.7,
-		"sideMode": 0.7,
-		"downMove": 0.7,
+		"forwardMove": 1.0,
+		"backMove": 1.0,
+		"sideMode": 1.0,
+		"downMove": 1.0,
 
-		"thrustFwd": 2.0,
-		"thrustBack": 0.5,
+		"thrustFwd": 1.0,
+		"thrustBack": 1.0,
 		"thrustSide": 1.0,
 		"thrustUp": 1.0,
 
-		"fwdThrustAmt": 1.75,
+		"fwdThrustAmt": 2.1,
 		"loadBearingAllowed": false
 	},
 
@@ -50,7 +50,7 @@
 		// activateSound (S) - sound to play when jetpack is activated
 		// deactivateSound (S) - sound to play when jetpack is deactivated
 
-		"modelName":	"models/weapons2/jetpack/model.glm",
+		"modelName":	"models/weapons2/jetpack/model.glm", //models/players/boba_fett/model.glm
 		"effectBolts": [
 			"torso_ljet",
 			"torso_rjet"
