@@ -1461,7 +1461,7 @@ static bool BG_LoadItem(const char *itemFilePath, itemData_t *itemData)
 		
 		itemData->armorData.pArm = JKG_FindArmorByName(itemData->armorData.ref);
 		if (itemData->armorData.pArm == nullptr) {
-			Com_Printf(S_COLOR_YELLOW "WARNING: %s is an armor, but doesn't have a valid reference to a .jet file!\n", itemFilePath);
+			Com_Printf(S_COLOR_YELLOW "WARNING: %s is an armor, but doesn't have a valid reference to a .arm file!\n", itemFilePath);
 		}
 	}
 	else if (itemData->itemType == ITEM_CONSUMABLE) {
