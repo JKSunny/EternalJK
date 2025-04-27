@@ -3,6 +3,25 @@
 	"slot":		"head",
 	"armor":		125,
 	"movemodifier":	1.0,
+	"filter":		true,
+	"resistances": [            
+        {
+            "means": "MOD_FIRE",	//75% resistant against fire
+            "resistance": 0.25
+        },
+        {
+            "means": "MOD_IGNITED",
+            "resistance": 0.25
+        },
+		{
+            "means": "MOD_LAVA",
+            "resistance": 0.5
+        },
+		{
+			"means": "MOD_EXPLOSION", //25% resistant against explosions
+			"resistance": 0.75
+		}
+    ],
 
 	"visuals": {
 		"model":	"models/players/pyromaniac/model.glm*default",

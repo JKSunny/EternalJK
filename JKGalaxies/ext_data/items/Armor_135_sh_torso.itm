@@ -6,5 +6,5 @@
 	"weight":		"5",
 	"cost":			"450",
 	"itemIcon":		"gfx/item_icons/shoretrooper_torso.tga",
-	"itemDescription": "Missing Description."
+	"itemDescription": "Based on standard issue Imperial Stormtrooper torso armor, it has been adopted for use in tropical environments and is issued to coastal defender stormtroopers, also called shoretroopers. Tan plastoid alloys protect the wearer's torso."
 }

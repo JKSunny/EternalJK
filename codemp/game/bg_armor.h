@@ -8,8 +8,8 @@
 #include <vector>
 #include <string>
 
-#define MAX_ARMOR_ITEMS		256		// Max amount of armor items
-#define MAX_ARMOR_G2		64		// Max amount of armor G2 instances
+#define MAX_ARMOR_ITEMS		512		// Max amount of armor items
+#define MAX_ARMOR_G2		128		// Max amount of armor G2 instances
 
 // Loading optimization: To prevent having multiple unnecessary GHOUL2
 // instances for the same set of armor, we create a reference lookup for

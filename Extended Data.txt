@@ -370,6 +370,7 @@ The .wpn file contains one field for each firing mode, starting with 0.
   - firedelay (integer): How long the player waits (in milliseconds) before firing each round.
   - armorPiercing (float, default 0.0): Overrides the % of armor ignored by this weapon.
   - range (float): How long the projectile shot by the weapon goes (or the hitscan line traces for), in map units.
+  - decayRate (float, default: 0.25): The rate the weapon's damage decays when fired beyond the maximum range (default 0.25). Set to 0, to interpret range as the absolute max  range.  Range can only be extended up to 10x the value of range using decayRate.
   - splashrange (float): For non-complex damage areas, this details how far to spread the damage.
   - recoil (float): How much to tilt the camera when a player shoots this firing mode.
   - heatGenerated (float, default 0): How much heat is generated when this weapon fires. When your "heat" value exceeds maxHeat, you cannot fire this weapon anymore.
