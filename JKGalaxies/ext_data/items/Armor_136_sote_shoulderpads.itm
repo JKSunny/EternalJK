@@ -1,0 +1,10 @@
+{
+	"name":         "Imperial Guard Shoulder Armor",
+	"internal":     "shoulderpads_sotetrooper",
+	"itemtype":     "armor",
+	"armor":		"soteshoulderpads",
+	"weight":		"1",
+	"cost":			"250",
+	"itemIcon":		"gfx/item_icons/sotetrooper_pauldron.tga",
+	"itemDescription": "Missing Description."
+}

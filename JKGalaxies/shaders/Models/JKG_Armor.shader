@@ -11,6 +11,8 @@
 // jensaarai
 // mabari
 // pyromaniac
+// shoretrooper
+// sotetrooper
 // stormtrooper_armor
 // sunguard
 
@@ -78,6 +80,232 @@ models/players/pyromaniac/helmet
     }
     {
         map models/players/pyromaniac/helmet_s
+        blendFunc GL_SRC_ALPHA GL_ONE
+        alphaGen lightingSpecular
+	detail
+    }
+}
+
+// Shoretrooper (Scerendo)
+
+models/players/Shoretrooper/head
+{
+	q3map_nolightmap
+	cull twosided
+	{
+		map models/players/Shoretrooper/head
+		rgbGen lightingDiffuse
+	}
+	{
+		map models/players/Shoretrooper/head_specular
+		blendFunc GL_SRC_ALPHA GL_ONE
+		detail
+		alphaGen lightingSpecular
+	}
+}
+
+models/players/Shoretrooper/head_tank
+{
+	q3map_nolightmap
+	cull twosided
+	{
+		map models/players/Shoretrooper/head_tank
+		rgbGen lightingDiffuse
+	}
+	{
+		map models/players/Shoretrooper/head_tank_specular
+		blendFunc GL_SRC_ALPHA GL_ONE
+		detail
+		alphaGen lightingSpecular
+	}
+}
+
+models/players/Shoretrooper/torso
+{
+	q3map_nolightmap
+	cull twosided
+	{
+		map models/players/Shoretrooper/torso
+		rgbGen lightingDiffuse
+	}
+	{
+		map models/players/Shoretrooper/torso_specular
+		blendFunc GL_SRC_ALPHA GL_ONE
+		detail
+		alphaGen lightingSpecular
+	}
+}
+
+models/players/Shoretrooper/torso_tank
+{
+	q3map_nolightmap
+	cull twosided
+	{
+		map models/players/Shoretrooper/torso_tank
+		rgbGen lightingDiffuse
+	}
+	{
+		map models/players/Shoretrooper/torso_specular
+		blendFunc GL_SRC_ALPHA GL_ONE
+		detail
+		alphaGen lightingSpecular
+	}
+}
+
+models/players/Shoretrooper/hips_parts
+{
+	q3map_nolightmap
+	cull twosided
+	{
+		map models/players/Shoretrooper/hips_parts
+		rgbGen lightingDiffuse
+	}
+	{
+		map models/players/Shoretrooper/hips_parts_specular
+		blendFunc GL_SRC_ALPHA GL_ONE
+		detail
+		alphaGen lightingSpecular
+	}
+}
+
+models/players/Shoretrooper/hips_parts_tank
+{
+	q3map_nolightmap
+	cull twosided
+	{
+		map models/players/Shoretrooper/hips_parts_tank
+		rgbGen lightingDiffuse
+	}
+	{
+		map models/players/Shoretrooper/hips_parts_specular
+		blendFunc GL_SRC_ALPHA GL_ONE
+		detail
+		alphaGen lightingSpecular
+	}
+}
+
+//Sotetrooper (ZanderNao, Phazzer, Noodle)
+
+models/players/sote_trooper/helmet_r
+{
+    {
+        map models/players/sote_trooper/helmet_r
+        rgbGen lightingDiffuse
+    }
+    {
+        map models/players/sote_trooper/helmet_s
+        blendFunc GL_SRC_ALPHA GL_ONE
+        alphaGen lightingSpecular
+	detail
+    }
+}
+
+models/players/sote_trooper/legs_r
+{
+    {
+        map models/players/sote_trooper/legs_r
+        rgbGen lightingDiffuse
+    }
+    {
+        map models/players/sote_trooper/legs_s
+        blendFunc GL_SRC_ALPHA GL_ONE
+        alphaGen lightingSpecular
+	detail
+    }
+}
+
+models/players/sote_trooper/top_r
+{
+    {
+        map models/players/sote_trooper/top_r
+        rgbGen lightingDiffuse
+    }
+    {
+        map models/players/sote_trooper/top_s
+        blendFunc GL_SRC_ALPHA GL_ONE
+        alphaGen lightingSpecular
+	detail
+    }
+}
+
+models/players/sote_trooper/helmet_b
+{
+    {
+        map models/players/sote_trooper/helmet_b
+        rgbGen lightingDiffuse
+    }
+    {
+        map models/players/sote_trooper/helmet_s
+        blendFunc GL_SRC_ALPHA GL_ONE
+        alphaGen lightingSpecular
+	detail
+    }
+}
+
+models/players/sote_trooper/legs_b
+{
+    {
+        map models/players/sote_trooper/legs_b
+        rgbGen lightingDiffuse
+    }
+    {
+        map models/players/sote_trooper/legs_s
+        blendFunc GL_SRC_ALPHA GL_ONE
+        alphaGen lightingSpecular
+	detail
+    }
+}
+
+models/players/sote_trooper/top_b
+{
+    {
+        map models/players/sote_trooper/top_b
+        rgbGen lightingDiffuse
+    }
+    {
+        map models/players/sote_trooper/top_s
+        blendFunc GL_SRC_ALPHA GL_ONE
+        alphaGen lightingSpecular
+	detail
+    }
+}
+
+models/players/sote_trooper/helmet_w
+{
+    {
+        map models/players/sote_trooper/helmet_w
+        rgbGen lightingDiffuse
+    }
+    {
+        map models/players/sote_trooper/helmet_s
+        blendFunc GL_SRC_ALPHA GL_ONE
+        alphaGen lightingSpecular
+	detail
+    }
+}
+
+models/players/sote_trooper/legs_w
+{
+    {
+        map models/players/sote_trooper/legs_w
+        rgbGen lightingDiffuse
+    }
+    {
+        map models/players/sote_trooper/legs_s
+        blendFunc GL_SRC_ALPHA GL_ONE
+        alphaGen lightingSpecular
+	detail
+    }
+}
+
+models/players/sote_trooper/top_w
+{
+    {
+        map models/players/sote_trooper/top_w
+        rgbGen lightingDiffuse
+    }
+    {
+        map models/players/sote_trooper/top_s
         blendFunc GL_SRC_ALPHA GL_ONE
         alphaGen lightingSpecular
 	detail
@@ -526,104 +754,6 @@ models/players/stormtrooper/shoulder-yellow
         detail
         alphaGen lightingSpecular
     }
-}
-
-// Shoretrooper (Scerendo)
-
-models/players/Shoretrooper/head
-{
-	q3map_nolightmap
-	cull twosided
-	{
-		map models/players/Shoretrooper/head
-		rgbGen lightingDiffuse
-	}
-	{
-		map models/players/Shoretrooper/head_specular
-		blendFunc GL_SRC_ALPHA GL_ONE
-		detail
-		alphaGen lightingSpecular
-	}
-}
-
-models/players/Shoretrooper/head_tank
-{
-	q3map_nolightmap
-	cull twosided
-	{
-		map models/players/Shoretrooper/head_tank
-		rgbGen lightingDiffuse
-	}
-	{
-		map models/players/Shoretrooper/head_tank_specular
-		blendFunc GL_SRC_ALPHA GL_ONE
-		detail
-		alphaGen lightingSpecular
-	}
-}
-
-models/players/Shoretrooper/torso
-{
-	q3map_nolightmap
-	cull twosided
-	{
-		map models/players/Shoretrooper/torso
-		rgbGen lightingDiffuse
-	}
-	{
-		map models/players/Shoretrooper/torso_specular
-		blendFunc GL_SRC_ALPHA GL_ONE
-		detail
-		alphaGen lightingSpecular
-	}
-}
-
-models/players/Shoretrooper/torso_tank
-{
-	q3map_nolightmap
-	cull twosided
-	{
-		map models/players/Shoretrooper/torso_tank
-		rgbGen lightingDiffuse
-	}
-	{
-		map models/players/Shoretrooper/torso_specular
-		blendFunc GL_SRC_ALPHA GL_ONE
-		detail
-		alphaGen lightingSpecular
-	}
-}
-
-models/players/Shoretrooper/hips_parts
-{
-	q3map_nolightmap
-	cull twosided
-	{
-		map models/players/Shoretrooper/hips_parts
-		rgbGen lightingDiffuse
-	}
-	{
-		map models/players/Shoretrooper/hips_parts_specular
-		blendFunc GL_SRC_ALPHA GL_ONE
-		detail
-		alphaGen lightingSpecular
-	}
-}
-
-models/players/Shoretrooper/hips_parts_tank
-{
-	q3map_nolightmap
-	cull twosided
-	{
-		map models/players/Shoretrooper/hips_parts_tank
-		rgbGen lightingDiffuse
-	}
-	{
-		map models/players/Shoretrooper/hips_parts_specular
-		blendFunc GL_SRC_ALPHA GL_ONE
-		detail
-		alphaGen lightingSpecular
-	}
 }
 
 // Sunguard (Jonthe, Noodle)

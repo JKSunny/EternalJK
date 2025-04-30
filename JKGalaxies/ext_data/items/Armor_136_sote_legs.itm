@@ -1,0 +1,10 @@
+{
+	"name":             "Imperial Guard Legguards",
+	"internal":             "legs_sotetrooper",
+	"itemtype":             "armor",
+	"armor":		"sotelegs",
+	"weight":		"2",
+	"cost":			"350",
+	"itemIcon":		"gfx/item_icons/sotetrooper_legs.tga",
+	"itemDescription": "Pending."
+}
