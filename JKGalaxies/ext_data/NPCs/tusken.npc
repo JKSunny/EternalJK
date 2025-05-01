@@ -13,6 +13,7 @@ tusken
 	playerTeam	TEAM_FREE
 	enemyTeam	TEAM_FREE
 	class		CLASS_TUSKEN
+	sex			male
 	snd			tusken
 	sndcombat	tusken
 	sndextra	tusken
@@ -41,7 +42,8 @@ tuskenf
 	playerTeam	TEAM_FREE
 	enemyTeam	TEAM_FREE
 	class		CLASS_TUSKEN
-	snd		tusken
+	sex			female
+	snd			tusken
 	sndcombat	tusken
 	sndextra	tusken
 	yawspeed	90
