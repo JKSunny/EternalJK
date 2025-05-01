@@ -5,6 +5,6 @@
 	"armor":		"sotetorso",
 	"weight":		"2",
 	"cost":			"500",
-	"itemIcon":		"gfx/item_icons/sotetrooper_chestplate.tga",
+	"itemIcon":		"gfx/item_icons/sotetrooper_torso.tga",
 	"itemDescription": "The distinctive red armor of the Imperial Guard, is made from the same material as standard issue Stormtrooper gear, but is worn by elite troopers assigned to protect and watch over the Empires wealthiest and powerful elite on Coruscant."
 }
