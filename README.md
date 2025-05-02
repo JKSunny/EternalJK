@@ -10,7 +10,7 @@ Other forks or mods can incorporate the latest updates from this repository.
 >  also relocating some structures from common tr_types.h to renderer module tr_local.h <u>[*90d4de9*](https://github.com/JKSunny/EternalJK/commit/90d4de970491dccf13077aad40fcc89846e6be05)</u>, <u>[*a9b7248*](https://github.com/JKSunny/EternalJK/commit/a9b72482162f64042ed3213df65f594b2aad2781)</u>
 
 > Its increasingly difficult to maintain a clear [<kbd> list of modified files</kbd>](https://github.com/eternalcodes/EternalJK/pull/116/files), because there have been no upstream commits since 2021. \
-**engine related:* <u>[*eb18020*](https://github.com/JKSunny/EternalJK/commit/eb18020e44aba4726295c480ba2db3c6bd775fdd)</u>, <u>[*3ae2bbd*](https://github.com/JKSunny/EternalJK/commit/3ae2bbda774703b74d361272d13f8a056ee55149)</u>, <u>[*4eee7ab*](https://github.com/JKSunny/EternalJK/commit/4eee7ab042f7ec362c1f2623b8fbef0c85189382)</u>
+**engine related:* <u>[*eb18020*](https://github.com/JKSunny/EternalJK/commit/eb18020e44aba4726295c480ba2db3c6bd775fdd)</u>, <u>[*3ae2bbd*](https://github.com/JKSunny/EternalJK/commit/3ae2bbda774703b74d361272d13f8a056ee55149)</u>, <u>[*4eee7ab*](https://github.com/JKSunny/EternalJK/commit/4eee7ab042f7ec362c1f2623b8fbef0c85189382)</u> <u>[*786f077*](https://github.com/JKSunny/EternalJK/commit/786f077c67e0720bc14f4f18e8e9ebf16f018ebc)</u> 
 
 Support Initially started by porting to [Quake-III-Arena-Kenny-Edition](https://github.com/kennyalive/Quake-III-Arena-Kenny-Edition).<br />
 After that, I found [vkQuake3](https://github.com/suijingfeng/vkQuake3/tree/master/code), hence the file structure.
