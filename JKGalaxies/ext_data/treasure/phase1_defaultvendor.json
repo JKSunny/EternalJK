@@ -2,8 +2,8 @@
 	"classes": {
 		"allvendor":
 		{
-			"numberPicksMin": 195,
-			"numberPicksMax": 196,
+			"numberPicksMin": 194,
+			"numberPicksMax": 195,
 			"uniquePicks": true,
 			"picks": 
 				{
