@@ -7,10 +7,8 @@
 		"max": 120,
 		"pricePerUnit": 1.55, //total: 186
 		"overrides": {
-			"meansofdeath": "MOD_ACP", //fixme: no way to override base damage multipliers
-			"ignoreShield": "True", //fixme: same as above
 			"armorPenetration": {
-				"add": 0.65
+				"add": 0.75
 				}		
 			}
 		},
@@ -21,10 +19,8 @@
 		"max": 120,
 		"pricePerUnit": 1.8, //total: 216
 		"overrides": {
-			"meansofdeath": "MOD_ACP", //fixme: no way to override base damage multipliers
-			"ignoreShield": "True", //fixme: same as above
 			"armorPenetration": {
-				"add": 0.65
+				"add": 0.75
 			}	
 		}
 	}
