@@ -1900,6 +1900,7 @@ typedef struct {
 	//Misc Stuff
 	unsigned int consumableTime;
 	float fallDamageDelta;
+	float reducedDamagePlumThreshold;
 
 	// Stuff pertaining to stamina drains
 	struct {

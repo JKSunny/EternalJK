@@ -36,6 +36,7 @@ static void DefineBaselineConstants(void)
 
 	bgConstants.consumableTime = 3000;
 	bgConstants.fallDamageDelta = 0.32;	//original: 0.16 (was not deadly enough)
+	bgConstants.reducedDamagePlumThreshold = 0.4;	//0.23% - damage reduced to 23%, 0.75 - damaged reduced by 25%
 
 	bgConstants.staminaDrains.lossFromJumping = 10;
 	bgConstants.staminaDrains.lossFromKicking = 5;
@@ -122,6 +123,19 @@ static void ParseConstantsFile ( const char *fileText )
 
 		jsonNode = cJSON_GetObjectItem(json, "fallDamageDelta");
 		bgConstants.fallDamageDelta = cJSON_ToNumber(jsonNode);
+
+		jsonNode = cJSON_GetObjectItem(json, "reducedDamagePlumThreshold");
+		bgConstants.reducedDamagePlumThreshold = cJSON_ToNumber(jsonNode);
+		if(bgConstants.reducedDamagePlumThreshold < 0)
+		{
+			bgConstants.reducedDamagePlumThreshold = 0;
+			Com_Printf (S_COLOR_YELLOW "Error: in constants.json: reducedDamagePlumThreshold is out of scope (below 0).\n");
+		}
+		if(bgConstants.reducedDamagePlumThreshold > 1)
+		{
+			bgConstants.reducedDamagePlumThreshold = 1;
+			Com_Printf (S_COLOR_YELLOW "Error: in constants.json: reducedDamagePlumThreshold is out of scope (above 1).\n");
+		}
 
 		jsonNode = cJSON_GetObjectItem(json, "stamina");
 		if (jsonNode) {

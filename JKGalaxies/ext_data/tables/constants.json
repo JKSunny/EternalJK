@@ -28,6 +28,9 @@
 	"sprintSpeedModifier": "1.3",	// this doesn't get added to the other modifiers, because of acceleration --eez
 	"consumableTime": 3000,			//how many ms we have to wait between using consumables (defaults to 3 secs)  --futuza 
 	"fallDamageDelta": 0.32,		//how much fall dmg is reduced by
+	"reducedDamagePlumThreshold": 0.4,	//if dmg is reduced (from armor/hitlocation/resistances etc) to this value, 
+										// dmg plum numbers are yellow instead of red. 
+										// eg: if set to 0.4 (40%) and a weapon dmg was 12, but reduced to 4 it should yellow
 
 
 	"stamina" : {

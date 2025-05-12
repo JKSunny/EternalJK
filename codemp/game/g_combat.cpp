@@ -5329,11 +5329,11 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 		{
 			if ( !point || ( dflags & DAMAGE_RADIUS ))
 			{
-				DamagePlum(targ, targ->r.currentOrigin, take, mod, ssave, take <= (damage / 4));
+				DamagePlum(targ, targ->r.currentOrigin, take, mod, ssave, take <= (damage * bgConstants.reducedDamagePlumThreshold));
 			}
 			else
 			{
-				DamagePlum(targ, point, take, mod, ssave, take <= (damage / 4));
+				DamagePlum(targ, point, take, mod, ssave, take <= (damage * bgConstants.reducedDamagePlumThreshold));
 			}
 		}
 		// -----------------------
