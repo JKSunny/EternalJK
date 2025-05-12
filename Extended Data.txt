@@ -149,6 +149,7 @@ The following modify movement speed:
 The following are miscellaneous modifiers:
  - consumableTime (int): How many ms clients have to wait between using consumables (default 3000ms)
  - fallDamageDelta (float): how much fall dmg is reduced by (see ClientEvents() in g_active.cpp for implementation details)
+ - reducedDamagePlumThreshold (float, 0.0 - 1.0): represents a percentage, determines when dmg plums should turn yellow (instead of red) when dmg is reduced (ie: .64 == 64%, or when dmg is reduced to 64% of original/reduced by 36%).
 
  - stamina(object):
   - lossFromRolling (integer): How much stamina is lost from rolling.
