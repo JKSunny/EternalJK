@@ -68,6 +68,7 @@ end
 local function isValidPzkChallenge(ply)
 	--check if a pazaak challenge is valid
 	local opp = ply:GetEyeTrace().Entity
+	local MAX_DISTANCE = 250 --max distance away from players a pazaak match can be done from
 
 	--spectators can only play against AI
 	if ply:IsSpectator() then
@@ -75,12 +76,24 @@ local function isValidPzkChallenge(ply)
 		opp = nil
 	end
 
-	--check if this is a players
+	--check if this is a player
 	if opp then
 		if opp:IsPlayer() then
 			opp = opp:ToPlayer()  --convert entity to player object
 		else
 			opp = nil
+		end
+	end
+
+	--check if we're too far away to initiate pazaak
+	if opp then
+		local distance = opp.Entity:GetDistance(ply.Entity, opp.Entity)
+		if distance > MAX_DISTANCE then
+			ply:SendPrint(opp.Name .. "^7 is too far away. Get closer.")
+			ply:SendNotify(sys.StripColorcodes(opp.Name) .. " is too far away.")
+			--opp:SendChat("^7System: " .. ply.Name .. "^7 tried to challenge you to Pazaak, but is too far away.")
+			--ply:SendPrint("Distance to target: " .. math.floor(distance+0.5)) --for debugging
+			return -1
 		end
 	end
 
@@ -106,7 +119,7 @@ local function PzkTestCmd(ply, argc, argv)
 
 	local opp = isValidPzkChallenge(ply)
 
-	--special case, entity is busy - don't proceed with pazaak
+	--special case, entity is busy/invalid - don't proceed with pazaak
 	if opp == -1 then
 		return
 	end

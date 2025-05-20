@@ -213,6 +213,8 @@ Addition, subtraction, multiplication, division and comparing of vectors is also
 
 -----------------------------------------------------------------------------------------------	
 
+ents.GetDistance(ent1, ent2):number - Returns the distance between two entities
+
 ents.GetByID(id:number):entity/nil - Returns the entity with the specified ID (or nil if it doesn't exist)
 ents.GetAll():table - Returns a table will all entities on the server
 ents.GetByClass(class:string):table - Returns a table with all entities with the specified classname
@@ -280,7 +282,7 @@ player:IsSpectator():bool - Returns true if the player is a spectator
 player:Spawn():nil - Forces the player to (re)spawn
 
 player:GetEyeTrace():table - Returns a table with trace results (see above)
-player:GetEntity():entity - Returns the entity object of the player
+player:GetEntity():entity - Returns the entity object of the player, returns entity value if not a player (eg: NPC)
 
 player:GetCreditCount():number - Returns number of credits that the player is currently holding on to.
 player:SetCreditCount(amount:number):nil - sets the amount of credits that the player has

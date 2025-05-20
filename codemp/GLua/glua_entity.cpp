@@ -210,6 +210,29 @@ static int GLua_Entity_IsValid(lua_State *L) {
 	return 1;
 }
 
+static int GLua_Entity_GetDistance(lua_State* L)
+{
+	gentity_t* ent = GLua_CheckEntity(L, 1);
+	gentity_t* ent2 = GLua_CheckEntity(L, 2);
+	if (!ent || !ent2) return 0;
+
+	//we're the same entity, distance from ourself is 0
+	if (ent == ent2)
+	{
+		lua_pushnumber(L, 0.0f);
+		return 1;
+	}
+
+	vec3_t orig, orig2;
+
+	VectorCopy(ent->r.currentOrigin, orig);
+	VectorCopy(ent2->r.currentOrigin, orig2);
+
+
+	lua_pushnumber(L, Distance(orig, orig2));
+	return 1;
+}
+
 static int GLua_Entity_GetPos(lua_State *L) {
 	gentity_t *ent = GLua_CheckEntity(L, 1);
 	vec3_t orig;
@@ -1040,6 +1063,7 @@ static const struct luaL_reg ents_m [] = {
 	{"GetPos", GLua_Entity_GetPos},
 	{"SetOrigin", GLua_Entity_SetPos},
 	{"GetOrigin", GLua_Entity_GetPos},
+	{"GetDistance", GLua_Entity_GetDistance},
 	{"SetAngles", GLua_Entity_SetAngles},
 	{"GetAngles", GLua_Entity_GetAngles},
 	{"GetTarget", GLua_Entity_GetTarget},

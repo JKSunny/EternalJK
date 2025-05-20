@@ -757,8 +757,22 @@ static int GLua_Player_GetEyeTrace(lua_State *L) {
 
 static int GLua_Player_GetEntity(lua_State *L) {
 	GLua_Data_Player_t *ply = GLua_CheckPlayer(L, 1);
-	if (!ply) return 0;
-	GLua_PushEntity(L, &g_entities[ply->clientNum]);
+
+	//not a player
+	if (!ply)
+	{
+		gentity_t* ent = GLua_CheckEntity(L, 1);
+		if (!ent) 
+			return 0;
+		else //but it is an entity
+		{
+			GLua_PushEntity(L, ent);
+			return 1;
+		}
+	}
+
+	//it is a player
+	GLua_PushEntity(L, &g_entities[ply->clientNum]); 
 	return 1;
 }
 
