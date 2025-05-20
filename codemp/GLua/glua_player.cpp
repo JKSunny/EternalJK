@@ -575,6 +575,17 @@ static int GLua_Player_GetTeam(lua_State *L) {
 	return 1;
 }
 
+static int GLua_Player_IsSpectator(lua_State* L) {
+	GLua_Data_Player_t* ply = GLua_CheckPlayer(L, 1);
+	if (!ply) return 0;	//non-players are not spectators
+
+	if (level.clients[ply->clientNum].sess.sessionTeam == TEAM_SPECTATOR)
+		lua_pushboolean(L, 1);
+	else
+		lua_pushboolean(L, 0);
+
+	return 1;
+}
 
 static int GLua_Player_ToString(lua_State *L) {
 	GLua_Data_Player_t *ply = GLua_CheckPlayer(L, 1);
@@ -1895,6 +1906,7 @@ static const struct luaL_reg player_m [] = {
 	{"Kick", GLua_Player_Kick},
 	{"SetTeam", GLua_Player_SetTeam},
 	{"GetTeam", GLua_Player_GetTeam},
+	{"IsSpectator", GLua_Player_IsSpectator},
 	{"Spawn", GLua_Player_Spawn},
 	//{"Health", GLua_Player_Health},
 	//{"MaxHealth", GLua_Player_MaxHealth},

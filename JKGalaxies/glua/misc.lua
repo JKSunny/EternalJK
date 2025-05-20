@@ -65,24 +65,56 @@ local function pzkFinish(winner)
 	print("Pazaak winner: ", winner)
 end
 
-local function PzkTestCmd(ply, argc, argv)
-	local pzk = sys.CreatePazaakGame()
-	local cards = JKG.Pazaak.Cards
+local function isValidPzkChallenge(ply)
+	--check if a pazaak challenge is valid
 	local opp = ply:GetEyeTrace().Entity
-	local cardsel = true
-	
-	if opp and not opp:IsPlayer() then
+
+	--spectators can only play against AI
+	if ply:IsSpectator() then
+		ply:SendPrint("^3You must join the game to challenge other players to Pazaak. Spectators can only play against AI.^1")
 		opp = nil
-	else
-		opp = opp:ToPlayer()
+	end
+
+	--check if this is a players
+	if opp then
+		if opp:IsPlayer() then
+			opp = opp:ToPlayer()  --convert entity to player object
+		else
+			opp = nil
+		end
+	end
+
+	--if a spectator set to nil, we don't wanna play with spectators
+	if opp and opp:IsSpectator() then
+		opp = nil
+	end
+		
+	--check if the player is busy
+	if opp then
 		if opp.Busy then
 			ply:SendPrint(opp.Name .. "^7 is busy and cannot respond.  Try later.")
 			ply:SendNotify(sys.StripColorcodes(opp.Name) .. " is busy and cannot respond.  Try later.")
 			opp:SendChat("^7System: " .. ply.Name .. "^7 tried to challenge you to Pazaak.")
-			return
+			return -1
 		end
 	end
 	
+	return opp
+end
+
+local function PzkTestCmd(ply, argc, argv)
+
+	local opp = isValidPzkChallenge(ply)
+
+	--special case, entity is busy - don't proceed with pazaak
+	if opp == -1 then
+		return
+	end
+
+	local pzk = sys.CreatePazaakGame()
+	local cards = JKG.Pazaak.Cards
+	local cardsel = true
+
 	pzk:SetPlayers(ply, opp)
 	if not opp then
 		pzk:SetAILevel(1)

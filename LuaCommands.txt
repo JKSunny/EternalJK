@@ -276,6 +276,7 @@ player:Kill():nil - Kills the player immediately.
 player:Kick([reason:string]):nil - Kicks the player off the server with the reason specified. If no reason is specified, 'was kicked' will be used.
 player:SetTeam(team:string):nil - Sends the player to the specified team ("r" = red, "b" = blue, "s" = spectators, "f" = free)
 player:GetTeam():number - Returns the team the player is currently on (0 = free, 1 = red, 2 = blue, 3 = spectators)
+player:IsSpectator():bool - Returns true if the player is a spectator
 player:Spawn():nil - Forces the player to (re)spawn
 
 player:GetEyeTrace():table - Returns a table with trace results (see above)
