@@ -28,7 +28,7 @@ OpenJK is licensed under GPLv2 as free software. You are free to use, modify and
 
 ## Fork branching explained
 
-### **Master branch**
+### :name_badge: **Master**
 Native implemention of the Vulkan renderer module. 
 > **NOTE:** upstream repository ***EternalJK** is discontinued and is replaced with **[TaystJK](https://github.com/taysta/TaystJK)** - includes Vulkan*
 
@@ -39,7 +39,7 @@ Native implemention of the Vulkan renderer module.
 
 ---
 
-### **Beta branch**
+### :name_badge: **Beta**
 Based on master, with addition of features like instanced MD3 and Ghoul2 model caching on the gpu.
 > **cvar r_vbo:** Cache static surfaces: 0 - off 1 - world 2 - world + models
 
@@ -49,13 +49,13 @@ Based on master, with addition of features like instanced MD3 and Ghoul2 model c
 
 ---
 
-### **ImGui** (archived)
+### :name_badge: **ImGui** (archived)
 Basic implementation of [ImGui](https://github.com/ocornut/imgui) in the vulkan renderer module, [cImGui](https://github.com/cimgui/cimgui) in client, game and ui modules
 > **NOTE** Release unavailable! [build binaries](https://github.com/JACoders/OpenJK/wiki/Compilation-guide) yourself from source - ***This branch is archived and unmaintained***
 
 ---
 
-### **PBR branch**
+### :name_badge: **PBR**
 Implementation of [PBR](https://google.github.io/filament/Filament.html#materialsystem/parameterization/standardparameters) *(Physical Based Rendering)* material system based on [Rend2](https://github.com/SomaZ/OpenJK) renderer from OpenJK \
 This adds the ability to apply *normal, roughness, metallic or specular mapping*.
 by introducing the [<kbd>.mtr</kbd>](https://jkhub.org/tutorials/rend2/new-shader-keywords-r98/) file extension which is an override for [<kbd>.shader</kbd>](https://jkhub.org/tutorials/skinning/basics-of-skinning-03-shaders-r192/)
@@ -71,7 +71,7 @@ by introducing the [<kbd>.mtr</kbd>](https://jkhub.org/tutorials/rend2/new-shade
 
 ---
 
-### **PBR Inspector branch**
+### :name_badge: **PBR Inspector**
 Combines **PBR** and **ImGui** branch. \
 Began as a local codebase to inspect/debug the PBR material system implementation. \
 A basic GUI is added, renders the game in a viewport and allows displaying various PBR layers \
@@ -86,7 +86,7 @@ Other features: View collapsed shader, text/node based shader editor, profiler a
 
 ---
 
-### **PBR RTX Inspector branch**
+### :name_badge: **PBR RTX Inspector**
 Based on **PBR Inspector** branch.
 
 > **NOTE** This is Work-in-progress, and is unstable. \
@@ -100,12 +100,20 @@ This is an effort to port RayTracing from [Q2RTX](https://github.com/NVIDIA/Q2RT
 
 ---
 
-## Forks supporting Vulkan
+### :fire: **Prototyping**
 
-In addition to this fork, I also have implemented the Vulkan renderer to my forks of OpenJK and JK2MV 
+Overview of prototyped features like bindless rendering, depth-z-prepass is in the **_Prototype_** tab section [here](https://jksunny.github.io/#tab-prototype) 
+
+---
+
+## :link: Forks supporting Vulkan
+
+In addition to this fork, I also have implemented the Vulkan renderer to my other forks 
 
 [![jedi-academy-openjk](https://img.shields.io/badge/Jedi_Academy-OpenJK-brightgreen.svg)](https://github.com/JKSunny/OpenJK/) - *based on beta branch* \
-[![jedi-outcast-jk2mv](https://img.shields.io/badge/Jedi_Outcast_&#x2800;-JK2MV-brightgreen.svg)](https://github.com/JKSunny/jk2mv/) - *based on master branch - (Implemented modular renderer)*
+[![jedi-outcast-jk2mv](https://img.shields.io/badge/Jedi_Outcast_&#x2800;-JK2MV-brightgreen.svg)](https://github.com/JKSunny/jk2mv/) - *based on master branch - (Implemented modular renderer)* \
+[![jedi-outcast-jk2mv](https://img.shields.io/badge/Jedi_Academy-JKGalaxies-brightgreen.svg)](https://github.com/JKSunny/JediKnightGalaxies) - *based on master branch*
+
 
 ## For players
 
