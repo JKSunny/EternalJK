@@ -458,6 +458,17 @@ void vk_initialize( void )
 	vk.vboGhoul2Active = qtrue;
 	vk.vboMdvActive = qtrue; 
 	
+#ifdef VK_BINDLESS
+	if ( vk.bindlessActive ) {
+		vk.push_constant_size = sizeof(pushConst);
+		vk.push_constant_flags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+	}
+	else {
+		vk.push_constant_size = sizeof(float) * 16; 
+		vk.push_constant_flags = VK_SHADER_STAGE_VERTEX_BIT;
+	}
+#endif
+
 	if ( r_normalMapping->integer )
 		vk.normalMappingActive = qtrue;
 
@@ -516,13 +527,20 @@ void vk_initialize( void )
 	vk_create_sync_primitives();
 	vk_create_command_pool();
 	vk_create_command_buffer();
+
+#ifdef VK_BINDLESS
+	vk_init_bindless();
+#endif
+
 	vk_create_descriptor_layout();
 	vk_create_pipeline_layout();
 
 	vk.geometry_buffer_size_new = VERTEX_BUFFER_SIZE;
 	vk.indirect_buffer_size_new = sizeof(VkDrawIndexedIndirectCommand) * 1024 * 1024;
+	vk.indirect_buffer_size_new2 = sizeof(VkDrawIndirectCommand) * 1024 * 1024;
 	vk_create_vertex_buffer( vk.geometry_buffer_size_new );
 	vk_create_indirect_buffer( vk.indirect_buffer_size_new );
+	vk_create_indirect_buffer2( vk.indirect_buffer_size_new2 );
 	vk_create_storage_buffer( MAX_FLARES * vk.storage_alignment );
 	vk_create_shader_modules();
 

@@ -70,6 +70,7 @@ set(MPVulkanRendererFiles
 	"${MPDir}/rd-vulkan/tr_WorldEffects.cpp"
 	"${MPDir}/rd-vulkan/tr_WorldEffects.h"
 	"${MPDir}/rd-vulkan/vk_attachments.cpp"
+	"${MPDir}/rd-vulkan/vk_bindless.cpp"
 	"${MPDir}/rd-vulkan/vk_bloom.cpp"
 	"${MPDir}/rd-vulkan/vk_cmd.cpp"
 	"${MPDir}/rd-vulkan/vk_cubemap.cpp"

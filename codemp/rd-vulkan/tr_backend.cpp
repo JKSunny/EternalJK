@@ -370,29 +370,52 @@ static void vk_update_camera_constants( const trRefdef_t *refdef, const viewParm
 	Com_Memcpy( uniform.viewOrigin, refdef->vieworg, sizeof( vec3_t) );
 	uniform.viewOrigin[3] = 0.0f;
 
-	/*
-	const float* p = viewParms->projectionMatrix;
-	float proj[16];
-	Com_Memcpy(proj, p, 64);
-
-	proj[5] = -p[5];
-	//myGlMultMatrix(vk_world.modelview_transform, proj, uniform.mvp);
-	myGlMultMatrix(viewParms->world.modelViewMatrix, proj, uniform.mvp);
-	*/
-
-	vk.cmd->camera_ubo_offset = vk_append_uniform( &uniform, sizeof(uniform), vk.uniform_camera_item_size );
+#ifdef VK_BINDLESS // use persistent mapping maybe? what pro-cons
+	if ( vk.bindlessActive )
+	{
+		void *mappedMemory = buffer_map(&vk.camera[vk.cmd_index]); // access on the CPU side	
+		memcpy((uint8_t*)mappedMemory, &uniform, sizeof(vkUniformCamera_t));
+		buffer_unmap(&vk.camera[vk.cmd_index]);  // release CPU access
+	}
+	else
+#endif
+	{
+		vk.cmd->camera_ubo_offset = vk_append_uniform( &uniform, sizeof(uniform), vk.uniform_camera_item_size );
+	}
 }
+
+static void vk_update_light_constants_bindless( const trRefdef_t *refdef ) {
+	// set
+	vkUniformLight_t uniform = {};
+	
+	uint32_t i;
+
+	void *mappedMemory = buffer_map(&vk.light[vk.cmd_index]); // access on the CPU side
+	vkUniformLight_t *ssbo_light = (vkUniformLight_t *)mappedMemory;
+
+	ssbo_light->num_lights = refdef->num_dlights;
+
+	for (  i = 0; i < refdef->num_dlights; i++ )
+	{
+		const dlight_t* light = refdef->dlights + i;
+
+		VectorCopy(light->origin, ssbo_light->lights[i].origin);
+		VectorScale(light->color, light->radius / 25.f, ssbo_light->lights[i].color);
+		ssbo_light->lights[i].radius = light->radius;
+	}
+
+	buffer_unmap(&vk.light[vk.cmd_index]);  // release CPU access
+}
+
 
 static void vk_update_light_constants( const trRefdef_t *refdef ) {
 	// set
 	vkUniformLight_t uniform = {};
-
-	uniform.item[0] = 0.0f;
-	uniform.item[1] = 1.0f;
-	uniform.item[2] = 2.0f;
-	uniform.item[3] = 3.0f;
+	
+	uniform.num_lights = 0;
 
 	vk.cmd->light_ubo_offset = vk_append_uniform( &uniform, sizeof(uniform), vk.uniform_light_item_size );
+
 }
 
 static void vk_update_entity_light_constants( vkUniformEntity_t &uniform, const trRefEntity_t *refEntity ) 
@@ -410,15 +433,6 @@ static void vk_update_entity_matrix_constants( vkUniformEntity_t &uniform, const
 {
 	orientationr_t ori;
 
-	// backend ref cant be right
-	/*if ( refEntity == &tr.worldEntity ) {
-		ori = backEnd.viewParms.world;
-		Matrix16Identity( uniform.modelMatrix );
-	}else{
-		R_RotateForEntity( refEntity, &backEnd.viewParms, &ori );
-		Matrix16Copy( ori.modelMatrix, uniform.modelMatrix );
-	}*/
-
 	R_RotateForEntity(refEntity, &backEnd.viewParms, &ori);
 	Matrix16Copy(ori.modelMatrix, uniform.modelMatrix);
 	VectorCopy(ori.viewOrigin, uniform.localViewOrigin);
@@ -426,6 +440,36 @@ static void vk_update_entity_matrix_constants( vkUniformEntity_t &uniform, const
 	Com_Memcpy( &uniform.localViewOrigin, ori.viewOrigin, sizeof( vec3_t) );
 	uniform.localViewOrigin[3] = 0.0f;
 }
+
+#ifdef VK_BINDLESS // use persistent mapping maybe? what pro-cons
+static void vk_update_entity_constants_bindless( const trRefdef_t *refdef ) {
+	uint32_t i;
+	Com_Memset( vk.cmd->entity_ubo_offset, 0, sizeof(vk.cmd->entity_ubo_offset) );
+
+	void *mappedMemory = buffer_map(&vk.entity[vk.cmd_index]); // access on the CPU side
+
+	for ( i = 0; i < refdef->num_entities; i++ ) {
+		trRefEntity_t *ent = &refdef->entities[i];
+
+		R_SetupEntityLighting( refdef, ent );
+
+		vkUniformEntity_t uniform = {};
+		vk_update_entity_light_constants( uniform, ent );
+		vk_update_entity_matrix_constants( uniform, ent );
+
+		memcpy((uint8_t*)mappedMemory + i * sizeof(vkUniformEntity_t), &uniform, sizeof(vkUniformEntity_t));
+	}
+
+	const trRefEntity_t *ent = &tr.worldEntity;
+	vkUniformEntity_t uniform = {};
+	vk_update_entity_light_constants( uniform, ent );
+	vk_update_entity_matrix_constants( uniform, ent );
+
+	memcpy((uint8_t*)mappedMemory + REFENTITYNUM_WORLD * sizeof(vkUniformEntity_t), &uniform, sizeof(vkUniformEntity_t));
+
+	buffer_unmap(&vk.entity[vk.cmd_index]);  // release CPU access
+}
+#endif
 
 static void vk_update_entity_constants( const trRefdef_t *refdef ) {
 	uint32_t i;
@@ -454,6 +498,15 @@ static void vk_update_entity_constants( const trRefdef_t *refdef ) {
 static void vk_update_ghoul2_constants( const trRefdef_t *refdef ) {
 	uint32_t i;
 
+	void *bones_ssbo = nullptr;
+
+#ifdef VK_BINDLESS // use persistent mapping maybe? what pro-cons
+	if ( vk.bindlessActive ) {
+		bones_ssbo = buffer_map( &vk.bones[vk.cmd_index] ); // access on the CPU side
+		vk.bonesCount = 0;
+	}
+#endif
+
 	for ( i = 0; i < refdef->num_entities; i++ )
 	{
 		const trRefEntity_t *ent = &refdef->entities[i];
@@ -470,7 +523,11 @@ static void vk_update_ghoul2_constants( const trRefdef_t *refdef ) {
 		case MOD_BAD:
 		{
 			// Transform Bones and upload them
+#ifdef VK_BINDLESS
+			RB_TransformBones( ent, refdef, bones_ssbo );
+#else
 			RB_TransformBones( ent, refdef );
+#endif
 		}
 		break;
 
@@ -478,20 +535,37 @@ static void vk_update_ghoul2_constants( const trRefdef_t *refdef ) {
 			break;
 		}
 	}
+
+#ifdef VK_BINDLESS 
+	if ( vk.bindlessActive )
+		buffer_unmap( &vk.bones[vk.cmd_index] );  // release CPU access
+#endif
 }
 
 static void RB_UpdateUniformConstants( const trRefdef_t *refdef, const viewParms_t *viewParms ) 
 {
 	vk_update_camera_constants( refdef, viewParms );
 	vk_update_light_constants( refdef );
-	vk_update_entity_constants( refdef );
+
+#ifdef VK_BINDLESS
+	if ( vk.bindlessActive ) {
+		vk_update_entity_constants_bindless( refdef );
+		vk_update_light_constants_bindless( refdef );
+	}
+	else
+#endif
+	{
+		vk_update_entity_constants( refdef );
+		vk_update_light_constants( refdef );
+	}
+
 	vk_update_ghoul2_constants( refdef );
 }
 
 void RB_BindDescriptorSets( const DrawItem& drawItem ) 
 {
-	uint32_t offsets[6], offset_count;
-	uint32_t start, end, count;
+	uint32_t offsets[VK_DESC_UNIFORM_COUNT], offset_count;
+	uint32_t start, end, count, i;
 
 	start = drawItem.descriptor_set.start;
 	if (start == ~0U)
@@ -524,21 +598,123 @@ static Pass *RB_CreatePass( Allocator& allocator, int capacity )
 	return pass;
 }
 
+#ifdef VK_BINDLESS
+static void vk_bind_uniform( const DrawItem& drawItem )
+{
+	if (drawItem.descriptor_set.start == ~0U)
+		return;
+
+	const uint32_t offsets[VK_DESC_UNIFORM_COUNT] = {
+		 drawItem.descriptor_set.offset[VK_DESC_UNIFORM_MAIN_BINDING],
+		 drawItem.descriptor_set.offset[VK_DESC_UNIFORM_CAMERA_BINDING],
+		 drawItem.descriptor_set.offset[VK_DESC_UNIFORM_LIGHT_BINDING],
+		 drawItem.descriptor_set.offset[VK_DESC_UNIFORM_ENTITY_BINDING],
+		 drawItem.descriptor_set.offset[VK_DESC_UNIFORM_BONES_BINDING],
+		 drawItem.descriptor_set.offset[VK_DESC_UNIFORM_GLOBAL_BINDING]
+	};
+
+	qvkCmdBindDescriptorSets(vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+		vk.pipeline_layout, VK_DESC_UNIFORM, 1, drawItem.descriptor_set.current + 0, VK_DESC_UNIFORM_COUNT, offsets);
+}
+#endif
+
+#ifdef VK_BINDLESS_MODEL_VBO
+void radix_sort_pipeline(vkIndirectCommand_t* items, uint32_t count) {
+    vkIndirectCommand_t temp[4096];
+    uint32_t histogram[256];
+    uint32_t prefixSum[256];
+
+    for (int pass = 0; pass < 4; ++pass) {
+        int shift = pass * 8;
+
+        memset(histogram, 0, sizeof(histogram));
+
+        // Histogram
+        for (uint32_t i = 0; i < count; ++i) {
+            uint8_t key = (items[i].pipeline >> shift) & 0xFF;
+            histogram[key]++;
+        }
+
+        // Prefix sum
+        prefixSum[0] = 0;
+        for (int i = 1; i < 256; ++i) {
+            prefixSum[i] = prefixSum[i - 1] + histogram[i - 1];
+        }
+
+        // Scatter
+        for (uint32_t i = 0; i < count; ++i) {
+            uint8_t key = (items[i].pipeline >> shift) & 0xFF;
+            temp[prefixSum[key]++] = items[i];
+        }
+
+        // Copy back
+        memcpy(items, temp, count * sizeof(vkIndirectCommand_t));
+    }
+}
+#endif
+
 static void RB_DrawItems( int numDrawItems, const DrawItem *drawItems ) 
 {
 	uint32_t i;
 	VkViewport viewport;
 	VkRect2D scissor_rect;
 
+#ifdef VK_BINDLESS
+	if ( vk.bindlessActive )
+	{
+#ifdef VK_BINDLESS_MODEL_VBO 
+		VkDescriptorSet desc_sets[4] = {
+			vk.imageDescriptor.set,
+			vk.ssboDescriptor[vk.cmd_index].set,
+			vk.model_instance.descriptor.vbos,
+			vk.model_instance.descriptor.ibos,
+		};
+#else
+		VkDescriptorSet desc_sets[2] = {
+			vk.imageDescriptor.set,
+			vk.ssboDescriptor[vk.cmd_index].set,
+		};
+#endif
+
+		// bind bindless descriptor sets
+		qvkCmdBindDescriptorSets( vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
+			vk.pipeline_layout, VK_DESC_TEXTURES_BINDLESS, ARRAY_LEN(desc_sets), desc_sets, 0, NULL );
+	}
+#endif
+
 	for ( i = 0; i < numDrawItems; ++i )
 	{
 		const DrawItem& drawItem = drawItems[i];
 
-		RB_BindDescriptorSets( drawItem );
+		#ifdef VK_BINDLESS
+			// bind uniform descriptor with offsets.
+			if ( vk.bindlessActive )
+			{
+				if ( drawItem.push_uniform )
+					vk_bind_uniform( drawItem );
 
-		vk_bind_pipeline( drawItem.pipeline );
+				vk_update_draw_id( drawItem.draw_id );	// push constant
+			}
+			else
+		#endif
+		{
+			RB_BindDescriptorSets( drawItem );
+		}
+		#if defined(VK_BINDLESS) && defined(VK_BINDLESS_BATCHED_INDIRECT)
+			if ( vk.bindlessActive && drawItem.vbo_model_index && drawItem.indexedIndirect ) 
+			{		
+			} else
+		#endif
+		{
+			vk_bind_pipeline( drawItem.pipeline );
+			vk_update_mvp( drawItem.mvp );	// push constants
+		}
 
-		if( drawItem.bind_count )
+#ifdef VK_BINDLESS_MODEL_VBO
+		if ( drawItem.bind_count && !drawItem.vbo_model_index )
+#else
+		if ( drawItem.bind_count )
+#endif
 			qvkCmdBindVertexBuffers( vk.cmd->command_buffer, 
 			drawItem.bind_base, drawItem.bind_count, 
 			drawItem.shade_buffers, drawItem.shade_offset + drawItem.bind_base );
@@ -561,15 +737,33 @@ static void RB_DrawItems( int numDrawItems, const DrawItem *drawItems )
 		if ( drawItem.polygonOffset )
 			qvkCmdSetDepthBias( vk.cmd->command_buffer, r_offsetUnits->value, 0.0f, r_offsetFactor->value );
 
-		// push constants
-		// use push constants for materials as well?
-		vk_update_mvp( drawItem.mvp );
-		
 		// model vbo
-		if ( drawItem.ibo != nullptr ) 
+		if ( drawItem.vbo_model_index ) 
 		{		
-			if ( drawItem.indexedIndirect ) {
-				vk_bind_index_buffer( drawItem.ibo->buffer,  0 );
+			const IBO_t *ibo = tr.ibos[ drawItem.vbo_model_index - 1 ];
+
+			if ( drawItem.indexedIndirect ) 
+			{
+				#ifdef VK_BINDLESS_MODEL_VBO
+					if ( vk.bindlessActive )
+					{
+						#ifdef VK_BINDLESS_VBO_ARRAY
+							qvkCmdDrawIndirect( 
+								vk.cmd->command_buffer, 
+								vk.cmd->indirect_buffer2,
+								drawItem.draw.params.indexedIndirect.offset,
+								drawItem.draw.params.indexedIndirect.numDraws,
+								sizeof(VkDrawIndirectCommand)
+								);
+						#else
+							// do batched indirect vbo
+						#endif	
+
+						continue;
+					} 
+				#endif
+
+				vk_bind_index_buffer( ibo->buffer,  0 );
 
 				qvkCmdDrawIndexedIndirect( 
 					vk.cmd->command_buffer, 
@@ -578,10 +772,14 @@ static void RB_DrawItems( int numDrawItems, const DrawItem *drawItems )
 					drawItem.draw.params.indexedIndirect.numDraws,
 					sizeof(VkDrawIndexedIndirectCommand)
 					);
+
 				continue;
 			}
+			
+			#ifndef VK_BINDLESS_MODEL_VBO
+			vk_bind_index_buffer( ibo->buffer, drawItem.draw.params.indexed.index_offset );
+			#endif
 
-			vk_bind_index_buffer( drawItem.ibo->buffer,  drawItem.draw.params.indexed.index_offset );
 			qvkCmdDrawIndexed( vk.cmd->command_buffer, drawItem.draw.params.indexed.num_indexes, 1, 0, 0, 0 );
 		}
 
@@ -616,6 +814,75 @@ static void RB_DrawItems( int numDrawItems, const DrawItem *drawItems )
 			qvkCmdDraw( vk.cmd->command_buffer, drawItem.draw.params.arrays.num_vertexes, 1, 0, 0 );
 		}
 	}
+
+	// indirect test
+#if defined(VK_BINDLESS) && defined(VK_BINDLESS_BATCHED_INDIRECT)
+	if ( vk.cmd->indirect_commands_num && numDrawItems > 1 )
+	{
+		uint32_t i;
+		VkDrawIndirectCommand *cmds;
+		vkIndirectCommand_t *batched_cmd;
+		vkUniformIndirectDraw_t data;
+
+		radix_sort_pipeline( vk.cmd->indirect_commands, vk.cmd->indirect_commands_num);
+
+		uint32_t start = 0;
+
+		while ( start < vk.cmd->indirect_commands_num ) 
+		{
+			uint32_t pipeline = vk.cmd->indirect_commands[start].pipeline;
+			uint32_t end = start + 1;
+
+			while (end < vk.cmd->indirect_commands_num &&
+				   vk.cmd->indirect_commands[end].pipeline == pipeline) {
+				end++;
+			}
+
+			const uint32_t size = end - start;
+
+			cmds = (VkDrawIndirectCommand*)malloc(sizeof(VkDrawIndirectCommand) * size);
+
+			Com_Memset( &data, 0, sizeof(vkUniformIndirectDraw_t) );
+
+			for ( i = 0; i < size; ++i )
+			{
+				batched_cmd = &vk.cmd->indirect_commands[start + i];
+
+				cmds[i].vertexCount = batched_cmd->vertex_count;
+				cmds[i].firstVertex = 0;
+				cmds[i].instanceCount = 1;
+				cmds[i].firstInstance = (batched_cmd->draw_id << 16) | (i & 0xFFFF); // actual & indirect draw id
+
+				data.first_index[i] = batched_cmd->first_index;
+			}
+
+			uint32_t indirect_draw_id = vk.cmd->indirect_commands_draw_id++;
+			vkbuffer_t *indirect_data = &vk.indirect[vk.cmd_index];
+			vk_rtx_upload_buffer_data_offset( indirect_data, indirect_draw_id * sizeof(vkUniformIndirectDraw_t), sizeof(vkUniformIndirectDraw_t), (const byte*)&data );
+
+			uint32_t offset = vk_push_indirect2( size, cmds );
+
+			vk_update_draw_id( indirect_draw_id );
+			vk_update_mvp( NULL );
+
+			vk_bind_pipeline( pipeline );
+
+			qvkCmdDrawIndirect( 
+				vk.cmd->command_buffer, 
+				vk.cmd->indirect_buffer2,
+				offset,
+				size,
+				sizeof(VkDrawIndirectCommand)
+				);
+
+			free(cmds);
+
+			start = end;
+		}
+
+		vk.cmd->indirect_commands_num = 0;
+	}
+#endif
 }
 
 void RB_AddDrawItem( Pass *pass, const DrawItem& drawItem )
@@ -631,10 +898,16 @@ void RB_AddDrawItem( Pass *pass, const DrawItem& drawItem )
 		}
 
 		pass->drawItems[pass->numDrawItems++] = drawItem;
+#ifdef VK_BINDLESS
+		vk_increase_draw_item_id();
+#endif
 		return;
 	}
 
 	RB_DrawItems( 1, &drawItem ); // draw immidiate	
+#ifdef VK_BINDLESS
+	vk_increase_draw_item_id();
+#endif
 }
 
 static void RB_SubmitRenderPass( Pass& renderPass, Allocator& allocator )
@@ -665,6 +938,8 @@ static void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs )
 	backEnd.pc.c_surfaces	+= numDrawSurfs;
 
 	RB_SubmitDrawSurfs( drawSurfs, numDrawSurfs, originalTime );
+
+	//buffer_unmap(&vk.global);  // release CPU access
 
 	RB_SubmitRenderPass(
 		*backEndData->currentPass,
@@ -1175,12 +1450,14 @@ const void	*RB_DrawSurfs( const void *data ) {
 	RB_ShadowFinish();
 	RB_RenderFlares();
 
+#ifndef VK_DLIGHT_GPU
 #ifdef USE_PMLIGHT
 	// revisit this when implementing gpu dlights
 	if ( /*vk.useFastLight &&*/ backEnd.refdef.numLitSurfs ) {
 		RB_BeginDrawingLitSurfs();
 		RB_LightingPass();
 	}
+#endif
 #endif
 
 	// draw main system development information (surface outlines, etc)

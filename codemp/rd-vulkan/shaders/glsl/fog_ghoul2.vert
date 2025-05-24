@@ -1,8 +1,12 @@
 #version 450
+#define VK_BINDLESS
 
 // 64 bytes
 layout(push_constant) uniform Transform {
 	mat4 mvp;
+#ifdef VK_BINDLESS
+	uint draw_id;
+#endif
 };
 
 layout(set = 0, binding = 0) uniform UBO {
@@ -20,9 +24,77 @@ layout(set = 0, binding = 0) uniform UBO {
 	vec4 lightVector;
 };
 
-layout(set = 0, binding = 4) uniform Bones {
-	mat3x4 u_BoneMatrices[72];
-};	
+#ifdef VK_BINDLESS
+	struct tcMod_t {
+		vec4	matrix;
+		vec4	offTurb;
+	};
+
+	struct tcGen_t {
+		vec3	vector0;
+		vec3	vector1;
+		int		type;
+	};
+
+	struct vkBundle_t {
+		vec4	baseColor;
+		vec4	vertColor;
+		tcMod_t	tcMod;
+		tcGen_t	tcGen;
+		int		rgbGen;
+		int		alphaGen;
+		int		numTexMods;
+	};
+
+	struct vkDisintegration_t {
+		vec3	origin;
+		float	threshold;
+	};
+
+	struct vkDeform_t {
+		float	base;
+		float	amplitude;
+		float	phase;
+		float	frequency;
+
+		vec3	vector;
+		float	time;
+
+		int		type;
+		int		func;
+	};
+	
+	struct vkUniformGlobal_t {
+		vkBundle_t			bundle[3];
+		vkDisintegration_t	disintegration;
+		vkDeform_t			deform;
+		float				portalRange;
+		uint				entity_id;
+		uint				bones_id;
+		uint				pad0;
+		vec4				SpecularScale;	
+		vec4				NormalScale;
+		uint				texture_idx[8];
+	};
+	
+	struct vkUniformBones_t {
+		mat3x4 BoneMatrices[72];
+	};
+
+	layout(set = 2, binding = 2) readonly buffer GlobalBuffer {
+		vkUniformGlobal_t global[];
+	};
+	
+	layout(set = 2, binding = 1) readonly buffer BonesBuffer {
+		vkUniformBones_t bones[];
+	};
+	
+	vkUniformGlobal_t global_data = global[draw_id];
+#else
+	layout(set = 0, binding = 4) uniform Bones {
+		mat3x4 u_BoneMatrices[72];
+	};
+#endif
 
 layout(location = 0) in vec3 in_position;
 layout(location = 10) in uvec4 in_bones;
@@ -36,7 +108,11 @@ out gl_PerVertex {
 
 mat4x3 GetBoneMatrix(uint index)
 {
+#ifdef VK_BINDLESS
+	mat3x4 bone = bones[global_data.bones_id].BoneMatrices[index];
+#else
 	mat3x4 bone = u_BoneMatrices[index];
+#endif
 	return mat4x3(
 		bone[0].x, bone[1].x, bone[2].x,
 		bone[0].y, bone[1].y, bone[2].y,

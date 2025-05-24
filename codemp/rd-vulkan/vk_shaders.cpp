@@ -56,56 +56,6 @@ void vk_create_shader_modules( void )
 {
     vk_bind_generated_shaders();
 
-#if 0
-    int i, j, k, l, m, n, o;
-
-    const char *vbo[] = { "cpu ", "gpu ghoul2", "gpu mdv" };
-    const char *pbr[] = { "", "pbr " };
-    const char *light[] = { "", "lightmap", "vector", "vertex" };
-    const char *tx[]  = { "single", "double", "triple" };
-    const char *cl[]  = { "", "+cl" };
-    const char *env[] = { "", "+env" };
-    const char *fog[] = { "", "+fog" };
-
-    for ( i = 0; i < 3; i++ ) {
-        for ( j = 0; j < 2; j++ ) {
-            for ( k = 0; k < 4; k++ ) {
-                for ( l = 0; l < 3; l++ ) {
-                    for ( m = 0; m < 2; m++ ) {
-                        for ( n = 0; n < 2; n++ ) {
-                            for ( o = 0; o < 2; o++ ) 
-                            {
-                                const char *s = va( "%s texture %s%s%s%s%s%s vertex module", vbo[i], pbr[j], light[k], tx[l], cl[m], env[n], fog[o] );
-                                VK_SET_OBJECT_NAME( vk.shaders.vert.gen[i][j][k][l][m][n][o], s, VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT );
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    for ( j = 0; j < 2; j++ ) {
-        for ( k = 0; k < 4; k++ ) {
-            for ( l = 0; l < 3; l++ ) {
-                for ( m = 0; m < 2; m++ ) {
-                    for ( n = 0; n < 2; n++ ) {
-                        const char *s = va( "texture %s%s%s%s%s fragment module", pbr[j], light[k], tx[l], cl[m], fog[n] );
-                        VK_SET_OBJECT_NAME( vk.shaders.frag.gen[j][k][l][m][n], s, VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT );
-                    }
-                }
-            }
-        }
-    }
-#endif
-
-    vk.shaders.frag.gen0_df = SHADER_MODULE(frag_tx0_df);
-    VK_SET_OBJECT_NAME(vk.shaders.frag.gen0_df, "single-texture df fragment module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
-
-    vk.shaders.vert.gen0_ident = SHADER_MODULE(vert_tx0_ident);
-    vk.shaders.frag.gen0_ident = SHADER_MODULE(frag_tx0_ident);
-    VK_SET_OBJECT_NAME(vk.shaders.vert.gen0_ident, "single-texture ident.color vertex module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
-    VK_SET_OBJECT_NAME(vk.shaders.frag.gen0_ident, "single-texture ident.color fragment module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
-
     vk.shaders.vert.light[0] = SHADER_MODULE(vert_light);
     vk.shaders.vert.light[1] = SHADER_MODULE(vert_light_fog);
     VK_SET_OBJECT_NAME(vk.shaders.vert.light[0], "light vertex module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
@@ -119,10 +69,6 @@ void vk_create_shader_modules( void )
     VK_SET_OBJECT_NAME(vk.shaders.frag.light[0][1], "light fog fragment module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
     VK_SET_OBJECT_NAME(vk.shaders.frag.light[1][0], "linear light fragment module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
     VK_SET_OBJECT_NAME(vk.shaders.frag.light[1][1], "linear light fog fragment module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
-
-    // note: vertex shader uses a template
-    vk.shaders.refraction_fs = SHADER_MODULE(refraction_frag_spv);
-    VK_SET_OBJECT_NAME(vk.shaders.refraction_fs, "refraction vertex module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
 
     vk.shaders.color_fs = SHADER_MODULE(color_frag_spv);
     vk.shaders.color_vs = SHADER_MODULE(color_vert_spv);
@@ -175,18 +121,20 @@ void vk_create_shader_modules( void )
 
 void vk_destroy_shader_modules( void )
 {
-    int i, j, k, l, m, n, o;
+    int i, j, k, l, m, n, o, p;
 
-    for ( i = 0; i < 3; i++ ) {
-        for ( j = 0; j < 2; j++ ) {
-            for ( k = 0; k < 4; k++ ) {
-                for ( l = 0; l < 3; l++ ) {
-                    for ( m = 0; m < 2; m++ ) {
-                        for ( n = 0; n < 2; n++ ) {
-                            for ( o = 0; o < 2; o++ ) {
-                                if ( vk.shaders.vert.gen[i][j][k][l][m][n][o] != VK_NULL_HANDLE ) {
-                                    qvkDestroyShaderModule( vk.device, vk.shaders.vert.gen[i][j][k][l][m][n][o], NULL );
-                                    vk.shaders.vert.gen[i][j][k][l][m][n][o] = VK_NULL_HANDLE;
+    for ( i = 0; i < 2; i++ ) {  // bindless
+        for ( j = 0; j < 2; j++ ) { // fastlight
+            for ( k = 0; k < 3; k++ ) { // vbo
+                for ( l = 0; l < 2; l++ ) { // light
+                    for ( m = 0; m < 3; m++ ) { // tx
+                        for ( n = 0; n < 2; n++ ) { // cl, could be same index as tx?
+                            for ( o = 0; o < 2; o++ ) { // env
+                                for ( p = 0; p < 2; p++ ) { // fog
+                                    if ( vk.shaders.vert.gen[i][j][k][l][m][n][o][p] != VK_NULL_HANDLE ) {
+                                        qvkDestroyShaderModule( vk.device, vk.shaders.vert.gen[i][j][k][l][m][n][o][p], NULL );
+                                        vk.shaders.vert.gen[i][j][k][l][m][n][o][p] = VK_NULL_HANDLE;
+                                    }
                                 }
                             }
                         }
@@ -196,14 +144,16 @@ void vk_destroy_shader_modules( void )
         }
     }
 
-    for ( j = 0; j < 2; j++ ) {
-        for ( k = 0; k < 4; k++ ) {
-            for ( l = 0; l < 3; l++ ) {
-                for ( m = 0; m < 2; m++ ) {
-                    for ( n = 0; n < 2; n++ ) {
-                        if ( vk.shaders.frag.gen[j][k][l][m][n] != VK_NULL_HANDLE ) {
-                            qvkDestroyShaderModule( vk.device, vk.shaders.frag.gen[j][k][l][m][n], NULL );
-                            vk.shaders.frag.gen[j][k][l][m][n] = VK_NULL_HANDLE;
+    for ( i = 0; i< 2; i++ ) { // bindless
+        for ( j = 0; j < 2; j++ ) { // fastlight
+            for ( k = 0; k < 4; k++ ) { // pixel
+                for ( l = 0; l < 3; l++ ) {  // tx
+                    for ( m = 0; m < 2; m++ ) { // cl, could be same index as  tx?
+                        for ( n = 0; n < 2; n++ ) { // fog
+                            if ( vk.shaders.frag.gen[i][j][k][l][m][n] != VK_NULL_HANDLE ) {
+                                qvkDestroyShaderModule( vk.device, vk.shaders.frag.gen[i][j][k][l][m][n], NULL );
+                                vk.shaders.frag.gen[i][j][k][l][m][n] = VK_NULL_HANDLE;
+                            }
                         }
                     }
                 }
@@ -224,18 +174,26 @@ void vk_destroy_shader_modules( void )
             }
         }
     }
-    qvkDestroyShaderModule(vk.device, vk.shaders.vert.gen0_ident, NULL);
-    qvkDestroyShaderModule(vk.device, vk.shaders.frag.gen0_ident, NULL);
 
-    qvkDestroyShaderModule(vk.device, vk.shaders.frag.gen0_df, NULL);
+    for (i = 0; i < 2; i++) {
+        qvkDestroyShaderModule(vk.device, vk.shaders.vert.gen0_ident[i], NULL);
+        qvkDestroyShaderModule(vk.device, vk.shaders.frag.gen0_ident[i], NULL);
+
+        qvkDestroyShaderModule(vk.device, vk.shaders.frag.gen0_df[i], NULL);
+    }
+
+    /////////////////////
 
     qvkDestroyShaderModule(vk.device, vk.shaders.color_fs, NULL);
     qvkDestroyShaderModule(vk.device, vk.shaders.color_vs, NULL);
 
-    for ( i = 0; i < 3; i++ )
-        qvkDestroyShaderModule(vk.device, vk.shaders.refraction_vs[i], NULL);
+    for ( i = 0; i < 2; i++ )
+    {
+        for ( j = 0; j < 3; j++ )
+            qvkDestroyShaderModule(vk.device, vk.shaders.refraction_vs[i][j], NULL);
 
-    qvkDestroyShaderModule(vk.device, vk.shaders.refraction_fs, NULL);
+        qvkDestroyShaderModule(vk.device, vk.shaders.refraction_fs[i], NULL);
+    }
 
     qvkDestroyShaderModule(vk.device, vk.shaders.fog_vs[0], NULL);
     qvkDestroyShaderModule(vk.device, vk.shaders.fog_fs, NULL);

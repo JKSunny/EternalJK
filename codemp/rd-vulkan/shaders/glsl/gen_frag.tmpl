@@ -1,22 +1,8 @@
 #version 450
+#extension GL_GOOGLE_include_directive : enable
 
-#define PI 3.1415926535897932384626433832795
-
-#if defined(USE_LIGHTMAP) || defined(USE_LIGHT_VECTOR) || defined(USE_LIGHT_VERTEX)
-	#define USE_LIGHT
-#endif
-
-#if defined(USE_LIGHT)
-	#define PER_PIXEL_LIGHTING
-#endif
-
-#ifdef USE_TX2
-#define USE_TX1
-#endif
-
-#ifdef USE_CL2
-#define USE_CL1
-#endif
+#define FRAGMENT_PROGRAM
+#include "global.h"
 
 #if defined (USE_FOG)
 layout(set = 0, binding = 0) uniform UBO {
@@ -33,79 +19,6 @@ layout(set = 0, binding = 0) uniform UBO {
 	vec4 fogColor;
 //#endif
 };
-#endif
-
-#if defined(PER_PIXEL_LIGHTING) || defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
-	struct tcMod_t {
-		vec4	matrix;
-		vec4	offTurb;
-	};
-
-	struct tcGen_t {
-		vec3	vector0;
-		vec3	vector1;
-		int		type;
-	};
-
-	struct vkBundle_t {
-		vec4	baseColor;
-		vec4	vertColor;
-		tcMod_t	tcMod;
-		tcGen_t	tcGen;
-		int		rgbGen;
-		int		alphaGen;
-		int		numTexMods;
-	};
-
-	struct vkDisintegration_t {
-		vec3	origin;
-		float	threshold;
-	};
-
-	struct vkDeform_t {
-		float	base;
-		float	amplitude;
-		float	phase;
-		float	frequency;
-
-		vec3	vector;
-		float	time;
-
-		int		type;
-		int		func;
-	};
-
-	layout(set = 0, binding = 3) uniform Entity {
-		vec4 u_ambientLight;
-		vec4 u_directedLight;
-		vec4 u_LocalLightOrigin;
-		vec4 u_localViewOrigin;
-		mat4 u_ModelMatrix;
-	};
-
-	layout(set = 0, binding = 2) uniform Light {
-		vec4 item;
-	};
-
-	layout(set = 0, binding = 5) uniform Global {
-		vkBundle_t			u_bundle[3];
-		vkDisintegration_t	u_disintegration;
-		vkDeform_t			u_deform;
-		float				u_portalRange;
-		vec4				u_SpecularScale;	
-		vec4				u_NormalScale;	
-	};	
-#endif
-
-layout(set = 1, binding = 0) uniform sampler2D texture0;
-#ifdef USE_TX1
-layout(set = 2, binding = 0) uniform sampler2D texture1;
-#endif
-#ifdef USE_TX2
-layout(set = 3, binding = 0) uniform sampler2D texture2;
-#endif
-#ifdef USE_FOG
-layout(set = 4, binding = 0) uniform sampler2D fog_texture;
 #endif
 
 #ifdef USE_CL0_IDENT
@@ -157,134 +70,58 @@ layout (constant_id = 7) const int discard_mode = 0;
 layout (constant_id = 8) const float identity_color = 1.0;
 #endif
 
-#if defined(PER_PIXEL_LIGHTING) && !defined(USE_FAST_LIGHT)
-	layout (constant_id = 9) const int normal_texture_set = 0;
-	layout (constant_id = 10) const int physical_texture_set = 0;
-	layout (constant_id = 11) const int env_texture_set = 0;
+// pbr
+layout (constant_id = 12) const int vbo_mode = 0;
+layout (constant_id = 13) const int light_mode = LIGHT_MODE_NONE;
 
-	layout (location = 10) in vec4 var_Normal;
-	layout (location = 11) in vec4 var_LightDir;
-	layout (location = 12) in vec4 var_ViewDir;
-	layout (location = 13) in flat int Var_RenderMode;
-
-	struct NTB {
-		vec3 normal, tangent, binormal;
-	};
-
-	layout (location = 14) in NTB in_ntb;
-
-	layout (set = 5, binding = 0) uniform sampler2D brdflut_texture;
-	layout (set = 6, binding = 0) uniform sampler2D normal_texture;
-	layout (set = 7, binding = 0) uniform sampler2D physical_texture;
-	layout (set = 8, binding = 0) uniform samplerCube env_texture;
-	//layout(set = 9, binding = 0) uniform samplerCube irradiance_texture;
-#endif
-
-#ifdef USE_ATEST
-	float CorrectAlpha(float threshold, float alpha, vec2 tc)
-	{
-		ivec2 ts = textureSize(texture0, 0);
-		float dx = max(abs(dFdx(tc.x * float(ts.x))), 0.001);
-		float dy = max(abs(dFdy(tc.y * float(ts.y))), 0.001);
-		float dxy = max(dx, dy); // apply the smallest boost
-		float scale = max(1.0 / dxy, 1.0);
-		float ac = threshold + (alpha - threshold) * scale;
-		return ac;
-	}
-#endif
+layout(location = 10) flat in uint actual_draw_id;
 
 #if defined(PER_PIXEL_LIGHTING) && !defined(USE_FAST_LIGHT)
-	float WrapLambert( in float NL, in float w )
-	{
-		return clamp((NL + w) / pow(1.0 + w, 2.0), 0.0, 1.0);
-	}
-
-	vec3 Diffuse_Lambert(in vec3 DiffuseColor)
-	{
-		return DiffuseColor * (1.0 / PI);
-	}
-
-	vec3 CalcNormal( in vec3 vertexNormal, in vec2 frag_tex_coord )
-	{
-		if ( normal_texture_set > -1 ) {
-			vec3 n = texture(normal_texture, frag_tex_coord).agb - vec3(0.5);
-
-			n.xy *= u_NormalScale.xy;
-			n.z = sqrt(clamp((0.25 - n.x * n.x) - n.y * n.y, 0.0, 1.0));
-			n = n.x * in_ntb.tangent + n.y * in_ntb.binormal + n.z * vertexNormal;
-
-			return normalize(n);
-		}
-	
-		else
-			return normalize(vertexNormal);
-	}
-
-	vec3 CalcDiffuse( in vec3 diffuse, in float NE, in float NL,
-		in float LH, in float roughness )
-	{
-		return Diffuse_Lambert(diffuse);
-	}
-
-	vec3 F_Schlick( in vec3 SpecularColor, in float VH )
-	{
-		float Fc = pow(1 - VH, 5);
-		return clamp(50.0 * SpecularColor.g, 0.0, 1.0) * Fc + (1 - Fc) * SpecularColor; //hacky way to decide if reflectivity is too low (< 2%)
-	}
-
-	float D_GGX( in float NH, in float a )
-	{
-		float a2 = a * a;
-		float d = (NH * a2 - NH) * NH + 1;
-		return a2 / (PI * d * d);
-	}
-
-	// Appoximation of joint Smith term for GGX
-	// [Heitz 2014, "Understanding the Masking-Shadowing Function in Microfacet-Based BRDFs"]
-	float V_SmithJointApprox( in float a, in float NV, in float NL )
-	{
-		float Vis_SmithV = NL * (NV * (1 - a) + a);
-		float Vis_SmithL = NV * (NL * (1 - a) + a);
-		return 0.5 * (1.0 / (Vis_SmithV + Vis_SmithL));
-	}
-
-	vec3 CalcSpecular( in vec3 specular, in float NH, in float NL,
-		in float NE, float LH, in float VH, in float roughness )
-	{
-		vec3  F = F_Schlick(specular, VH);
-		float D = D_GGX(NH, roughness);
-		float V = V_SmithJointApprox(roughness, NE, NL);
-
-		return D * F * V;
-	}
-
-	vec3 CalcIBLContribution( in float roughness, in vec3 N, in vec3 E,
-		in float NE, in vec3 specular )
-	{
-		vec3 R = reflect(-E, N);
-		R.y *= -1.0f;
-	
-		vec3 cubeLightColor = textureLod(env_texture, R, roughness * 6).rgb * 1.0;
-		vec2 EnvBRDF = texture(brdflut_texture, vec2(NE, 1.0 - roughness)).rg;
-
-		return cubeLightColor * (specular.rgb * EnvBRDF.x + EnvBRDF.y);
-	}
+	layout (location = 11) in vec4 var_Normal;
+	layout (location = 12) in vec4 var_LightDir;
+	layout (location = 13) in vec4 var_ViewDir;
+	layout (location = 14) in flat int Var_RenderMode;
+	layout (location = 15) in NTB in_ntb;
 #endif
+
+
+
+#include "texture.h"
 
 void main() {
+	#ifdef VK_BINDLESS
+		#ifndef PER_PIXEL_LIGHTING
+			global_data.texture_idx[0] = global[actual_draw_id].texture_idx[0];
+			global_data.texture_idx[1] = global[actual_draw_id].texture_idx[1];
+			global_data.texture_idx[2] = global[actual_draw_id].texture_idx[2];
+			global_data.texture_idx[3] = global[actual_draw_id].texture_idx[3];
+			global_data.texture_idx[4] = global[actual_draw_id].texture_idx[4];
+			global_data.texture_idx[5] = global[actual_draw_id].texture_idx[5];
+			global_data.texture_idx[6] = global[actual_draw_id].texture_idx[6];
+			global_data.texture_idx[7] = global[actual_draw_id].texture_idx[7];
+		#else
+			global_data = global[actual_draw_id];
+		#endif
+
+		#ifdef USE_ENTITY_DATA
+			entity_data = entities[global_data.entity_id];
+		#endif
+	#endif
+
 	vec4 diffuse;
 	float attenuation;
 	vec3 viewDir, lightColor, ambientColor;
 	vec3 L, N, E;
 
 #ifdef USE_FOG
-	vec4 fog = texture(fog_texture, fog_tex_coord);
+	//vec4 fog = texture(fog_texture, fog_tex_coord);
+	vec4 fog = global_texture(fog_texture, fog_tex_coord);
 #endif
 
 #ifdef USE_CL0_IDENT
-	vec4 color0 = texture(texture0, frag_tex_coord0) * vec4( identity_color );
+	vec4 color0 = global_texture(texture0, frag_tex_coord0) * vec4( identity_color );
 #else
-	vec4 color0 = texture(texture0, frag_tex_coord0) * frag_color0;
+	vec4 color0 = global_texture(texture0, frag_tex_coord0) * frag_color0;
 #endif
 
 	vec4 base;
@@ -295,16 +132,16 @@ void main() {
 	if ( tex_mode == 1 || tex_mode == 2 )
 	{
 		// add
-		vec4 color1 = texture(texture1, frag_tex_coord1) * frag_color1;
-		vec4 color2 = texture(texture2, frag_tex_coord2) * frag_color2;
+		vec4 color1 = global_texture(texture1, frag_tex_coord1) * frag_color1;
+		vec4 color2 = global_texture(texture2, frag_tex_coord2) * frag_color2;
 
 		base = vec4( color0.rgb + color1.rgb + color2.rgb, color0.a * color1.a * color2.a );
 	}
 	else if ( tex_mode == 3 )
 	{
 		// modulate by alpha
-		vec4 color1 = texture(texture1, frag_tex_coord1) * frag_color1;
-		vec4 color2 = texture(texture2, frag_tex_coord2) * frag_color2;
+		vec4 color1 = global_texture(texture1, frag_tex_coord1) * frag_color1;
+		vec4 color2 = global_texture(texture2, frag_tex_coord2) * frag_color2;
 
 		color0 *= color0.a;
 		color1 *= color1.a;
@@ -314,8 +151,8 @@ void main() {
 	else if ( tex_mode == 4 )
 	{
 		// modulate by 1.0-alpha
-		vec4 color1 = texture(texture1, frag_tex_coord1) * frag_color1;
-		vec4 color2 = texture(texture2, frag_tex_coord2) * frag_color2;
+		vec4 color1 = global_texture(texture1, frag_tex_coord1) * frag_color1;
+		vec4 color2 = global_texture(texture2, frag_tex_coord2) * frag_color2;
 
 		color0 *= 1.0-color0.a;
 		color1 *= 1.0-color1.a;
@@ -325,8 +162,8 @@ void main() {
 	else if ( tex_mode == 5 )
 	{
 		// mix by src alpha
-		vec4 color1 = texture(texture1, frag_tex_coord1) * frag_color1;
-		vec4 color2 = texture(texture2, frag_tex_coord2) * frag_color2;
+		vec4 color1 = global_texture(texture1, frag_tex_coord1) * frag_color1;
+		vec4 color2 = global_texture(texture2, frag_tex_coord2) * frag_color2;
 
 		//base = mix( color0, color1, color1.a );
 		//base = mix( base, color2, color2.a );
@@ -335,8 +172,8 @@ void main() {
 	else if ( tex_mode == 6 )
 	{
 		// mix by 1-src alpha
-		vec4 color1 = texture(texture1, frag_tex_coord1) * frag_color1;
-		vec4 color2 = texture(texture2, frag_tex_coord2) * frag_color2;
+		vec4 color1 = global_texture(texture1, frag_tex_coord1) * frag_color1;
+		vec4 color2 = global_texture(texture2, frag_tex_coord2) * frag_color2;
 
 		//base = mix( color1, color0, color1.a );
 		//base = mix( color2, base, color2.a );
@@ -344,15 +181,15 @@ void main() {
 	}
 	else if ( tex_mode == 7 ) // 0 + 2x GLS_DSTBLEND_SRC_ALPHA | GLS_SRCBLEND_DST_COLOR
 	{
-		vec4 color1 = texture(texture1, frag_tex_coord1) * frag_color1;
-		vec4 color2 = texture(texture2, frag_tex_coord2) * frag_color2;
+		vec4 color1 = global_texture(texture1, frag_tex_coord1) * frag_color1;
+		vec4 color2 = global_texture(texture2, frag_tex_coord2) * frag_color2;
 
 		base = (color2 + color2.a) * (color1 + color1.a) * color0;
 	}
 	else
 	{
-		vec4 color1 = texture(texture1, frag_tex_coord1) * frag_color1;
-		vec4 color2 = texture(texture2, frag_tex_coord2) * frag_color2;
+		vec4 color1 = global_texture(texture1, frag_tex_coord1) * frag_color1;
+		vec4 color2 = global_texture(texture2, frag_tex_coord2) * frag_color2;
 		base = color0 * color1 * color2;
 	}
 #else
@@ -360,22 +197,22 @@ void main() {
 	if ( tex_mode == 1 )
 	{
 		// add (identity)
-		vec4 color1 = texture(texture1, frag_tex_coord1);
-		vec4 color2 = texture(texture2, frag_tex_coord2);
+		vec4 color1 = global_texture(texture1, frag_tex_coord1);
+		vec4 color2 = global_texture(texture2, frag_tex_coord2);
 		base = vec4(color0.rgb + color1.rgb + color2.rgb, color0.a * color1.a * color2.a);
 	}
 	else if ( tex_mode == 2 )
 	{
 		// add
-		vec4 color1 = texture(texture1, frag_tex_coord1) * frag_color0;
-		vec4 color2 = texture(texture2, frag_tex_coord2) * frag_color0;
+		vec4 color1 = global_texture(texture1, frag_tex_coord1) * frag_color0;
+		vec4 color2 = global_texture(texture2, frag_tex_coord2) * frag_color0;
 		base = vec4(color0.rgb + color1.rgb + color2.rgb, color0.a * color1.a * color2.a);
 	}
 	else 
 	{
 		// default case, modulate
-		vec4 color1 = texture(texture1, frag_tex_coord1);
-		vec4 color2 = texture(texture2, frag_tex_coord2);
+		vec4 color1 = global_texture(texture1, frag_tex_coord1);
+		vec4 color2 = global_texture(texture2, frag_tex_coord2);
 		base = color0 * color1 * color2;
 	}
 #endif // !USE_TX2
@@ -385,13 +222,13 @@ void main() {
 	if ( tex_mode == 1 || tex_mode == 2 )
 	{
 		// add
-		vec4 color1 = texture(texture1, frag_tex_coord1) * frag_color1;
+		vec4 color1 = global_texture(texture1, frag_tex_coord1) * frag_color1;
 		base = vec4( color0.rgb + color1.rgb, color0.a * color1.a );
 	}
 	else if ( tex_mode == 3 ) // 2x GLS_DSTBLEND_ONE | GLS_SRCBLEND_SRC_ALPHA
 	{
 		// modulate by alpha
-		vec4 color1 = texture(texture1, frag_tex_coord1) * frag_color1;
+		vec4 color1 = global_texture(texture1, frag_tex_coord1) * frag_color1;
 		color0 *= color0.a;
 		color1 *= color1.a;
 		base = vec4( color0.rgb + color1.rgb, color0.a * color1.a );
@@ -399,7 +236,7 @@ void main() {
 	else if ( tex_mode == 4 ) // 2x GLS_DSTBLEND_ONE | GLS_SRCBLEND_ONE_MINUS_SRC_ALPHA
 	{
 		// modulate by 1.0-alpha
-		vec4 color1 = texture(texture1, frag_tex_coord1) * frag_color1;
+		vec4 color1 = global_texture(texture1, frag_tex_coord1) * frag_color1;
 		color0 *= 1.0-color0.a;
 		color1 *= 1.0-color1.a;
 		base = vec4( color0.rgb + color1.rgb, color0.a * color1.a );
@@ -407,26 +244,26 @@ void main() {
 	else if ( tex_mode == 5 ) // 0 + GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA | GLS_SRCBLEND_SRC_ALPHA
 	{
 		// mix by src alpha
-		vec4 color1 = texture(texture1, frag_tex_coord1) * frag_color1;
+		vec4 color1 = global_texture(texture1, frag_tex_coord1) * frag_color1;
 		base = mix( color0, color1, color1.a );
 	}
 	else if ( tex_mode == 6 ) // 0 + GLS_DSTBLEND_SRC_ALPHA | GLS_SRCBLEND_ONE_MINUS_SRC_ALPHA
 	{
 		// mix by 1-src alpha
-		vec4 color1 = texture(texture1, frag_tex_coord1) * frag_color1;
+		vec4 color1 = global_texture(texture1, frag_tex_coord1) * frag_color1;
 		base = mix( color1, color0, color1.a );
 	}
 	else if ( tex_mode == 7 ) // 0 + GLS_DSTBLEND_SRC_ALPHA | GLS_SRCBLEND_DST_COLOR
 	{
 		// modulate color1 by color0
 		// moduleta color0 by color1.alpha
-		vec4 color1 = texture(texture1, frag_tex_coord1) * frag_color1;
+		vec4 color1 = global_texture(texture1, frag_tex_coord1) * frag_color1;
 		base = (color1 + color1.a) * color0;
 	}
 	else
 	{
 		// default case, modulate
-		vec4 color1 = texture(texture1, frag_tex_coord1) * frag_color1;
+		vec4 color1 = global_texture(texture1, frag_tex_coord1) * frag_color1;
 		base = color0 * color1;
 	}
 #else
@@ -434,19 +271,19 @@ void main() {
 	if ( tex_mode == 1 )
 	{
 		// add (identity)
-		vec4 color1 = texture(texture1, frag_tex_coord1);
+		vec4 color1 = global_texture(texture1, frag_tex_coord1);
 		base = vec4(color0.rgb + color1.rgb, color0.a * color1.a);
 	}
 	else if ( tex_mode == 2 )
 	{
 		// add
-		vec4 color1 = texture(texture1, frag_tex_coord1) * frag_color0;
+		vec4 color1 = global_texture(texture1, frag_tex_coord1) * frag_color0;
 		base = vec4(color0.rgb + color1.rgb, color0.a * color1.a);
 	}
 	else // default case
 	{
 		// modulate
-		vec4 color1 = texture(texture1, frag_tex_coord1);
+		vec4 color1 = global_texture(texture1, frag_tex_coord1);
 		base = color0 * color1;
 	}
 #endif // !USE_CL1
@@ -501,32 +338,39 @@ void main() {
 		float sqrLightDist = dot(L, L);
 		L /= sqrt(sqrLightDist);
 		
-		#if defined(USE_LIGHTMAP) && defined(USE_TX1)
-			vec3 lightmapColor = texture(texture1, frag_tex_coord1).rgb;
-			lightColor = lightmapColor * frag_color0.rgb;
-			diffuse = color0;
-			ambientColor = vec3 (0.0);
-			attenuation = 1.0;
-		#elif defined(USE_LIGHT_VECTOR)
-			lightColor = u_directedLight.rgb;
-			ambientColor = u_ambientLight.rgb;
-			diffuse = base;
-			attenuation = 1.0;
-		#elif defined(USE_LIGHT_VERTEX)
-			lightColor = vec3(1.0);
-			diffuse = base;
-			ambientColor = vec3 (0.0);
-			attenuation = 1.0;
+		#if defined(USE_TX1)
+			if ( light_mode == LIGHT_MODE_LIGHTMAP )
+			{
+				vec3 lightmapColor = global_texture(texture1, frag_tex_coord1).rgb;
+				lightColor    = lightmapColor * frag_color0.rgb;
+				diffuse       = color0;
+				ambientColor  = vec3(0.0);
+				attenuation   = 1.0;
+			} else
 		#endif
+		if ( light_mode == LIGHT_MODE_VECTOR )
+		{
+			lightColor    = u_directedLight.rgb;
+			ambientColor  = u_ambientLight.rgb;
+			diffuse       = base;
+			attenuation   = 1.0;
+		} 
+		else if ( light_mode == LIGHT_MODE_VERTEX )
+		{ 
+			lightColor    = vec3(1.0);
+			ambientColor  = vec3(0.0);
+			diffuse       = base;
+			attenuation   = 1.0;
+		}
 
-		N = CalcNormal( var_Normal.xyz, frag_tex_coord0 );	
+		N = CalcNormal(var_Normal.xyz, frag_tex_coord0);
 
-		#if defined(USE_LIGHTMAP) || defined(USE_LIGHT_VERTEX)
-			ambientColor = lightColor;
-			float surfNL = clamp(dot(var_Normal.xyz, L), 0.0, 1.0);
-			lightColor /= max( surfNL, 0.25 );
-			ambientColor = max( ambientColor - lightColor * surfNL, 0.0 );
-		#endif
+		if ( light_mode == LIGHT_MODE_LIGHTMAP || light_mode == LIGHT_MODE_VERTEX ) {
+			ambientColor  = lightColor;
+			float surfNL  = clamp(dot(var_Normal.xyz, L), 0.0, 1.0);
+			lightColor   /= max(surfNL, 0.25);
+			ambientColor  = max(ambientColor - lightColor * surfNL, 0.0);
+		}
 
 		lightColor *= PI;
 
@@ -537,7 +381,7 @@ void main() {
 		// metallic roughness workflow
 		if ( physical_texture_set < 0 )
 		{
-			vec4 ORMS = texture( physical_texture, frag_tex_coord0 );
+			vec4 ORMS = global_texture( physical_texture, frag_tex_coord0 );
 			ORMS.xyzw *= u_SpecularScale.zwxy;
 			specular.rgb = mix( vec3( 0.08 ) * ORMS.w, diffuse.rgb, ORMS.z );
 			diffuse.rgb *= vec3( 1.0 - ORMS.z );
@@ -549,7 +393,7 @@ void main() {
 		// specular gloss workflow
 		else 
 		{
-			specular = texture( physical_texture, frag_tex_coord0 );
+			specular = global_texture( physical_texture, frag_tex_coord0 );
 			specular.rgb *= u_SpecularScale.xyz;
 			roughness = mix( 1.0, 0.01, specular.a * ( 1.0 - u_SpecularScale.w ) );
 		}
@@ -574,7 +418,10 @@ void main() {
 		out_color.rgb  = lightColor * reflectance * ( attenuation * NL );
 		out_color.rgb += ambientColor * diffuse.rgb;
 
-			
+		#ifdef VK_DLIGHT_GPU
+			out_color.rgb += CalcDynamicLightContribution(roughness, N, E, u_ViewOrigin.xyz, viewDir, NE, diffuse.rgb, specular.rgb, var_Normal.xyz);
+		#endif
+
 		if ( env_texture_set > -1 )
 			out_color.rgb += CalcIBLContribution( roughness, N, E, NE, specular.rgb * AO );
 
@@ -586,6 +433,5 @@ void main() {
 	#if defined(USE_FOG)
 		out_color = mix( out_color, fog * fogColor, fog.a );
 	#endif
-
 #endif
 }

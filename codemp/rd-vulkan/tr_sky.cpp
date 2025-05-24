@@ -447,6 +447,10 @@ static void DrawSkySide( image_t *image, const int mins[2], const int maxs[2] )
 
 	if (tess.numIndexes)
 	{
+#ifdef VK_BINDLESS
+		if ( vk.bindlessActive )
+			Com_Memset( &vk.cmd->uniform_global, 0, sizeof(vkUniformGlobal_t) );
+#endif
 		vk_bind(image);
 
 		tess.svars.texcoordPtr[0] = tess.texCoords[0];
@@ -458,10 +462,19 @@ static void DrawSkySide( image_t *image, const int mins[2], const int maxs[2] )
 		{
 			DrawItem item = {};
 			item.pipeline = vk.std_pipeline.skybox_pipeline;
+			item.vbo_world_index = 0;
+			item.vbo_model_index = 0;
 			item.depthRange = r_showsky->integer ? DEPTH_RANGE_ZERO : DEPTH_RANGE_ONE;
 			item.polygonOffset = tess.shader->polygonOffset;
 			item.identifier = 6;
-		
+#ifdef VK_BINDLESS
+			item.draw_id = vk.draw_item_id;
+
+			if ( vk.bindlessActive ) {
+				vkbuffer_t *global_data = &vk.global[vk.cmd_index];
+				vk_rtx_upload_buffer_data_offset( global_data, item.draw_id * sizeof(vkUniformGlobal_t), sizeof(vkUniformGlobal_t), (const byte*)&vk.cmd->uniform_global );
+			}
+#endif
 			RB_AddDrawItemIndexBinding( item );
 			RB_AddDrawItemVertexBinding( item );
 			RB_AddDrawItemUniformBinding( item, backEnd.currentEntity );

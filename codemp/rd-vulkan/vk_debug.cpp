@@ -209,12 +209,16 @@ void DrawTris( const shaderCommands_t *pInput){
 	{
 		DrawItem item = {};
 		item.pipeline = pipeline;
+		item.vbo_world_index = tess.vbo_world_index;
+		item.vbo_model_index = tess.vbo_model_index;
 		item.depthRange = DEPTH_RANGE_ZERO;
 		item.polygonOffset = tess.shader->polygonOffset;
 		item.indexed = qtrue;
 		item.identifier = 11;
 		item.reset_uniform = qtrue;
-
+#ifdef VK_BINDLESS
+		item.draw_id = vk.draw_item_id;
+#endif
 		RB_AddDrawItemIndexBinding( item );
 		RB_AddDrawItemVertexBinding( item );
 		RB_AddDrawItemUniformBinding( item, backEnd.currentEntity );
@@ -238,6 +242,10 @@ void DrawNormals( const shaderCommands_t *input)
 		return; // must be handled specially
 #endif
 
+#ifdef VK_BINDLESS
+	if ( vk.bindlessActive )
+		Com_Memset( &vk.cmd->uniform_global, 0, sizeof(vkUniformGlobal_t) );
+#endif
 	vk_bind(tr.whiteImage);
 
 	tess.numIndexes = 0;
@@ -257,12 +265,21 @@ void DrawNormals( const shaderCommands_t *input)
 	{
 		DrawItem item = {};
 		item.pipeline = vk.std_pipeline.normals_debug_pipeline;
+		item.vbo_world_index = tess.vbo_world_index;
+		item.vbo_model_index = tess.vbo_model_index;
 		item.depthRange = DEPTH_RANGE_ZERO;
 		item.polygonOffset = tess.shader->polygonOffset;
 		item.indexed = qtrue;
 		item.identifier = 12;
 		item.reset_uniform = qtrue;
+#ifdef VK_BINDLESS
+		item.draw_id = vk.draw_item_id;
 
+		if ( vk.bindlessActive ) {
+			vkbuffer_t *global_data = &vk.global[vk.cmd_index];
+			vk_rtx_upload_buffer_data_offset( global_data, item.draw_id * sizeof(vkUniformGlobal_t), sizeof(vkUniformGlobal_t), (const byte*)&vk.cmd->uniform_global );
+		}
+#endif
 		RB_AddDrawItemIndexBinding( item );
 		RB_AddDrawItemVertexBinding( item );
 		RB_AddDrawItemUniformBinding( item, backEnd.currentEntity );
@@ -302,6 +319,10 @@ void RB_ShowImages ( image_t** const pImg, uint32_t numImages )
 			h *= image->uploadHeight / 512.0f;
 		}
 
+#ifdef VK_BINDLESS
+		if ( vk.bindlessActive )
+			Com_Memset( &vk.cmd->uniform_global, 0, sizeof(vkUniformGlobal_t) );
+#endif
 		vk_bind(image);
 
 		Com_Memset(tess.svars.colors[0], 255, 4 * sizeof(color4ub_t));
@@ -336,13 +357,22 @@ void RB_ShowImages ( image_t** const pImg, uint32_t numImages )
 		{
 			DrawItem item = {};
 			item.pipeline = vk.std_pipeline.images_debug_pipeline;
+			item.vbo_world_index = tess.vbo_world_index;
+			item.vbo_model_index = tess.vbo_model_index;
 			item.depthRange = DEPTH_RANGE_NORMAL;
 			item.draw.params.arrays.num_vertexes = tess.numVertexes;
 			item.polygonOffset = tess.shader->polygonOffset;
 			item.indexed = qfalse;
 			item.identifier = 13;
 			item.reset_uniform = qtrue;
+#ifdef VK_BINDLESS
+			item.draw_id = vk.draw_item_id;
 
+			if ( vk.bindlessActive ) {
+				vkbuffer_t *global_data = &vk.global[vk.cmd_index];
+				vk_rtx_upload_buffer_data_offset( global_data, item.draw_id * sizeof(vkUniformGlobal_t), sizeof(vkUniformGlobal_t), (const byte*)&vk.cmd->uniform_global );
+			}
+#endif
 			RB_AddDrawItemVertexBinding( item );
 			//RB_AddDrawItemIndexBinding( item );
 			RB_AddDrawItemUniformBinding( item, backEnd.currentEntity );

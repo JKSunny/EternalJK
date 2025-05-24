@@ -89,23 +89,48 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 // depth + msaa + msaa-resolve + screenmap.msaa + screenmap.resolve + screenmap.depth + (bloom_extract + blur pairs + dglow_extract + blur pairs) + dglow-msaa
 #define MAX_ATTACHMENTS_IN_POOL			( 9 + ( ( 1 + VK_NUM_BLUR_PASSES * 2 ) * 2 ) + 1 ) + 1 // (6+3=9: cubemap.msaa + cubemap.resolve + cubemap.depth) + refraction_extract
 
-#define VK_DESC_STORAGE					0
-#define VK_DESC_UNIFORM					0
-#define VK_DESC_TEXTURE0				1
-#define VK_DESC_TEXTURE1				2
-#define VK_DESC_TEXTURE2				3
-#define VK_DESC_FOG_COLLAPSE			4
-#ifdef USE_VK_PBR
-#define VK_DESC_PBR_BRDFLUT				5
-#define VK_DESC_PBR_NORMAL				6
-#define VK_DESC_PBR_PHYSICAL			7
-#define VK_DESC_PBR_CUBEMAP				8
-//#define VK_DESC_PBR_IRRADIANCE		9
-#define VK_DESC_COUNT					9	// use 10 for irradiance testing
-#else
-#define VK_DESC_COUNT					5
+#ifdef VK_BINDLESS	
+	// static descriptor set indexes (bound frame start)
+	#define VK_DESC_TEXTURES_BINDLESS	1
+	#define VK_DESC_SSBO_BINDLESS		2
+	#define VK_DESC_VBO_BINDLESS		3
+	#define VK_DESC_IBO_BINDLESS		4
+
+	// image descriptor set binding offset 
+	// 0: game textures, 1:cubemaps, 2:brdf lut
+	#define VK_BINDLESS_BINDING_TEXTURES	0
+	#define VK_BINDLESS_BINDING_CUBEMAPS	1
+	#define VK_BINDLESS_BINDING_BRDFLUT		2
+
+	// SSBO global_data.texture_idx[] bindings
+	#define VK_BINDLESS_IDX_TEXTURE0		0
+	#define VK_BINDLESS_IDX_TEXTURE1		1
+	#define VK_BINDLESS_IDX_TEXTURE2		2
+	#define VK_BINDLESS_IDX_FOG_COLLAPSE	3
+	#ifdef USE_VK_PBR
+		#define VK_BINDLESS_IDX_NORMAL			4
+		#define VK_BINDLESS_IDX_PHYSICAL		5
+		#define VK_BINDLESS_IDX_CUBEMAP			6
+	#endif
 #endif
 
+#define VK_DESC_STORAGE						0
+#define VK_DESC_UNIFORM						0
+#define VK_DESC_TEXTURE0					1
+#define VK_DESC_TEXTURE1					2
+#define VK_DESC_TEXTURE2					3
+#define VK_DESC_FOG_COLLAPSE				4
+#ifdef USE_VK_PBR
+	#define VK_DESC_PBR_BRDFLUT				5
+	#define VK_DESC_PBR_NORMAL				6
+	#define VK_DESC_PBR_PHYSICAL			7
+	#define VK_DESC_PBR_CUBEMAP				8
+	//#define VK_DESC_PBR_IRRADIANCE		9
+	#define VK_DESC_COUNT					9	// use 10 for irradiance testing
+#else
+	#define VK_DESC_COUNT					5
+
+#endif
 #define VK_DESC_TEXTURE_BASE			VK_DESC_TEXTURE0
 #define VK_DESC_FOG_ONLY				VK_DESC_TEXTURE1
 #define VK_DESC_FOG_DLIGHT				VK_DESC_TEXTURE1
@@ -471,6 +496,41 @@ extern PFN_vkResetCommandPool							qvkResetCommandPool;
 #endif
 
 extern PFN_vkCmdDrawIndexedIndirect						qvkCmdDrawIndexedIndirect;
+extern PFN_vkCmdDrawIndirect						qvkCmdDrawIndirect;
+
+#ifdef VK_BINDLESS
+extern PFN_vkGetBufferDeviceAddress						qvkGetBufferDeviceAddress;
+
+typedef struct {
+	VkDeviceSize	size;
+	byte* p;
+	VkBuffer		buffer;
+	VkDeviceMemory	memory;
+	VkDeviceAddress address;
+	int				is_mapped;
+} vkbuffer_t;
+
+typedef struct {
+	union {
+		VkDescriptorImageInfo* image;
+		VkDescriptorBufferInfo* buffer;
+	};
+	uint32_t updateSize;
+} vkdescriptorData_t;
+
+typedef struct {
+	size_t							size;
+	VkDescriptorSetLayoutBinding*	bindings;	// length = size
+	vkdescriptorData_t				*data;		// length = size
+	VkDescriptorSet					set;
+	VkDescriptorSetLayout			layout;
+	VkDescriptorPool				pool;
+
+	// ext
+	qboolean						lastBindingVariableSizeExt;
+	qboolean						needsUpdate;
+} vkdescriptor_t;
+#endif
 
 typedef union floatint_u
 {
@@ -573,6 +633,9 @@ typedef struct vkDeform_s {
 // this structure must be in sync with shader uniforms!
 typedef struct {
 	float	mvp[16];
+#ifdef VK_BINDLESS
+	uint32_t draw_id;
+#endif
 } pushConst;
 
 typedef struct vkUniform_s {
@@ -602,8 +665,22 @@ typedef struct vkUniformCamera_s {
 	vec4_t viewOrigin;
 } vkUniformCamera_t;
 
+#ifdef VK_DLIGHT_GPU
+typedef struct vkUniformLightEntry_s {
+	vec4_t	origin;
+	vec3_t	color;
+	float	radius;
+} vkUniformLightEntry_t;
+#endif
+
 typedef struct vkUniformLight_s {
-	vec4_t item;
+#ifdef VK_DLIGHT_GPU
+	uint32_t	num_lights;
+	vec3_t		pad0;
+	vkUniformLightEntry_t lights[MAX_REAL_DLIGHTS];
+#else
+	vec4_t	item;
+#endif
 } vkUniformLight_t;
 
 
@@ -626,10 +703,51 @@ typedef struct vkUniformGlobal_s {
 	vkDisintegration_t	disintegration;
 	vkDeform_t			deform;
 	float				portalRange;
-	vec3_t				pad0;
+	union {
+#ifdef VK_BINDLESS
+		struct {
+			uint32_t entity_id;
+			uint32_t bones_id;
+			#ifdef VK_BINDLESS_MODEL_VBO
+				uint32_t vbo_model_index;
+			#else
+				uint32_t pad0;
+			#endif
+		};
+#else
+		vec3_t pad0;
+#endif
+	};
 	vec4_t				specularScale;	
-	vec4_t				normalScale;	
+	vec4_t				normalScale;
+#ifdef VK_BINDLESS
+	uint32_t			texture_indices[8];
+	#ifdef VK_BINDLESS_BATCHED_INDIRECT
+	mat4_t				mvp;
+	#endif
+#endif
 } vkUniformGlobal_t;
+
+#ifdef VK_BINDLESS_MODEL_VBO
+	#if defined(VK_BINDLESS_BATCHED_INDIRECT)
+		#define NUM_BINDLESS_INIDIRECT_DRAWS	50		// draw per pipeline ..
+		#define NUM_BINDLESS_INIDIRECT_DRAW_ITEMS 4096
+	#elif defined(VK_BINDLESS_VBO_ARRAY)
+		#define NUM_BINDLESS_INIDIRECT_DRAWS draw_calls // use draw_calls variable from global buffer
+		#define NUM_BINDLESS_INIDIRECT_DRAW_ITEMS 20
+	#endif
+
+	typedef struct vkIndirectCommand_s {
+		int first_index;
+		uint32_t vertex_count;
+		uint32_t pipeline;
+		uint32_t draw_id;
+	} vkIndirectCommand_t;
+
+	typedef struct vkUniformIndirectDraw_s {
+		int first_index[NUM_BINDLESS_INIDIRECT_DRAW_ITEMS];
+	} vkUniformIndirectDraw_t;
+#endif
 
 typedef struct {
 	VkSamplerAddressMode address_mode; // clamp/repeat texture addressing mode
@@ -714,6 +832,18 @@ typedef struct vk_tess_s {
 	byte				*indirect_buffer_ptr; // pointer to mapped indirect buffer
 	VkDeviceSize		indirect_buffer_offset;
 
+#ifdef VK_BINDLESS
+	VkBuffer			indirect_buffer2;
+	byte				*indirect_buffer_ptr2; // pointer to mapped indirect buffer
+	VkDeviceSize		indirect_buffer_offset2;
+
+	#ifdef VK_BINDLESS_MODEL_VBO
+		vkIndirectCommand_t	indirect_commands[4096];
+		uint32_t			indirect_commands_num;
+		uint32_t			indirect_commands_draw_id;
+	#endif
+#endif
+
 	VkDescriptorSet		uniform_descriptor;
 
 	VkDeviceSize		buf_offset[12];	// 10 is ok, bones & weights are ghoul2 vbo only anyway
@@ -728,6 +858,8 @@ typedef struct vk_tess_s {
 		uint32_t		offset[VK_DESC_UNIFORM_COUNT];	// 0:data, 1: camera, 2:light 3: entity, 4:ghoul2, 5:global
 	} descriptor_set;
 	
+	vkUniformGlobal_t	uniform_global;
+
 	uint32_t			num_indexes; // value from most recent vk_bind_index() call
 	VkPipeline			last_pipeline;
 	Vk_Depth_Range		depth_range;
@@ -736,7 +868,7 @@ typedef struct vk_tess_s {
 	uint32_t			camera_ubo_offset;
 	uint32_t			light_ubo_offset;
 	uint32_t			entity_ubo_offset[REFENTITYNUM_WORLD + 1];
-	uint32_t			bones_ubo_offset;
+	uint32_t			bones_ubo_offset;	// also used for bindless
 } vk_tess_t;
 
 // Vk_Instance contains engine-specific vulkan resources that persist entire renderer lifetime.
@@ -812,6 +944,7 @@ typedef struct {
 #ifdef VK_PBR_BRDFLUT
 	VkImage			brdflut_image;
 	VkImageView		brdflut_image_view;
+	VkSampler		brdflut_image_sampler;
 	VkDescriptorSet brdflut_image_descriptor;
 #endif
 
@@ -930,6 +1063,40 @@ typedef struct {
 	uint32_t ghoul2_vbo_stride;
 	uint32_t mdv_vbo_stride;
 
+#ifdef VK_BINDLESS
+	qboolean			bindlessActive;
+	size_t				push_constant_size;
+	VkShaderStageFlags	push_constant_flags;
+
+	uint32_t draw_item_id;
+	uint32_t bonesCount;
+
+	vkbuffer_t	camera[NUM_COMMAND_BUFFERS];
+	vkbuffer_t	light[NUM_COMMAND_BUFFERS];
+	vkbuffer_t	entity[NUM_COMMAND_BUFFERS];
+	vkbuffer_t	bones[NUM_COMMAND_BUFFERS];
+	vkbuffer_t	global[NUM_COMMAND_BUFFERS];
+	#ifdef VK_BINDLESS_MODEL_VBO
+		vkbuffer_t	indirect[NUM_COMMAND_BUFFERS];
+	#endif
+	vkdescriptor_t	ssboDescriptor[NUM_COMMAND_BUFFERS];
+
+	vkdescriptor_t	imageDescriptor;
+
+	struct {
+		VkDescriptorPool		pool;
+		VkDescriptorSetLayout	layout;
+		vkbuffer_t				buffer_vertex;
+
+		struct {
+			VkDescriptorSet		vbos;
+			VkDescriptorSet		ibos;
+		} descriptor;
+
+	} model_instance;
+
+#endif
+
 	struct {
 		VkBuffer		vertex_buffer;
 		VkDeviceMemory	buffer_memory;
@@ -951,6 +1118,10 @@ typedef struct {
 	VkDeviceMemory		indirect_buffer_memory;
 	VkDeviceSize		indirect_buffer_size;
 	VkDeviceSize		indirect_buffer_size_new;
+
+	VkDeviceMemory		indirect_buffer_memory2;
+	VkDeviceSize		indirect_buffer_size2;
+	VkDeviceSize		indirect_buffer_size_new2;
 
 	VkDescriptorPool		descriptor_pool;
 	VkDescriptorSetLayout	set_layout_sampler;		// combined image sampler
@@ -1030,15 +1201,15 @@ typedef struct {
 		// vbo 0: cpu or vbo world, 1: vbo ghoul2, 2: vbo mdv
 
 		struct {	
-			VkShaderModule gen[3][2][4][3][2][2][2]; // vbo[0,1], pbr[0,1], tx[0,1,2], cl[0,1] env0[0,1] fog[0,1]
+			VkShaderModule gen[2][2][3][2][3][2][2][2]; // bindless[0,1], fastlight[0,1], vbo[0,1,2], pixel[0,1], tx[0,1,2], cl[0,1] env0[0,1] fog[0,1]
 			VkShaderModule light[2]; // fog[0,1]
-			VkShaderModule gen0_ident;
+			VkShaderModule gen0_ident[2];
 		}	vert;
 
 		struct {
-			VkShaderModule gen0_ident;
-			VkShaderModule gen0_df;
-			VkShaderModule gen[2][4][3][2][2]; // pbr[0,1], tx[0,1,2] cl[0,1] fog[0,1]
+			VkShaderModule gen0_ident[2];
+			VkShaderModule gen0_df[2];
+			VkShaderModule gen[2][2][2][3][2][2]; // bindless[0,1], fastlight[0,1], pixel[0,1], tx[0,1,2] cl[0,1] fog[0,1]
 			VkShaderModule light[2][2]; // linear[0,1] fog[0,1]
 		}	frag;
 
@@ -1064,8 +1235,8 @@ typedef struct {
 		VkShaderModule filtercube_gm;
 		VkShaderModule irradiancecube_fs;
 		VkShaderModule prefilterenvmap_fs;
-		VkShaderModule refraction_vs[3];
-		VkShaderModule refraction_fs;
+		VkShaderModule refraction_vs[2][3];
+		VkShaderModule refraction_fs[2];
 	} shaders;
 
 	uint32_t frame_count;
@@ -1260,6 +1431,7 @@ void		vk_update_descriptor_offset( int index, uint32_t offset );
 void		vk_init_descriptors( void );
 void		vk_create_vertex_buffer( VkDeviceSize size );
 void		vk_create_indirect_buffer( VkDeviceSize size );
+void		vk_create_indirect_buffer2( VkDeviceSize size );
 VkBuffer	vk_get_vertex_buffer( void );
 void		vk_update_descriptor( int tmu, VkDescriptorSet curDesSet );
 uint32_t	vk_find_pipeline_ext( uint32_t base, const Vk_Pipeline_Def *def, qboolean use );
@@ -1268,6 +1440,9 @@ void		vk_end_render_pass( void );
 void		vk_begin_main_render_pass( void );
 void		vk_get_pipeline_def( uint32_t pipeline, Vk_Pipeline_Def *def );
 uint32_t	vk_append_uniform( const void *uniform, size_t size, uint32_t min_offset );
+#ifdef VK_BINDLESS
+uint32_t	vk_push_indirect2( int count, const void *data );
+#endif
 
 // image process
 void		R_SetColorMappings( void );
@@ -1286,6 +1461,46 @@ void		vk_record_buffer_memory_barrier( VkCommandBuffer cb, VkBuffer buffer,
 	VkDeviceSize size, VkDeviceSize offset, VkPipelineStageFlags src_stages, VkPipelineStageFlags dst_stages, 
 	VkAccessFlags src_access, VkAccessFlags dst_access );
 #endif
+
+#ifdef VK_BINDLESS
+void	vk_bind_texture_idx(const uint32_t offset, const uint32_t idx);
+void	vk_update_draw_id( const uint32_t& draw_id );
+void	vk_increase_draw_item_id( void );
+#ifdef VK_BINDLESS_MODEL_VBO
+void	vk_rtx_bind_model( int index );
+#endif
+
+// bindless buffer
+VkResult vk_rtx_buffer_create( vkbuffer_t *buf, VkDeviceSize size, 
+	VkBufferUsageFlags usage, VkMemoryPropertyFlags mem_properties );
+VkResult vk_rtx_buffer_destroy( vkbuffer_t *buf );
+void	VK_DestroyBuffer( vkbuffer_t *buffer );
+void	vk_rtx_destroy_buffers( void ) ;
+void	*buffer_map( vkbuffer_t *buf );
+void	buffer_unmap( vkbuffer_t *buf );
+void	vk_rtx_upload_buffer_data_offset( vkbuffer_t *buffer, VkDeviceSize offset, VkDeviceSize size, const byte *data ) ;
+void	vk_rtx_upload_buffer_data( vkbuffer_t *buffer, const byte *data ) ;
+
+// bindless descriptor
+void	vk_rtx_update_descriptor( vkdescriptor_t *descriptor );
+void	vk_rtx_add_descriptor_sampler(	vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage,
+										uint32_t count, VkImageLayout layout );
+void	vk_rtx_create_descriptor( vkdescriptor_t *descriptor );
+void	vk_rtx_bind_descriptor_image_sampler(	vkdescriptor_t *descriptor, uint32_t binding,
+												VkShaderStageFlagBits stage, VkSampler sampler, 
+												VkImageView view, uint32_t index );
+uint32_t vk_rtx_add_descriptor_buffer(  vkdescriptor_t *descriptor, uint32_t count, uint32_t binding, 
+										VkShaderStageFlagBits stage, VkDescriptorType type );
+void	vk_rtx_bind_descriptor_buffer(	vkdescriptor_t *descriptor, uint32_t binding, 
+										VkShaderStageFlagBits stage, VkBuffer buffer );
+void	vk_rtx_set_descriptor_update_size(	vkdescriptor_t *descriptor, uint32_t binding, 
+												VkShaderStageFlagBits stage, uint32_t size );
+void	vk_bind_storage_buffer( vkdescriptor_t *descriptor, uint32_t binding, 
+								VkShaderStageFlagBits stage, VkBuffer buffer );
+
+void	vk_init_bindless( void );
+#endif
+
 // post-processing
 void		vk_begin_post_blend_render_pass( VkRenderPass renderpass, qboolean clearValues );
 

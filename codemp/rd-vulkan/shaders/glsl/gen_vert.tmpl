@@ -1,27 +1,11 @@
 #version 450
+#extension GL_GOOGLE_include_directive : enable
 
-#define M_PI 3.1415926535897932384626433832795
+#define VERTEX_PROGRAM
+#include "global.h"
 
-#if defined(USE_LIGHTMAP) || defined(USE_LIGHT_VECTOR) || defined(USE_LIGHT_VERTEX)
-	#define USE_LIGHT
-#endif
-
-#if defined(USE_LIGHT)
-	#define PER_PIXEL_LIGHTING
-#endif
-
-#ifdef USE_TX2
-#define USE_TX1
-#endif
-
-#ifdef USE_CL2
-#define USE_CL1
-#endif
-
-// 64 bytes
-layout(push_constant) uniform Transform {
-	mat4 mvp;
-};
+layout (constant_id = 0) const int vbo_mode = 0;
+layout (constant_id = 1) const int light_mode = 0;
 
 #if defined(USE_FOG) || defined(USE_ENV)
 layout(set = 0, binding = 0) uniform UBO {
@@ -39,114 +23,36 @@ layout(set = 0, binding = 0) uniform UBO {
 };
 #endif
 
-#if defined(PER_PIXEL_LIGHTING) || defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
-	struct tcMod_t {
-		vec4	matrix;
-		vec4	offTurb;
-	};
+#if !defined(VK_BINDLESS_MODEL_VBO)
+	layout(location = 0) in vec3 in_position;
 
-	struct tcGen_t {
-		vec3	vector0;
-		vec3	vector1;
-		int		type;
-	};
+	#if defined(USE_CL0_IDENT) || defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
+	// use fixed color from frag.spec.constant.8
+	#else
+	layout(location = 1) in vec4 in_color0;
+	#endif
 
-	struct vkBundle_t {
-		vec4	baseColor;
-		vec4	vertColor;
-		tcMod_t	tcMod;
-		tcGen_t	tcGen;
-		int		rgbGen;
-		int		alphaGen;
-		int		numTexMods;
-	};
+	#ifndef USE_ENV
+	layout(location = 2) in vec2 in_tex_coord0;
+	#endif
 
-	struct vkDisintegration_t {
-		vec3	origin;
-		float	threshold;
-	};
+	#ifdef USE_TX1
+	layout(location = 3) in vec2 in_tex_coord1;
+	#endif
+	#ifdef USE_TX2
+	layout(location = 4) in vec2 in_tex_coord2;
+	#endif
 
-	struct vkDeform_t {
-		float	base;
-		float	amplitude;
-		float	phase;
-		float	frequency;
+	#if defined(USE_ENV) || defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
+	layout(location = 5) in vec3 in_normal;
+	#endif
 
-		vec3	vector;
-		float	time;
-
-		int		type;
-		int		func;
-	};
-
-	layout(set = 0, binding = 1) uniform Camera {
-		vec4 u_ViewOrigin;
-	};
-
-	layout(set = 0, binding = 3) uniform Entity {
-		vec4 u_ambientLight;
-		vec4 u_directedLight;
-		vec4 u_LocalLightOrigin;
-		vec4 u_localViewOrigin;
-		mat4 u_ModelMatrix;
-	};
-
-	layout(set = 0, binding = 5) uniform Global {
-		vkBundle_t			u_bundle[3];
-		vkDisintegration_t	u_disintegration;
-		vkDeform_t			u_deform;
-		float				u_portalRange;
-		vec4				u_SpecularScale;	
-		vec4				u_NormalScale;	
-	};	
-#endif
-
-#if defined(PER_PIXEL_LIGHTING) && !defined(USE_FAST_LIGHT)
-	layout(location = 10) out vec4 var_Normal;
-	layout(location = 11) out vec4 var_LightDir;
-	layout(location = 12) out vec4 var_ViewDir;
-	layout(location = 13) out flat int Var_RenderMode;
-#endif
-
-#if defined(USE_VBO_GHOUL2)
-	layout(set = 0, binding = 4) uniform Bones {
-		mat3x4 u_BoneMatrices[72];
-	};
-#endif
-
-layout(location = 0) in vec3 in_position;
-
-#if defined(USE_CL0_IDENT) || defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
-// use fixed color from frag.spec.constant.8
-#else
-layout(location = 1) in vec4 in_color0;
-#endif
-
-#ifndef USE_ENV
-layout(location = 2) in vec2 in_tex_coord0;
-#endif
-
-#ifdef USE_TX1
-layout(location = 3) in vec2 in_tex_coord1;
-#endif
-#ifdef USE_TX2
-layout(location = 4) in vec2 in_tex_coord2;
-#endif
-
-#if defined(USE_ENV) || defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
-layout(location = 5) in vec3 in_normal;
-#endif
-
-#if defined(USE_CL1) && !defined(USE_VBO_GHOUL2) && !defined(USE_VBO_MDV)
-layout(location = 6) in vec4 in_color1;
-#endif
-#if defined(USE_CL2) && !defined(USE_VBO_GHOUL2) && !defined(USE_VBO_MDV)
-layout(location = 7) in vec4 in_color2;
-#endif
-
-#ifdef USE_VBO_GHOUL2
-layout(location = 10) in uvec4 in_bones;
-layout(location = 11) in vec4 in_weights;
+	#if defined(USE_CL1) && !defined(USE_VBO_GHOUL2) && !defined(USE_VBO_MDV)
+	layout(location = 6) in vec4 in_color1;
+	#endif
+	#if defined(USE_CL2) && !defined(USE_VBO_GHOUL2) && !defined(USE_VBO_MDV)
+	layout(location = 7) in vec4 in_color2;
+	#endif
 #endif
 
 #ifdef USE_CL0_IDENT
@@ -174,345 +80,207 @@ layout(location = 3) out vec2 frag_tex_coord2;
 layout(location = 4) out vec2 fog_tex_coord;
 #endif
 
-#if defined(PER_PIXEL_LIGHTING)
-	struct NTB {
-		vec3 normal, tangent, binormal;
-	};
-	
-	vec3 QuatTransVec( in vec4 quat, in vec3 vec ) {
-		vec3 tmp = 2.0 * cross( quat.xyz, vec );
-		return vec + quat.w * tmp + cross( quat.xyz, tmp );
-	}
 
-	void QTangentToNTB( in vec4 qtangent, out NTB ntb ) {
-		ntb.normal = QuatTransVec( qtangent, vec3( 0.0, 0.0, 1.0 ) );
-		ntb.tangent = QuatTransVec( qtangent, vec3( 1.0, 0.0, 0.0 ) );
-		ntb.tangent *= sign( qtangent.w );
-		ntb.binormal = QuatTransVec( qtangent, vec3( 0.0, 1.0, 0.0 ) );
-	}
+// pbr
+// https://stackoverflow.com/questions/52139496/how-to-avoid-validation-layer-errors-about-unused-vertex-inputs
 
+
+#if !defined(VK_BINDLESS_MODEL_VBO) && defined(USE_VBO_GHOUL2)
+	layout(location = 10) in uvec4 in_bones;
+	layout(location = 11) in vec4 in_weights;
+#endif
+
+layout(location = 10) flat out uint actual_draw_id;
+
+#if defined(PER_PIXEL_LIGHTING) 
 	layout(location = 8) in vec4 in_qtangent;
-	
-	#if !defined(USE_FAST_LIGHT)
-		layout(location = 14) out NTB out_ntb;
-	#endif
 
-	#if !defined(USE_LIGHT_VECTOR)
-		layout(location = 9) in vec4 in_lightdir;
+	#if !defined(USE_FAST_LIGHT)
+		layout(location = 9) in vec4 in_lightdir;	// lightmap only?
+		layout(location = 11) out vec4 var_Normal;
+		layout(location = 12) out vec4 var_LightDir;
+		layout(location = 13) out vec4 var_ViewDir;
+		layout(location = 14) out flat int Var_RenderMode;
+		layout(location = 15) out NTB out_ntb;
 	#endif
+#endif
+
+
+#ifdef VK_BINDLESS_MODEL_VBO
+	#define MODEL_MDXM_VERTEX_POSITION	0
+	#define MODEL_MDXM_VERTEX_NORMAL	4
+	#define MODEL_MDXM_VERTEX_TEXCOORD	8
+	#define MODEL_MDXM_VERTEX_BONEREFS	10
+	#define MODEL_MDXM_VERTEX_WEIGHTS	11
+	#define MODEL_MDXM_VERTEX_TANGENTS	12
+	#define MODEL_MDXM_VERTEX_SIZE		16
+
+	#define MODEL_VERTEX_POSITION	0
+	#define MODEL_VERTEX_NORMAL		4
+	#define MODEL_VERTEX_TEXCOORD	8
+	#define MODEL_VERTEX_TANGENTS	10
+	#define MODEL_VERTEX_SIZE		14
 #endif
 
 out gl_PerVertex {
 	vec4 gl_Position;
 };
 
-#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
-vec4 CalcColor( int index, in vec3 position, in vec3 normal ) {
-	vec4 color = ( u_bundle[index].vertColor * vec4( 0.0 ) ) + u_bundle[index].baseColor;		// skip vertColor?
-
-	switch ( u_bundle[index].rgbGen ) {
-		case 14:// CGEN_DISINTEGRATION_1
-		{
-			vec3 delta = u_disintegration.origin - position;
-			float sqrDistance = dot( delta, delta );
-
-			if ( sqrDistance < u_disintegration.threshold )
-				color *= 0.0;
-			else if ( sqrDistance < u_disintegration.threshold + 60.0 )
-				color *= vec4( 0.0, 0.0, 0.0, 1.0 );
-			else if ( sqrDistance < u_disintegration.threshold + 150.0 )
-				color *= vec4( 0.435295, 0.435295, 0.435295, 1.0 );
-			else if ( sqrDistance < u_disintegration.threshold + 180.0 )
-				color *= vec4( 0.6862745, 0.6862745, 0.6862745, 1.0 );
-
-			return color;
-		}
-		case 15:// CGEN_DISINTEGRATION_2
-		{
-			vec3 delta = u_disintegration.origin - position;
-			float sqrDistance = dot( delta, delta );
-
-			if ( sqrDistance < u_disintegration.threshold )
-				return vec4(0.0);
-
-			return color;
-		}
-	}
-
-	switch ( u_bundle[index].alphaGen ) {
-		case 6: // AGEN_LIGHTING_SPECULAR
-		{
-			vec3 viewer = normalize( u_localViewOrigin.xyz - position );
-			vec3 lightDirection = ( transpose(u_ModelMatrix) * vec4( u_LocalLightOrigin.xyz, 0.0 ) ).xyz;
-			vec3 reflected = -reflect( lightDirection, normal );
-			color.a = clamp( dot( reflected, normalize( viewer ) ), 0.0, 1.0 );
-			color.a *= color.a;
-			color.a *= color.a;
-			break;
-		}
-		case 8: // AGEN_PORTAL
-		{
-			vec3 viewer = normalize( u_localViewOrigin.xyz - position );
-			color.a = clamp( length( viewer ) / u_portalRange, 0.0, 1.0 );
-			break;
-		}
-	}
-
-	return color;
-}
-
-float GetNoiseValue( float x, float y, float z, float t )
-{
-	// Variation on the 'one-liner random function'.
-	// Not sure if this is still 'correctly' random
-	return fract( sin( dot(
-		vec4( x, y, z, t ),
-		vec4( 12.9898, 78.233, 12.9898, 78.233 )
-	)) * 43758.5453 );
-}
-
-float CalculateDeformScale( in int func, in float time, in float phase, in float frequency )
-{
-	float value = phase + time * frequency;
-
-	switch ( func ) {
-		case 1: // GF_SIN
-			return sin(value * 2.0 * M_PI);
-		case 2: // GF_SQUARE
-			return sign(0.5 - fract(value));
-		case 3: // GF_TRIANGLE
-			return abs(fract(value + 0.75) - 0.5) * 4.0 - 1.0;
-		case 4: // GF_SAWTOOTH
-			return fract(value);
-		case 5:	// GF_INVERSE_SAWTOOTH
-			return 1.0 - fract(value);
-		default:// GF_NONE
-			return 0.0;
-	}
-}
-
-vec3 DeformPosition( const vec3 pos, const vec3 normal, const vec2 st )
-{
-	switch ( u_deform.type ) {
-		default:
-		{
-			return pos;
-		}
-
-		case 3: // DEFORM_BULGE
-		{
-			float bulgeHeight	= u_deform.amplitude;
-			float bulgeWidth	= u_deform.phase;
-			float bulgeSpeed	= u_deform.frequency;
-
-			float scale = CalculateDeformScale( 1, u_deform.time, bulgeWidth * st.x, bulgeSpeed );
-
-			return pos + normal * scale * bulgeHeight;
-		}
-
-		case 4: // DEFORM_BULGE_UNIFORM
-		{
-			float bulgeHeight = u_deform.amplitude;
-
-			return pos + normal * bulgeHeight;
-		}
-
-		case 1: // DEFORM_WAVE
-		{
-			float base		= u_deform.base;
-			float amplitude = u_deform.amplitude;
-			float phase		= u_deform.phase;
-			float frequency = u_deform.frequency;
-			float spread	= u_deform.vector.x;
-
-			float offset = dot( pos.xyz, vec3( spread ) );
-			float scale = CalculateDeformScale( u_deform.func, u_deform.time, phase + offset, frequency );
-
-			return pos + normal * (base + scale * amplitude);
-		}
-
-		case 5: // DEFORM_MOVE
-		{
-			float base		= u_deform.base;
-			float amplitude = u_deform.amplitude;
-			float phase		= u_deform.phase;
-			float frequency = u_deform.frequency;
-			vec3 direction	= u_deform.vector;
-
-			float scale = CalculateDeformScale( u_deform.func, u_deform.time, phase, frequency );
-
-			return pos + direction * (base + scale * amplitude);
-		}
-
-		case 6: // DEFORM_PROJECTION_SHADOW
-		{
-			vec3 ground = vec3(
-				u_deform.base,
-				u_deform.amplitude,
-				u_deform.phase
-			);
-
-			float groundDist	= u_deform.frequency;
-			vec3 lightDir		= u_deform.vector;
-
-			float d = 1.0 / dot( lightDir, ground );
-			vec3 lightPos = lightDir * d;
-			return pos - lightPos * (dot( pos, ground ) + groundDist);
-		}
-
-		case 17: // DEFORM_DISINTEGRATION
-		{
-			vec3 delta = u_disintegration.origin - pos;
-			float sqrDistance = dot(delta, delta);
-			vec3 normalScale = vec3(-0.01);
-			if ( sqrDistance < u_disintegration.threshold )
-			{
-				normalScale = vec3(2.0, 2.0, 0.5);
-			}
-			else if ( sqrDistance < u_disintegration.threshold + 50 )
-			{
-				normalScale = vec3(1.0, 1.0, 0.0);
-			}
-			return pos + normal * normalScale;
-		}
-	}
-}
-
-vec3 DeformNormal( const in vec3 position, const in vec3 normal )
-{
-	if ( u_deform.type != 2 ) // DEFORM_NORMALS
-		return normal;
-
-	float amplitude = u_deform.amplitude;
-	float frequency = u_deform.frequency;
-
-	vec3 outNormal = normal;
-	const float scale = 0.98;
-
-	outNormal.x += amplitude * GetNoiseValue(
-		position.x * scale,
-		position.y * scale,
-		position.z * scale,
-		u_deform.time * frequency );
-
-	outNormal.y += amplitude * GetNoiseValue(
-		100.0 * position.x * scale,
-		position.y * scale,
-		position.z * scale,
-		u_deform.time * frequency );
-
-	outNormal.z += amplitude * GetNoiseValue(
-		200.0 * position.x * scale,
-		position.y * scale,
-		position.z * scale,
-		u_deform.time * frequency );
-
-	return outNormal;
-}
-#endif
-
-vec2 GenTexCoords(const in vec2 tc, int TCGen, vec3 position, vec3 normal, vec3 TCGenVector0, vec3 TCGenVector1)
-{
-	vec2 tex = tc;
-
-	if ( TCGen == 9 ) // TCGEN_VECTOR
-		tex = vec2(dot(position, TCGenVector0), dot(position, TCGenVector1));
-
-	return tex;
-}
-
-vec2 ModTexCoords(vec2 st, vec3 position, vec4 texMatrix, vec4 offTurb)
-{
-	float amplitude = offTurb.z;
-	float phase = offTurb.w * 2.0 * M_PI;
-	vec2 st2;
-	st2.x = st.x * texMatrix.x + (st.y * texMatrix.z + offTurb.x);
-	st2.y = st.x * texMatrix.y + (st.y * texMatrix.w + offTurb.y);
-
-	vec2 offsetPos = vec2(position.x + position.z, position.y);
-	
-	vec2 texOffset = sin(offsetPos * (2.0 * M_PI / 1024.0) + vec2(phase));
-	
-	return st2 + texOffset * amplitude;	
-}
-
-#ifdef USE_VBO_GHOUL2
-mat4x3 GetBoneMatrix(uint index)
-{
-	mat3x4 bone = u_BoneMatrices[index];
-	return mat4x3(
-		bone[0].x, bone[1].x, bone[2].x,
-		bone[0].y, bone[1].y, bone[2].y,
-		bone[0].z, bone[1].z, bone[2].z,
-		bone[0].w, bone[1].w, bone[2].w);
-}
-#endif
-
 void main() {
-//#if defined(PER_PIXEL_LIGHTING)
-#if (defined(PER_PIXEL_LIGHTING) && !defined(USE_FAST_LIGHT) ) || ( defined(PER_PIXEL_LIGHTING) && defined(USE_LIGHT_VECTOR))
+	#ifdef VK_BINDLESS
+		#if defined(VK_BINDLESS_MODEL_VBO) && (defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV))
+			actual_draw_id = gl_InstanceIndex >> 16;
+		#else
+			actual_draw_id = draw_id;
+		#endif
+	#endif
+
+	#if defined(VK_BINDLESS) && defined(USE_ENTITY_DATA)
+		global_data = global[actual_draw_id];	// needs to be bound for fragment cus texture_idx[].
+		entity_data = entities[global_data.entity_id];
+	#endif
+
+	vec3 position = vec3(0.0);
+	vec3 normal = vec3(0.0);
+
 	NTB ntb;
-	QTangentToNTB( in_qtangent, ntb );
-#endif
 
-#if defined(USE_VBO_MDV)
-	vec3 position = in_position;
-	vec3 normal = normalize(in_normal);
-
-	if ( u_deform.type != 0 ){ // !DEFORM_NONE
-		position	= DeformPosition( position, normal, frag_tex_coord0 );
-		normal		= DeformNormal( position, normal );
-	}
-#elif defined(USE_VBO_GHOUL2)
-	mat4x3 skin_matrix =
-		GetBoneMatrix(in_bones.x) * in_weights.x +
-        GetBoneMatrix(in_bones.y) * in_weights.y +
-        GetBoneMatrix(in_bones.z) * in_weights.z +
-        GetBoneMatrix(in_bones.w) * in_weights.w;
-	
-	vec3 position = skin_matrix * vec4(in_position, 1.0);
-	vec3 normal = normalize(skin_matrix * vec4(in_normal, 0.0));
-
-	#if defined(PER_PIXEL_LIGHTING) && !defined(USE_FAST_LIGHT)
-		ntb.tangent = normalize(skin_matrix * vec4(ntb.tangent, 0.0));	
+	#if defined(PER_PIXEL_LIGHTING)
+		#if !defined(USE_FAST_LIGHT)
+			QTangentToNTB( in_qtangent, ntb );
+		#else
+			if ( light_mode == LIGHT_MODE_VECTOR ) QTangentToNTB( in_qtangent, ntb );
+		#endif
 	#endif
 
-	if ( u_deform.type != 0 ){ // !DEFORM_NONE
-		position	= DeformPosition( position, normal, frag_tex_coord0 );
-		normal		= DeformNormal( position, normal );
-	}
-#else
-	vec3 position = in_position;
-	#if (defined(PER_PIXEL_LIGHTING) && !defined(USE_FAST_LIGHT) ) || ( defined(PER_PIXEL_LIGHTING) && defined(USE_LIGHT_VECTOR))
-		vec3 normal = ntb.normal;
-	#elif defined(USE_ENV)
-		vec3 normal = in_normal;
-	#endif
-#endif
+	#if defined(USE_VBO_MDV)
+		#ifdef VK_BINDLESS_MODEL_VBO
+			int first_index = indirect[draw_id].first_index[gl_InstanceIndex & 0xFFFF];
 
-#ifndef USE_CL0_IDENT
-	#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
-		frag_color0 = CalcColor( 0, position, normal );
+			uint index_base  = first_index + gl_VertexIndex;
+			uint idx = model_ibos[nonuniformEXT(global_data.vbo_model_index)].data[index_base];
+			idx = idx * MODEL_VERTEX_SIZE;
+
+			position = get_model_float3(global_data.vbo_model_index, idx + MODEL_VERTEX_POSITION);
+			normal = get_model_float3(global_data.vbo_model_index, idx + MODEL_VERTEX_NORMAL);
+
+			vec2 in_tex_coord0 = get_model_float2(global_data.vbo_model_index, idx + MODEL_VERTEX_TEXCOORD);
+
+			if ( u_deform.type != 0 ){ // !DEFORM_NONE
+				position	= DeformPosition( position, normal, frag_tex_coord0 );
+				normal		= DeformNormal( position, normal );
+			}
+
+			vec2 in_tex_coord1 = vec2(0.0);
+			vec2 in_tex_coord2 = vec2(0.0);
+			vec4 in_color0 = vec4(0.0);
+			vec4 in_color1 = vec4(0.0);
+			vec4 in_color2 = vec4(0.0);
+		#else
+			position = in_position;
+			normal = normalize(in_normal);
+
+			if ( u_deform.type != 0 ){ // !DEFORM_NONE
+				position	= DeformPosition( position, normal, frag_tex_coord0 );
+				normal		= DeformNormal( position, normal );
+			}
+		#endif
+	#elif defined(USE_VBO_GHOUL2)
+		#ifdef VK_BINDLESS_MODEL_VBO
+				int first_index = indirect[draw_id].first_index[gl_InstanceIndex & 0xFFFF];
+
+				uint index_base  = first_index + gl_VertexIndex;
+				uint idx = model_ibos[nonuniformEXT(global_data.vbo_model_index)].data[index_base];
+				idx = idx * MODEL_MDXM_VERTEX_SIZE;
+
+				mat4x3 skin_matrix = mat4x3(0);
+				uint bone_indices =  get_model_uint(global_data.vbo_model_index, idx + MODEL_MDXM_VERTEX_BONEREFS);
+				vec4 bone_weights =  unpackUnorm4x8(get_model_uint(global_data.vbo_model_index, idx + MODEL_MDXM_VERTEX_WEIGHTS));
+
+				for (int i_bone = 0; i_bone < 4; i_bone++)
+				{
+					uint bone_index = ( bone_indices >> (i_bone * 8) ) & 0xFF;
+					float bone_weight = bone_weights[i_bone];
+
+					mat4x3 m = GetBoneMatrix( bone_index );
+					skin_matrix += m * bone_weight;
+				}
+
+				position = get_model_float3(global_data.vbo_model_index, idx + MODEL_MDXM_VERTEX_POSITION);
+				position = skin_matrix * vec4(position, 1.0);
+
+				normal = get_model_float3(global_data.vbo_model_index, idx + MODEL_MDXM_VERTEX_NORMAL);
+
+				vec2 in_tex_coord0 = get_model_float2(global_data.vbo_model_index, idx + MODEL_MDXM_VERTEX_TEXCOORD);
+
+				vec2 in_tex_coord1 = vec2(0.0);
+				vec2 in_tex_coord2 = vec2(0.0);
+				vec4 in_color0 = vec4(0.0);
+				vec4 in_color1 = vec4(0.0);
+				vec4 in_color2 = vec4(0.0);
+		#else
+				mat4x3 skin_matrix =
+					GetBoneMatrix(in_bones.x) * in_weights.x +
+					GetBoneMatrix(in_bones.y) * in_weights.y +
+					GetBoneMatrix(in_bones.z) * in_weights.z +
+					GetBoneMatrix(in_bones.w) * in_weights.w;
+
+				position = skin_matrix * vec4(in_position, 1.0);
+
+				normal = normalize(skin_matrix * vec4(in_normal, 0.0));
+
+				#if defined(PER_PIXEL_LIGHTING) && !defined(USE_FAST_LIGHT)
+					ntb.tangent = normalize(skin_matrix * vec4(ntb.tangent, 0.0));	
+				#endif
+		#endif
+
+
+		if ( u_deform.type != 0 ){ // !DEFORM_NONE
+			position	= DeformPosition( position, normal, frag_tex_coord0 );
+			normal		= DeformNormal( position, normal );
+		}
 	#else
-		frag_color0 = in_color0;
-	#endif
-#endif
-#ifdef USE_CL1
-	#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
-		frag_color1 = CalcColor( 1, position, normal );
-	#else
-		frag_color1 = in_color1;
-	#endif
-#endif
-#ifdef USE_CL2
-	#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
-		frag_color2 = CalcColor( 2, position, normal );
-	#else
-		frag_color2 = in_color2;
-	#endif
-#endif
+		position = in_position;
+		#if defined(USE_ENV)
+			normal = in_normal;
+		#endif
 
-	gl_Position = mvp * vec4(position, 1.0);
+		#if defined(PER_PIXEL_LIGHTING)
+			#if !defined(USE_FAST_LIGHT) 
+				normal = ntb.normal;
+			#else
+				normal = (light_mode == LIGHT_MODE_VECTOR) ? ntb.normal : normal;
+			#endif
+		#endif
+	#endif
+
+	#ifndef USE_CL0_IDENT
+		#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
+			frag_color0 = CalcColor( 0, position, normal );
+		#else
+			frag_color0 = in_color0;
+		#endif
+	#endif
+	#ifdef USE_CL1
+		#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
+			frag_color1 = CalcColor( 1, position, normal );
+		#else
+			frag_color1 = in_color1;
+		#endif
+	#endif
+	#ifdef USE_CL2
+		#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
+			frag_color2 = CalcColor( 2, position, normal );
+		#else
+			frag_color2 = in_color2;
+		#endif
+	#endif
+
+	#if defined(VK_BINDLESS) && defined(USE_ENTITY_DATA) && defined(VK_BINDLESS_BATCHED_INDIRECT)
+		gl_Position = global_data.mvp * vec4(position, 1.0);
+	#else
+		gl_Position = mvp * vec4(position, 1.0);
+	#endif
 
 #ifdef USE_ENV
 	vec3 viewer = normalize(eyePos.xyz - position);
@@ -532,27 +300,27 @@ void main() {
 	frag_tex_coord2 = in_tex_coord2;
 #endif
 
-// tcGen & tcMod
-#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
-	#ifndef USE_ENV
-		frag_tex_coord0 = GenTexCoords( in_tex_coord0.st, u_bundle[0].tcGen.type, position, normal, u_bundle[0].tcGen.vector0, u_bundle[0].tcGen.vector1 );
-	#endif
+	// tcGen & tcMod
+	#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
+		#ifndef USE_ENV
+			frag_tex_coord0 = GenTexCoords( in_tex_coord0.st, u_bundle[0].tcGen.type, position, normal, u_bundle[0].tcGen.vector0, u_bundle[0].tcGen.vector1 );
+		#endif
 
-	if ( u_bundle[0].numTexMods > 0 ) {
-		frag_tex_coord0 = ModTexCoords( frag_tex_coord0, position, u_bundle[0].tcMod.matrix, u_bundle[0].tcMod.offTurb );
-	}
-	#ifdef USE_TX1
-		if ( u_bundle[1].numTexMods > 0 ) {
-			frag_tex_coord1 = ModTexCoords( frag_tex_coord1, position, u_bundle[1].tcMod.matrix, u_bundle[1].tcMod.offTurb );
+		if ( u_bundle[0].numTexMods > 0 ) {
+			frag_tex_coord0 = ModTexCoords( frag_tex_coord0, position, u_bundle[0].tcMod.matrix, u_bundle[0].tcMod.offTurb );
 		}
-	#endif
+		#ifdef USE_TX1
+			if ( u_bundle[1].numTexMods > 0 ) {
+				frag_tex_coord1 = ModTexCoords( frag_tex_coord1, position, u_bundle[1].tcMod.matrix, u_bundle[1].tcMod.offTurb );
+			}
+		#endif
 
-	#ifdef USE_TX2
-		if ( u_bundle[2].numTexMods > 0 ) {
-			frag_tex_coord2 = ModTexCoords( frag_tex_coord2, position, u_bundle[2].tcMod.matrix, u_bundle[2].tcMod.offTurb );
-		}
+		#ifdef USE_TX2
+			if ( u_bundle[2].numTexMods > 0 ) {
+				frag_tex_coord2 = ModTexCoords( frag_tex_coord2, position, u_bundle[2].tcMod.matrix, u_bundle[2].tcMod.offTurb );
+			}
+		#endif
 	#endif
-#endif
 
 #ifdef USE_FOG
 	float s = dot(position, fogDistanceVector.xyz) + fogDistanceVector.w;
@@ -575,46 +343,52 @@ void main() {
 	fog_tex_coord = vec2(s, t);
 #endif
 
-#if defined(PER_PIXEL_LIGHTING)
-	#if (defined(PER_PIXEL_LIGHTING) && !defined(USE_FAST_LIGHT) ) || ( defined(PER_PIXEL_LIGHTING) && defined(USE_LIGHT_VECTOR))
+#ifdef PER_PIXEL_LIGHTING
+	vec3 L;
+
+	#if !defined(USE_FAST_LIGHT)
 		position		= (u_ModelMatrix * vec4(position, 1.0)).xyz;
 		normal			= normalize(mat3(u_ModelMatrix) * normal);
-	#endif
 
-	#if defined(USE_LIGHT_VECTOR)
-		vec3 L	= u_LocalLightOrigin.xyz - (position * u_LocalLightOrigin.w);
-		
-		#if !defined(USE_FAST_LIGHT)
+		if ( light_mode == LIGHT_MODE_VECTOR )
+		{
+			L	= u_LocalLightOrigin.xyz - (position * u_LocalLightOrigin.w);
 			ntb.tangent	 = normalize(mat3(u_ModelMatrix) * ntb.tangent);
 			ntb.binormal = normalize(mat3(u_ModelMatrix) * ntb.binormal);
-		#endif
+		}
+		else {
+			L = in_lightdir.xyz * 2.0 - vec3(1.0);
+			L = ( u_ModelMatrix * vec4( L, 0.0 ) ).xyz;
+			L = normalize( ( L * 0.5 ) + vec3( 0.5 ) );
+		}
+	#else
+		if ( light_mode == LIGHT_MODE_VECTOR )
+		{
+			position		= (u_ModelMatrix * vec4(position, 1.0)).xyz;
+			normal			= normalize(mat3(u_ModelMatrix) * normal);
 
-	#elif !defined(USE_FAST_LIGHT)
-		vec3 L	= in_lightdir.xyz * 2.0 - vec3(1.0);
-		L		= ( u_ModelMatrix * vec4( L, 0.0 ) ).xyz;
-		L		= normalize( ( L * 0.5 ) + vec3( 0.5 ) );
+			L = u_LocalLightOrigin.xyz - (position * u_LocalLightOrigin.w);
+
+			float sqrLightDist = dot(L, L);
+			float NL = clamp(dot(normal, L) / sqrt(sqrLightDist), 0.0, 1.0);
+
+			frag_color0.rgb *= u_directedLight.rgb * NL + u_ambientLight.rgb;
+			#ifdef USE_CL1
+				frag_color1.rgb *= u_directedLight.rgb * NL + u_ambientLight.rgb;
+			#endif
+			#ifdef USE_CL2
+				frag_color2.rgb *= u_directedLight.rgb * NL + u_ambientLight.rgb;
+			#endif
+		}
 	#endif
-#endif
 
-#if defined(USE_LIGHT_VECTOR) && defined(USE_FAST_LIGHT)
-	float sqrLightDist = dot(L, L);
-	float NL = clamp(dot(normal, L) / sqrt(sqrLightDist), 0.0, 1.0);
+	#if !defined(USE_FAST_LIGHT)
+		vec3 viewDir = u_ViewOrigin.xyz - position;
 
-	frag_color0.rgb *= u_directedLight.rgb * NL + u_ambientLight.rgb;
-	#ifdef USE_CL1
-		frag_color1.rgb *= u_directedLight.rgb * NL + u_ambientLight.rgb;
+		out_ntb = ntb;
+		var_LightDir	= vec4(L, 0.0);	
+		var_Normal		= vec4(normal, 0.0);
+		var_ViewDir		= vec4(viewDir, 0.0);
 	#endif
-	#ifdef USE_CL2
-		frag_color2.rgb *= u_directedLight.rgb * NL + u_ambientLight.rgb;
-	#endif
-#endif
-
-#if defined(PER_PIXEL_LIGHTING) && !defined(USE_FAST_LIGHT)
-	vec3 viewDir = u_ViewOrigin.xyz - position;
-
-	out_ntb = ntb;
-	var_LightDir	= vec4(L, 0.0);	
-	var_Normal		= vec4(normal, 0.0);
-	var_ViewDir		= vec4(viewDir, 0.0);
 #endif
 }

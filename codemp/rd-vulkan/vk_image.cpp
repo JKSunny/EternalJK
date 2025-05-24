@@ -101,6 +101,13 @@ void vk_texture_mode( const char *string, const qboolean init ) {
 		img = tr.images[i];
 		if ( img->flags & IMGFLAG_MIPMAP ) {
 			vk_update_descriptor_set( img, qtrue );
+#ifdef VK_BINDLESS
+			if ( vk.bindlessActive )
+			{
+				vk_rtx_bind_descriptor_image_sampler( &vk.imageDescriptor, VK_BINDLESS_BINDING_TEXTURES, (VkShaderStageFlagBits)VK_SHADER_STAGE_FRAGMENT_BIT, img->sampler, img->view, img->index );
+				vk.imageDescriptor.needsUpdate = qtrue;
+			}
+#endif
 		}
 	}
 }
@@ -1134,7 +1141,12 @@ void vk_update_descriptor_set( image_t *image, qboolean mipmap ) {
 		sampler_def.noAnisotropy = qtrue;
 	}
 
+#ifdef VK_BINDLESS
+	image->sampler = vk_find_sampler(&sampler_def);
+	image_info.sampler = image->sampler;
+#else
 	image_info.sampler = vk_find_sampler(&sampler_def);
+#endif
 	image_info.imageView = image->view;
 	image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
@@ -1157,15 +1169,16 @@ void vk_create_image( image_t *image, int width, int height, int mip_levels ) {
 	VkImageCreateFlags	image_flags = 0;
 	VkImageViewType		view_type = (VkImageViewType)VK_IMAGE_VIEW_TYPE_2D;
 
+	if ( image->view ) {
+		qvkDestroyImageView( vk.device, image->view, NULL );
+		image->view = VK_NULL_HANDLE;
+	}
+
 	if ( image->handle ) {
 		qvkDestroyImage( vk.device, image->handle, NULL );
 		image->handle = VK_NULL_HANDLE;
 	}
 
-	if ( image->view ) {
-		qvkDestroyImageView( vk.device, image->view, NULL );
-		image->view = VK_NULL_HANDLE;
-	}
 
 	if ( image->flags & IMGFLAG_CUBEMAP ) {
 		image_flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
@@ -1215,7 +1228,11 @@ void vk_create_image( image_t *image, int width, int height, int mip_levels ) {
 		VK_CHECK( qvkCreateImageView( vk.device, &desc, NULL, &image->view ) );
 	}
 
+#ifdef VK_BINDLESS
+	if ( !vk.bindlessActive && !vk.active ) // splash screen does not require a descriptorset
+#else
 	if ( !vk.active ) // splash screen does not require a descriptorset
+#endif
 		return;
 
 	// create associated descriptor set
@@ -1232,6 +1249,11 @@ void vk_create_image( image_t *image, int width, int height, int mip_levels ) {
 	}
 
 	vk_update_descriptor_set( image, mip_levels > 1 ? qtrue : qfalse );
+
+#ifdef VK_BINDLESS
+	if ( vk.bindlessActive )
+		vk_add_bindless_image( image );
+#endif
 
 	VK_SET_OBJECT_NAME( image->handle, image->imgName, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT );
 	VK_SET_OBJECT_NAME( image->view, image->imgName, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT );
@@ -1325,7 +1347,12 @@ image_t *R_CreateImage( const char *name, byte *pic, int width, int height, imgF
     image->next = hashTable[hash];
     hashTable[hash] = image;
 
-    tr.images[tr.numImages++] = image;
+#ifdef VK_BINDLESS
+	image->index = tr.numImages++;
+	tr.images[image->index] = image;
+#else
+	tr.images[tr.numImages++] = image;
+#endif
 
 	// record which map it was used on
 	image->iLastLevelUsedOn = RE_RegisterMedia_GetLevel();
@@ -1358,7 +1385,10 @@ image_t *R_CreateImage( const char *name, byte *pic, int width, int height, imgF
 	image->internalFormat = format;
 
 	if ( image->flags & IMGFLAG_CUBEMAP )
+	{
+		image->cubemapIndex = tr.cubemapIndexCount++;
 		vk_upload_cube( image );
+	}
 	else
 		vk_upload_image( image, pic );
 
@@ -1602,7 +1632,6 @@ void RE_UploadCinematic( int cols, int rows, const byte *data, int client, qbool
 
 		vk_create_image( image, cols, rows, 1 );
 		vk_upload_image_data( image, 0, 0, cols, rows, 1, (byte*)data, cols * rows * 4, qfalse );
-
     }
     else if (dirty)
     {
@@ -1869,3 +1898,6 @@ void R_InitImages( void )
 
 	vk_update_post_process_pipelines();
 }
+
+// bindless
+

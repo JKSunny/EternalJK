@@ -83,20 +83,20 @@ pushConst *vk_get_push_constant() {
 	return &push_constants;
 }
 
-void vk_update_mvp( const float *m ) {
+void vk_update_mvp(const float* m) {
 	//pushConst push_constants;
 
 	// Specify push constants.
 	if (m)
-		Com_Memcpy(push_constants.mvp, m, sizeof(push_constants));
+		Com_Memcpy(push_constants.mvp, m, sizeof(float) * 16);
 	else
 		get_mvp_transform(push_constants.mvp);
 
-	qvkCmdPushConstants(vk.cmd->command_buffer, vk.pipeline_layout, 
-		VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(push_constants), &push_constants);
+	qvkCmdPushConstants(vk.cmd->command_buffer, vk.pipeline_layout,
+		vk.push_constant_flags, 0, vk.push_constant_size, &push_constants);
 
 #ifdef USE_VK_STATS
-	vk.stats.push_size += sizeof(push_constants);
+	vk.stats.push_size += vk.push_constant_size;
 #endif
 }
 
@@ -732,6 +732,65 @@ void vk_create_indirect_buffer( VkDeviceSize size )
 	//Com_Memset(&vk.stats, 0, sizeof(vk.stats));
 }
 
+void vk_create_indirect_buffer2( VkDeviceSize size )
+{
+	VkMemoryRequirements vb_memory_requirements;
+	VkDeviceSize indirect_buffer_offset;
+	VkMemoryAllocateInfo alloc_info;
+	VkBufferCreateInfo desc;
+	uint32_t memory_type_bits;
+	void *data;
+	int i;
+
+	vk_debug("Create indirect buffer: vk.cmd->indirect_buffer \n");
+	
+	desc.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	desc.pNext = NULL;
+	desc.flags = 0;
+	desc.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	desc.queueFamilyIndexCount = 0;
+	desc.pQueueFamilyIndices = NULL;
+	
+	Com_Memset(&vb_memory_requirements, 0, sizeof(vb_memory_requirements));
+
+	for (i = 0; i < NUM_COMMAND_BUFFERS; i++) {
+		desc.size = size;
+		desc.usage = VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
+		VK_CHECK(qvkCreateBuffer(vk.device, &desc, NULL, &vk.tess[i].indirect_buffer2));
+
+		qvkGetBufferMemoryRequirements(vk.device, vk.tess[i].indirect_buffer2, &vb_memory_requirements);
+	}
+
+	memory_type_bits = vb_memory_requirements.memoryTypeBits;
+
+	alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	alloc_info.pNext = NULL;
+	alloc_info.allocationSize = vb_memory_requirements.size * NUM_COMMAND_BUFFERS;
+	alloc_info.memoryTypeIndex = vk_find_memory_type(memory_type_bits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+	vk_debug("Allocate device memory for Indirect Buffer: %ld bytes. \n", alloc_info.allocationSize);
+
+	VK_CHECK(qvkAllocateMemory(vk.device, &alloc_info, NULL, &vk.indirect_buffer_memory2));
+	VK_CHECK(qvkMapMemory(vk.device, vk.indirect_buffer_memory2, 0, VK_WHOLE_SIZE, 0, &data));
+
+	indirect_buffer_offset = 0;
+
+	for (i = 0; i < NUM_COMMAND_BUFFERS; i++) {
+		qvkBindBufferMemory(vk.device, vk.tess[i].indirect_buffer2, vk.indirect_buffer_memory2, indirect_buffer_offset);
+		vk.tess[i].indirect_buffer_ptr2 = (byte*)data + indirect_buffer_offset;
+		vk.tess[i].indirect_buffer_offset = 0;
+		indirect_buffer_offset += vb_memory_requirements.size;
+
+		VK_SET_OBJECT_NAME(vk.tess[i].indirect_buffer2, "indirect_buffer", VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT);
+	}
+
+	VK_SET_OBJECT_NAME(vk.indirect_buffer_memory2, "indirect buffer memory", VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT);
+
+	vk.indirect_buffer_size2 = vb_memory_requirements.size;
+	vk.indirect_buffer_size_new2 = 0;
+
+	//Com_Memset(&vk.stats, 0, sizeof(vk.stats));
+}
 
 void vk_create_vertex_buffer( VkDeviceSize size )
 {
@@ -809,25 +868,6 @@ void vk_update_descriptor( int tmu, VkDescriptorSet curDesSet )
 
 	vk.cmd->descriptor_set.current[tmu] = curDesSet;
 }
-
-#ifdef USE_VK_PBR
-static void vk_set_valid_preceeding_descriptor( const int tmu )
-{
-	if( vk.cmd->descriptor_set.current[tmu] != VK_NULL_HANDLE )
-		return;
-
-	vk_update_descriptor(tmu, tr.whiteImage->descriptor_set);
-
-	if( tmu > 0 )
-		vk_set_valid_preceeding_descriptor( tmu - 1 );
-}
-static void vk_update_pbr_descriptor( const int tmu, VkDescriptorSet curDesSet ){
-	
-	vk_set_valid_preceeding_descriptor( tmu - 1 );
-
-	vk_update_descriptor( tmu, curDesSet );
-}
-#endif
 
 void vk_update_descriptor_offset( int index, uint32_t offset )
 {
@@ -1280,6 +1320,23 @@ uint32_t vk_push_indirect( int count, const void *data ) {
 	return offset;
 }
 
+uint32_t vk_push_indirect2( int count, const void *data ) {
+	const uint32_t offset = vk.cmd->indirect_buffer_offset2;	// no alignment for indirect buffer?
+	const uint32_t size = count * sizeof(VkDrawIndirectCommand);
+
+	if (offset + size > vk.indirect_buffer_size2) {
+		// schedule geometry buffer resize
+		vk.indirect_buffer_size_new2 = log2pad(offset + size, 1);
+		Com_Printf("resize");
+	}
+	else {
+		Com_Memcpy(vk.cmd->indirect_buffer_ptr2 + offset, data, size);
+		vk.cmd->indirect_buffer_offset2 = (VkDeviceSize)offset + size;
+	}
+
+	return offset;
+}
+
 /*
 ========================
 RB_CalcFogProgramParms
@@ -1401,7 +1458,6 @@ Blends a fog texture on top of everything else
 ===================
 */
 static vkUniform_t			uniform;
-static vkUniformGlobal_t	uniform_global;
 
 static void RB_FogPass( void ) 
 {
@@ -1415,18 +1471,36 @@ static void RB_FogPass( void )
 	//vk_bind_pipeline( pipeline );
 	vk_set_fog_params( &uniform, &fog_stage );
 	vk_push_uniform( &uniform );
+#ifdef VK_BINDLESS
+	if ( vk.bindlessActive ) {
+		Com_Memset( &vk.cmd->uniform_global, 0, sizeof(vkUniformGlobal_t) );
+		vk_bind_texture_idx( VK_BINDLESS_IDX_TEXTURE1, tr.fogImage->index );
+	}
+	else
+#endif
 	vk_update_descriptor( VK_DESC_FOG_ONLY, tr.fogImage->descriptor_set );
-	//vk_draw_geometry( DEPTH_RANGE_NORMAL, qtrue );
 
 	// create draw item
 	{
 		DrawItem item = {};
 		item.pipeline = pipeline;
+		item.vbo_world_index = tess.vbo_world_index;
+		item.vbo_model_index = tess.vbo_model_index;
 		item.depthRange = DEPTH_RANGE_NORMAL;
 		item.polygonOffset = tess.shader->polygonOffset;
 		item.identifier = 18;
 		item.reset_uniform = qfalse;
+#ifdef VK_BINDLESS
+		item.draw_id = vk.draw_item_id;
 
+		if ( vk.bindlessActive )
+		{
+			item.push_uniform = qtrue;
+			vkbuffer_t *global_data = &vk.global[vk.cmd_index];
+			vk_rtx_upload_buffer_data_offset( global_data, item.draw_id * sizeof(vkUniformGlobal_t), sizeof(vkUniformGlobal_t), (const byte*)&vk.cmd->uniform_global );
+
+		}
+#endif
 		RB_AddDrawItemIndexBinding( item );
 		RB_AddDrawItemVertexBinding( item );
 		RB_AddDrawItemUniformBinding( item, backEnd.currentEntity );
@@ -1462,6 +1536,11 @@ void vk_bind( image_t *image ) {
 
 	image->frameUsed = tr.frameCount;
 
+#ifdef VK_BINDLESS
+	if ( vk.bindlessActive )
+		vk_bind_texture_idx( vk.ctmu, image->index );
+	else
+#endif
 	vk_update_descriptor( vk.ctmu + VK_DESC_TEXTURE_BASE, image->descriptor_set );
 }
 
@@ -1474,16 +1553,17 @@ void R_BindAnimatedImage( const textureBundle_t *bundle ) {
 		ri.CIN_UploadCinematic( bundle->videoMapHandle );
 		return;
 	}
+#ifndef VK_BINDLESS
 	if ( bundle->isScreenMap ) {
 		if ( !backEnd.screenMapDone ) {
 			vk_bind( tr.blackImage );
 		}
 		else {
-
 			vk_update_descriptor( vk.ctmu + VK_DESC_TEXTURE_BASE, vk.screenMap.color_descriptor );
 		}
 		return;
 	}
+#endif
 
 	if ( ( r_fullbright->value /*|| tr.refdef.doFullbright */ ) && bundle->isLightmap )
 	{
@@ -1779,8 +1859,8 @@ static void vk_compute_colors( const int b, const shaderStage_t *pStage, int for
 	int rgbGen = forceRGBGen;
 	int alphaGen = pStage->bundle[b].alphaGen;
 
-	baseColor = (float*)uniform_global.bundle[b].baseColor;
-	vertColor = (float*)uniform_global.bundle[b].vertColor;
+	baseColor = (float*)vk.cmd->uniform_global.bundle[b].baseColor;
+	vertColor = (float*)vk.cmd->uniform_global.bundle[b].vertColor;
 
 	baseColor[0] = baseColor[1] = baseColor[2] = baseColor[3] = 1.0f;  	
    	vertColor[0] = vertColor[1] = vertColor[2] = vertColor[3] = 0.0f;
@@ -1924,11 +2004,11 @@ static void vk_compute_colors( const int b, const shaderStage_t *pStage, int for
 		vertColor[2] *= scale;
 	}
 
-	uniform_global.bundle[b].rgbGen = (uint32_t)rgbGen;
-	uniform_global.bundle[b].alphaGen = (uint32_t)alphaGen;
+	vk.cmd->uniform_global.bundle[b].rgbGen = (uint32_t)rgbGen;
+	vk.cmd->uniform_global.bundle[b].alphaGen = (uint32_t)alphaGen;
 
 	if ( alphaGen == AGEN_PORTAL )
-		uniform_global.portalRange = tess.shader->portalRange;
+		vk.cmd->uniform_global.portalRange = tess.shader->portalRange;
 }
 
 static void vk_compute_deform( void ) {
@@ -1936,7 +2016,7 @@ static void vk_compute_deform( void ) {
 	int		waveFunc = GF_NONE;
 	vkDeform_t	*info;
 
-	info = &uniform_global.deform;
+	info = &vk.cmd->uniform_global.deform;
 
 	Com_Memset( info + 0, 0, sizeof(float) * 12 );
 
@@ -2039,7 +2119,7 @@ static void vk_compute_disintegration( int *forceRGBGen )
 	else
 		*forceRGBGen = (int)CGEN_DISINTEGRATION_2;
 
-	info = &uniform_global.disintegration;
+	info = &vk.cmd->uniform_global.disintegration;
 
 	info->origin[0] = backEnd.currentEntity->e.oldorigin[0];
 	info->origin[1] = backEnd.currentEntity->e.oldorigin[1];
@@ -2136,27 +2216,44 @@ void RB_AddDrawItemUniformBinding( DrawItem &item, const trRefEntity_t *refEntit
 		vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM] = 0;
 	}
 
-	vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_CAMERA_BINDING] = vk.cmd->camera_ubo_offset;
-	vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_LIGHT_BINDING] = vk.cmd->light_ubo_offset;
-
-	if ( backEnd.currentEntity ) 
+#ifdef VK_BINDLESS
+	if ( !vk.bindlessActive )
+#endif
 	{
-		if ( backEnd.currentEntity == &backEnd.entity2D ) 
-		{
-			vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_ENTITY_BINDING] = vk.cmd->entity_ubo_offset[REFENTITYNUM_WORLD];
-			vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_BONES_BINDING] = 0;
-		}
-		else if ( backEnd.currentEntity == &tr.worldEntity ) 
-		{
-			vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_ENTITY_BINDING] = vk.cmd->entity_ubo_offset[REFENTITYNUM_WORLD];
-			vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_BONES_BINDING] = 0;
-		}
-		else 
-		{
-			const int refEntityNum = backEnd.currentEntity - backEnd.refdef.entities;
+		uint32_t i;
 
-			vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_ENTITY_BINDING] = vk.cmd->entity_ubo_offset[refEntityNum];
-			vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_BONES_BINDING] = vk.cmd->bones_ubo_offset;
+		if (vk.cmd->descriptor_set.start != ~0U)
+		{
+			// fill NULL descriptor gaps
+			for ( i = vk.cmd->descriptor_set.start + 1; i < vk.cmd->descriptor_set.end; i++ ) 
+			{
+				if ( vk.cmd->descriptor_set.current[i] == VK_NULL_HANDLE )
+					vk.cmd->descriptor_set.current[i] = tr.whiteImage->descriptor_set;
+			}
+		}
+
+		vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_CAMERA_BINDING] = vk.cmd->camera_ubo_offset;
+		vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_LIGHT_BINDING] = vk.cmd->light_ubo_offset;
+
+		if ( backEnd.currentEntity ) 
+		{
+			if ( backEnd.currentEntity == &backEnd.entity2D ) 
+			{
+				vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_ENTITY_BINDING] = vk.cmd->entity_ubo_offset[REFENTITYNUM_WORLD];
+				vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_BONES_BINDING] = 0;
+			}
+			else if ( backEnd.currentEntity == &tr.worldEntity ) 
+			{
+				vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_ENTITY_BINDING] = vk.cmd->entity_ubo_offset[REFENTITYNUM_WORLD];
+				vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_BONES_BINDING] = 0;
+			}
+			else 
+			{
+				const int refEntityNum = backEnd.currentEntity - backEnd.refdef.entities;
+
+				vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_ENTITY_BINDING] = vk.cmd->entity_ubo_offset[refEntityNum];
+				vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_BONES_BINDING] = vk.cmd->bones_ubo_offset;
+			}
 		}
 	}
 			
@@ -2169,12 +2266,15 @@ void RB_AddDrawItemUniformBinding( DrawItem &item, const trRefEntity_t *refEntit
 void RB_AddDrawItemVertexBinding( DrawItem &item ) 
 {
 	// only set appropiate data please, fix this. acceptable for now
-	const pushConst *constants = vk_get_push_constant();
-	Com_Memcpy( item.mvp, constants->mvp, sizeof(float)*16);
+	
+	//if ( !vk.bindlessActive ) {
+		const pushConst *constants = vk_get_push_constant();
+		Com_Memcpy( item.mvp, constants->mvp, sizeof(float)*16);
+	//}
 
 	Com_Memcpy( &item.shade_buffers, shade_bufs, sizeof(shade_bufs));
 
-	if ( tess.vbo_world_index || tess.vbo_model_index ) 
+	if ( item.vbo_world_index || item.vbo_model_index ) 
 		Com_Memcpy( &item.shade_offset, &vk.cmd->vbo_offset, sizeof(vk.cmd->vbo_offset));
 	else
 		Com_Memcpy( &item.shade_offset, &vk.cmd->buf_offset, sizeof(vk.cmd->buf_offset));
@@ -2188,14 +2288,16 @@ void RB_AddDrawItemVertexBinding( DrawItem &item )
 void RB_AddDrawItemIndexBinding( DrawItem &item ) 
 {
 	// model vbo
-	if ( tess.vbo_model_index ) 
+	if ( item.vbo_model_index ) 
 	{
-		item.ibo = tr.ibos[ tess.vbo_model_index - 1 ];
-
 		if ( tess.multiDrawPrimitives ) 
 		{
 			// draw indexed indirect
+#if defined(VK_BINDLESS) && defined(VK_BINDLESS_MODEL_VBO)
+			if ( tess.multiDrawPrimitives > 0 )  // use indirect for single draw too?
+#else
 			if ( tess.multiDrawPrimitives > 1 ) 
+#endif
 			{
 				uint32_t j, offset;
 				size_t *index;
@@ -2203,22 +2305,71 @@ void RB_AddDrawItemIndexBinding( DrawItem &item )
 				item.indexedIndirect = qtrue;		// change type
 				item.draw.params.indexedIndirect.numDraws = tess.multiDrawPrimitives;
 
+				#ifdef VK_BINDLESS_VBO_ARRAY
+					vkUniformIndirectDraw_t first_index;
+					Com_Memset( &data, 0, sizeof(vkUniformIndirectDraw_t) );
+				#endif
+
 				for ( j = 0; j < tess.multiDrawPrimitives; j++ ) 
 				{
-					VkDrawIndexedIndirectCommand indirectCmd = {};
-
 					index = (size_t*)tess.multiDrawFirstIndex + j;
-					indirectCmd.indexCount = tess.multiDrawNumIndexes[j];
-					indirectCmd.instanceCount = 1;
-					indirectCmd.firstIndex = (uint32_t)(*index);
-					indirectCmd.vertexOffset = 0;
-					indirectCmd.firstInstance = 0;
 
-					offset = vk_push_indirect( 1, &indirectCmd );
+					#ifdef VK_BINDLESS_MODEL_VBO
+						if ( vk.bindlessActive )
+						{
+							#if defined(VK_BINDLESS_BATCHED_INDIRECT)
+								vkIndirectCommand_t *cmd = &vk.cmd->indirect_commands[vk.cmd->indirect_commands_num++];
+							
+								index = (size_t*)tess.multiDrawFirstIndex + j;
+								cmd->first_index = (uint32_t)(*index);
+								cmd->vertex_count = tess.multiDrawNumIndexes[j];
+								cmd->pipeline = item.pipeline;
+								cmd->draw_id = item.draw_id;
 
-					if ( j  == 0 )
-						item.draw.params.indexedIndirect.offset = offset;
+							#elif defined(VK_BINDLESS_VBO_ARRAY)
+								VkDrawIndirectCommand indirectCmd = {};
+
+								indirectCmd.vertexCount = tess.multiDrawNumIndexes[j];
+								indirectCmd.firstVertex = 0;
+								indirectCmd.instanceCount = 1;
+								indirectCmd.firstInstance = (item.draw_id << 16) | (j & 0xFFFF); // actual & indirect draw id
+
+								offset = vk_push_indirect2( 1, &indirectCmd );
+
+								data.first_index[j] = (uint32_t)(*index);
+
+								if ( j == 0 )
+									item.draw.params.indexedIndirect.offset = offset;
+							#endif
+						} else
+					#endif
+					{
+						VkDrawIndexedIndirectCommand indirectCmd = {};
+
+						index = (size_t*)tess.multiDrawFirstIndex + j;
+						indirectCmd.indexCount = tess.multiDrawNumIndexes[j];
+						indirectCmd.instanceCount = 1;
+						indirectCmd.firstIndex = (uint32_t)(*index);
+						indirectCmd.vertexOffset = 0;
+						indirectCmd.firstInstance = 0;
+
+						offset = vk_push_indirect( 1, &indirectCmd );
+
+						if ( j == 0 )
+							item.draw.params.indexedIndirect.offset = offset;
+					}
 				}
+
+				#ifdef VK_BINDLESS_VBO_ARRAY
+				if ( vk.bindlessActive )
+				{
+					// set draw id to index of indirect data, which contains the actual draw id. 
+					// which is then set in vertex shader as 'actual_draw_id'.
+					item.draw_id = vk.cmd->indirect_commands_draw_id++;
+					vkbuffer_t *indirect_data = &vk.indirect[vk.cmd_index];
+					vk_rtx_upload_buffer_data_offset( indirect_data, item.draw_id * sizeof(vkUniformIndirectDraw_t), sizeof(vkUniformIndirectDraw_t), (const byte*)&data );
+				}
+				#endif
 
 				return;
 			}
@@ -2231,10 +2382,9 @@ void RB_AddDrawItemIndexBinding( DrawItem &item )
 	}
 
 	// world vbo
-	else if ( tess.vbo_world_index ) 
+	else if ( item.vbo_world_index ) 
 	{
 		item.indexed = qtrue;
-		item.vbo_world_index = tess.vbo_world_index;
 		item.draw.params.indexed.world.ibo_offset = tess.shader->iboOffset;
 
 		VBO_GetDeviceBuffer( item );
@@ -2258,6 +2408,57 @@ void RB_AddDrawItemIndexBinding( DrawItem &item )
 		// overflowed
 		item.draw.params.indexed.num_indexes = 0;
 	}
+}
+
+#ifdef VK_BINDLESS
+void vk_bind_pbr_textures_bindless( const shaderStage_t *pStage, const qboolean has_cubemap, Vk_Pipeline_Def *def ) 
+{
+	if ( pStage->vk_pbr_flags & PBR_HAS_NORMALMAP )
+		vk_bind_texture_idx( VK_BINDLESS_IDX_NORMAL, pStage->normalMap->index );
+	else
+		vk_bind_texture_idx( VK_BINDLESS_IDX_NORMAL, tr.whiteImage->index );
+
+	if ( pStage->vk_pbr_flags & PBR_HAS_PHYSICALMAP || pStage->vk_pbr_flags & PBR_HAS_SPECULARMAP )
+		vk_bind_texture_idx( VK_BINDLESS_IDX_PHYSICAL, pStage->physicalMap->index );
+	else
+	{
+		vk_bind_texture_idx( VK_BINDLESS_IDX_PHYSICAL, tr.whiteImage->index );			
+		vk.cmd->uniform_global.specularScale[0] = 0.0f;
+		vk.cmd->uniform_global.specularScale[2] =
+		vk.cmd->uniform_global.specularScale[3] = 1.0f;
+		vk.cmd->uniform_global.specularScale[1] = 0.5f;
+	}
+
+	if ( !has_cubemap || backEnd.viewParms.targetCube != nullptr )
+		vk_bind_texture_idx( VK_BINDLESS_IDX_CUBEMAP,  tr.emptyCubemap->cubemapIndex );
+	else 	
+		vk_bind_texture_idx( VK_BINDLESS_IDX_CUBEMAP, tr.cubemaps[tess.cubemapIndex-1].prefiltered_image->cubemapIndex );	
+}
+#endif
+
+void vk_bind_pbr_textures( const shaderStage_t *pStage, const qboolean has_cubemap, Vk_Pipeline_Def *def )  
+{
+	if ( def->vk_light_flags )
+		vk_update_descriptor(VK_DESC_PBR_BRDFLUT, vk.brdflut_image_descriptor);
+
+	if ( pStage->vk_pbr_flags & PBR_HAS_NORMALMAP )
+		vk_update_descriptor(VK_DESC_PBR_NORMAL, pStage->normalMap->descriptor_set);
+
+	if ( pStage->vk_pbr_flags & PBR_HAS_PHYSICALMAP || pStage->vk_pbr_flags & PBR_HAS_SPECULARMAP )
+		vk_update_descriptor(VK_DESC_PBR_PHYSICAL, pStage->physicalMap->descriptor_set);
+	else
+	{
+		vk_update_descriptor(VK_DESC_PBR_PHYSICAL, tr.whiteImage->descriptor_set);			
+		vk.cmd->uniform_global.specularScale[0] = 0.0f;
+		vk.cmd->uniform_global.specularScale[2] =
+		vk.cmd->uniform_global.specularScale[3] = 1.0f;
+		vk.cmd->uniform_global.specularScale[1] = 0.5f;
+	}
+
+	if ( !has_cubemap || backEnd.viewParms.targetCube != nullptr )
+		vk_update_descriptor(VK_DESC_PBR_CUBEMAP, tr.emptyCubemap->descriptor_set);
+	else 	
+		vk_update_descriptor(VK_DESC_PBR_CUBEMAP, tr.cubemaps[tess.cubemapIndex-1].prefiltered_image->descriptor_set);	
 }
 
 static ss_input ssInput;
@@ -2313,7 +2514,7 @@ void RB_StageIteratorGeneric( void )
 	}
 #endif
 
-	Com_Memset( &uniform_global, 0, sizeof(uniform_global) );
+	Com_Memset( &vk.cmd->uniform_global, 0, sizeof(vkUniformGlobal_t) );
 	
 	if ( backEnd.currentEntity != &tr.worldEntity ) 
 		vk_compute_deform();
@@ -2392,8 +2593,8 @@ void RB_StageIteratorGeneric( void )
 					if ( is_refraction && i >= 1 )
 						continue;
 
-					vk_compute_tex_coords( &pStage->bundle[i], &uniform_global.bundle[i].tcMod, &uniform_global.bundle[i].tcGen );
-					uniform_global.bundle[i].numTexMods = pStage->bundle[i].numTexMods;
+					vk_compute_tex_coords( &pStage->bundle[i], &vk.cmd->uniform_global.bundle[i].tcMod, &vk.cmd->uniform_global.bundle[i].tcGen );
+					vk.cmd->uniform_global.bundle[i].numTexMods = pStage->bundle[i].numTexMods;
 
 					continue;
 				}
@@ -2496,7 +2697,13 @@ void RB_StageIteratorGeneric( void )
 		if ( is_refraction ) 
 		{
 			// bind extracted color image copy / blit
+#ifdef VK_BINDLESS
+			if ( vk.bindlessActive )
+				vk_bind_texture_idx( VK_BINDLESS_IDX_NORMAL, tr.whiteImage->index );
+			else
+#endif
 			vk_update_descriptor( VK_DESC_TEXTURE0, vk.refraction_extract_descriptor );
+
 
 			Com_Memset( &uniform.refraction, 0, sizeof(uniform.refraction) );
 
@@ -2504,38 +2711,18 @@ void RB_StageIteratorGeneric( void )
 				vk_compute_tex_coords( &pStage->bundle[0], &uniform.refraction.tcMod, &uniform.refraction.tcGen ); 
 		}
 
-		VectorCopy4( pStage->normalScale, uniform_global.normalScale );
-		VectorCopy4( pStage->specularScale, uniform_global.specularScale );
+		VectorCopy4( pStage->normalScale, vk.cmd->uniform_global.normalScale );
+		VectorCopy4( pStage->specularScale, vk.cmd->uniform_global.specularScale );
 
 		// removed glow handling statement, this results in unnecessary glow pass binds?
-		{
-			qboolean has_cubemap = ( !vk.useFastLight && tr.numCubemaps && tess.cubemapIndex > 0) ? qtrue : qfalse;
+		const qboolean has_cubemap = ( !vk.useFastLight && tr.numCubemaps && tess.cubemapIndex > 0) ? qtrue : qfalse;
 
-			if ( def.vk_light_flags )
-				vk_update_pbr_descriptor(VK_DESC_PBR_BRDFLUT, vk.brdflut_image_descriptor);
-
-			if ( pStage->vk_pbr_flags & PBR_HAS_NORMALMAP )
-				vk_update_pbr_descriptor(VK_DESC_PBR_NORMAL, pStage->normalMap->descriptor_set);
-			else
-				vk_update_pbr_descriptor(VK_DESC_PBR_NORMAL, tr.whiteImage->descriptor_set);
-
-			if ( pStage->vk_pbr_flags & PBR_HAS_PHYSICALMAP || pStage->vk_pbr_flags & PBR_HAS_SPECULARMAP )
-				vk_update_pbr_descriptor(VK_DESC_PBR_PHYSICAL, pStage->physicalMap->descriptor_set);
-			else
-			{
-				vk_update_pbr_descriptor(VK_DESC_PBR_PHYSICAL, tr.whiteImage->descriptor_set);
-				
-				uniform_global.specularScale[0] = 0.0f;
-				uniform_global.specularScale[2] =
-				uniform_global.specularScale[3] = 1.0f;
-				uniform_global.specularScale[1] = 0.5f;
-			}
-
-			if ( !has_cubemap || backEnd.viewParms.targetCube != nullptr )
-				vk_update_pbr_descriptor(VK_DESC_PBR_CUBEMAP, tr.emptyCubemap->descriptor_set);
-			else 	
-				vk_update_pbr_descriptor(VK_DESC_PBR_CUBEMAP, tr.cubemaps[tess.cubemapIndex-1].prefiltered_image->descriptor_set);
-		}
+#ifdef VK_BINDLESS
+		if ( vk.bindlessActive )
+			vk_bind_pbr_textures_bindless( pStage, has_cubemap, &def );
+		else
+#endif
+		vk_bind_pbr_textures( pStage, has_cubemap, &def );
 
 		Vk_Depth_Range depthRange = tess.depthRange;
 
@@ -2553,17 +2740,26 @@ void RB_StageIteratorGeneric( void )
 		{
 			DrawItem item = {};
 			item.pipeline = pipeline;
+			item.vbo_world_index = tess.vbo_world_index;
+			item.vbo_model_index = tess.vbo_model_index;
 			item.depthRange = depthRange;
 			item.polygonOffset = tess.shader->polygonOffset;
 			item.identifier = 23;
+			item.push_uniform = qtrue;
 			item.reset_uniform = qtrue;
-
+#ifdef VK_BINDLESS
+			item.draw_id = vk.draw_item_id;
+#endif
 			{
 				if ( fogCollapse ) {
 					VectorCopy( backEnd.ori.viewOrigin, uniform.eyePos );
 					vk_push_uniform( &uniform );
-					vk_update_descriptor( VK_DESC_FOG_COLLAPSE, tr.fogImage->descriptor_set );
-
+					#ifdef VK_BINDLESS
+						if ( vk.bindlessActive )
+							vk_bind_texture_idx( VK_BINDLESS_IDX_FOG_COLLAPSE, tr.fogImage->index );
+						else
+					#endif
+						vk_update_descriptor( VK_DESC_FOG_COLLAPSE, tr.fogImage->descriptor_set );
 					item.reset_uniform = qfalse;
 				}
 				else if ( tess_flags & TESS_VPOS ) {
@@ -2576,9 +2772,44 @@ void RB_StageIteratorGeneric( void )
 				else if ( is_refraction ) {
 					vk_push_uniform( &uniform );
 					item.reset_uniform = qfalse;
+
+					item.push_uniform = qtrue;
+				}
+#ifdef VK_BINDLESS
+				else {
+					item.push_uniform = qfalse;
 				}
 
-				vk_push_uniform_global( &uniform_global );
+				if ( vk.bindlessActive)
+				{
+					if ( backEnd.currentEntity ) 
+					{
+						if ( backEnd.currentEntity == &backEnd.entity2D || backEnd.currentEntity == &tr.worldEntity )
+							vk.cmd->uniform_global.entity_id = REFENTITYNUM_WORLD;
+
+						else 
+						{
+							const int refEntityNum = backEnd.currentEntity - backEnd.refdef.entities;
+							vk.cmd->uniform_global.entity_id = (uint32_t)refEntityNum;
+							vk.cmd->uniform_global.bones_id = vk.cmd->bones_ubo_offset;
+						}
+					}
+
+					#ifdef VK_BINDLESS_BATCHED_INDIRECT
+						vk.cmd->uniform_global.vbo_model_index = item.vbo_model_index;
+
+						const pushConst *constants = vk_get_push_constant();
+						Com_Memcpy( vk.cmd->uniform_global.mvp, constants->mvp, sizeof(float)*16);
+					#endif
+
+					vkbuffer_t *global_data = &vk.global[vk.cmd_index];
+					vk_rtx_upload_buffer_data_offset( global_data, item.draw_id * sizeof(vkUniformGlobal_t), sizeof(vkUniformGlobal_t), (const byte*)&vk.cmd->uniform_global );
+				}
+				else 
+#endif
+				{
+					vk_push_uniform_global( &vk.cmd->uniform_global );
+				}
 			}
 
 			RB_AddDrawItemIndexBinding( item );

@@ -159,7 +159,12 @@ PFN_vkFlushMappedMemoryRanges					qvkFlushMappedMemoryRanges;
 PFN_vkResetCommandPool							qvkResetCommandPool;
 #endif
 
+PFN_vkCmdDrawIndirect							qvkCmdDrawIndirect;
 PFN_vkCmdDrawIndexedIndirect					qvkCmdDrawIndexedIndirect;
+
+#ifdef VK_BINDLESS
+PFN_vkGetBufferDeviceAddress					qvkGetBufferDeviceAddress;
+#endif
 
 static char *Q_stradd( char *dst, const char *src )
 {
@@ -232,11 +237,22 @@ static void vk_create_instance( void )
     appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
     appInfo.pEngineName = "Quake3";
     appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-#ifdef _DEBUG
-	appInfo.apiVersion = VK_API_VERSION_1_1;
+#ifdef VK_BINDLESS
+	// need to check Vulkan 1.2 and bindless support ..
+	if ( r_bindless->integer )
+	{
+		vk.bindlessActive = qtrue;
+		appInfo.apiVersion = VK_MAKE_VERSION(1, 2, 0);
+	}
+	else
 #else
-	appInfo.apiVersion = VK_API_VERSION_1_0;
+	#ifdef _DEBUG
+		appInfo.apiVersion = VK_API_VERSION_1_1;
+	#else
+		appInfo.apiVersion = VK_API_VERSION_1_0;
+	#endif
 #endif
+
 	flags = 0;
     count = 0;
     extension_count = 0;
@@ -524,15 +540,8 @@ qboolean vk_select_surface_format( VkPhysicalDevice physical_device, VkSurfaceKH
         vk.capture_format = vk.color_format;
 }
 
-static qboolean vk_create_device( VkPhysicalDevice physical_device, int device_index ) {
-
-#ifdef _DEBUG
-	VkPhysicalDeviceTimelineSemaphoreFeatures timeline_semaphore;
-	VkPhysicalDeviceVulkanMemoryModelFeatures memory_model;
-	VkPhysicalDeviceBufferDeviceAddressFeatures devaddr_features;
-	VkPhysicalDevice8BitStorageFeatures storage_8bit_features;
-#endif
-
+static qboolean vk_create_device( VkPhysicalDevice physical_device, int device_index ) 
+{
 	ri.Printf(PRINT_ALL, "selected physical device: %i\n\n", device_index);
 
 	// select surface format
@@ -576,7 +585,12 @@ static qboolean vk_create_device( VkPhysicalDevice physical_device, int device_i
 	// create VkDevice
 	{
 		char *str;
+#ifdef VK_BINDLESS
+		qboolean descIndexing = qfalse;
+		const char *device_extension_list[10];
+#else
 		const char *device_extension_list[9];
+#endif
 		uint32_t device_extension_count;
 		const char *ext, *end;
 		const float priority = 1.0;
@@ -598,7 +612,7 @@ static qboolean vk_create_device( VkPhysicalDevice physical_device, int device_i
 		qboolean storage8bit = qfalse;
 		const void** pNextPtr;
 #endif
-		uint32_t i, len, count = 0;
+uint32_t i, len, count = 0;
 
 		VK_CHECK(qvkEnumerateDeviceExtensionProperties(physical_device, NULL, &count, NULL));
 		extension_properties = (VkExtensionProperties*)malloc(count * sizeof(VkExtensionProperties));
@@ -636,7 +650,11 @@ static qboolean vk_create_device( VkPhysicalDevice physical_device, int device_i
 				storage8bit = qtrue;
 #endif
 			}
-
+#ifdef VK_BINDLESS
+			else if ( ( strcmp(ext, VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME) == 0 ) ) {
+				descIndexing = qtrue;
+			}
+#endif
 			// add this device extension to glConfig
 			if (i != 0) {
 				if (str + 1 >= end)
@@ -697,7 +715,11 @@ static qboolean vk_create_device( VkPhysicalDevice physical_device, int device_i
 			device_extension_list[ device_extension_count++ ] = VK_KHR_8BIT_STORAGE_EXTENSION_NAME;
 		}
 #endif // _DEBUG
-
+#ifdef VK_BINDLESS
+		if ( vk.bindlessActive && descIndexing ) {
+			device_extension_list[device_extension_count++] = VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME;
+		}
+#endif
 		qvkGetPhysicalDeviceFeatures(physical_device, &device_features);
 
 		if (device_features.fillModeNonSolid == VK_FALSE) {
@@ -760,44 +782,102 @@ static qboolean vk_create_device( VkPhysicalDevice physical_device, int device_i
 		device_desc.ppEnabledExtensionNames = device_extension_list;
 		device_desc.pEnabledFeatures = &features;
 
-#ifdef _DEBUG
-		pNextPtr = (const void **)&device_desc.pNext;
+#ifdef VK_BINDLESS
+		VkPhysicalDeviceVulkan12Features device_features_vk12;
+		VkPhysicalDeviceFeatures2 device_features2;
 
-		if ( timelineSemaphore ) {
-			*pNextPtr = &timeline_semaphore;
-			timeline_semaphore.pNext = NULL;
-			timeline_semaphore.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES;
-			timeline_semaphore.timelineSemaphore = VK_TRUE;
-			pNextPtr = (const void **)&timeline_semaphore.pNext;
+		Com_Memset( &device_features_vk12, 0, sizeof(VkPhysicalDeviceVulkan12Features) );
+		Com_Memset( &device_features2, 0, sizeof(device_features2) );
+
+		if ( vk.bindlessActive )
+		{
+			device_features_vk12.sType										= VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+			device_features_vk12.pNext										= NULL;
+			device_features_vk12.descriptorIndexing							= VK_TRUE;
+			device_features_vk12.shaderSampledImageArrayNonUniformIndexing	= VK_TRUE;
+			device_features_vk12.shaderStorageBufferArrayNonUniformIndexing = VK_TRUE;
+			device_features_vk12.runtimeDescriptorArray						= VK_TRUE;
+			device_features_vk12.descriptorBindingVariableDescriptorCount	= VK_TRUE;
+			device_features_vk12.descriptorBindingPartiallyBound			= VK_TRUE;
+			device_features_vk12.bufferDeviceAddress						= VK_TRUE;
+			device_features_vk12.bufferDeviceAddressMultiDevice				= VK_FALSE;
+
+	#ifdef _DEBUG
+			if ( timelineSemaphore ) {
+				device_features_vk12.timelineSemaphore						= VK_TRUE;
+			}
+			if ( memoryModel ) {
+				device_features_vk12.vulkanMemoryModel						= VK_TRUE;
+				device_features_vk12.vulkanMemoryModelAvailabilityVisibilityChains = VK_FALSE;
+				device_features_vk12.vulkanMemoryModelDeviceScope			= VK_TRUE;
+
+			}
+			if ( devAddrFeat ) {
+				device_features_vk12.bufferDeviceAddress					= VK_TRUE;
+				device_features_vk12.bufferDeviceAddressCaptureReplay		= VK_FALSE;
+				device_features_vk12.bufferDeviceAddressMultiDevice			= VK_FALSE;
+			}
+			if ( storage8bit ) {
+				device_features_vk12.storageBuffer8BitAccess				= VK_TRUE;
+				device_features_vk12.storagePushConstant8					= VK_FALSE;
+				device_features_vk12.uniformAndStorageBuffer8BitAccess		= VK_TRUE;
+			}
+	#endif
+			device_features2.sType		= VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
+			device_features2.pNext		= &device_features_vk12;
+			device_features2.features	= features;
+
+			device_desc.pNext = &device_features2;
+			device_desc.pEnabledFeatures = nullptr;
 		}
-		if ( memoryModel ) {
-			*pNextPtr = &memory_model;
-			memory_model.pNext = NULL;
-			memory_model.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES;
-			memory_model.vulkanMemoryModel = VK_TRUE;
-			memory_model.vulkanMemoryModelAvailabilityVisibilityChains = VK_FALSE;
-			memory_model.vulkanMemoryModelDeviceScope = VK_TRUE;
-			pNextPtr = (const void **)&memory_model.pNext;
-		}
-		if ( devAddrFeat ) {
-			*pNextPtr = &devaddr_features;
-			devaddr_features.pNext = NULL;
-			devaddr_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
-			devaddr_features.bufferDeviceAddress = VK_TRUE;
-			devaddr_features.bufferDeviceAddressCaptureReplay = VK_FALSE;
-			devaddr_features.bufferDeviceAddressMultiDevice = VK_FALSE;
-			pNextPtr = (const void **)&devaddr_features.pNext;
-		}
-		if ( storage8bit ) {
-			*pNextPtr = &storage_8bit_features;
-			storage_8bit_features.pNext = NULL;
-			storage_8bit_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES;
-			storage_8bit_features.storageBuffer8BitAccess = VK_TRUE;
-			storage_8bit_features.storagePushConstant8 = VK_FALSE;
-			storage_8bit_features.uniformAndStorageBuffer8BitAccess = VK_TRUE;
-			pNextPtr = (const void **)&storage_8bit_features.pNext;
-		}
+
+		else
 #endif
+		{
+#ifdef _DEBUG
+			VkPhysicalDeviceTimelineSemaphoreFeatures	timeline_semaphore;
+			VkPhysicalDeviceVulkanMemoryModelFeatures	memory_model;
+			VkPhysicalDeviceBufferDeviceAddressFeatures	devaddr_features;
+			VkPhysicalDevice8BitStorageFeatures			storage_8bit_features;
+
+			pNextPtr = (const void **)&device_desc.pNext;
+
+			if ( timelineSemaphore ) {
+				*pNextPtr = &timeline_semaphore;
+				timeline_semaphore.pNext = NULL;
+				timeline_semaphore.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES;
+				timeline_semaphore.timelineSemaphore = VK_TRUE;
+				pNextPtr = (const void **)&timeline_semaphore.pNext;
+			}
+			if ( memoryModel ) {
+				*pNextPtr = &memory_model;
+				memory_model.pNext = NULL;
+				memory_model.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES;
+				memory_model.vulkanMemoryModel = VK_TRUE;
+				memory_model.vulkanMemoryModelAvailabilityVisibilityChains = VK_FALSE;
+				memory_model.vulkanMemoryModelDeviceScope = VK_TRUE;
+				pNextPtr = (const void **)&memory_model.pNext;
+			}
+			if ( devAddrFeat ) {
+				*pNextPtr = &devaddr_features;
+				devaddr_features.pNext = NULL;
+				devaddr_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
+				devaddr_features.bufferDeviceAddress = VK_TRUE;
+				devaddr_features.bufferDeviceAddressCaptureReplay = VK_FALSE;
+				devaddr_features.bufferDeviceAddressMultiDevice = VK_FALSE;
+				pNextPtr = (const void **)&devaddr_features.pNext;
+			}
+			if ( storage8bit ) {
+				*pNextPtr = &storage_8bit_features;
+				storage_8bit_features.pNext = NULL;
+				storage_8bit_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES;
+				storage_8bit_features.storageBuffer8BitAccess = VK_TRUE;
+				storage_8bit_features.storagePushConstant8 = VK_FALSE;
+				storage_8bit_features.uniformAndStorageBuffer8BitAccess = VK_TRUE;
+				pNextPtr = (const void **)&storage_8bit_features.pNext;
+			}
+#endif
+		}
 
 		result = qvkCreateDevice(physical_device, &device_desc, NULL, &vk.device);
 		if (result < 0) {
@@ -1071,6 +1151,13 @@ __initStart:
 	INIT_DEVICE_FUNCTION_EXT(vkCmdClearColorImage)
 
 	INIT_DEVICE_FUNCTION(vkCmdDrawIndexedIndirect)
+	INIT_DEVICE_FUNCTION(vkCmdDrawIndirect)
+
+#ifdef VK_BINDLESS
+	if ( vk.bindlessActive ) {
+		INIT_DEVICE_FUNCTION(vkGetBufferDeviceAddress)
+	}
+#endif
 
 #ifdef USE_VK_IMGUI
 	INIT_DEVICE_FUNCTION(vkFlushMappedMemoryRanges)
@@ -1208,6 +1295,11 @@ void vk_deinit_library( void )
 #endif
 
 	qvkCmdDrawIndexedIndirect = NULL;
+	qvkCmdDrawIndirect = NULL;
+
+#ifdef VK_BINDLESS
+	qvkGetBufferDeviceAddress = NULL;
+#endif
 }
 
 #define FORMAT_DEPTH(format, r_bits, g_bits, b_bits) case(VK_FORMAT_##format): *r = r_bits; *b = b_bits; *g = g_bits; return qtrue;

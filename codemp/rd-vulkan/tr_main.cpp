@@ -1297,6 +1297,10 @@ R_AddLitSurf
 */
 void R_AddLitSurf( surfaceType_t *surface, int entityNum, shader_t *shader, int fogIndex )
 {
+#ifdef VK_DLIGHT_GPU
+	return;
+#endif
+
 	struct litSurf_s *litsurf;
 
 	if (tr.refdef.numLitSurfs >= ARRAY_LEN(backEndData->litSurfs))
@@ -1450,6 +1454,7 @@ void R_SortDrawSurfs( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 		}
 	}
 
+#ifndef VK_DLIGHT_GPU
 #ifdef USE_PMLIGHT
 	{
 		dlight_t *dl;
@@ -1464,6 +1469,7 @@ void R_SortDrawSurfs( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 		}
 	}
 #endif // USE_PMLIGHT
+#endif // VK_DLIGHT_GPU
 
 	R_AddDrawSurfCmd(drawSurfs, numDrawSurfs);
 }

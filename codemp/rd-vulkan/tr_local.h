@@ -25,6 +25,19 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define TR_LOCAL_H
 
 #define USE_VK_PBR
+#define VK_BINDLESS
+#define VK_DLIGHT_GPU
+
+#ifdef VK_BINDLESS
+	//#define VK_BINDLESS_VBO_ARRAY			// vbo array
+	#define VK_BINDLESS_BATCHED_INDIRECT	// also used vbo array
+#endif
+
+#if defined(VK_BINDLESS_VBO_ARRAY) || defined(VK_BINDLESS_BATCHED_INDIRECT)
+	#define VK_BINDLESS_MODEL_VBO
+#endif
+
+
 #ifdef USE_VK_PBR
 	#define VK_PBR_BRDFLUT		// for inspecting codebase, does not toggle brdflut. 
 //	#define VK_PBR_FORCE		// debug purposes, deprecated
@@ -287,6 +300,12 @@ typedef struct image_s {
 	VkImage					handle;
 	VkImageView				view;
 	VkDescriptorSet			descriptor_set;
+#ifdef VK_BINDLESS
+#ifdef VK_CUBEMAP
+	uint32_t				cubemapIndex;
+#endif
+	VkSampler				sampler;
+#endif
 	qboolean				isLightmap;
 	uint32_t				mipLevels;		// gl texture binding
 	VkSamplerAddressMode	wrapClampMode;	
@@ -308,12 +327,18 @@ typedef struct VBO_s
 	VkDeviceMemory	memory;
 
 	uint32_t		offsets[12];
+#ifdef VK_BINDLESS_MODEL_VBO
+	size_t			size;
+#endif
 } VBO_t;
 
 typedef struct IBO_s
 {
 	VkBuffer		buffer;
 	VkDeviceMemory	memory;
+#ifdef VK_BINDLESS_MODEL_VBO
+	size_t			size;
+#endif
 } IBO_t;
 
 //===============================================================================
@@ -1258,6 +1283,11 @@ typedef struct mdxmVBOMesh_s
 	int numIndexes;
 	int numVertexes;
 
+#ifdef VK_BINDLESS
+	int meshIndex;
+	int modelIndex;
+#endif
+
 	VBO_t *vbo;
 	IBO_t *ibo;
 } mdxmVBOMesh_t;
@@ -1603,6 +1633,7 @@ typedef struct trGlobals_s {
 #ifdef VK_CUBEMAP
 	int                     numCubemaps;
 	cubemap_t               *cubemaps;
+	int                     cubemapIndexCount;
 #endif
 
 	trRefEntity_t			worldEntity;		// point currentEntity at this when rendering world
@@ -1909,7 +1940,9 @@ extern cvar_t	*r_baseSpecular;
 extern cvar_t	*r_cubeMapping;
 #endif
 #endif
-
+#ifdef VK_BINDLESS
+extern cvar_t	*r_bindless;
+#endif
 /*
 Ghoul2 Insert Start
 */
@@ -2521,22 +2554,27 @@ struct DrawItem
 	float				mvp[16];
 
 	int					vbo_world_index;	// world vbo/ibo
-	IBO_t				*ibo;				// model vbo/ibo
+	int					vbo_model_index;
 
 	uint32_t			pipeline;
 	Vk_Depth_Range		depthRange;
 	qboolean			polygonOffset;
 	qboolean			reset_uniform;
+	qboolean			push_uniform;
 
 	qboolean			indexed;			// draw type
 	qboolean			indexedIndirect;	// draw type
-
 
 	struct {
 		uint32_t		start, end;
 		VkDescriptorSet	current[VK_DESC_COUNT];			// 0:uniform, 1:color0, 2:color1, 3:color2, 4:fog, 5:brdf lut, 6:normal, 7:physical, 8:prefilterd envmap, !9:irradiance envmap
 		uint32_t		offset[VK_DESC_UNIFORM_COUNT];	// 0:uniform, 1: camera, 2: light, 3:ghoul2, 4: global
 	} descriptor_set;
+
+#ifdef VK_BINDLESS
+	uint32_t texture_indices[9];
+	uint32_t draw_id;
+#endif
 
 	VkBuffer			shade_buffers[12];
 	VkDeviceSize		shade_offset[12];
@@ -2685,7 +2723,13 @@ void		vk_create_image( image_t *image, int width, int height, int mip_levels );
 void		vk_clean_staging_buffer( void );
 
 // ghoul2
+#ifdef VK_BINDLESS
+void		RB_TransformBones( const trRefEntity_t *ent, const trRefdef_t *refdef, void *bones_ssbo );
+void		vk_add_bindless_image( image_t *image );
+#else
 void RB_TransformBones( const trRefEntity_t *ent, const trRefdef_t *refdef );
+#endif
+
 int RB_GetBoneUboOffset( CRenderableSurface *surf );
 
 #ifdef VK_CUBEMAP

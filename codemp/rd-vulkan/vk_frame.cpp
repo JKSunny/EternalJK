@@ -1390,6 +1390,22 @@ _retry:
 
     backEnd.screenMapDone = qfalse;
 
+#ifdef VK_BINDLESS
+    #ifdef VK_BINDLESS_MODEL_VBO
+        vk.cmd->indirect_commands_num = 0;
+        vk.cmd->indirect_commands_draw_id = 0;
+    #endif
+
+
+    vk.draw_item_id = 0;
+
+    if ( vk.imageDescriptor.needsUpdate == qtrue ) 
+	{
+		vk_rtx_update_descriptor( &vk.imageDescriptor );
+		vk.imageDescriptor.needsUpdate = qfalse;
+	}
+#endif
+
     if (vk_find_screenmap_drawsurfs()) {
         vk_begin_screenmap_render_pass();
     }
@@ -1400,6 +1416,7 @@ _retry:
 	// dynamic vertex buffer layout 
     vk.cmd->vertex_buffer_offset = 0;
     vk.cmd->indirect_buffer_offset = 0;
+    vk.cmd->indirect_buffer_offset2 = 0;
     Com_Memset( vk.cmd->buf_offset, 0, sizeof( vk.cmd->buf_offset ) );
     Com_Memset( vk.cmd->vbo_offset, 0, sizeof( vk.cmd->vbo_offset ) );
     vk.cmd->curr_index_buffer = VK_NULL_HANDLE;
@@ -1518,6 +1535,7 @@ void vk_release_resources( void ) {
     for ( i = 0; i < NUM_COMMAND_BUFFERS; i++ ) {
         vk.tess[i].vertex_buffer_offset = 0;
         vk.tess[i].indirect_buffer_offset = 0;
+        vk.tess[i].indirect_buffer_offset2 = 0;
     }
 
     Com_Memset(vk.cmd->buf_offset, 0, sizeof(vk.cmd->buf_offset));

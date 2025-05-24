@@ -3542,7 +3542,11 @@ static inline float G2_GetVertBoneWeightNotSlow( const mdxmVertex_t *pVert, cons
 	return fBoneWeight;
 }
 
+#ifdef VK_BINDLESS
+void RB_TransformBones( const trRefEntity_t *ent, const trRefdef_t *refdef, void *bones_ssbo )
+#else
 void RB_TransformBones( const trRefEntity_t *ent, const trRefdef_t *refdef )
+#endif
 {
 	if (!ent->e.ghoul2 || !G2API_HaveWeGhoul2Models(*((CGhoul2Info_v *)ent->e.ghoul2)))
 		return;
@@ -3632,6 +3636,14 @@ void RB_TransformBones( const trRefEntity_t *ent, const trRefdef_t *refdef )
 			bc->boneMatrices,
 			sizeof(mat3x4_t) * bc->mBones.size());
 
+#ifdef VK_BINDLESS
+		if ( bones_ssbo )
+		{
+			memcpy((uint8_t*)bones_ssbo + vk.bonesCount * sizeof(vkUniformBones_t), &bonesBlock, sizeof(vkUniformBones_t));
+			bc->uboOffset = vk.bonesCount++;
+			continue;
+		}
+#endif
 		int uboOffset = vk_append_uniform( &bonesBlock, sizeof(bonesBlock), vk.uniform_bones_item_size );
 
 		bc->uboOffset = uboOffset;

@@ -412,7 +412,7 @@ void vk_create_attachments( void )
     }
 #ifdef VK_PBR_BRDFLUT
     // BRDF LUT
-    if( vk.cubemapActive ) {
+    if( vk.cubemapActive || vk.bindlessActive ) {
         uint32_t size = 512;
         usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
             
@@ -465,7 +465,41 @@ void vk_create_attachments( void )
 #ifdef VK_PBR_BRDFLUT
     VK_SET_OBJECT_NAME( vk.brdflut_image, "brdf lut image", VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT );
     VK_SET_OBJECT_NAME( vk.brdflut_image_view, "brdf lut image view", VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT );
-#endif
+
+    #ifdef VK_BINDLESS
+    if ( vk.bindlessActive )
+    {
+        VkSamplerCreateInfo info = {};
+
+        info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        info.magFilter = VK_FILTER_LINEAR;
+        info.minFilter = VK_FILTER_LINEAR;
+
+        info.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        info.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        info.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+
+        info.anisotropyEnable = VK_FALSE;
+        info.maxAnisotropy = 1.0f;
+
+        info.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+        info.unnormalizedCoordinates = VK_FALSE;
+
+        info.compareEnable = VK_FALSE;
+        info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        info.mipLodBias = 0.0f;
+        info.minLod = 0.0f;
+        info.maxLod = 0.0f;
+
+	    VK_CHECK(qvkCreateSampler(vk.device, &info, NULL, &vk.brdflut_image_sampler));
+	    VK_SET_OBJECT_NAME(vk.brdflut_image_sampler, va("brdf sampler"), VK_DEBUG_REPORT_OBJECT_TYPE_SAMPLER_EXT);
+
+	    vk_rtx_bind_descriptor_image_sampler( &vk.imageDescriptor, VK_BINDLESS_BINDING_BRDFLUT, (VkShaderStageFlagBits)VK_SHADER_STAGE_FRAGMENT_BIT, vk.brdflut_image_sampler, vk.brdflut_image_view, 0 );
+        vk_rtx_set_descriptor_update_size( &vk.imageDescriptor, VK_BINDLESS_BINDING_BRDFLUT, (VkShaderStageFlagBits)VK_SHADER_STAGE_FRAGMENT_BIT, 1 );
+	    vk.imageDescriptor.needsUpdate = qtrue;
+    }
+    #endif // VK_BINDLESS
+#endif // VK_PBR_BRDFLUT
 
     VK_SET_OBJECT_NAME( vk.cubeMap.color_image, "cubemap image", VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT );
 

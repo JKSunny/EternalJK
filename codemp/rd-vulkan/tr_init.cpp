@@ -222,6 +222,9 @@ cvar_t  *r_baseSpecular;
 cvar_t	*r_cubeMapping;
 #endif
 #endif
+#ifdef VK_BINDLESS
+cvar_t	*r_bindless;
+#endif
 
 
 // the limits apply to the sum of all scenes in a frame --
@@ -972,7 +975,9 @@ void R_Register( void )
 	r_cubeMapping						= ri.Cvar_Get("r_cubeMapping",						"0",						CVAR_ARCHIVE | CVAR_LATCH, "" );
 #endif
 #endif
-
+#ifdef VK_BINDLESS
+	r_bindless							= ri.Cvar_Get("r_bindless",							"1",						CVAR_ARCHIVE | CVAR_LATCH, "" );
+#endif
 
 	r_renderWidth						= ri.Cvar_Get("r_renderWidth",						"800",						CVAR_ARCHIVE_ND | CVAR_LATCH, "");
 	r_renderHeight						= ri.Cvar_Get("r_renderHeight",						"600",						CVAR_ARCHIVE_ND | CVAR_LATCH, "");
