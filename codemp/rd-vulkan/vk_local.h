@@ -66,6 +66,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #endif
 
 //#define USE_REVERSED_DEPTH
+#define USE_UPLOAD_QUEUE
 
 //#define USE_VANILLA_SHADOWFINISH
 #define USE_VK_STATS
@@ -105,6 +106,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 //#define MIN_IMAGE_ALIGN				( 128 * 1024 )
 
 #define VERTEX_BUFFER_SIZE				( 4 * 1024 * 1024 )
+#define STAGING_BUFFER_SIZE				( 2 * 1024 * 1024 )
 #define VERTEX_CHUNK_SIZE				( 768 * 1024)
 
 #define XYZ_SIZE						( 4 * VERTEX_CHUNK_SIZE )
@@ -551,6 +553,9 @@ typedef struct {
 	VkDeviceMemory	staging_buffer_memory;
 	VkDeviceSize	staging_buffer_size;
 	byte			*staging_buffer_ptr; // pointer to mapped staging buffer
+#ifdef USE_UPLOAD_QUEUE
+	VkDeviceSize staging_buffer_offset;
+#endif
 
 	// This flag is used to decide whether framebuffer's depth attachment should be cleared
 	// with vmCmdClearAttachment (dirty_depth_attachment != 0), or it have just been
@@ -629,7 +634,7 @@ typedef struct {
 
 	VkSwapchainKHR	swapchain;
 	uint32_t		swapchain_image_count;
-	uint32_t		swapchain_image_index;
+	//uint32_t		swapchain_image_index;
 	VkImage			swapchain_images[MAX_SWAPCHAIN_IMAGES];
 	VkImageView		swapchain_image_views[MAX_SWAPCHAIN_IMAGES];
 	VkSemaphore		swapchain_rendering_finished[MAX_SWAPCHAIN_IMAGES];
@@ -638,6 +643,9 @@ typedef struct {
 	uint32_t		image_memory_count;
 
 	VkCommandPool	command_pool;
+#ifdef USE_UPLOAD_QUEUE
+	VkCommandBuffer	staging_command_buffer;
+#endif
 
 	VkDescriptorSet	color_descriptor;
 	VkDescriptorSet bloom_image_descriptor[1 + VK_NUM_BLUR_PASSES * 2];
@@ -679,6 +687,12 @@ typedef struct {
 		VkImage			color_image;
 		VkImageView		color_image_view;
 	} screenMap;
+
+#ifdef USE_UPLOAD_QUEUE
+	VkSemaphore rendering_finished;	// reference to vk.cmd->rendering_finished2
+	VkSemaphore image_uploaded2;
+	VkSemaphore image_uploaded;		// reference to vk.image_uploaded2
+#endif
 
 	vk_tess_t tess[NUM_COMMAND_BUFFERS], *cmd;
 	int cmd_index;
@@ -923,7 +937,10 @@ typedef struct {
 	uint32_t image_chunk_size;
 	uint32_t maxBoundDescriptorSets;
 	
+#ifdef USE_UPLOAD_QUEUE
 	VkFence aux_fence;
+	qboolean aux_fence_wait;
+#endif
 
 	struct {
 		VkDescriptorSet *descriptor;
