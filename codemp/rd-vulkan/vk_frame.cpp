@@ -46,7 +46,6 @@ void vk_create_sync_primitives( void )
 
         // swapchain image acquired
         VK_CHECK( qvkCreateSemaphore( vk.device, &desc, NULL, &vk.tess[i].image_acquired ) );
-        VK_CHECK( qvkCreateSemaphore( vk.device, &desc, NULL, &vk.tess[i].rendering_finished ) );
 #ifdef USE_UPLOAD_QUEUE
 		// second semaphore to synchronize additional tasks (e.g. image upload)
 		VK_CHECK( qvkCreateSemaphore( vk.device, &desc, NULL, &vk.tess[i].rendering_finished2 ) );
@@ -61,8 +60,7 @@ void vk_create_sync_primitives( void )
 		//vk.tess[i].waitForFence = qtrue;
         vk.tess[i].waitForFence = qfalse;
 
-        VK_SET_OBJECT_NAME( vk.tess[i].image_acquired, va("image_acquired semaphore %i", i), VK_DEBUG_REPORT_OBJECT_TYPE_SEMAPHORE_EXT );
-        VK_SET_OBJECT_NAME( vk.tess[i].rendering_finished, "rendering_finished semaphore", VK_DEBUG_REPORT_OBJECT_TYPE_SEMAPHORE_EXT );     
+        VK_SET_OBJECT_NAME( vk.tess[i].image_acquired, va("image_acquired semaphore %i", i), VK_DEBUG_REPORT_OBJECT_TYPE_SEMAPHORE_EXT );  
 #ifdef USE_UPLOAD_QUEUE
 		VK_SET_OBJECT_NAME( vk.tess[i].rendering_finished2, va( "rendering_finished2 semaphore %i", i ), VK_DEBUG_REPORT_OBJECT_TYPE_SEMAPHORE_EXT );
 #endif
@@ -95,7 +93,6 @@ void vk_destroy_sync_primitives( void )
 
     for (i = 0; i < NUM_COMMAND_BUFFERS; i++) {
         qvkDestroySemaphore(vk.device, vk.tess[i].image_acquired, NULL);
-        qvkDestroySemaphore(vk.device, vk.tess[i].rendering_finished, NULL);
 #ifdef USE_UPLOAD_QUEUE
 		qvkDestroySemaphore( vk.device, vk.tess[i].rendering_finished2, NULL );
 #endif
@@ -968,7 +965,7 @@ static void vk_begin_render_pass( VkRenderPass renderPass, VkFramebuffer frameBu
     // break mirrors combined with saber dglow. descriptors are not restored?
     // investigation required. (anyway, id like to implement depth-prepass, which would streamline dglow pass with main pass)
 	//vk.cmd->last_pipeline = VK_NULL_HANDLE;
-	//vk.cmd->depth_range = DEPTH_RANGE_COUNT; // breaks dglow viewport size
+	vk.cmd->depth_range = DEPTH_RANGE_COUNT;
 }
 
 static void vk_begin_screenmap_render_pass( void )
@@ -1179,7 +1176,7 @@ void vk_begin_frame( void )
 	if ( !ri.VK_IsMinimized() && !vk.cmd->swapchain_image_acquired ) {
 		qboolean retry = qfalse;
 _retry:
-        res = qvkAcquireNextImageKHR( vk.device, vk.swapchain, 1 * 1000000000ULL, vk.cmd->image_acquired, VK_NULL_HANDLE, &vk.cmd->swapchain_image_index );
+        res = qvkAcquireNextImageKHR( vk.device, vk.swapchain, 5 * 1000000000ULL, vk.cmd->image_acquired, VK_NULL_HANDLE, &vk.cmd->swapchain_image_index );
 		// when running via RDP: "Application has already acquired the maximum number of images (0x2)"
 		// probably caused by "device lost" errors
 		if ( res < 0 ) {
@@ -1443,7 +1440,7 @@ void vk_end_frame( void )
 			submit_info.waitSemaphoreCount = 2;
 			submit_info.pWaitSemaphores = &waits[0];
 			submit_info.pWaitDstStageMask = &wait_dst_stage_mask[0];
-			signals[0] = vk.cmd->rendering_finished;
+			signals[0] = vk.swapchain_rendering_finished[ vk.cmd->swapchain_image_index ];
 			signals[1] = vk.cmd->rendering_finished2;
 			submit_info.signalSemaphoreCount = 2;
 			submit_info.pSignalSemaphores = &signals[0];
@@ -1456,7 +1453,7 @@ void vk_end_frame( void )
 			submit_info.waitSemaphoreCount = 2;
 			submit_info.pWaitSemaphores = &waits[0];
 			submit_info.pWaitDstStageMask = &wait_dst_stage_mask[0];
-			signals[0] = vk.cmd->rendering_finished;
+			signals[0] = vk.swapchain_rendering_finished[ vk.cmd->swapchain_image_index ];
 			signals[1] = vk.cmd->rendering_finished2;
 			submit_info.signalSemaphoreCount = 2;
 			submit_info.pSignalSemaphores = &signals[0];
@@ -1467,14 +1464,14 @@ void vk_end_frame( void )
 			submit_info.pWaitSemaphores = &vk.cmd->image_acquired;
 			submit_info.pWaitDstStageMask = &wait_dst_stage_mask[0];
 			submit_info.signalSemaphoreCount = 1;
-			submit_info.pSignalSemaphores = &vk.cmd->rendering_finished;
+			submit_info.pSignalSemaphores = &vk.swapchain_rendering_finished[ vk.cmd->swapchain_image_index ];
 		}
 #else
 		submit_info.waitSemaphoreCount = 1;
 		submit_info.pWaitSemaphores = &vk.cmd->image_acquired;
 		submit_info.pWaitDstStageMask = &wait_dst_stage_mask;
 		submit_info.signalSemaphoreCount = 1;
-		submit_info.pSignalSemaphores = &vk.cmd->rendering_finished;
+		submit_info.pSignalSemaphores = &vk.swapchain_rendering_finished[ vk.cmd->swapchain_image_index ];
 #endif
     }
     else {
@@ -1510,7 +1507,7 @@ void vk_present_frame( void )
 	present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	present_info.pNext = NULL;
 	present_info.waitSemaphoreCount = 1;
-	present_info.pWaitSemaphores = &vk.cmd->rendering_finished;
+	present_info.pWaitSemaphores = &vk.swapchain_rendering_finished[ vk.cmd->swapchain_image_index ];
 	present_info.swapchainCount = 1;
 	present_info.pSwapchains = &vk.swapchain;
 	present_info.pImageIndices = &vk.cmd->swapchain_image_index;
