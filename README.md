@@ -55,11 +55,11 @@ I can highly recommend you to give their great effort a try if you have not done
 > BSP level loading and buffers differ. \
 > This should however be looked at and transitioned to Q2RTX method of tlas and blas creation *(top/bottom level accel structure)*
 
-> **GETTING STARTED** \
+> ⚠️ **GETTING STARTED** \
 > Set cvar r_normalMapping 1, r_specularMapping 1, r_cubeMapping 0, r_hdr 0, r_fullscreen 1 and r_vertexLight 2 
 > Everything is define guarded using **USE_RTX** in the codebase
 
-> **IMPORTANT** Requires assets from [Q2RTX on Steam](https://store.steampowered.com/app/1089130/Quake_II_RTX/) \
+> ⚠️ **IMPORTANT** Requires assets from [Q2RTX on Steam](https://store.steampowered.com/app/1089130/Quake_II_RTX/) \
 > Download and locate the install folder and open baseq2 folder \
 > Locate and open blue_noise.pkz and copy the folder "blue_noise" to the base folder of your Jedi Academy install folder. \
 > Do the same for the folder "env" in q2rtx_media.pkz. \
