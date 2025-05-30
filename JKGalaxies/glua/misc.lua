@@ -72,7 +72,9 @@ local function isValidPzkChallenge(ply)
 
 	--spectators can only play against AI
 	if ply:IsSpectator() then
-		ply:SendPrint("^3You must join the game to challenge other players to Pazaak. Spectators can only play against AI.^1")
+		if opp:IsPlayer() then
+			ply:SendPrint("^3You must join the game to challenge other players to Pazaak. Spectators can only play against AI.^1")
+		end
 		opp = nil
 	end
 
