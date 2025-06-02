@@ -85,16 +85,22 @@ static void vk_test_generated_shaders( void )
 
 		for ( j = 0; j < 2; j++ ) {
             assert (vk.shaders.frag.light[i][j] != VK_NULL_HANDLE);
+        }
+    }
 
-            assert (vk.shaders.frag.ident1[0][i][j] != VK_NULL_HANDLE);
-            assert (vk.shaders.frag.fixed[0][i][j] != VK_NULL_HANDLE);
+    for ( i = 0; i < 3; i++ ) {             // vbo
+        for ( j = 0; j < 2; j++ ) {         // tx
+		    for ( k = 0; k < 2; k++ ) {     // env
+                assert (vk.shaders.frag.ident1[i][j][k] != VK_NULL_HANDLE);
+                assert (vk.shaders.frag.fixed[i][j][k] != VK_NULL_HANDLE);
 
-			for ( k = 0; k < 2; k++ ) {
-                assert (vk.shaders.vert.ident1[0][i][j][k] != VK_NULL_HANDLE);
-                assert (vk.shaders.vert.fixed[0][i][j][k] != VK_NULL_HANDLE);
-			}
-		}
-	}
+			    for ( m = 0; m < 2; m++ ) { // fog
+                    assert (vk.shaders.vert.ident1[i][j][k][m] != VK_NULL_HANDLE);
+                    assert (vk.shaders.vert.fixed[i][j][k][m] != VK_NULL_HANDLE);
+			    }
+		    }
+	    }
+    }
 }
 #endif
 
