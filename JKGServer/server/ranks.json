@@ -52,7 +52,10 @@
 				"can-delent":		1,
 				"can-showspawnvars":	1,
 				"can-entcount":		1,
-				"can-rotate":		1
+				"can-rotate":		1,
+				
+				// Misc
+				"can-cinbuild": 1
 			},
 
 			{

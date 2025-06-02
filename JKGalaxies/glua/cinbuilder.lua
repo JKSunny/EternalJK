@@ -309,7 +309,7 @@ local function CinBuild(ply, argc, argv)
 	local temp
 	local rank = GetRank(ply)
 	if rank["can-cinbuild"] ~= true then
-		SystemReply(ply, "^1You do not have permission to perform this action.")
+		ply:SendPrint("^1You do not have permission to perform this action.")
 		return
 	end
 	if (argc<2) then
