@@ -52,6 +52,52 @@ static VkShaderModule SHADER_MODULE( const uint8_t *bytes, const int count ) {
 
 #include "shaders/spirv/shader_binding.c"
 
+#ifdef _DEBUG
+static void vk_test_generated_shaders( void )
+{
+    int i, j, k, l, m, cl;
+
+    for ( i = 0; i < 3; i++ ) {             // vbo
+
+        // refraction
+        assert (vk.shaders.refraction_vs[i] != VK_NULL_HANDLE);
+
+        for ( j = 0; j < 3; j++ ) {         // tx
+            for ( l = 0; l < 2; l++ ) {     // env
+
+                assert (vk.shaders.frag.gen[i][j][0][l] != VK_NULL_HANDLE);
+                for ( m = 0; m < 2; m++ )   // fog
+                    assert(vk.shaders.vert.gen[i][j][0][l][m] != VK_NULL_HANDLE);
+                
+                // only tx1 && tx2 require cl
+                if ( j == 0 ) 
+                    continue;    
+               
+                assert (vk.shaders.frag.gen[i][j][1][l] != VK_NULL_HANDLE);
+                for ( m = 0; m < 2; m++ )   // fog
+                    assert(vk.shaders.vert.gen[i][j][1][l][m] != VK_NULL_HANDLE);
+            }
+        }
+    }
+
+    for ( i = 0; i < 2; i++ ) {
+        assert (vk.shaders.vert.light[i] != VK_NULL_HANDLE);
+
+		for ( j = 0; j < 2; j++ ) {
+            assert (vk.shaders.frag.light[i][j] != VK_NULL_HANDLE);
+
+            assert (vk.shaders.frag.ident1[0][i][j] != VK_NULL_HANDLE);
+            assert (vk.shaders.frag.fixed[0][i][j] != VK_NULL_HANDLE);
+
+			for ( k = 0; k < 2; k++ ) {
+                assert (vk.shaders.vert.ident1[0][i][j][k] != VK_NULL_HANDLE);
+                assert (vk.shaders.vert.fixed[0][i][j][k] != VK_NULL_HANDLE);
+			}
+		}
+	}
+}
+#endif
+
 void vk_create_shader_modules( void )
 {
     vk_bind_generated_shaders();
@@ -76,6 +122,10 @@ void vk_create_shader_modules( void )
     // note: vertex shader uses a template
     vk.shaders.refraction_fs = SHADER_MODULE(refraction_frag_spv);
     VK_SET_OBJECT_NAME(vk.shaders.refraction_fs, "refraction vertex module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
+
+#ifdef _DEBUG
+    vk_test_generated_shaders();
+#endif
 
     vk.shaders.color_fs = SHADER_MODULE(color_frag_spv);
     vk.shaders.color_vs = SHADER_MODULE(color_vert_spv);
