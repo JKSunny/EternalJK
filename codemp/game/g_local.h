@@ -97,7 +97,7 @@ extern vec3_t gPainPoint;
 #define FL_SHIELDED				0x00080000
 #define FL_UNDYING				0x00100000	// takes damage down to 1, but never dies
 #define FL_NO_DEBUFF			0x00200000	// target is immune to being debuffed
-#define FL_BUSYMODE				0x00400000	// target is busy with something else (eg: Pazaak, trading, etc.)
+#define FL_BUSYMODE				0x00400000	// target is busy with something else (eg: Pazaak, slicing, trading, etc.)
 
 //ex-eFlags -rww
 #define	FL_BOUNCE				0x00100000		// for missiles

@@ -5491,8 +5491,7 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 				}
 			}
 
-
-
+			targ->flags &= ~FL_BUSYMODE; //can't be busy if you're dead
 			targ->enemy = attacker;
 			targ->die (targ, inflictor, attacker, take, mod);
 			G_ActivateBehavior( targ, BSET_DEATH );

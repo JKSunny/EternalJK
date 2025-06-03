@@ -150,6 +150,7 @@ function SlicingGame:StartGame(ply)
 	self:__GenerateGrid()
 	
 	self.AccessLevels = {0,0,0,0,0}
+	self.Player.Busy = true; --mark the player as busy
 	
 	-- We're good to go, tell the player to start up
 	self:__NetStartGame()
@@ -403,7 +404,7 @@ function SlicingGame:__FinishGame(result)
 	self:__NetTransmit()
 	-- Ensure the client gets out of the minigame before calling the callback
 	-- As the callback might bring up something else (like a convo)
-	
+	self.Player.Busy = false; --no longer marked as busy
 	if (self.FinishCallback) then
 		self.FinishCallback(self.Player, result, self.CallbackUserData)
 	end

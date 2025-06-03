@@ -191,8 +191,10 @@ function Conversation:Continue()
 		end
 		self.Player.__sys.CurrConv = nil
 		self.Player:StopConversation()
+		self.Player.Busy = false;
 		return
 	end
+	self.Player.Busy = true;
 	if self.Halted then
 		-- Re-enable the convo system if it was halted
 		self.Player:SendCommand("cin ae")
@@ -229,8 +231,10 @@ function Conversation:RunConvo(ply)
 		end
 		ply.__sys.CurrConv = nil
 		ply:StopConversation()
+		ply.Busy = false;
 		return
 	end
+	ply.Busy = true;
 	ply.__sys.CurrConv = self
 	-- Engage cinematic AND conversation mode
 	ply:SendCommand("cin start")
@@ -250,6 +254,7 @@ function Conversation:ProcessConversation()
 	-- Main processing function here
 	-- First, check if we have pending lines to display, if so, send em now
 	local ply = self.Player
+	ply.Busy = true;
 	local k,v
 	if self.Lines then
 		for k,v in pairs(self.Lines) do
@@ -304,6 +309,7 @@ function Conversation:ProcessConversation()
 	-- If FinishCallback is set and it returns true, keep the convo going, otherwise dont
 	ply.__sys.CurrConv = nil
 	ply:StopConversation()
+	ply.Busy = false;
 end
 
 local function ProcessConvoResponse(ply, argc, argv)
@@ -325,6 +331,7 @@ local function ProcessConvoResponse(ply, argc, argv)
 	-- This shouldn't really happen, but just in case, if no function is set, this'll abort the convo
 	ply.__sys.CurrConv = nil
 	ply:StopConversation()
+	ply.Busy = false;
 end
 
 cmds.Add("~convresp", ProcessConvoResponse)
@@ -348,6 +355,7 @@ local function ProcessConvoTextEntryResponse(ply, argc, argv)
 	-- This shouldn't really happen, but just in case, if no function is set, this'll abort the convo
 	ply.__sys.CurrConv = nil
 	ply:StopConversation()
+	ply.Busy = false;
 end
 
 cmds.Add("~convteresp", ProcessConvoTextEntryResponse)
