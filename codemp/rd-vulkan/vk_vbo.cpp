@@ -1772,8 +1772,6 @@ qboolean vk_alloc_vbo( const char *name, const byte *vbo_data, int vbo_size )
 	VkDeviceSize vertex_buffer_offset;
 	VkDeviceSize allocationSize;
 	uint32_t memory_type_bits;
-	VkBuffer staging_vertex_buffer;
-	VkDeviceMemory staging_buffer_memory;
 	VkCommandBuffer command_buffer;
 	VkBufferCopy copyRegion[1];
 	VkDeviceSize uploadDone;

@@ -2208,6 +2208,8 @@ void ForceAlpha(unsigned char *dstColors, int TR_ForceEntAlpha)
 
 void RB_AddDrawItemUniformBinding( DrawItem &item, const trRefEntity_t *refEntity ) 
 {
+	uint32_t i;
+
 	// fog or env will have this slot bound
 	if ( item.reset_uniform ) 
 	{
@@ -2256,8 +2258,20 @@ void RB_AddDrawItemUniformBinding( DrawItem &item, const trRefEntity_t *refEntit
 			}
 		}
 	}
-			
-	Com_Memcpy( &item.descriptor_set, &vk.cmd->descriptor_set, sizeof(vk.cmd->descriptor_set));
+		
+	{
+		// fill NULL descriptor gaps
+		if ( vk.cmd->descriptor_set.start != ~0U )
+		{
+			for ( i = vk.cmd->descriptor_set.start + 1; i < vk.cmd->descriptor_set.end; i++ ) {
+				if ( vk.cmd->descriptor_set.current[i] == VK_NULL_HANDLE ) {
+					vk.cmd->descriptor_set.current[i] = tr.whiteImage->descriptor_set;
+				}
+			}
+		}
+
+		Com_Memcpy( &item.descriptor_set, &vk.cmd->descriptor_set, sizeof(vk.cmd->descriptor_set));
+	}
 
 	vk.cmd->descriptor_set.end = 0;
 	vk.cmd->descriptor_set.start = ~0U;
@@ -2439,16 +2453,16 @@ void vk_bind_pbr_textures_bindless( const shaderStage_t *pStage, const qboolean 
 void vk_bind_pbr_textures( const shaderStage_t *pStage, const qboolean has_cubemap, Vk_Pipeline_Def *def )  
 {
 	if ( def->vk_light_flags )
-		vk_update_descriptor(VK_DESC_PBR_BRDFLUT, vk.brdflut_image_descriptor);
+		vk_update_descriptor( VK_DESC_PBR_BRDFLUT, vk.brdflut_image_descriptor );
 
 	if ( pStage->vk_pbr_flags & PBR_HAS_NORMALMAP )
-		vk_update_descriptor(VK_DESC_PBR_NORMAL, pStage->normalMap->descriptor_set);
+		vk_update_descriptor( VK_DESC_PBR_NORMAL, pStage->normalMap->descriptor_set );
 
 	if ( pStage->vk_pbr_flags & PBR_HAS_PHYSICALMAP || pStage->vk_pbr_flags & PBR_HAS_SPECULARMAP )
-		vk_update_descriptor(VK_DESC_PBR_PHYSICAL, pStage->physicalMap->descriptor_set);
+		vk_update_descriptor( VK_DESC_PBR_PHYSICAL, pStage->physicalMap->descriptor_set );
 	else
 	{
-		vk_update_descriptor(VK_DESC_PBR_PHYSICAL, tr.whiteImage->descriptor_set);			
+		vk_update_descriptor( VK_DESC_PBR_PHYSICAL, tr.whiteImage->descriptor_set);			
 		vk.cmd->uniform_global.specularScale[0] = 0.0f;
 		vk.cmd->uniform_global.specularScale[2] =
 		vk.cmd->uniform_global.specularScale[3] = 1.0f;
@@ -2456,9 +2470,9 @@ void vk_bind_pbr_textures( const shaderStage_t *pStage, const qboolean has_cubem
 	}
 
 	if ( !has_cubemap || backEnd.viewParms.targetCube != nullptr )
-		vk_update_descriptor(VK_DESC_PBR_CUBEMAP, tr.emptyCubemap->descriptor_set);
+		vk_update_descriptor( VK_DESC_PBR_CUBEMAP, tr.emptyCubemap->descriptor_set );
 	else 	
-		vk_update_descriptor(VK_DESC_PBR_CUBEMAP, tr.cubemaps[tess.cubemapIndex-1].prefiltered_image->descriptor_set);	
+		vk_update_descriptor( VK_DESC_PBR_CUBEMAP, tr.cubemaps[tess.cubemapIndex-1].prefiltered_image->descriptor_set );	
 }
 
 static ss_input ssInput;
