@@ -81,7 +81,7 @@ qboolean vk_bloom( void )
 		// force depth range and viewport/scissor updates
 		vk.cmd->depth_range = DEPTH_RANGE_COUNT;
 
-		uint32_t offsets[4], offset_count;
+		uint32_t offsets[VK_DESC_UNIFORM_COUNT], offset_count;
 
 		// restore clobbered descriptor sets
 		for ( i = 0; i < VK_NUM_BLUR_PASSES; i++ ) {
