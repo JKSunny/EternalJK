@@ -490,7 +490,7 @@ static void RB_UpdateUniformConstants( const trRefdef_t *refdef, const viewParms
 
 void RB_BindDescriptorSets( const DrawItem& drawItem ) 
 {
-	uint32_t offsets[6], offset_count;
+	uint32_t offsets[VK_DESC_UNIFORM_COUNT], offset_count;
 	uint32_t start, end, count;
 
 	start = drawItem.descriptor_set.start;

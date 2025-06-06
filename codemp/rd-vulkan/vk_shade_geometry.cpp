@@ -812,25 +812,6 @@ void vk_update_descriptor( int tmu, VkDescriptorSet curDesSet )
 	vk.cmd->descriptor_set.current[tmu] = curDesSet;
 }
 
-#ifdef USE_VK_PBR
-static void vk_set_valid_preceeding_descriptor( const int tmu )
-{
-	if( vk.cmd->descriptor_set.current[tmu] != VK_NULL_HANDLE )
-		return;
-
-	vk_update_descriptor(tmu, tr.whiteImage->descriptor_set);
-
-	if( tmu > 0 )
-		vk_set_valid_preceeding_descriptor( tmu - 1 );
-}
-static void vk_update_pbr_descriptor( const int tmu, VkDescriptorSet curDesSet ){
-	
-	vk_set_valid_preceeding_descriptor( tmu - 1 );
-
-	vk_update_descriptor( tmu, curDesSet );
-}
-#endif
-
 void vk_update_descriptor_offset( int index, uint32_t offset )
 {
 	vk.cmd->descriptor_set.offset[index] = offset;
@@ -2130,6 +2111,8 @@ void ForceAlpha(unsigned char *dstColors, int TR_ForceEntAlpha)
 
 void RB_AddDrawItemUniformBinding( DrawItem &item, const trRefEntity_t *refEntity ) 
 {
+	uint32_t i;
+
 	// fog or env will have this slot bound
 	if ( item.reset_uniform ) 
 	{
@@ -2161,8 +2144,20 @@ void RB_AddDrawItemUniformBinding( DrawItem &item, const trRefEntity_t *refEntit
 			vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_BONES_BINDING] = vk.cmd->bones_ubo_offset;
 		}
 	}
-			
-	Com_Memcpy( &item.descriptor_set, &vk.cmd->descriptor_set, sizeof(vk.cmd->descriptor_set));
+		
+	{
+		// fill NULL descriptor gaps
+		if ( vk.cmd->descriptor_set.start != ~0U )
+		{
+			for ( i = vk.cmd->descriptor_set.start + 1; i < vk.cmd->descriptor_set.end; i++ ) {
+				if ( vk.cmd->descriptor_set.current[i] == VK_NULL_HANDLE ) {
+					vk.cmd->descriptor_set.current[i] = tr.whiteImage->descriptor_set;
+				}
+			}
+		}
+
+		Com_Memcpy( &item.descriptor_set, &vk.cmd->descriptor_set, sizeof(vk.cmd->descriptor_set));
+	}
 
 	vk.cmd->descriptor_set.end = 0;
 	vk.cmd->descriptor_set.start = ~0U;
@@ -2514,18 +2509,16 @@ void RB_StageIteratorGeneric( void )
 			qboolean has_cubemap = ( !vk.useFastLight && tr.numCubemaps && tess.cubemapIndex > 0) ? qtrue : qfalse;
 
 			if ( def.vk_light_flags )
-				vk_update_pbr_descriptor(VK_DESC_PBR_BRDFLUT, vk.brdflut_image_descriptor);
+				vk_update_descriptor( VK_DESC_PBR_BRDFLUT, vk.brdflut_image_descriptor);
 
 			if ( pStage->vk_pbr_flags & PBR_HAS_NORMALMAP )
-				vk_update_pbr_descriptor(VK_DESC_PBR_NORMAL, pStage->normalMap->descriptor_set);
-			else
-				vk_update_pbr_descriptor(VK_DESC_PBR_NORMAL, tr.whiteImage->descriptor_set);
+				vk_update_descriptor(  VK_DESC_PBR_NORMAL, pStage->normalMap->descriptor_set );
 
 			if ( pStage->vk_pbr_flags & PBR_HAS_PHYSICALMAP || pStage->vk_pbr_flags & PBR_HAS_SPECULARMAP )
-				vk_update_pbr_descriptor(VK_DESC_PBR_PHYSICAL, pStage->physicalMap->descriptor_set);
+				vk_update_descriptor( VK_DESC_PBR_PHYSICAL, pStage->physicalMap->descriptor_set );
 			else
 			{
-				vk_update_pbr_descriptor(VK_DESC_PBR_PHYSICAL, tr.whiteImage->descriptor_set);
+				vk_update_descriptor(VK_DESC_PBR_PHYSICAL, tr.whiteImage->descriptor_set);
 				
 				uniform_global.specularScale[0] = 0.0f;
 				uniform_global.specularScale[2] =
@@ -2534,9 +2527,9 @@ void RB_StageIteratorGeneric( void )
 			}
 
 			if ( !has_cubemap || backEnd.viewParms.targetCube != nullptr )
-				vk_update_pbr_descriptor(VK_DESC_PBR_CUBEMAP, tr.emptyCubemap->descriptor_set);
+				vk_update_descriptor( VK_DESC_PBR_CUBEMAP, tr.emptyCubemap->descriptor_set );
 			else 	
-				vk_update_pbr_descriptor(VK_DESC_PBR_CUBEMAP, tr.cubemaps[tess.cubemapIndex-1].prefiltered_image->descriptor_set);
+				vk_update_descriptor( VK_DESC_PBR_CUBEMAP, tr.cubemaps[tess.cubemapIndex-1].prefiltered_image->descriptor_set );
 		}
 
 		Vk_Depth_Range depthRange = tess.depthRange;
