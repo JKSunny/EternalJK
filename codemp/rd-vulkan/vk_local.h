@@ -605,8 +605,22 @@ typedef struct vkUniformCamera_s {
 	vec4_t viewOrigin;
 } vkUniformCamera_t;
 
+#ifdef VK_DLIGHT_GPU
+typedef struct vkUniformLightEntry_s {
+	vec4_t	origin;
+	vec3_t	color;
+	float	radius;
+} vkUniformLightEntry_t;
+#endif
+
 typedef struct vkUniformLight_s {
-	vec4_t item;
+#ifdef VK_DLIGHT_GPU
+	uint32_t	num_lights;
+	vec3_t		pad0;
+	vkUniformLightEntry_t lights[MAX_REAL_DLIGHTS];
+#else
+	vec4_t	item;
+#endif
 } vkUniformLight_t;
 
 
@@ -1086,6 +1100,9 @@ typedef struct {
 	qboolean specularMappingActive;
 
 	qboolean useFastLight;
+#ifdef VK_DLIGHT_GPU
+	qboolean useGPUDLight;
+#endif
 
 	float maxAnisotropy;
 	float maxLod;
