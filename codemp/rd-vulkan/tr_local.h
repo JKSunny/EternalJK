@@ -28,14 +28,14 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #define USE_VK_PBR
 #ifdef USE_VK_PBR
+	#define VK_DLIGHT_GPU		// 
 	#define VK_PBR_BRDFLUT		// for inspecting codebase, does not toggle brdflut. 
-//	#define VK_PBR_FORCE		// debug purposes, deprecated
 	#define VK_CUBEMAP	
 
-#ifdef VK_CUBEMAP
-	#define REF_CUBEMAP_IRRADIANCE_SIZE 64
-	#define REF_CUBEMAP_SIZE       256
-#endif
+	#ifdef VK_CUBEMAP
+		#define REF_CUBEMAP_IRRADIANCE_SIZE 64
+		#define REF_CUBEMAP_SIZE			256
+	#endif
 #endif
 
 // ImGui
@@ -2204,6 +2204,9 @@ extern cvar_t	*r_bloom_modulate;
 extern cvar_t	*r_renderWidth;
 extern cvar_t	*r_renderHeight;
 extern cvar_t	*r_renderScale;
+#ifdef VK_DLIGHT_GPU
+extern cvar_t	*r_dlightMethod;		// 0 - CPU, 1 - GPU
+#endif
 #ifdef USE_PMLIGHT
 extern cvar_t	*r_dlightMode;			// 0 - vq3, 1 - pmlight
 extern cvar_t	*r_dlightScale;			// 0.1 - 1.0

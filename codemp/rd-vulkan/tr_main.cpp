@@ -1297,6 +1297,10 @@ R_AddLitSurf
 */
 void R_AddLitSurf( surfaceType_t *surface, int entityNum, shader_t *shader, int fogIndex )
 {
+#ifdef VK_DLIGHT_GPU
+	if ( vk.useGPUDLight ) 
+		return;
+#endif
 	struct litSurf_s *litsurf;
 
 	if (tr.refdef.numLitSurfs >= ARRAY_LEN(backEndData->litSurfs))

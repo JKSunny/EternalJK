@@ -384,15 +384,43 @@ static void vk_update_camera_constants( const trRefdef_t *refdef, const viewParm
 }
 
 static void vk_update_light_constants( const trRefdef_t *refdef ) {
-	// set
 	vkUniformLight_t uniform = {};
 
+#ifdef VK_DLIGHT_GPU
+	uint32_t i;
+	size_t size;
+
+	size = sizeof(vec4_t);
+
+	if ( vk.useGPUDLight )
+	{
+		uniform.num_lights = refdef->num_dlights;
+
+		for ( i = 0; i < refdef->num_dlights; i++ )
+		{
+			const dlight_t* light = refdef->dlights + i;
+
+			VectorCopy(light->origin, uniform.lights[i].origin);
+			VectorScale(light->color, light->radius / 25.f, uniform.lights[i].color);
+			uniform.lights[i].radius = light->radius;
+		}
+
+		size += (i * sizeof(vkUniformLightEntry_t));
+	} 
+	else 
+	{
+		uniform.num_lights = 0;
+	}
+
+	vk.cmd->light_ubo_offset = vk_append_uniform( &uniform, size, vk.uniform_light_item_size );
+#else	
 	uniform.item[0] = 0.0f;
 	uniform.item[1] = 1.0f;
 	uniform.item[2] = 2.0f;
 	uniform.item[3] = 3.0f;
 
 	vk.cmd->light_ubo_offset = vk_append_uniform( &uniform, sizeof(uniform), vk.uniform_light_item_size );
+#endif
 }
 
 static void vk_update_entity_light_constants( vkUniformEntity_t &uniform, const trRefEntity_t *refEntity ) 

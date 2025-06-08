@@ -481,6 +481,11 @@ void vk_initialize( void )
 	if ( ( !vk.normalMappingActive && !vk.specularMappingActive ) || vk.maxBoundDescriptorSets < 11 )
 		vk.useFastLight = qtrue;
 
+#ifdef VK_DLIGHT_GPU
+	if ( !vk.useFastLight && r_dlightMethod->integer )
+		vk.useGPUDLight = qtrue;
+#endif
+
 #ifdef VK_CUBEMAP
 	if ( r_cubeMapping->integer )
 		vk.cubemapActive = qtrue;
