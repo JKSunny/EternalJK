@@ -1,5 +1,6 @@
 #version 450
 
+#define VK_DLIGHT_GPU
 #define PI 3.1415926535897932384626433832795
 
 #if defined(USE_LIGHTMAP) || defined(USE_LIGHT_VECTOR) || defined(USE_LIGHT_VERTEX)
@@ -75,16 +76,35 @@ layout(set = 0, binding = 0) uniform UBO {
 		int		func;
 	};
 
+	layout(set = 0, binding = 1) uniform Camera {
+		vec4 u_ViewOrigin;
+	};
+
+	struct vkUniformLightEntry_t {
+		vec4	origin;
+		vec3	color;
+		float	radius;
+	};
+
+	struct vkUniformLight_t {
+		uint	num_lights;
+		vkUniformLightEntry_t	light[64];
+	};
+
+	layout(set = 0, binding = 2) uniform Light {
+		#ifdef VK_DLIGHT_GPU
+			vkUniformLight_t u_lights;
+		#else
+			vec4 item;
+		#endif
+	};
+
 	layout(set = 0, binding = 3) uniform Entity {
 		vec4 u_ambientLight;
 		vec4 u_directedLight;
 		vec4 u_LocalLightOrigin;
 		vec4 u_localViewOrigin;
 		mat4 u_ModelMatrix;
-	};
-
-	layout(set = 0, binding = 2) uniform Light {
-		vec4 item;
 	};
 
 	layout(set = 0, binding = 5) uniform Global {
@@ -269,6 +289,71 @@ layout (constant_id = 8) const float identity_color = 1.0;
 
 		return cubeLightColor * (specular.rgb * EnvBRDF.x + EnvBRDF.y);
 	}
+
+	#ifdef VK_DLIGHT_GPU
+		float CalcLightAttenuation(float normDist)
+		{
+			// zero light at 1.0, approximating q3 style
+			float attenuation = 0.5 * normDist - 0.5;
+			return clamp(attenuation, 0.0, 1.0);
+		}
+
+		vec3 CalcDynamicLightContribution(
+			in float roughness,
+			in vec3 N,
+			in vec3 E,
+			in vec3 viewOrigin,
+			in vec3 viewDir,
+			in float NE,
+			in vec3 diffuse,
+			in vec3 specular,
+			in vec3 vertexNormal )
+		{
+			vec3 outColor = vec3(0.0);
+			vec3 position = viewOrigin - viewDir;
+
+			for ( int i = 0; i < u_lights.num_lights; i++ )
+			{
+				#if 0
+					if ( ( u_LightMask & ( 1 << i ) ) == 0 ) {
+						continue;
+					}
+				#endif
+
+				vkUniformLightEntry_t light = u_lights.light[i];
+
+				vec3  L  = light.origin.xyz - position;
+				float sqrLightDist = dot(L, L);
+
+				// sunny, skip if light is out of radius
+				float radiusSqr = light.radius * light.radius;
+				if (sqrLightDist > radiusSqr) {
+					continue;
+				}
+
+				float attenuation = CalcLightAttenuation(light.radius * light.radius / sqrLightDist);
+
+				// sunny, skip lights with negligible intensity
+				if (attenuation < 0.001) {
+					continue;
+				}
+
+				L /= sqrt(sqrLightDist);
+
+				vec3  H  = normalize(L + E);
+				float NL = clamp(dot(N, L), 0.0, 1.0);
+				float LH = clamp(dot(L, H), 0.0, 1.0);
+				float NH = clamp(dot(N, H), 0.0, 1.0);
+				float VH = clamp(dot(E, H), 0.0, 1.0);
+
+				vec3 reflectance = diffuse + CalcSpecular(specular, NH, NL, NE, LH, VH, roughness);
+
+				outColor += light.color * reflectance * attenuation * NL;
+			}
+
+			return outColor;
+		}
+	#endif
 #endif
 
 void main() {
@@ -575,6 +660,10 @@ void main() {
 		out_color.rgb += ambientColor * diffuse.rgb;
 
 			
+		#ifdef VK_DLIGHT_GPU
+			out_color.rgb += CalcDynamicLightContribution(roughness, N, E, u_ViewOrigin.xyz, viewDir, NE, diffuse.rgb, specular.rgb, var_Normal.xyz);
+		#endif
+
 		if ( env_texture_set > -1 )
 			out_color.rgb += CalcIBLContribution( roughness, N, E, NE, specular.rgb * AO );
 

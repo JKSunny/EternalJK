@@ -55,7 +55,7 @@ static void vk_create_layout_binding( int binding, VkDescriptorType type,
         bind[count].binding = VK_DESC_UNIFORM_CAMERA_BINDING;
         bind[count].descriptorType = type;
         bind[count].descriptorCount = 1;
-        bind[count].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        bind[count].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
         bind[count].pImmutableSamplers = NULL;
         count++;    
 

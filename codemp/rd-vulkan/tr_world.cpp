@@ -600,6 +600,12 @@ void R_AddBrushModelSurfaces ( trRefEntity_t *ent, int entityNum ) {
 	for ( s = 0; s < bmodel->numSurfaces; s++ ) {
 		R_AddWorldSurface( bmodel->firstSurface + s, ent, entityNum, qtrue );
 	}
+
+#ifdef VK_DLIGHT_GPU
+	if ( vk.useGPUDLight ) 
+		return;
+#endif
+
 	R_TransformDlights( tr.viewParms.num_dlights, tr.viewParms.dlights, &tr.ori );
 
 	for ( i = 0; i < tr.viewParms.num_dlights; i++ ) {
@@ -1495,6 +1501,10 @@ void R_AddWorldSurfaces ( viewParms_t *viewParms, trRefdef_t *refdef ) {
 	// "transform" all the dlights so that dl->transformed is actually populated
 	// (even though HERE it's == dl->origin) so we can always use R_LightCullBounds
 	// instead of having copypasted versions for both world and local cases
+#ifdef VK_DLIGHT_GPU
+	if ( vk.useGPUDLight ) 
+		return;
+#endif
 
 	R_TransformDlights(tr.viewParms.num_dlights, tr.viewParms.dlights, &tr.viewParms.world);
 	for (i = 0; i < tr.viewParms.num_dlights; i++)
