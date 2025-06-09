@@ -1,5 +1,5 @@
 {
-	"name":         "Shoretrooper Chestplate ",
+	"name":         "@JKG_ITEMS_TORSO_SHORETROOPER",
 	"internal":     "torso_shoretrooper",
 	"itemtype":     "armor",
 	"armor":		"shtorso",

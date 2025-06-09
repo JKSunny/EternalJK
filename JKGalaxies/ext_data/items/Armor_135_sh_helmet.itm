@@ -1,5 +1,5 @@
 {
-	"name":         "Shoretrooper Helmet",
+	"name":         "@JKG_ITEMS_HELMET_SHORETROOPER",
 	"internal":     "helmet_shoretrooper",
 	"itemtype":     "armor",
 	"armor":		"shhelmet",

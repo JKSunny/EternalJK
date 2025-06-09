@@ -1,5 +1,5 @@
 {
-	"name":         "Shoretrooper Boots",
+	"name":         "@JKG_ITEMS_BOOTS_SHORETROOPER",
 	"internal":		"boots_shoretrooper",
 	"itemtype":		"armor",
 	"armor":		"shboots",

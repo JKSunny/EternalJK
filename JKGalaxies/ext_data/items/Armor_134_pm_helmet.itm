@@ -1,5 +1,5 @@
 {
-	"name":         "BlazeGuard F-451 Helmet (Pyromaniac Helm)",
+	"name":         "@JKG_ITEMS_HELMET_PYROMANIAC",
 	"internal":     "helmet_pyromaniac",
 	"itemtype":     "armor",
 	"armor":		"pmhelmet",

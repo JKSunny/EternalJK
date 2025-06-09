@@ -1,5 +1,5 @@
 {
-	"name":        "Shoretrooper Trousers",
+	"name":        "@JKG_ITEMS_LEGS_SHORETROOPER",
 	"internal":     "legs_shoretrooper",
 	"itemtype":     "armor",
 	"armor":		"shlegs",

@@ -1,5 +1,5 @@
 {
-	"name":         "Shoretrooper Gauntlets",
+	"name":         "@JKG_ITEMS_GLOVES_SHORETROOPER",
 	"internal":      "gloves_shoretrooper",
 	"itemtype":     "armor",
 	"armor":		"shgloves",

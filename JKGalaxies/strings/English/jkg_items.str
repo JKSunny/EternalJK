@@ -307,4 +307,29 @@ LANG_ENGLISH	"Lightsaber"
 REFERENCE	WEAPON_STUN_BATON
 LANG_ENGLISH	"Merr-Sonn Stun Baton"
 
+//-------------------------------------------------------------------------|
+/// JKGalaxies' Armors & Clothing
+//-------------------------------------------------------------------------|
+
+REFERENCE   HELMET_PYROMANIAC
+LANG_ENGLISH    "BlazeGuard F-451 Helmet \n(Pyromaniac Helm)"
+
+REFERENCE   BOOTS_SHORETROOPER
+LANG_ENGLISH    "Shoretrooper Boots"
+
+REFERENCE   GLOVES_SHORETROOPER
+LANG_ENGLISH    "Shoretrooper Gauntlets"
+
+REFERENCE   HELMET_SHORETROOPER
+LANG_ENGLISH    "Shoretrooper Helmet"
+
+REFERENCE   LEGS_SHORETROOPER
+LANG_ENGLISH    "Shoretrooper Leggings"
+
+REFERENCE   SHOULDERPADS_SHORETROOPER
+LANG_ENGLISH    "Shoretrooper Shoulder Armor"
+
+REFERENCE TORSO_SHORETROOPER
+LANG_ENGLISH    "Shoretrooper Chestplate"
+
 ENDMARKER
