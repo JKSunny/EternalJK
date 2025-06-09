@@ -1345,7 +1345,7 @@ void JKG_Inventory_Interact(char** args) {
 		case 0:
 			// Assign to ACI / Equip
 			if (pItem->id->itemType == ITEM_ARMOR) {
-
+				JKG_Inventory_EquipArmor(args);
 			}
 			else {
 				cgImports->InventoryAttachToACI(pItems[nSelected].first, -1, true);
@@ -1459,6 +1459,21 @@ qboolean JKG_Inventory_HandleKey(int key)
 		case A_9:
 			JKG_Inventory_SendItemToACI(key - A_0);
 			return qtrue;
+		case A_CAP_E:
+		{
+			char* aciauto[2] = {"jkgscript", "inv_aciauto"};
+			JKG_Inventory_Interact(aciauto);
+			JKG_Inventory_UpdateNotify(INVENTORYNOTIFY_UPDATE);
+			return qtrue;
+		}
+		case A_CAP_R:
+		{
+			char* aciremove[2] = {"jkgscript",	"inv_aciremove"};
+			JKG_Inventory_ACIRemove(aciremove);
+			JKG_Inventory_UnequipArmor(nullptr);
+			JKG_Inventory_UpdateNotify(INVENTORYNOTIFY_UPDATE);
+			return qtrue;
+		}
 	}
 	return qfalse;
 }

@@ -4836,6 +4836,10 @@ void Menu_HandleKey(menuDef_t *menu, int key, qboolean down) {
 		return;
 	}
 
+	//if the console is open it gets priority, don't handle keys
+	if(trap->Key_GetCatcher() & KEYCATCH_CONSOLE)
+		return;
+
 	inHandler = qtrue;
 	if (g_waitingForKey && down) {
 		Item_Bind_HandleKey(g_bindItem, key, down);
@@ -4851,7 +4855,7 @@ void Menu_HandleKey(menuDef_t *menu, int key, qboolean down) {
 			return;
 		}
 	}
-	// Scrollwheel support for sjop --eez
+	// Scrollwheel support for shop --eez
 	else if (key == A_MWHEELDOWN || key == A_MWHEELUP)
 	{
 		if (Q_stricmp(menu->window.name, "jkg_shop") == 0)
