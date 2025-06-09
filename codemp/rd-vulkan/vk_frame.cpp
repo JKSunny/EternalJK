@@ -1169,8 +1169,11 @@ void vk_begin_dglow_extract_render_pass( void )
 #ifdef VK_PBR_BRDFLUT
 void vk_create_brfdlut( void )
 {
-    if( !vk.cubemapActive )
+    if ( !vk.cubemapActive ) 
+    {
+        vk.brdflut_image_descriptor = tr.whiteImage->descriptor_set;
         return;
+    }
 
     VkRenderPassBeginInfo   begin_info;
     VkClearValue            clear_values[1];
