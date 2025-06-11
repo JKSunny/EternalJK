@@ -181,6 +181,8 @@ layout (constant_id = 8) const float identity_color = 1.0;
 	layout (constant_id = 9) const int normal_texture_set = 0;
 	layout (constant_id = 10) const int physical_texture_set = 0;
 	layout (constant_id = 11) const int env_texture_set = 0;
+	layout (constant_id = 12) const int deluxe_mapping = -1; // -1: deluxemapping off, 0: on, 1: on + bound
+	layout (constant_id = 13) const float deluxe_specular_scale = 1.0;
 
 	layout (location = 10) in vec4 var_Normal;
 	layout (location = 11) in vec4 var_LightDir;
@@ -197,7 +199,9 @@ layout (constant_id = 8) const float identity_color = 1.0;
 	layout (set = 6, binding = 0) uniform sampler2D normal_texture;
 	layout (set = 7, binding = 0) uniform sampler2D physical_texture;
 	layout (set = 8, binding = 0) uniform samplerCube env_texture;
-	//layout(set = 9, binding = 0) uniform samplerCube irradiance_texture;
+	layout (set = 9, binding = 0) uniform sampler2D deluxe_texture;
+
+	//layout(set = 10, binding = 0) uniform samplerCube irradiance_texture;
 #endif
 
 #ifdef USE_ATEST
@@ -583,6 +587,12 @@ void main() {
 		E = normalize(viewDir);
 
 		L = var_LightDir.xyz;
+
+		#if defined(USE_LIGHTMAP) && defined(USE_TX1)
+			if ( deluxe_mapping > 0 )
+				L = ( texture(deluxe_texture, frag_tex_coord1).rgb - vec3(0.5) );
+		#endif
+
 		float sqrLightDist = dot(L, L);
 		L /= sqrt(sqrLightDist);
 		
@@ -650,9 +660,40 @@ void main() {
 		vec3  Fd = CalcDiffuse( diffuse.rgb, NE, NL, LH, roughness );
 		vec3  Fs = vec3( 0.0 );
 
-		float NH = clamp( dot( N, H ), 0.0, 1.0 );
-		float VH = clamp( dot( E, H ), 0.0, 1.0 );
-		Fs = CalcSpecular( specular.rgb, NH, NL, NE, LH, VH, roughness );
+		#if defined(USE_LIGHT_VECTOR)
+			float NH = clamp( dot( N, H ), 0.0, 1.0 );
+			float VH = clamp( dot( E, H ), 0.0, 1.0 );
+			Fs = CalcSpecular( specular.rgb, NH, NL, NE, LH, VH, roughness );
+		#endif
+
+		// ~sunny
+		// allow specular highlights even with r_deluxeMapping 0.
+		// lightgrid approximation is sufficient for specular highlights.
+#if 1
+		// deluxe_specular_scale will be 1.0 when r_deluxeMapping = 0
+		// and match r_deuxeSpecular value when r_deluxeMapping = 1
+		#if defined(USE_LIGHTMAP) || defined(USE_LIGHT_VERTEX)
+			if ( deluxe_specular_scale != 0.0 )
+			{
+				float NH = clamp( dot( N, H ), 0.0, 1.0 );
+				float VH = clamp( dot( E, H ), 0.0, 1.0 );
+				Fs = CalcSpecular( specular.rgb, NH, NL, NE, LH, VH, roughness ) * deluxe_specular_scale;
+			}
+		#endif
+#else
+		// rend2 behavior: skip specular when r_deluxeMapping = 0 on lightmapped surfaces
+		#if ( defined(USE_LIGHTMAP) || defined(USE_LIGHT_VERTEX) )
+			if ( deluxe_specular_scale != 0.0 
+			#if defined(USE_LIGHTMAP)
+				&& deluxe_mapping > -1
+			#endif
+				){
+					float NH = clamp(dot(N, H), 0.0, 1.0);
+					float VH = clamp(dot(E, H), 0.0, 1.0);
+					Fs = CalcSpecular( specular.rgb, NH, NL, NE, LH, VH, roughness) * deluxe_specular_scale;
+				}
+		#endif
+#endif
 
 		vec3 reflectance = Fd + Fs;
 

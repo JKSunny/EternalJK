@@ -2528,6 +2528,11 @@ void RB_StageIteratorGeneric( void )
 				vk_update_descriptor( VK_DESC_PBR_CUBEMAP, tr.emptyCubemap->descriptor_set );
 			else 	
 				vk_update_descriptor( VK_DESC_PBR_CUBEMAP, tr.cubemaps[tess.cubemapIndex-1].prefiltered_image->descriptor_set );
+		
+			if ( def.vk_light_flags & LIGHTDEF_USE_LIGHTMAP && def.vk_pbr_flags & PBR_HAS_DELUXEMAP )
+				vk_update_descriptor(  VK_DESC_PBR_DELUXE, pStage->bundle[1].deluxeMap->descriptor_set );
+			else
+				vk_update_descriptor(  VK_DESC_PBR_DELUXE, tr.whiteImage->descriptor_set );
 		}
 
 		Vk_Depth_Range depthRange = tess.depthRange;

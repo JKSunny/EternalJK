@@ -166,6 +166,95 @@ void R_ColorShiftLightingBytes( const byte in[4], byte out[4], qboolean hasAlpha
 
 /*
 ===============
+R_ColorShiftLightingFloats
+
+===============
+*/
+#ifdef HDR_DELUXE_LIGHTMAP
+#ifndef CLAMP
+#define CLAMP(a,b,c) MIN(MAX((a),(b)),(c))
+#endif
+
+unsigned short FloatToHalf(float in)
+{
+	unsigned short out;
+
+	union
+	{
+		float f;
+		unsigned int i;
+	} f32;
+
+	int sign, inExponent, inFraction;
+	int outExponent, outFraction;
+
+	f32.f = in;
+
+	sign = (f32.i & 0x80000000) >> 31;
+	inExponent = (f32.i & 0x7F800000) >> 23;
+	inFraction = f32.i & 0x007FFFFF;
+
+	outExponent = CLAMP(inExponent - 127, -15, 16) + 15;
+
+	outFraction = 0;
+	if (outExponent == 0x1F)
+	{
+		if (inExponent == 0xFF && inFraction != 0)
+			outFraction = 0x3FF;
+	}
+	else if (outExponent == 0x00)
+	{
+		if (inExponent == 0x00 && inFraction != 0)
+			outFraction = 0x3FF;
+	}
+	else
+		outFraction = inFraction >> 13;
+
+	out = (sign << 15) | (outExponent << 10) | outFraction;
+
+	return out;
+}
+
+static void R_ColorShiftLightingFloats(float in[4], float out[4], float scale, bool overbrightBits = true)
+{
+	float r, g, b;
+
+	if (overbrightBits)
+		scale *= pow(2.0f, r_mapOverBrightBits->integer - tr.overbrightBits);
+
+	r = in[0] * scale;
+	g = in[1] * scale;
+	b = in[2] * scale;
+
+	if ( r_hdr->integer ) // hdr
+	//if (!glRefConfig.floatLightmap)
+	{
+		if (r > 1.0f || g > 1.0f || b > 1.0f)
+		{
+			float high = Q_max(Q_max(r, g), b);
+
+			r /= high;
+			g /= high;
+			b /= high;
+		}
+	}
+
+	out[0] = r;
+	out[1] = g;
+	out[2] = b;
+	out[3] = in[3];
+}
+
+void ColorToRGBA16F(const vec3_t color, unsigned short rgba16f[4])
+{
+	rgba16f[0] = FloatToHalf(color[0]);
+	rgba16f[1] = FloatToHalf(color[1]);
+	rgba16f[2] = FloatToHalf(color[2]);
+	rgba16f[3] = FloatToHalf(1.0f);
+}
+#endif // HDR_DELUXE_LIGHTMAP
+/*
+===============
 R_LoadLightmaps
 
 ===============
@@ -182,9 +271,7 @@ static	void R_LoadLightmaps( world_t &worldData, lump_t *l, lump_t *surfs ) {
 	int			i, j, numLightmaps = 0;
 	float maxIntensity = 0;
 	int numColorComponents = 3;
-
-	//bool hdr_capable = glRefConfig.floatLightmap && r_hdr->integer;
-	bool hdr_capable = r_hdr->integer;
+	int textureInternalFormat = 0;
 
 	const int lightmapSize = DEFAULT_LIGHTMAP_SIZE;
 	tr.hdrLighting = qfalse;
@@ -215,13 +302,15 @@ static	void R_LoadLightmaps( world_t &worldData, lump_t *l, lump_t *surfs ) {
 
 	// test for hdr lighting
 #ifdef HDR_DELUXE_LIGHTMAP
+	bool hdr_capable = r_hdr->integer;
+
 	if (hdr_capable && tr.worldInternalLightmapping)
 	{
 		char filename[MAX_QPATH];
 		byte *externalLightmap = NULL;
 		int lightmapWidth = lightmapSize;
 		int lightmapHeight = lightmapSize;
-		Com_sprintf(filename, sizeof(filename), "maps/%s/lm_%04d.hdr", worldData->baseName, 0);
+		Com_sprintf(filename, sizeof(filename), "maps/%s/lm_%04d.hdr", worldData.baseName, 0);
 		R_LoadHDRImage(filename, &externalLightmap, &lightmapWidth, &lightmapHeight);
 		if (externalLightmap != NULL)
 		{
@@ -229,7 +318,7 @@ static	void R_LoadLightmaps( world_t &worldData, lump_t *l, lump_t *surfs ) {
 			ri.Hunk_FreeTempMemory(externalLightmap);
 		}
 	}
-#endif
+#endif // HDR_DELUXE_LIGHTMAP
 
 	// we are about to upload textures
 	//R_IssuePendingRenderCommands();
@@ -293,19 +382,18 @@ static	void R_LoadLightmaps( world_t &worldData, lump_t *l, lump_t *surfs ) {
 
 	tr.lightmaps = (image_t **)ri.Hunk_Alloc( tr.numLightmaps * sizeof(image_t *), h_low );
 
-	if ( tr.worldDeluxeMapping )
+#ifdef HDR_DELUXE_LIGHTMAP
+	if (tr.worldDeluxeMapping)
 	{
-		tr.deluxemaps = (image_t **)ri.Hunk_Alloc( tr.numLightmaps * sizeof(image_t *), h_low );
+		tr.deluxemaps = (image_t**)ri.Hunk_Alloc(tr.numLightmaps * sizeof(image_t*), h_low);
 	}
 
-#if 0
-#ifdef HDR_DELUXE_LIGHTMAP
-	if (hdr_capable)
-		textureInternalFormat = GL_RGBA16F;
+	if ( hdr_capable ) {
+		textureInternalFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
+	}
 	else
-#endif
-		textureInternalFormat = GL_RGBA8;
-#endif
+#endif // HDR_DELUXE_LIGHTMAP
+		textureInternalFormat = 0;	// VK_FORMAT_R8G8B8A8_UNORM;
 
 	if ( tr.worldInternalLightmapping )
 	{
@@ -317,7 +405,7 @@ static	void R_LoadLightmaps( world_t &worldData, lump_t *l, lump_t *surfs ) {
 				tr.lightmapAtlasSize[0],
 				tr.lightmapAtlasSize[1],
 				lightmapFlags | IMGFLAG_CLAMPTOEDGE,
-				0, 0 );
+				textureInternalFormat, 0 );
 
 			if ( tr.worldDeluxeMapping )
 			{
@@ -361,9 +449,9 @@ static	void R_LoadLightmaps( world_t &worldData, lump_t *l, lump_t *surfs ) {
 			{
 				#ifdef HDR_DELUXE_LIGHTMAP
 					if (hdr_capable)
-						Com_sprintf(filename, sizeof(filename), "maps/%s/lm_%04d.hdr", worldData->baseName, i * (tr.worldDeluxeMapping ? 2 : 1));
+						Com_sprintf(filename, sizeof(filename), "maps/%s/lm_%04d.hdr", worldData.baseName, i * (tr.worldDeluxeMapping ? 2 : 1));
 					else
-						Com_sprintf(filename, sizeof(filename), "maps/%s/lm_%04d.tga", worldData->baseName, i * (tr.worldDeluxeMapping ? 2 : 1));
+						Com_sprintf(filename, sizeof(filename), "maps/%s/lm_%04d.tga", worldData.baseName, i * (tr.worldDeluxeMapping ? 2 : 1));
 
 					bppc = 16;
 					R_LoadHDRImage(filename, &externalLightmap, &lightmapWidth, &lightmapHeight);
@@ -372,7 +460,7 @@ static	void R_LoadLightmaps( world_t &worldData, lump_t *l, lump_t *surfs ) {
 						bppc = 8;
 						R_LoadImage(filename, &externalLightmap, &lightmapWidth, &lightmapHeight);
 					}
-				#else
+				#else // HDR_DELUXE_LIGHTMAP
 					Com_sprintf(filename, sizeof(filename), "maps/%s/lm_%04d.tga", worldData.baseName, i * (tr.worldDeluxeMapping ? 2 : 1));
 
 					bppc = 8;
@@ -435,7 +523,7 @@ static	void R_LoadLightmaps( world_t &worldData, lump_t *l, lump_t *surfs ) {
 			{
 				for ( j = 0; j < lightmapWidth * lightmapHeight; j++ )
 				{
-					#ifdef HDR_DELUXE_LIGHTMAP
+#ifdef HDR_DELUXE_LIGHTMAP
 					if (hdrL && hdr_capable)
 					{
 						vec4_t color;
@@ -477,9 +565,9 @@ static	void R_LoadLightmaps( world_t &worldData, lump_t *l, lump_t *surfs ) {
 						ColorToRGBA16F(color, (unsigned short *)(&image[j * 8]));
 					}
 					else if (buf_p)
-					#else
+#else // HDR_DELUXE_LIGHTMAP
 					if ( buf_p )
-					#endif
+#endif
 					{
 						if ( r_lightmap->integer == 2 )
 						{	// color code by intensity as development tool	(FIXME: check range)
@@ -532,7 +620,7 @@ static	void R_LoadLightmaps( world_t &worldData, lump_t *l, lump_t *surfs ) {
 						lightmapWidth,
 						lightmapHeight,
 						lightmapFlags,
-						0, 0 );
+						textureInternalFormat, 0 );
 			}
 
 			if ( externalLightmap )
@@ -593,9 +681,9 @@ static	void R_LoadLightmaps( world_t &worldData, lump_t *l, lump_t *surfs ) {
 
 			// try loading additional deluxemaps
 			if (tr.worldDeluxeMapping)
-				Com_sprintf(filename, sizeof(filename), "maps/%s/lm_%04d.tga", worldData->baseName, i * 2 + 1);
+				Com_sprintf(filename, sizeof(filename), "maps/%s/lm_%04d.tga", worldData.baseName, i * 2 + 1);
 			else
-				Com_sprintf(filename, sizeof(filename), "maps/%s/dm_%04d.tga", worldData->baseName, i);
+				Com_sprintf(filename, sizeof(filename), "maps/%s/dm_%04d.tga", worldData.baseName, i);
 
 			R_LoadImage(filename, &externalLightmap, &lightmapWidth, &lightmapHeight);
 			if (!externalLightmap)
@@ -645,21 +733,22 @@ static	void R_LoadLightmaps( world_t &worldData, lump_t *l, lump_t *surfs ) {
 						NULL,
 						tr.lightmapAtlasSize[0],
 						tr.lightmapAtlasSize[1],
-						IMGTYPE_DELUXE,
 						IMGFLAG_NOLIGHTSCALE | IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE,
-						0);
+						0, 0);
 				}
 			}
 
 			if (tr.worldInternalLightmapping)
 			{
-				R_UpdateSubImage(
+				vk_upload_image_data(
 					tr.deluxemaps[lightmapnum],
-					image,
 					xoff,
 					yoff,
 					lightmapWidth,
-					lightmapHeight);
+					lightmapHeight,
+					1,
+					image,
+					lightmapWidth * lightmapHeight * 4, qtrue);
 			}
 			else
 			{
@@ -668,17 +757,16 @@ static	void R_LoadLightmaps( world_t &worldData, lump_t *l, lump_t *surfs ) {
 					image,
 					lightmapWidth,
 					lightmapHeight,
-					IMGTYPE_DELUXE,
 					IMGFLAG_NOLIGHTSCALE |
 					IMGFLAG_NO_COMPRESSION |
 					IMGFLAG_CLAMPTOEDGE,
-					0);
+					0, 0);
 			}
 
 			Z_Free(externalLightmap);
 			externalLightmap = NULL;
 		}
-		#endif
+		#endif // HDR_DELUXE_LIGHTMAP
 	}
 
 	if ( r_lightmap->integer == 2 )	{

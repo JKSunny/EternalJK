@@ -167,6 +167,7 @@ void vk_create_pipeline_layout( void )
     set_layouts[6] = vk.set_layout_sampler; // normalMap
     set_layouts[7] = vk.set_layout_sampler; // physicalMap
     set_layouts[8] = vk.set_layout_sampler; // prefiltered envmap
+    set_layouts[9] = vk.set_layout_sampler; // deluxeMap
     //set_layouts[10] = vk.set_layout_sampler; // irradiance envmap
 
     desc.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -662,11 +663,13 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
         int32_t normal_texture_set;
         int32_t physical_texture_set;
         int32_t env_texture_set;
+        int32_t deluxe_mapping;
+        float deluxe_specular_scale;
 #endif
     } frag_spec_data; 
 
 #ifdef USE_VK_PBR
-    VkSpecializationMapEntry spec_entries[13];
+    VkSpecializationMapEntry spec_entries[15];
 #else
     VkSpecializationMapEntry spec_entries[10];
 #endif
@@ -1020,7 +1023,7 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
     frag_spec_info.mapEntryCount = 9;
 #ifdef USE_VK_PBR
     {
-        frag_spec_info.mapEntryCount += 3;
+        frag_spec_info.mapEntryCount += 5;
 
         spec_entries[10].constantID = 9;
         spec_entries[10].offset = offsetof(struct FragSpecData, normal_texture_set);
@@ -1034,7 +1037,14 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
         spec_entries[12].offset = offsetof(struct FragSpecData, env_texture_set);
         spec_entries[12].size = sizeof(frag_spec_data.env_texture_set);
 
-        
+        spec_entries[13].constantID = 12;
+        spec_entries[13].offset = offsetof(struct FragSpecData, deluxe_mapping);
+        spec_entries[13].size = sizeof(frag_spec_data.deluxe_mapping);
+
+        spec_entries[14].constantID = 13;
+        spec_entries[14].offset = offsetof(struct FragSpecData, deluxe_specular_scale);
+        spec_entries[14].size = sizeof(frag_spec_data.deluxe_specular_scale);
+ 
 	    if ( ( def->vk_pbr_flags & PBR_HAS_NORMALMAP ) == 0 )
             frag_spec_data.normal_texture_set = -1;
 
@@ -1043,6 +1053,27 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
 
         if ( !vk.cubemapActive )
             frag_spec_data.env_texture_set = -1;
+
+#ifdef HDR_DELUXE_LIGHTMAP
+        if ( r_deluxeMapping->integer )
+        {
+            // deluxe_texture_set = 0: use approx + scale
+            frag_spec_data.deluxe_mapping = 0;
+            frag_spec_data.deluxe_specular_scale = r_deluxeSpecular->value;
+
+            // enabled+: use deluxe map
+            if ( def->vk_pbr_flags & PBR_HAS_DELUXEMAP )
+                frag_spec_data.deluxe_mapping = 1;
+        }
+        else
+#endif // HDR_DELUXE_LIGHTMAP
+        {
+            // use approx + default scale
+            // perhaps when r_specularMapping = 0 set scale to 0 to disable it? 
+            frag_spec_data.deluxe_mapping = -1;
+            frag_spec_data.deluxe_specular_scale = 1.0;
+        }
+
     }
 #endif
     frag_spec_info.pMapEntries = spec_entries + 1;
