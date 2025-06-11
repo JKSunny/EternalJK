@@ -203,6 +203,11 @@ cvar_t	*r_renderHeight;
 cvar_t	*r_renderScale;
 cvar_t	*r_ignorehwgamma;
 
+#ifdef HDR_DELUXE_LIGHTMAP
+cvar_t	*r_deluxeMapping;
+cvar_t	*r_deluxeSpecular;
+#endif
+
 #ifdef VK_DLIGHT_GPU
 cvar_t	*r_dlightMethod;
 #endif
@@ -994,6 +999,10 @@ void R_Register( void )
 	r_bloom_intensity					= ri.Cvar_Get("r_bloom_intensity",					"0.15",						CVAR_ARCHIVE_ND | CVAR_LATCH, "Final bloom blend factor, default is 0.15");
 	ri.Cvar_CheckRange(r_bloom_intensity, 0.01f, 2, qfalse);
 	r_bloom_modulate					= ri.Cvar_Get("r_bloom_modulate",					"0",						CVAR_ARCHIVE_ND, "Modulate extracted color:\n 0: off (color = color, i.e. no changes)\n 1: by itself (color = color * color)\n 2: by intensity (color = color * luma(color))");
+#ifdef HDR_DELUXE_LIGHTMAP
+	r_deluxeMapping						= ri.Cvar_Get("r_deluxeMapping",					"1",						CVAR_ARCHIVE, "Reading deluxemaps when compiled with q3map2:\n 0: off (approximated from lightgrid)\n 1: on (compiled deluxemaps)");
+	r_deluxeSpecular					= ri.Cvar_Get("r_deluxeSpecular",					"1",						CVAR_ARCHIVE, "Scale the specular response from deluxemaps");
+#endif
 #ifdef VK_DLIGHT_GPU
 	r_dlightMethod						= ri.Cvar_Get("r_dlightMethod",						"1",						CVAR_ARCHIVE, "Dynamic light method:\n 0: CPU-based (fallback)\n 1: GPU-based (requires r_normalMapping and r_specularMapping enabled) ");
 #endif

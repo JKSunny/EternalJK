@@ -138,6 +138,7 @@ set(MPVulkanRendererUtils
 	"${MPDir}/rd-vulkan/utils/ImNodeFlow/src/ImNodeFlow.inl"
 	"${MPDir}/rd-vulkan/utils/ImGuiColorTextEdit/TextEditor.h"
 	"${MPDir}/rd-vulkan/utils/ImGuiColorTextEdit/TextEditor.cpp")
+)
 source_group("renderer\\utils" FILES ${MPVulkanRendererUtils})
 set(MPVulkanRendererFiles ${MPVulkanRendererFiles} ${MPVulkanRendererUtils})
 

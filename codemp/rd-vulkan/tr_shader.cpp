@@ -1260,9 +1260,33 @@ static qboolean ParseStage(shaderStage_t *stage, const char **text)
 				else
 				{
 					stage->bundle[0].image[0] = tr.lightmaps[shader.lightmapIndex[0]];
+#ifdef HDR_DELUXE_LIGHTMAP
+					if ( r_deluxeMapping->integer && tr.worldDeluxeMapping )
+						stage->bundle[0].deluxeMap = tr.deluxemaps[shader.lightmapIndex[0]];
+#endif
 				}
 				continue;
 			}
+#ifdef HDR_DELUXE_LIGHTMAP
+			else if (!Q_stricmp(token, "$deluxemap"))
+			{
+				if ( !tr.worldDeluxeMapping )
+				{
+					ri.Printf(PRINT_WARNING, "WARNING: shader '%s' wants a deluxe map in a map compiled without them\n", shader.name);
+					return qfalse;
+				}
+
+				stage->bundle[0].isLightmap = qtrue;
+				if ( shader.lightmapIndex[0] < 0 || shader.lightmapIndex[0] >= tr.numLightmaps ) {
+					stage->bundle[0].image[0] = tr.whiteImage;
+				}
+				else {
+					stage->bundle[0].image[0] = tr.deluxemaps[shader.lightmapIndex[0]];
+					stage->bundle[0].deluxeMap = tr.deluxemaps[shader.lightmapIndex[0]];
+				}
+				continue;
+			}
+#endif
 			else
 			{
 				imgFlags_t flags = IMGFLAG_NONE;
@@ -4511,6 +4535,10 @@ shader_t *FinishShader( void )
 				else {
 					pStage->bundle[0].image[0] = tr.lightmaps[shader.lightmapIndex[i+1]];
 					pStage->bundle[0].tcGen = (texCoordGen_t)( TCGEN_LIGHTMAP + i + 1 );
+#ifdef HDR_DELUXE_LIGHTMAP
+					if ( r_deluxeMapping->integer && tr.worldDeluxeMapping )
+						pStage->bundle[0].deluxeMap = tr.deluxemaps[shader.lightmapIndex[0]];
+#endif
 				}
 
 				pStage->bundle[0].rgbGen = CGEN_LIGHTMAPSTYLE;
@@ -4575,6 +4603,11 @@ shader_t *FinishShader( void )
 		if (pStage->bundle[0].isLightmap) {
 			if (pStage->bundle[0].tcGen == TCGEN_BAD) {
 				pStage->bundle[0].tcGen = TCGEN_LIGHTMAP;
+#ifdef HDR_DELUXE_LIGHTMAP
+				//if (r_deluxeMapping->integer && tr.worldDeluxeMapping)
+				//	pStage->bundle[0].tcGen = TCGEN_LIGHTMAP;
+#endif
+
 			}
 			hasLightmapStage = qtrue;
 		}
@@ -4920,8 +4953,14 @@ shader_t *FinishShader( void )
 					//if ( !vk.useFastLight)
 						pStage->tessFlags |= TESS_QTANGENT;
 
-					if ( def.vk_light_flags & LIGHTDEF_USE_LIGHTMAP )
+					if ( def.vk_light_flags & LIGHTDEF_USE_LIGHTMAP ) {
 						pStage->tessFlags |= TESS_LIGHTDIR;
+#ifdef HDR_DELUXE_LIGHTMAP
+						if ( pStage->bundle[1].deluxeMap )
+							def.vk_pbr_flags |= PBR_HAS_DELUXEMAP;
+#endif
+					}
+
 				}
 			}
 
@@ -5288,6 +5327,10 @@ void R_CreateDefaultShadingCmds( image_t *image )
 		// two pass lightmap
 		stages[0].bundle[0].image[0] = tr.lightmaps[shader.lightmapIndex[0]];
 		stages[0].bundle[0].isLightmap = qtrue;
+#ifdef HDR_DELUXE_LIGHTMAP
+		if ( r_deluxeMapping->integer && tr.worldDeluxeMapping )
+			stages[0].bundle[0].deluxeMap = tr.deluxemaps[shader.lightmapIndex[0]];
+#endif
 		stages[0].active = qtrue;
 		stages[0].bundle[0].rgbGen = CGEN_IDENTITY;	// lightmaps are scaled on creation for identitylight
 		stages[0].stateBits = GLS_DEFAULT;

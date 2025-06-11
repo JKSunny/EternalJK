@@ -26,6 +26,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #define USE_RTX
 
+#define HDR_DELUXE_LIGHTMAP
+
 #define USE_VK_PBR
 #ifdef USE_VK_PBR
 	#define VK_DLIGHT_GPU		// 
@@ -777,6 +779,11 @@ typedef struct textureBundle_s {
 	int				blendDstBits;
 
 	bool			glow;
+
+#ifdef USE_VK_PBR
+	// have no dedicated bundle indexes for pbr samplers
+	image_t			*deluxeMap;
+#endif
 } textureBundle_t;
 
 
@@ -2204,6 +2211,10 @@ extern cvar_t	*r_bloom_modulate;
 extern cvar_t	*r_renderWidth;
 extern cvar_t	*r_renderHeight;
 extern cvar_t	*r_renderScale;
+#ifdef HDR_DELUXE_LIGHTMAP
+extern cvar_t	*r_deluxeMapping;
+extern cvar_t	*r_deluxeSpecular;
+#endif
 #ifdef VK_DLIGHT_GPU
 extern cvar_t	*r_dlightMethod;		// 0 - CPU, 1 - GPU
 #endif

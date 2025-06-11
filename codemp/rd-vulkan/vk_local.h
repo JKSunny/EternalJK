@@ -100,8 +100,9 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define VK_DESC_PBR_NORMAL				6
 #define VK_DESC_PBR_PHYSICAL			7
 #define VK_DESC_PBR_CUBEMAP				8
-//#define VK_DESC_PBR_IRRADIANCE		9
-#define VK_DESC_COUNT					9	// use 10 for irradiance testing
+#define VK_DESC_PBR_DELUXE				9
+//#define VK_DESC_PBR_IRRADIANCE		10
+#define VK_DESC_COUNT					10	// use 11 for irradiance testing
 #else
 #define VK_DESC_COUNT					5
 #endif
@@ -155,6 +156,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define PBR_HAS_NORMALMAP				( 1 )
 #define PBR_HAS_PHYSICALMAP				( 2 )
 #define PBR_HAS_SPECULARMAP				( 4 )
+#define PBR_HAS_DELUXEMAP				( 8 )
 
 #define PHYS_NONE						( 1 )
 #define PHYS_RMO						( 2 )
@@ -1559,6 +1561,7 @@ void		R_MipMap2( unsigned* const out, unsigned* const in, int inWidth, int inHei
 
 // image
 void		vk_texture_mode( const char *string, const qboolean init );
+void		R_LoadHDRImage( const char* filename, byte** data, int* width, int* height );
 void		vk_destroy_samplers( void );
 VkSampler	vk_find_sampler( const Vk_Sampler_Def *def );
 void		vk_delete_textures( void );

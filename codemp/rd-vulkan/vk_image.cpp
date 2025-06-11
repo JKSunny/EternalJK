@@ -23,6 +23,37 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include "tr_local.h"
 
+static void* R_LocalMalloc(size_t size)
+{
+	return ri.Hunk_AllocateTempMemory(size);
+}
+
+static void* R_LocalReallocSized(void* ptr, size_t old_size, size_t new_size)
+{
+	void* mem = ri.Hunk_AllocateTempMemory(new_size);
+	if (ptr)
+	{
+		memcpy(mem, ptr, old_size);
+		ri.Hunk_FreeTempMemory(ptr);
+	}
+	return mem;
+}
+static void R_LocalFree(void* ptr)
+{
+	if (ptr)
+		ri.Hunk_FreeTempMemory(ptr);
+}
+
+#define STBI_MALLOC R_LocalMalloc
+#define STBI_REALLOC_SIZED R_LocalReallocSized
+#define STBI_FREE R_LocalFree
+
+#define STB_IMAGE_IMPLEMENTATION
+
+#define STBI_TEMP_ON_STACK
+#define STBI_ONLY_HDR
+#include <utils/stb_image.h>
+
 #define STB_DXT_IMPLEMENTATION
 #include "utils/stb_dxt.h"
 
@@ -141,6 +172,36 @@ size_t cstrlen( const char *str )
     for (s = str; *s; ++s)
         ;
     return (s - str);
+}
+
+// Loads a HDR image from file.
+void R_LoadHDRImage( const char* filename, byte** data, int* width, int* height )
+{
+	byte* buf = NULL;
+	int x, y, n;
+	int len = ri.FS_ReadFile(filename, (void**)&buf);
+	if (len <= 0 || buf == NULL)
+	{
+		return;
+	}
+	stbi_set_flip_vertically_on_load(0);
+	*data = (byte*)stbi_loadf_from_memory(buf, len, &x, &y, &n, 3);
+
+	ri.FS_FreeFile(buf);
+
+	if (!data)
+		ri.Printf(PRINT_DEVELOPER, "R_LoadHDRImage(%s) failed: %s\n", filename, stbi_failure_reason());
+
+	if (width)
+		*width = x;
+	else
+		*width = 0;
+
+	if (height)
+		*height = y;
+	else
+		*height = 0;
+
 }
 
 void vk_destroy_samplers( void )
@@ -502,6 +563,7 @@ void vk_generate_image_upload_data( image_t *image, byte *data, Image_Upload_Dat
 	int			mip_level_size;
 	int			miplevel;
 	qboolean	compressed = qfalse;
+	int			bpp = (image->internalFormat & VK_FORMAT_R16G16B16A16_SFLOAT) ? 8 : 4;
 
 	if (image->flags & IMGFLAG_NOSCALE) {
 		//
@@ -527,13 +589,13 @@ void vk_generate_image_upload_data( image_t *image, byte *data, Image_Upload_Dat
 
 	Com_Memset(upload_data, 0, sizeof(*upload_data));
 
-	upload_data->buffer = (byte*)ri.Hunk_AllocateTempMemory(2 * 4 * scaled_width * scaled_height);
+	upload_data->buffer = (byte*)ri.Hunk_AllocateTempMemory(2 * bpp * scaled_width * scaled_height);
 	if (data == NULL) {
-		Com_Memset(upload_data->buffer, 0, 2 * 4 * scaled_width * scaled_height);
+		Com_Memset(upload_data->buffer, 0, 2 * bpp * scaled_width * scaled_height);
 	}
 
 	if ((scaled_width != width || scaled_height != height) && data) {
-		resampled_buffer = (byte*)ri.Hunk_AllocateTempMemory(scaled_width * scaled_height * 4);
+		resampled_buffer = (byte*)ri.Hunk_AllocateTempMemory(scaled_width * scaled_height * bpp);
 		ResampleTexture((unsigned*)data, width, height, (unsigned*)resampled_buffer, scaled_width, scaled_height);
 		data = resampled_buffer;
 	}
@@ -592,7 +654,7 @@ void vk_generate_image_upload_data( image_t *image, byte *data, Image_Upload_Dat
 	upload_data->base_level_width = scaled_width;
 	upload_data->base_level_height = scaled_height;
 
-#ifdef USE_RTX
+	#ifdef USE_RTX
 	// just a test
 	if ( image->flags & IMGFLAG_RGB )
 	{
@@ -603,7 +665,11 @@ void vk_generate_image_upload_data( image_t *image, byte *data, Image_Upload_Dat
 	{
 		if (r_texturebits->integer > 16 || r_texturebits->integer == 0 || (image->flags & IMGFLAG_LIGHTMAP)) {
 			if (!vk.compressed_format || (image->flags & IMGFLAG_NO_COMPRESSION)) {
-				image->internalFormat = VK_FORMAT_R8G8B8A8_UNORM;
+				if ( image->internalFormat > 0 && (image->flags & IMGFLAG_LIGHTMAP) )
+					image->internalFormat = image->internalFormat;
+				else
+					image->internalFormat = VK_FORMAT_R8G8B8A8_UNORM;
+
 				//image->internalFormat = VK_FORMAT_B8G8R8A8_UNORM;
 			}
 			else {
@@ -627,7 +693,7 @@ void vk_generate_image_upload_data( image_t *image, byte *data, Image_Upload_Dat
 			data = compressed_buffer;
 		}
 		else {
-			upload_data->buffer_size = scaled_width * scaled_height * 4;
+			upload_data->buffer_size = scaled_width * scaled_height * bpp;
 		}
 
 		if (data != NULL) {
@@ -658,7 +724,7 @@ void vk_generate_image_upload_data( image_t *image, byte *data, Image_Upload_Dat
 	// At this point width == scaled_width and height == scaled_height.
 
 	scaled_buffer = (unsigned int*)ri.Hunk_AllocateTempMemory(sizeof(unsigned) * scaled_width * scaled_height);
-	Com_Memcpy(scaled_buffer, data, scaled_width * scaled_height * 4);
+	Com_Memcpy(scaled_buffer, data, scaled_width * scaled_height * bpp);
 
 	if (!(image->flags & IMGFLAG_NOLIGHTSCALE)) {
 		if (mipmap)
@@ -674,7 +740,7 @@ void vk_generate_image_upload_data( image_t *image, byte *data, Image_Upload_Dat
 		Com_Memcpy( upload_data->buffer, compressed_buffer, mip_level_size );
 	}
 	else {
-		mip_level_size = scaled_width * scaled_height * 4;
+		mip_level_size = scaled_width * scaled_height * bpp;
 		Com_Memcpy( upload_data->buffer, scaled_buffer, mip_level_size );
 	}
 	upload_data->buffer_size = mip_level_size;
@@ -704,7 +770,7 @@ void vk_generate_image_upload_data( image_t *image, byte *data, Image_Upload_Dat
 				Com_Memcpy( &upload_data->buffer[upload_data->buffer_size], compressed_buffer, mip_level_size );
 			}
 			else {
-				mip_level_size = scaled_width * scaled_height * 4;
+				mip_level_size = scaled_width * scaled_height * bpp;
 				Com_Memcpy( &upload_data->buffer[upload_data->buffer_size], scaled_buffer, mip_level_size );
 			}
 			upload_data->buffer_size += mip_level_size;
@@ -939,6 +1005,10 @@ byte *vk_resample_image_data( const int target_format, byte *data, const int dat
 		return buffer;
 	}
 
+	case VK_FORMAT_R16G16B16A16_SFLOAT:
+		*bytes_per_pixel = 8;
+		return data; 
+
 	default:
 		*bytes_per_pixel = 4;
 		return data;
@@ -1030,6 +1100,10 @@ void vk_upload_image_data( image_t *image, int x, int y, int width,
 	}
 
 	vk_ensure_staging_buffer_allocation( buffer_size );
+
+	if ( image->flags & IMGFLAG_LIGHTMAP ) {
+		Com_Printf("here");
+	}
 
 	for ( i = 0; i < num_regions; i++ ) {
 		regions[i].bufferOffset += vk.staging_buffer.offset;
