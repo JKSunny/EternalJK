@@ -8,7 +8,7 @@ gfx/blood/Blood_DropsBig
 	cull	twosided
     {
         map gfx/blood/blood_dropsbig
-        blendFunc GL_DST_COLOR GL_ONE_MINUS_SRC_ALPHA
+        blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
     }
 }
 
@@ -19,7 +19,7 @@ gfx/blood/Blood_SplatBig
 	cull	twosided
     {
         map gfx/blood/blood_splatbig
-        blendFunc GL_DST_COLOR GL_ONE_MINUS_SRC_ALPHA
+        blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
     }
 }
 
@@ -29,7 +29,7 @@ gfx/blood/Blood_DropsMed
 	cull	twosided
     {
         map gfx/blood/blood_dropsmed
-        blendFunc GL_DST_COLOR GL_ONE_MINUS_SRC_ALPHA
+        blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
     }
 }
 
@@ -40,7 +40,7 @@ gfx/blood/Blood_SplatMed
 	cull	twosided
     {
         map gfx/blood/blood_splatmed
-        blendFunc GL_DST_COLOR GL_ONE_MINUS_SRC_ALPHA
+        blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
     }
 }
 
@@ -50,7 +50,7 @@ gfx/blood/Blood_DropsSmall
 	cull	twosided
     {
         map gfx/blood/blood_dropssmall
-        blendFunc GL_DST_COLOR GL_ONE_MINUS_SRC_ALPHA
+        blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
     }
 }
 
@@ -61,7 +61,7 @@ gfx/blood/Blood_SplatSmall
 	cull	twosided
     {
         map gfx/blood/blood_splatsmall
-        blendFunc GL_DST_COLOR GL_ONE_MINUS_SRC_ALPHA
+        blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
     }
 }
 
@@ -71,7 +71,7 @@ gfx/blood/Blood_DropsTiny
 	cull	twosided
     {
         map gfx/blood/blood_dropstiny
-        blendFunc GL_DST_COLOR GL_ONE_MINUS_SRC_ALPHA
+        blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
     }
 }
 
@@ -82,7 +82,7 @@ gfx/blood/Blood_SplatTiny
 	cull	twosided
     {
         map gfx/blood/blood_splattiny
-        blendFunc GL_DST_COLOR GL_ONE_MINUS_SRC_ALPHA
+        blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
     }
 }
 
@@ -93,7 +93,7 @@ gfx/blood/Blood_SplatPool
 	cull	twosided
     {
         map gfx/blood/blood_splatpool
-        blendFunc GL_DST_COLOR GL_ONE_MINUS_SRC_ALPHA
+        blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
     }
 }
 
@@ -104,7 +104,7 @@ gfx/blood/Blood_DropsPool
 	cull	twosided
     {
         map gfx/blood/blood_dropspool
-        blendFunc GL_DST_COLOR GL_ONE_MINUS_SRC_ALPHA
+        blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
     }
 }
 
@@ -116,7 +116,7 @@ gfx/blood/Blood_Slashmark
 	cull	twosided
     {
         map gfx/blood/blood_slashmark
-        blendFunc GL_DST_COLOR GL_ONE_MINUS_SRC_ALPHA
+        blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
     }
 }
 
@@ -126,12 +126,13 @@ gfx/blood/Blood_Slashmark_Burnt
 	cull	twosided
     {
         map gfx/blood/blood_slashmark
-        blendFunc GL_DST_COLOR GL_ONE_MINUS_SRC_ALPHA
+        blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
     }
     {
         map gfx/burnmarks/burnline
-        blendFunc GL_DST_COLOR GL_ONE_MINUS_SRC_ALPHA
+        blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
     }
 }
 
-// Last modified by: BlasTech on 2010-08-18
+// Last modified by: Silverfang on 2025-06-14
+// Previously modified by: BlasTech on 2010-08-18

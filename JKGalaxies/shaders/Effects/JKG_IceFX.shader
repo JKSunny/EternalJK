@@ -7,14 +7,9 @@ gfx/burnmarks/freeze
 	polygonOffset
 	q3map_nolightmap
 	sort	decal
-//    {
-//        map gfx/burnmarks/freeze
-//        blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
-//        alphaGen vertex
-//    }
     {
         map gfx/burnmarks/freeze
-        blendFunc GL_DST_COLOR GL_ONE_MINUS_SRC_ALPHA
+        blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
         alphaGen vertex
     }
 }
@@ -124,4 +119,5 @@ models/effects/ice_old
     }
 }
 
-// Last modified by: BlasTech on 2010-11-22
+// Last modified by: Silverfang on 2025-06-14
+// Previously modified by: BlasTech on 2010-11-22

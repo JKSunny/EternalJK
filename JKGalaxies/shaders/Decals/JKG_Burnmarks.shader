@@ -1,4 +1,4 @@
-// JKGalaxies Alpha Overlay Burnmarks by BlasTech - please refer to JKG_Blood.shader for information about texture creation with this format. 
+// JKGalaxies Alpha Overlay Burnmarks by BlasTech - please refer to JKG_Blood.shader for information about texture creation with this format.
 
 gfx/burnmarks/blasthole1
 {
@@ -6,8 +6,9 @@ gfx/burnmarks/blasthole1
 	q3map_nolightmap
 	sort	decal
     {
-        clampMap  gfx/burnmarks/blasthole1
-        blendFunc GL_DST_COLOR GL_ONE_MINUS_SRC_ALPHA
+        clampmap gfx/burnmarks/blasthole1
+        blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+        rgbGen const ( 0.000000 0.000000 0.000000 )
         alphaGen vertex
     }
 }
@@ -19,12 +20,13 @@ gfx/burnmarks/blasthole1_glow
 	q3map_nolightmap
 	sort	decal
     {
-        clampMap  gfx/burnmarks/blasthole1
-        blendFunc GL_DST_COLOR GL_ONE_MINUS_SRC_ALPHA
+        clampmap gfx/burnmarks/blasthole1
+        blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+        rgbGen const ( 0.000000 0.000000 0.000000 )
         alphaGen vertex
     }
     {
-        clampMap  gfx/burnmarks/blasthole1_glow
+        clampmap gfx/burnmarks/blasthole1_glow
         blendFunc GL_ONE GL_ONE
         glow
         rgbGen wave noise 1 0.6 0 0.1
@@ -37,8 +39,9 @@ gfx/burnmarks/blasthole2
 	q3map_nolightmap
 	sort	decal
     {
-        clampMap  gfx/burnmarks/blasthole2
-        blendFunc GL_DST_COLOR GL_ONE_MINUS_SRC_ALPHA
+        clampmap gfx/burnmarks/blasthole2
+        blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+        rgbGen const ( 0.000000 0.000000 0.000000 )
         alphaGen vertex
     }
 }
@@ -50,12 +53,13 @@ gfx/burnmarks/blasthole2_glow
 	q3map_nolightmap
 	sort	decal
     {
-        clampMap  gfx/burnmarks/blasthole2
-        blendFunc GL_DST_COLOR GL_ONE_MINUS_SRC_ALPHA
+        clampmap gfx/burnmarks/blasthole2
+        blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+        rgbGen const ( 0.000000 0.000000 0.000000 )
         alphaGen vertex
     }
     {
-        clampMap  gfx/burnmarks/blasthole2_glow
+        clampmap gfx/burnmarks/blasthole2_glow
         blendFunc GL_ONE GL_ONE
         glow
         rgbGen wave noise 1 0.6 0 0.2
@@ -68,8 +72,9 @@ gfx/burnmarks/burnmark_1
 	q3map_nolightmap
 	sort	decal
     {
-        clampMap  gfx/burnmarks/burnmark_1
-        blendFunc GL_DST_COLOR GL_ONE_MINUS_SRC_ALPHA
+        clampmap gfx/burnmarks/burnmark_1
+        blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+        rgbGen const ( 0.000000 0.000000 0.000000 )
         alphaGen vertex
     }
 }
@@ -80,8 +85,9 @@ gfx/burnmarks/burnmark_2
 	q3map_nolightmap
 	sort	decal
     {
-        clampMap  gfx/burnmarks/burnmark_2
-        blendFunc GL_DST_COLOR GL_ONE_MINUS_SRC_ALPHA
+        clampmap gfx/burnmarks/burnmark_2
+        blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+        rgbGen const ( 0.000000 0.000000 0.000000 )
         alphaGen vertex
     }
 }
@@ -92,8 +98,9 @@ gfx/burnmarks/burnmark_3
 	q3map_nolightmap
 	sort	decal
     {
-        clampMap  gfx/burnmarks/burnmark_3
-        blendFunc GL_DST_COLOR GL_ONE_MINUS_SRC_ALPHA
+        clampmap gfx/burnmarks/burnmark_3
+        blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+        rgbGen const ( 0.000000 0.000000 0.000000 )
         alphaGen vertex
     }
 }
@@ -104,8 +111,9 @@ gfx/burnmarks/burnmark_4
 	q3map_nolightmap
 	sort	decal
     {
-        clampMap  gfx/burnmarks/burnmark_4
-        blendFunc GL_DST_COLOR GL_ONE_MINUS_SRC_ALPHA
+        clampmap gfx/burnmarks/burnmark_4
+        blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+        rgbGen const ( 0.000000 0.000000 0.000000 )
         alphaGen vertex
     }
 }
@@ -116,8 +124,9 @@ gfx/burnmarks/burnmark_5
 	q3map_nolightmap
 	sort	decal
     {
-        clampMap  gfx/burnmarks/burnmark_5
-        blendFunc GL_DST_COLOR GL_ONE_MINUS_SRC_ALPHA
+        clampmap gfx/burnmarks/burnmark_5
+        blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+        rgbGen const ( 0.000000 0.000000 0.000000 )
         alphaGen vertex
     }
 }
@@ -128,8 +137,9 @@ gfx/burnmarks/burnmark_6
 	q3map_nolightmap
 	sort	decal
     {
-        clampMap  gfx/burnmarks/burnmark_6
-        blendFunc GL_DST_COLOR GL_ONE_MINUS_SRC_ALPHA
+        clampmap gfx/burnmarks/burnmark_6
+        blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+        rgbGen const ( 0.000000 0.000000 0.000000 )
         alphaGen vertex
     }
 }
@@ -140,8 +150,9 @@ gfx/burnmarks/burnmark_7
 	q3map_nolightmap
 	sort	decal
     {
-        clampMap  gfx/burnmarks/burnmark_7
-        blendFunc GL_DST_COLOR GL_ONE_MINUS_SRC_ALPHA
+        clampmap gfx/burnmarks/burnmark_7
+        blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+        rgbGen const ( 0.000000 0.000000 0.000000 )
         alphaGen vertex
     }
 }
@@ -152,8 +163,9 @@ gfx/burnmarks/burnmark_8
 	q3map_nolightmap
 	sort	decal
     {
-        clampMap  gfx/burnmarks/burnmark_8
-        blendFunc GL_DST_COLOR GL_ONE_MINUS_SRC_ALPHA
+        clampmap gfx/burnmarks/burnmark_8
+        blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+        rgbGen const ( 0.000000 0.000000 0.000000 )
         alphaGen vertex
     }
 }
@@ -164,8 +176,9 @@ gfx/burnmarks/burnmark_9
 	q3map_nolightmap
 	sort	decal
     {
-        clampMap  gfx/burnmarks/burnmark_9
-        blendFunc GL_DST_COLOR GL_ONE_MINUS_SRC_ALPHA
+        clampmap gfx/burnmarks/burnmark_9
+        blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+        rgbGen const ( 0.000000 0.000000 0.000000 )
         alphaGen vertex
     }
 }
@@ -176,8 +189,9 @@ gfx/burnmarks/burnmark_10
 	q3map_nolightmap
 	sort	decal
     {
-        clampMap  gfx/burnmarks/burnmark_10
-        blendFunc GL_DST_COLOR GL_ONE_MINUS_SRC_ALPHA
+        clampmap gfx/burnmarks/burnmark_10
+        blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+        rgbGen const ( 0.000000 0.000000 0.000000 )
         alphaGen vertex
     }
 }
@@ -189,12 +203,13 @@ gfx/burnmarks/burnmark_4_glow
 	q3map_nolightmap
 	sort	decal
     {
-        clampMap  gfx/burnmarks/burnmark_4
-        blendFunc GL_DST_COLOR GL_ONE_MINUS_SRC_ALPHA
+        clampmap gfx/burnmarks/burnmark_4
+        blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+        rgbGen const ( 0.000000 0.000000 0.000000 )
         alphaGen vertex
     }
     {
-        clampMap  gfx/burnmarks/burnmark_4_glow
+        clampmap gfx/burnmarks/burnmark_4_glow
         blendFunc GL_ONE GL_ONE
         glow
         rgbGen wave noise 1 0.6 0 0.2
@@ -208,12 +223,13 @@ gfx/burnmarks/burnmark_8_glow
 	q3map_nolightmap
 	sort	decal
     {
-        clampMap  gfx/burnmarks/burnmark_8
-        blendFunc GL_DST_COLOR GL_ONE_MINUS_SRC_ALPHA
+        clampmap gfx/burnmarks/burnmark_8
+        blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+        rgbGen const ( 0.000000 0.000000 0.000000 )
         alphaGen vertex
     }
     {
-        clampMap  gfx/burnmarks/burnmark_8_glow
+        clampmap gfx/burnmarks/burnmark_8_glow
         blendFunc GL_ONE GL_ONE
         glow
         rgbGen wave noise 1 0.6 0 0.3
@@ -227,12 +243,13 @@ gfx/burnmarks/burnmark_10_glow
 	q3map_nolightmap
 	sort	decal
     {
-        clampMap  gfx/burnmarks/burnmark_10
-        blendFunc GL_DST_COLOR GL_ONE_MINUS_SRC_ALPHA
+        clampmap gfx/burnmarks/burnmark_10
+        blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+        rgbGen const ( 0.000000 0.000000 0.000000 )
         alphaGen vertex
     }
     {
-        clampMap  gfx/burnmarks/burnmark_10_glow
+        clampmap gfx/burnmarks/burnmark_10_glow
         blendFunc GL_ONE GL_ONE
         glow
         rgbGen wave noise 1 0.6 0 0.25
@@ -245,8 +262,9 @@ gfx/burnmarks/electricaldamage
 	q3map_nolightmap
 	sort	decal
     {
-        clampMap  gfx/burnmarks/electricaldamage
-        blendFunc GL_DST_COLOR GL_ONE_MINUS_SRC_ALPHA
+        clampmap gfx/burnmarks/electricaldamage
+        blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+        rgbGen const ( 0.000000 0.000000 0.000000 )
         alphaGen vertex
     }
 }
@@ -257,12 +275,13 @@ gfx/burnmarks/electricaldamage_glow
 	q3map_nolightmap
 	sort	decal
     {
-        clampMap  gfx/burnmarks/electricaldamage
-        blendFunc GL_DST_COLOR GL_ONE_MINUS_SRC_ALPHA
+        clampmap gfx/burnmarks/electricaldamage
+        blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+        rgbGen const ( 0.000000 0.000000 0.000000 )
         alphaGen vertex
     }
     {
-        clampMap  gfx/burnmarks/electricaldamage_glow
+        clampmap gfx/burnmarks/electricaldamage_glow
         blendFunc GL_ONE GL_ONE
         glow
         rgbGen wave noise 1 0.6 0 0.4
@@ -275,8 +294,9 @@ gfx/burnmarks/projmark1
 	q3map_nolightmap
 	sort	decal
     {
-        clampMap  gfx/burnmarks/projmark1
-        blendFunc GL_DST_COLOR GL_ONE_MINUS_SRC_ALPHA
+        clampmap gfx/burnmarks/projmark1
+        blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+        rgbGen const ( 0.000000 0.000000 0.000000 )
         alphaGen vertex
     }
 }
@@ -287,8 +307,9 @@ gfx/burnmarks/projmark2
 	q3map_nolightmap
 	sort	decal
     {
-        clampMap  gfx/burnmarks/projmark2
-        blendFunc GL_DST_COLOR GL_ONE_MINUS_SRC_ALPHA
+        clampmap gfx/burnmarks/projmark2
+        blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+        rgbGen const ( 0.000000 0.000000 0.000000 )
         alphaGen vertex
     }
 }
@@ -299,8 +320,9 @@ gfx/burnmarks/projmark3
 	q3map_nolightmap
 	sort	decal
     {
-        clampMap  gfx/burnmarks/projmark3
-        blendFunc GL_DST_COLOR GL_ONE_MINUS_SRC_ALPHA
+        clampmap gfx/burnmarks/projmark3
+        blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+        rgbGen const ( 0.000000 0.000000 0.000000 )
         alphaGen vertex
     }
 }
@@ -311,8 +333,9 @@ gfx/burnmarks/projmark4
 	q3map_nolightmap
 	sort	decal
     {
-        clampMap  gfx/burnmarks/projmark4
-        blendFunc GL_DST_COLOR GL_ONE_MINUS_SRC_ALPHA
+        clampmap gfx/burnmarks/projmark4
+        blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+        rgbGen const ( 0.000000 0.000000 0.000000 )
         alphaGen vertex
     }
 }
@@ -324,12 +347,13 @@ gfx/burnmarks/projmark2_glow
 	q3map_nolightmap
 	sort	decal
     {
-        clampMap  gfx/burnmarks/projmark2
-        blendFunc GL_DST_COLOR GL_ONE_MINUS_SRC_ALPHA
+        clampmap gfx/burnmarks/projmark2
+        blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+        rgbGen const ( 0.000000 0.000000 0.000000 )
         alphaGen vertex
     }
     {
-        clampMap  gfx/burnmarks/projmark2_glow
+        clampmap gfx/burnmarks/projmark2_glow
         blendFunc GL_ONE GL_ONE
         glow
         rgbGen wave noise 1 0.6 0 0.25
@@ -343,12 +367,13 @@ gfx/burnmarks/projmark3_glow
 	q3map_nolightmap
 	sort	decal
     {
-        clampMap  gfx/burnmarks/projmark3
-        blendFunc GL_DST_COLOR GL_ONE_MINUS_SRC_ALPHA
+        clampmap gfx/burnmarks/projmark3
+        blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+        rgbGen const ( 0.000000 0.000000 0.000000 )
         alphaGen vertex
     }
     {
-        clampMap  gfx/burnmarks/projmark3_glow
+        clampmap gfx/burnmarks/projmark3_glow
         blendFunc GL_ONE GL_ONE
         glow
         rgbGen wave noise 1 0.6 0 0.35
@@ -362,8 +387,8 @@ gfx/burnmarks/thermalcrater1
 	q3map_nolightmap
 	sort	decal
     {
-        clampMap  gfx/burnmarks/thermalcrater_base1
-        blendFunc GL_DST_COLOR GL_ONE_MINUS_SRC_ALPHA
+        clampmap gfx/burnmarks/thermalcrater_base1
+        blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
         alphaGen vertex
     }
 }
@@ -375,8 +400,8 @@ gfx/burnmarks/thermalcrater2
 	q3map_nolightmap
 	sort	decal
     {
-        clampMap  gfx/burnmarks/thermalcrater_base2
-        blendFunc GL_DST_COLOR GL_ONE_MINUS_SRC_ALPHA
+        clampmap gfx/burnmarks/thermalcrater_base2
+        blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
         alphaGen vertex
     }
 }
@@ -388,8 +413,8 @@ gfx/burnmarks/thermalcrater3
 	q3map_nolightmap
 	sort	decal
     {
-        clampMap  gfx/burnmarks/thermalcrater_base3
-        blendFunc GL_DST_COLOR GL_ONE_MINUS_SRC_ALPHA
+        clampmap gfx/burnmarks/thermalcrater_base3
+        blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
         alphaGen vertex
     }
 }
@@ -402,12 +427,13 @@ gfx/burnmarks/thermalcrater_glow1
 	sort	decal
 	deformvertexes	bulge	0 0.1 0
     {
-        clampMap  gfx/burnmarks/thermalcrater_glow1
+// rgbGen wave sin 1 0.5 0.3 0.15
+
+        clampmap gfx/burnmarks/thermalcrater_glow1
         blendFunc GL_ONE GL_ONE
         glow
         detail
         rgbGen vertex
-//        rgbGen wave sin 1 0.5 0.3 0.15
         tcMod stretch sin 1 0.01 0 0.2
     }
 }
@@ -420,12 +446,13 @@ gfx/burnmarks/thermalcrater_glow2
 	sort	decal
 	deformvertexes	bulge	0 0.1 0
     {
-        clampMap  gfx/burnmarks/thermalcrater_glow2
+// rgbGen wave sin 1 0.5 0.1 0.15
+
+        clampmap gfx/burnmarks/thermalcrater_glow2
         blendFunc GL_ONE GL_ONE
         glow
         detail
         rgbGen vertex
-//        rgbGen wave sin 1 0.5 0.1 0.15
         tcMod stretch sin 1 0.01 0.2 0.2
     }
 }
@@ -438,14 +465,17 @@ gfx/burnmarks/thermalcrater_glow3
 	sort	decal
 	deformvertexes	bulge	0 0.1 0
     {
-        clampMap  gfx/burnmarks/thermalcrater_glow3
+// rgbGen wave sin 1 0.5 0.6 0.15
+
+        clampmap gfx/burnmarks/thermalcrater_glow3
         blendFunc GL_ONE GL_ONE
         glow
         detail
         rgbGen vertex
-//        rgbGen wave sin 1 0.5 0.6 0.15
         tcMod stretch sin 1 0.01 0.4 0.2
     }
 }
 
-// Last modified by: BlasTech on 2010-12-18
+// Last modified by: Silverfang on 2025-06-14
+// Previously modified by: BlasTech on 2010-12-18
+
