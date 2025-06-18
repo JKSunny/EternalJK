@@ -101,13 +101,11 @@ gfx/lightsabers/rgb_blade_compressed
         animMap 5.2 gfx/lightsabers/blade_compressed gfx/lightsabers/blade_compressed2 gfx/lightsabers/blade_compressed3 gfx/lightsabers/blade_compressed4
         blendFunc GL_ONE GL_ONE
         rgbGen wave inversesawtooth 0 1 0 5.2
-		noOverride
     }
     {
         animMap 5.2 gfx/lightsabers/blade_compressed4 gfx/lightsabers/blade_compressed gfx/lightsabers/blade_compressed2 gfx/lightsabers/blade_compressed3
         blendFunc GL_ONE GL_ONE
         rgbGen wave sawtooth 0 1 0 5.2
-		noOverride
     }
 }
 
@@ -119,13 +117,11 @@ gfx/lightsabers/rgb_blade_unstable
         animMap 5.2 gfx/lightsabers/blade_unstable gfx/lightsabers/blade_unstable2 gfx/lightsabers/blade_unstable3 gfx/lightsabers/blade_unstable4
         blendFunc GL_ONE GL_ONE
         rgbGen wave inversesawtooth 0 0.5 0 5.2
-		noOverride
     }
     {
         animMap 5.2 gfx/lightsabers/blade_unstable4 gfx/lightsabers/blade_unstable gfx/lightsabers/blade_unstable2 gfx/lightsabers/blade_unstable3
         blendFunc GL_ONE GL_ONE
         rgbGen wave sawtooth 0 0.5 0 5.2
-		noOverride
     }
 }
 
@@ -295,13 +291,11 @@ gfx/lightsabers/rgbalpha_blade_compressed
         animMap 5.2 gfx/lightsabers/blade_compressed gfx/lightsabers/blade_compressed2 gfx/lightsabers/blade_compressed3 gfx/lightsabers/blade_compressed4
         blendFunc GL_ONE GL_ONE
         rgbGen wave inversesawtooth 0 1 0 5.2
-		noOverride
     }
     {
         animMap 5.2 gfx/lightsabers/blade_compressed4 gfx/lightsabers/blade_compressed gfx/lightsabers/blade_compressed2 gfx/lightsabers/blade_compressed3
         blendFunc GL_ONE GL_ONE
         rgbGen wave sawtooth 0 1 0 5.2
-		noOverride
     }
 }
 
@@ -318,13 +312,11 @@ gfx/lightsabers/rgbalpha_blade_unstable
         animMap 5.2 gfx/lightsabers/blade_unstable gfx/lightsabers/blade_unstable2 gfx/lightsabers/blade_unstable3 gfx/lightsabers/blade_unstable4
         blendFunc GL_ONE GL_ONE
         rgbGen wave inversesawtooth 0 0.5 0 5.2
-		noOverride
     }
     {
         animMap 5.2 gfx/lightsabers/blade_unstable4 gfx/lightsabers/blade_unstable gfx/lightsabers/blade_unstable2 gfx/lightsabers/blade_unstable3
         blendFunc GL_ONE GL_ONE
         rgbGen wave sawtooth 0 0.5 0 5.2
-		noOverride
     }
 }
 

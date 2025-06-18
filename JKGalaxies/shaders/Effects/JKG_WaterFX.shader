@@ -597,14 +597,12 @@ textures/aMace_Vault/sg_eventhorizon
         animMap 0.4 textures/aMace_Vault/sg_eh1 textures/aMace_Vault/sg_eh2 textures/aMace_Vault/sg_eh3 textures/aMace_Vault/sg_eh4
         rgbGen wave inversesawtooth 0 1 0 0.4
         tcMod stretch sin 1 0.004 0 1.2
-		noOverride
     }
     {
         animMap 0.4 textures/aMace_Vault/sg_eh2 textures/aMace_Vault/sg_eh3 textures/aMace_Vault/sg_eh4 textures/aMace_Vault/sg_eh1
         blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
         alphaGen wave sawtooth 0 1 0 0.4
         tcMod stretch sin 1 0.006 0 1.6
-		noOverride
     }
     {
         map envmap
@@ -619,7 +617,6 @@ textures/aMace_Vault/sg_eventhorizon
         glow
         rgbGen wave inversesawtooth 0 1 0 0.8
         tcMod stretch sin 1 0.004 0 1.1
-		noOverride
     }
     {
         animMap 0.8 textures/aMace_Vault/sg_eh2_glow textures/aMace_Vault/sg_eh3_glow textures/aMace_Vault/sg_eh4_glow textures/aMace_Vault/sg_eh1_glow
@@ -627,7 +624,6 @@ textures/aMace_Vault/sg_eventhorizon
         glow
         rgbGen wave sawtooth 0 1 0 0.8
         tcMod stretch sin 1 0.006 0 1.3
-		noOverride
     }
 }
 
@@ -691,7 +687,6 @@ textures/aMace_Vault/sg_eventhorizon_caustics
         rgbGen wave inversesawtooth 0 0.2 0 0.4
         alphaGen lightingSpecular
         tcMod stretch sin 1 0.004 0 0.7
-		noOverride
     }
     {
         animMap 0.4 textures/aMace_Vault/sg_eh2_glow2 textures/aMace_Vault/sg_eh3_glow2 textures/aMace_Vault/sg_eh4_glow2 textures/aMace_Vault/sg_eh1_glow2
@@ -699,7 +694,6 @@ textures/aMace_Vault/sg_eventhorizon_caustics
         rgbGen wave sawtooth 0 0.2 0 0.4
         alphaGen lightingSpecular
         tcMod stretch sin 1 0.006 0 0.8
-		noOverride
     }
 }
 
@@ -784,7 +778,6 @@ textures/amace_vault/sg_waterpillar
         glow
         rgbGen wave inversesawtooth 0 1 0 0.8
         tcMod stretch sin 1 0.004 0 1.1
-		noOverride
     }
     {
         animMap 0.8 textures/aMace_Vault/sg_eh2_glow textures/aMace_Vault/sg_eh3_glow textures/aMace_Vault/sg_eh4_glow textures/aMace_Vault/sg_eh1_glow
@@ -792,7 +785,6 @@ textures/amace_vault/sg_waterpillar
         glow
         rgbGen wave sawtooth 0 1 0 0.8
         tcMod stretch sin 1 0.006 0 1.3
-		noOverride
     }
 }
 
