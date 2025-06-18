@@ -31,7 +31,7 @@
                 "sound/weapons/blasters/e11_4.mp3"
             ],
             "projectilefx": "blasters/shot_redorange_medium",
-            "miss":         { "impactfx": "weapons/blaster_impact_red_big_fire" },
+            "miss":         { "impactfx": "weapons/blaster_impact_red_medium_fire" },
             "hit":          { "impactfx": "blasters/red_flesh_impact" },
             "deathfx": "blasters/shot_redorange_vaporize",
 		"displayName":  "Burst"
@@ -48,7 +48,7 @@
                 "sound/weapons/blasters/e11_4.mp3"
             ],
             "projectilefx": "blasters/shot_redorange_medium",
-            "miss":         { "impactfx": "weapons/blaster_impact_red_big_fire" },
+            "miss":         { "impactfx": "weapons/blaster_impact_red_medium_fire" },
             "hit":          { "impactfx": "blasters/red_flesh_impact" },
             "deathfx": "blasters/shot_redorange_vaporize",
 	    "displayName":  "Semi"
