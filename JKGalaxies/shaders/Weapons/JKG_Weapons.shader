@@ -3457,6 +3457,7 @@ models/weapons/mine_lasertrip/mk1_glow
         animMap 20 models/weapons/mine_lasertrip/glow1 models/weapons/mine_lasertrip/glow2 models/weapons/mine_lasertrip/glow3 models/weapons/mine_lasertrip/glow4 models/weapons/mine_lasertrip/glow5 models/weapons/mine_lasertrip/glow6 models/weapons/mine_lasertrip/glow7 models/weapons/mine_lasertrip/glow8
         blendFunc GL_ONE GL_ONE
         glow
+		noOverride
     }
 }
 
@@ -3517,6 +3518,7 @@ models/weapons/mine_lasertrip/mk2_glow
         animMap 20 models/weapons/mine_lasertrip/glow1 models/weapons/mine_lasertrip/glow2 models/weapons/mine_lasertrip/glow3 models/weapons/mine_lasertrip/glow4 models/weapons/mine_lasertrip/glow5 models/weapons/mine_lasertrip/glow6 models/weapons/mine_lasertrip/glow7 models/weapons/mine_lasertrip/glow8
         blendFunc GL_ONE GL_ONE
         glow
+		noOverride
     }
 }
 

@@ -1295,7 +1295,11 @@ static qboolean ParseStage( shaderStage_t *stage, const char **text )
 				stage->bundle[0].image = tr.scratchImage[stage->bundle[0].videoMapHandle];
 			}
 		}
-
+		// Animmaps that are not used for indicators need this
+		else if (!Q_stricmp(token, "noOverride"))
+		{
+			shader.frameOverride = -1;
+		}
 		//
 		// alphafunc <func>
 		//

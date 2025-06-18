@@ -8,6 +8,7 @@ gfx/flames/fire
         animMap 20 gfx/flames/fire01 gfx/flames/fire02 gfx/flames/fire03 gfx/flames/fire04 gfx/flames/fire05 gfx/flames/fire06 gfx/flames/fire07 gfx/flames/fire08 gfx/flames/fire09 gfx/flames/fire10 gfx/flames/fire11 gfx/flames/fire12 gfx/flames/fire13 gfx/flames/fire14 gfx/flames/fire15 gfx/flames/fire16 gfx/flames/fire17 gfx/flames/fire18 gfx/flames/fire19 gfx/flames/fire20 
         blendFunc GL_ONE GL_ONE
         rgbGen vertex
+		noOverride
     }
 }
 
@@ -21,11 +22,13 @@ gfx/flames/fire_smooth
         animMap 20 gfx/flames/fire01 gfx/flames/fire02 gfx/flames/fire03 gfx/flames/fire04 gfx/flames/fire05 gfx/flames/fire06 gfx/flames/fire07 gfx/flames/fire08 gfx/flames/fire09 gfx/flames/fire10 gfx/flames/fire11 gfx/flames/fire12 gfx/flames/fire13 gfx/flames/fire14 gfx/flames/fire15 gfx/flames/fire16 gfx/flames/fire17 gfx/flames/fire18 gfx/flames/fire19 gfx/flames/fire20 
         blendFunc GL_ONE GL_ONE
         rgbGen wave inversesawtooth 0 0.6 0 20
+		noOverride
     }
     {
         animMap 20 gfx/flames/fire02 gfx/flames/fire03 gfx/flames/fire04 gfx/flames/fire05 gfx/flames/fire06 gfx/flames/fire07 gfx/flames/fire08 gfx/flames/fire09 gfx/flames/fire10 gfx/flames/fire11 gfx/flames/fire12 gfx/flames/fire13 gfx/flames/fire14 gfx/flames/fire15 gfx/flames/fire16 gfx/flames/fire17 gfx/flames/fire18 gfx/flames/fire19 gfx/flames/fire20 gfx/flames/fire01 
         blendFunc GL_ONE GL_ONE
         rgbGen wave sawtooth 0 0.6 0 20
+		noOverride
     }
 }
 
@@ -40,6 +43,7 @@ gfx/flames/fire01
         blendFunc GL_SRC_ALPHA GL_ONE
         rgbGen vertex
         alphaGen wave inversesawtooth 0 1 0 20
+		noOverride
     }
 }
 
@@ -52,6 +56,7 @@ gfx/flames/fire02
         blendFunc GL_SRC_ALPHA GL_ONE
         rgbGen vertex
         alphaGen wave sawtooth 0 1 0 20
+		noOverride
     }
 }
 
@@ -71,6 +76,7 @@ gfx/flames/fire_debris
         blendFunc GL_ONE GL_ONE
         glow
         rgbGen vertex
+		noOverride
     }
 }
 
