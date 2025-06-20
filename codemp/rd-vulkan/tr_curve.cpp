@@ -134,11 +134,6 @@ static void MakeMeshNormals( int width, int height, srfVert_t ctrl[MAX_GRID_SIZE
 	float		len;
 	static const int neighbors[8][2] = { {0,1}, {1,1}, {1,0}, {1,-1}, {0,-1}, {-1,-1}, {-1,0}, {-1,1} };
 
-#ifdef USE_VK_PBR
-	vec3_t	tangent, binormal, sumTangents, sumBinormals;
-	vec2_t	st[8];
-#endif
-
 	wrapWidth = qfalse;
 	for ( i = 0 ; i < height ; i++ ) {
 		VectorSubtract( ctrl[i][0].xyz, ctrl[i][width-1].xyz, delta );
@@ -200,19 +195,12 @@ static void MakeMeshNormals( int width, int height, srfVert_t ctrl[MAX_GRID_SIZE
 					} else {
 						good[k] = qtrue;
 						VectorCopy( temp, around[k] );
-#ifdef USE_VK_PBR
-						VectorCopy2( ctrl[ y ][ x ].st, st[ k ] );
-#endif
 						break;					// good edge
 					}
 				}
 			}
 
 			VectorClear( sum );
-#ifdef USE_VK_PBR
-			VectorClear( sumTangents );
-			VectorClear( sumBinormals );
-#endif
 
 			for ( k = 0 ; k < 8 ; k++ ) {
 				if ( !good[k] || !good[(k+1)&7] ) {
@@ -224,13 +212,6 @@ static void MakeMeshNormals( int width, int height, srfVert_t ctrl[MAX_GRID_SIZE
 				}
 				VectorAdd( normal, sum, sum );
 
-#ifdef USE_VK_PBR
-				R_CalcTangents( tangent, binormal,
-						vec3_origin, around[ k ], around[ ( k + 1 ) & 7 ],
-						dv->st, st[ k ], st[ ( k + 1 ) & 7 ] );
-				VectorAdd( tangent, sumTangents, sumTangents );
-				VectorAdd( binormal, sumBinormals, sumBinormals );
-#endif
 				count++;
 			}
 			if ( count == 0 ) {
@@ -244,12 +225,142 @@ static void MakeMeshNormals( int width, int height, srfVert_t ctrl[MAX_GRID_SIZE
 			for ( k = 0; k < 3; k++ ) {
 				dv->normal[k] = R_ClampDenorm( dv->normal[k] );
 			}
-#ifdef USE_VK_PBR
-			R_TBNtoQtangents( sumTangents, sumBinormals, dv->normal, dv->qtangent );
-#endif
 		}
 	}
 }
+
+#ifdef USE_VK_PBR
+static qboolean R_CalcTangentVectors( srfVert_t * dv[3] )
+{
+	int             i;
+	float           bb, s, t;
+	vec3_t          bary;
+
+
+	/* calculate barycentric basis for the triangle */
+	bb = (dv[1]->st[0] - dv[0]->st[0]) * (dv[2]->st[1] - dv[0]->st[1]) - (dv[2]->st[0] - dv[0]->st[0]) * (dv[1]->st[1] - dv[0]->st[1]);
+	if ( fabs(bb) < 0.00000001f )
+		return qfalse;
+
+	/* do each vertex */
+	for ( i = 0; i < 3; i++ )
+	{
+		vec3_t bitangent, nxt;
+
+		// calculate s tangent vector
+		s = dv[i]->st[0] + 10.0f;
+		t = dv[i]->st[1];
+		bary[0] = ((dv[1]->st[0] - s) * (dv[2]->st[1] - t) - (dv[2]->st[0] - s) * (dv[1]->st[1] - t)) / bb;
+		bary[1] = ((dv[2]->st[0] - s) * (dv[0]->st[1] - t) - (dv[0]->st[0] - s) * (dv[2]->st[1] - t)) / bb;
+		bary[2] = ((dv[0]->st[0] - s) * (dv[1]->st[1] - t) - (dv[1]->st[0] - s) * (dv[0]->st[1] - t)) / bb;
+
+		dv[i]->qtangent[0] = bary[0] * dv[0]->xyz[0] + bary[1] * dv[1]->xyz[0] + bary[2] * dv[2]->xyz[0];
+		dv[i]->qtangent[1] = bary[0] * dv[0]->xyz[1] + bary[1] * dv[1]->xyz[1] + bary[2] * dv[2]->xyz[1];
+		dv[i]->qtangent[2] = bary[0] * dv[0]->xyz[2] + bary[1] * dv[1]->xyz[2] + bary[2] * dv[2]->xyz[2];
+
+		VectorSubtract( dv[i]->qtangent, dv[i]->xyz, dv[i]->qtangent );
+		VectorNormalize( dv[i]->qtangent );
+
+		// calculate t tangent vector
+		s = dv[i]->st[0];
+		t = dv[i]->st[1] + 10.0f;
+		bary[0] = ((dv[1]->st[0] - s) * (dv[2]->st[1] - t) - (dv[2]->st[0] - s) * (dv[1]->st[1] - t)) / bb;
+		bary[1] = ((dv[2]->st[0] - s) * (dv[0]->st[1] - t) - (dv[0]->st[0] - s) * (dv[2]->st[1] - t)) / bb;
+		bary[2] = ((dv[0]->st[0] - s) * (dv[1]->st[1] - t) - (dv[1]->st[0] - s) * (dv[0]->st[1] - t)) / bb;
+
+		bitangent[0] = bary[0] * dv[0]->xyz[0] + bary[1] * dv[1]->xyz[0] + bary[2] * dv[2]->xyz[0];
+		bitangent[1] = bary[0] * dv[0]->xyz[1] + bary[1] * dv[1]->xyz[1] + bary[2] * dv[2]->xyz[1];
+		bitangent[2] = bary[0] * dv[0]->xyz[2] + bary[1] * dv[1]->xyz[2] + bary[2] * dv[2]->xyz[2];
+
+		VectorSubtract( bitangent, dv[i]->xyz, bitangent );
+		VectorNormalize( bitangent );
+
+		// store bitangent handedness
+		CrossProduct( dv[i]->normal, dv[i]->qtangent, nxt );
+		dv[i]->qtangent[3] = (DotProduct(nxt, bitangent) < 0.0f) ? -1.0f : 1.0f;
+
+		// debug code
+		//% Sys_FPrintf( SYS_VRB, "%d S: (%f %f %f) T: (%f %f %f)\n", i,
+		//%     stv[ i ][ 0 ], stv[ i ][ 1 ], stv[ i ][ 2 ], ttv[ i ][ 0 ], ttv[ i ][ 1 ], ttv[ i ][ 2 ] );
+	}
+
+	return qtrue;
+}
+
+static void MakeMeshTangentVectors( int width, int height, srfVert_t ctrl[MAX_GRID_SIZE][MAX_GRID_SIZE], 
+									int numIndexes, glIndex_t indexes[(MAX_GRID_SIZE-1)*(MAX_GRID_SIZE-1)*2*3] )
+{
+	int             i, j;
+	srfVert_t      *dv[3];
+	static srfVert_t       ctrl2[MAX_GRID_SIZE * MAX_GRID_SIZE];
+	glIndex_t  *tri;
+
+	// FIXME: use more elegant way
+	for ( i = 0; i < width; i++ )
+	{
+		for ( j = 0; j < height; j++ )
+		{
+			dv[0] = &ctrl2[j * width + i];
+			*dv[0] = ctrl[j][i];
+		}
+	}
+
+	for ( i = 0, tri = indexes; i < numIndexes; i += 3, tri += 3 )
+	{
+		dv[0] = &ctrl2[tri[0]];
+		dv[1] = &ctrl2[tri[1]];
+		dv[2] = &ctrl2[tri[2]];
+
+		R_CalcTangentVectors( dv );
+	}
+
+	for ( i = 0; i < width; i++ )
+	{
+		for ( j = 0; j < height; j++ )
+		{
+			dv[0] = &ctrl2[j * width + i];
+			dv[1] = &ctrl[j][i];
+
+			VectorCopy4( dv[0]->qtangent, dv[1]->qtangent );
+		}
+	}
+}
+
+static int MakeMeshIndexes( int width, int height, glIndex_t indexes[(MAX_GRID_SIZE-1)*(MAX_GRID_SIZE-1)*2*3] )
+{
+	int             i, j;
+	int             numIndexes;
+	int             w, h;
+
+	h = height - 1;
+	w = width - 1;
+	numIndexes = 0;
+
+	for ( i = 0; i < h; i++ )
+	{
+		for ( j = 0; j < w; j++ )
+		{
+			int             v1, v2, v3, v4;
+
+			// vertex order to be reckognized as tristrips
+			v1 = i * width + j + 1;
+			v2 = v1 - 1;
+			v3 = v2 + width;
+			v4 = v3 + 1;
+
+			indexes[numIndexes++] = v2;
+			indexes[numIndexes++] = v3;
+			indexes[numIndexes++] = v1;
+
+			indexes[numIndexes++] = v1;
+			indexes[numIndexes++] = v3;
+			indexes[numIndexes++] = v4;
+		}
+	}
+
+	return numIndexes;
+}
+#endif
 
 /*
 ============
@@ -391,7 +502,10 @@ srfGridMesh_t *R_SubdividePatchToGrid( int width, int height,
 	int			t;
 	srfVert_t	ctrl[MAX_GRID_SIZE][MAX_GRID_SIZE];
 	float		errorTable[2][MAX_GRID_SIZE];
-
+#ifdef USE_VK_PBR
+	int			numIndexes;
+	static glIndex_t indexes[(MAX_GRID_SIZE-1)*(MAX_GRID_SIZE-1)*2*3];
+#endif
 	for ( i = 0 ; i < width ; i++ ) {
 		for ( j = 0 ; j < height ; j++ ) {
 			ctrl[j][i] = points[j*width+i];
@@ -535,6 +649,11 @@ srfGridMesh_t *R_SubdividePatchToGrid( int width, int height,
 
 	// calculate normals
 	MakeMeshNormals( width, height, ctrl );
+
+#ifdef USE_VK_PBR
+	numIndexes = MakeMeshIndexes( width, height, indexes );
+	MakeMeshTangentVectors( width, height, ctrl, numIndexes, indexes );
+#endif
 
 	return R_CreateSurfaceGridMesh( width, height, ctrl, errorTable );
 }

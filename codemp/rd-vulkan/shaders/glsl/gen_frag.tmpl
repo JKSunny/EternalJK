@@ -7,8 +7,8 @@
 	#define USE_LIGHT
 #endif
 
-#if defined(USE_LIGHT)
-	#define PER_PIXEL_LIGHTING
+#if defined(USE_LIGHT) && !defined(USE_FAST_LIGHT)
+	#define PER_PIXEL_LIGHTING 
 #endif
 
 #ifdef USE_TX2
@@ -36,7 +36,7 @@ layout(set = 0, binding = 0) uniform UBO {
 };
 #endif
 
-#if defined(PER_PIXEL_LIGHTING) || defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
+#if defined(PER_PIXEL_LIGHTING) || defined(USE_LIGHT_VECTOR)
 	struct tcMod_t {
 		vec4	matrix;
 		vec4	offTurb;
@@ -177,7 +177,7 @@ layout (constant_id = 7) const int discard_mode = 0;
 layout (constant_id = 8) const float identity_color = 1.0;
 #endif
 
-#if defined(PER_PIXEL_LIGHTING) && !defined(USE_FAST_LIGHT)
+#if defined(PER_PIXEL_LIGHTING)
 	layout (constant_id = 9) const int normal_texture_set = 0;
 	layout (constant_id = 10) const int physical_texture_set = 0;
 	layout (constant_id = 11) const int env_texture_set = 0;
@@ -188,12 +188,7 @@ layout (constant_id = 8) const float identity_color = 1.0;
 	layout (location = 11) in vec4 var_LightDir;
 	layout (location = 12) in vec4 var_ViewDir;
 	layout (location = 13) in flat int Var_RenderMode;
-
-	struct NTB {
-		vec3 normal, tangent, binormal;
-	};
-
-	layout (location = 14) in NTB in_ntb;
+	layout (location = 14) in vec4 var_Tangent;
 
 	layout (set = 5, binding = 0) uniform sampler2D brdflut_texture;
 	layout (set = 6, binding = 0) uniform sampler2D normal_texture;
@@ -217,7 +212,7 @@ layout (constant_id = 8) const float identity_color = 1.0;
 	}
 #endif
 
-#if defined(PER_PIXEL_LIGHTING) && !defined(USE_FAST_LIGHT)
+#if defined(PER_PIXEL_LIGHTING)
 	float WrapLambert( in float NL, in float w )
 	{
 		return clamp((NL + w) / pow(1.0 + w, 2.0), 0.0, 1.0);
@@ -228,14 +223,15 @@ layout (constant_id = 8) const float identity_color = 1.0;
 		return DiffuseColor * (1.0 / PI);
 	}
 
-	vec3 CalcNormal( in vec3 vertexNormal, in vec2 frag_tex_coord )
+	vec3 CalcNormal( in vec3 vertexNormal, in vec4 vertexTangent, in vec2 frag_tex_coord )
 	{
 		if ( normal_texture_set > -1 ) {
+			vec3 biTangent = vertexTangent.w * cross(vertexNormal, vertexTangent.xyz);
 			vec3 n = texture(normal_texture, frag_tex_coord).agb - vec3(0.5);
 
 			n.xy *= u_NormalScale.xy;
 			n.z = sqrt(clamp((0.25 - n.x * n.x) - n.y * n.y, 0.0, 1.0));
-			n = n.x * in_ntb.tangent + n.y * in_ntb.binormal + n.z * vertexNormal;
+			n = n.x * vertexTangent.xyz + n.y * biTangent + n.z * vertexNormal;
 
 			return normalize(n);
 		}
@@ -582,7 +578,7 @@ void main() {
 	gl_FragDepth = gl_FragCoord.z;
 #else
 	
-	#if defined(PER_PIXEL_LIGHTING) && !defined(USE_FAST_LIGHT)
+	#if defined(PER_PIXEL_LIGHTING)
 		viewDir = var_ViewDir.xyz;
 		E = normalize(viewDir);
 
@@ -614,7 +610,7 @@ void main() {
 			attenuation = 1.0;
 		#endif
 
-		N = CalcNormal( var_Normal.xyz, frag_tex_coord0 );	
+		N = CalcNormal( var_Normal.xyz, var_Tangent, frag_tex_coord0 );	
 
 		#if defined(USE_LIGHTMAP) || defined(USE_LIGHT_VERTEX)
 			ambientColor = lightColor;
