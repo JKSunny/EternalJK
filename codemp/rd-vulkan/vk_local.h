@@ -150,8 +150,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define TESS_ENV   						( 512 )	// mark shader stage with environment mapping
 
 #ifdef USE_VK_PBR
-#define TESS_QTANGENT   				( 1024 ) // PBR shader variant, qtangent vertex attribute and eyePos uniform
-#define TESS_LIGHTDIR   				( 1024 ) // PBR shader variant, qtangent vertex attribute and eyePos uniform
+#define TESS_TANGENT   					( 1024 )
+#define TESS_LIGHTDIR   				( 2048 ) 
 
 #define PBR_HAS_NORMALMAP				( 1 )
 #define PBR_HAS_PHYSICALMAP				( 2 )

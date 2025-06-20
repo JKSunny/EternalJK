@@ -1082,10 +1082,6 @@ void vk_upload_image_data( image_t *image, int x, int y, int width,
 
 	vk_ensure_staging_buffer_allocation( buffer_size );
 
-	if ( image->flags & IMGFLAG_LIGHTMAP ) {
-		Com_Printf("here");
-	}
-
 	for ( i = 0; i < num_regions; i++ ) {
 		regions[i].bufferOffset += vk.staging_buffer.offset;
 	}
