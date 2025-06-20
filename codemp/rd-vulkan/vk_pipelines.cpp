@@ -501,56 +501,56 @@ static void vk_push_vertex_input_binding_attribute( const Vk_Pipeline_Def *def )
     }
 #endif
 
-    if ( is_ghoul2_vbo || is_mdv_vbo ) 
+    if ( ( def->shader_type == TYPE_FOG_ONLY || def->shader_type == TYPE_REFRACTION ) || 
+            ( def->shader_type >= TYPE_COLOR_WHITE && def->shader_type <= TYPE_COLOR_ORANGE ) ||
+            ( def->shader_type >= TYPE_GENERIC_BEGIN && def->shader_type <= TYPE_GENERIC_END ) )
     {
-        if ( ( def->shader_type == TYPE_FOG_ONLY || def->shader_type == TYPE_REFRACTION ) || 
-             ( def->shader_type >= TYPE_COLOR_WHITE && def->shader_type <= TYPE_COLOR_ORANGE ) ||
-             ( def->shader_type >= TYPE_GENERIC_BEGIN && def->shader_type <= TYPE_GENERIC_END ) )
-        {
-            // bind attributes for fog and generic gpu shading shaders
-            switch ( def->shader_type ) {
-                case TYPE_REFRACTION:
-                case TYPE_FOG_ONLY:
-                case TYPE_COLOR_WHITE:
-                case TYPE_COLOR_GREEN:
-                case TYPE_COLOR_RED:
-                case TYPE_COLOR_ORANGE:
-                case TYPE_SINGLE_TEXTURE_ENV:
-                case TYPE_MULTI_TEXTURE_MUL2_ENV:
-                case TYPE_MULTI_TEXTURE_ADD2_IDENTITY_ENV:
-                case TYPE_MULTI_TEXTURE_ADD2_ENV:
-                case TYPE_MULTI_TEXTURE_MUL3_ENV:
-                case TYPE_MULTI_TEXTURE_ADD3_IDENTITY_ENV:
-                case TYPE_MULTI_TEXTURE_ADD3_ENV:
-                case TYPE_BLEND2_ADD_ENV:
-                case TYPE_BLEND2_MUL_ENV:
-                case TYPE_BLEND2_ALPHA_ENV:
-                case TYPE_BLEND2_ONE_MINUS_ALPHA_ENV:
-                case TYPE_BLEND2_MIX_ALPHA_ENV:
-                case TYPE_BLEND2_MIX_ONE_MINUS_ALPHA_ENV:
-                case TYPE_BLEND2_DST_COLOR_SRC_ALPHA_ENV:
-                case TYPE_BLEND3_ADD_ENV:
-                case TYPE_BLEND3_MUL_ENV:
-                case TYPE_BLEND3_ALPHA_ENV:
-                case TYPE_BLEND3_ONE_MINUS_ALPHA_ENV:
-                case TYPE_BLEND3_MIX_ALPHA_ENV:
-                case TYPE_BLEND3_MIX_ONE_MINUS_ALPHA_ENV:
-                case TYPE_BLEND3_DST_COLOR_SRC_ALPHA_ENV:  
-                    break;
-                default:
+        // bind attributes for fog and generic gpu shading shaders
+        switch ( def->shader_type ) {
+            case TYPE_REFRACTION:
+            case TYPE_FOG_ONLY:
+            case TYPE_COLOR_WHITE:
+            case TYPE_COLOR_GREEN:
+            case TYPE_COLOR_RED:
+            case TYPE_COLOR_ORANGE:
+            case TYPE_SINGLE_TEXTURE_ENV:
+            case TYPE_MULTI_TEXTURE_MUL2_ENV:
+            case TYPE_MULTI_TEXTURE_ADD2_IDENTITY_ENV:
+            case TYPE_MULTI_TEXTURE_ADD2_ENV:
+            case TYPE_MULTI_TEXTURE_MUL3_ENV:
+            case TYPE_MULTI_TEXTURE_ADD3_IDENTITY_ENV:
+            case TYPE_MULTI_TEXTURE_ADD3_ENV:
+            case TYPE_BLEND2_ADD_ENV:
+            case TYPE_BLEND2_MUL_ENV:
+            case TYPE_BLEND2_ALPHA_ENV:
+            case TYPE_BLEND2_ONE_MINUS_ALPHA_ENV:
+            case TYPE_BLEND2_MIX_ALPHA_ENV:
+            case TYPE_BLEND2_MIX_ONE_MINUS_ALPHA_ENV:
+            case TYPE_BLEND2_DST_COLOR_SRC_ALPHA_ENV:
+            case TYPE_BLEND3_ADD_ENV:
+            case TYPE_BLEND3_MUL_ENV:
+            case TYPE_BLEND3_ALPHA_ENV:
+            case TYPE_BLEND3_ONE_MINUS_ALPHA_ENV:
+            case TYPE_BLEND3_MIX_ALPHA_ENV:
+            case TYPE_BLEND3_MIX_ONE_MINUS_ALPHA_ENV:
+            case TYPE_BLEND3_DST_COLOR_SRC_ALPHA_ENV:  
+                break;
+            default:
+                if ( def->vk_light_flags || is_ghoul2_vbo || is_mdv_vbo ) 
+                {
                     vk_push_bind( 5, sizeof( vec4_t ) );    // normals
                     vk_push_attr( 5, 5, VK_FORMAT_R32G32B32A32_SFLOAT );
-                    break;
-            }
+                }
+                break;
+        }
 
-            if ( is_ghoul2_vbo ) 
-            {
-                vk_push_bind( 10, sizeof( vec4_t ) );		// bone indexes
-                vk_push_attr( 10, 10, VK_FORMAT_R8G8B8A8_UINT );
+        if ( is_ghoul2_vbo ) 
+        {
+            vk_push_bind( 10, sizeof( vec4_t ) );		// bone indexes
+            vk_push_attr( 10, 10, VK_FORMAT_R8G8B8A8_UINT );
 
-                vk_push_bind( 11, sizeof( vec4_t ) );		// bone weights
-                vk_push_attr( 11, 11, VK_FORMAT_R8G8B8A8_UNORM );
-            }
+            vk_push_bind( 11, sizeof( vec4_t ) );		// bone weights
+            vk_push_attr( 11, 11, VK_FORMAT_R8G8B8A8_UNORM );
         }
     }
 }

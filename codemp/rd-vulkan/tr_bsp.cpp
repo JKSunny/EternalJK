@@ -733,7 +733,7 @@ static	void R_LoadLightmaps( world_t &worldData, lump_t *l, lump_t *surfs ) {
 						NULL,
 						tr.lightmapAtlasSize[0],
 						tr.lightmapAtlasSize[1],
-						IMGFLAG_NOLIGHTSCALE | IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE,
+						lightmapFlags | IMGFLAG_CLAMPTOEDGE,
 						0, 0);
 				}
 			}
@@ -757,9 +757,7 @@ static	void R_LoadLightmaps( world_t &worldData, lump_t *l, lump_t *surfs ) {
 					image,
 					lightmapWidth,
 					lightmapHeight,
-					IMGFLAG_NOLIGHTSCALE |
-					IMGFLAG_NO_COMPRESSION |
-					IMGFLAG_CLAMPTOEDGE,
+					lightmapFlags | IMGFLAG_CLAMPTOEDGE,
 					0, 0);
 			}
 
@@ -927,80 +925,6 @@ static shader_t *ShaderForShaderNum( int shaderNum, const int *lightmapNum, cons
 }
 
 #ifdef USE_VK_PBR
-static void GenerateFaceTangents( srfSurfaceFace_t *face )
-{
-	float		*xyz0, *xyz1, *xyz2;
-	float		*st0, *st1, *st2;
-	float		*normal0, *normal1, *normal2;
-	float		*qtangent0, *qtangent1, *qtangent2;
-	int			i, *indices, i0, i1, i2;
-	vec3_t		tangent, binormal;
-	
-	indices = ( (int*)( (byte*)face + face->ofsIndices ) );
-	face->qtangents = (float*)ri.Hunk_Alloc( face->numPoints * sizeof(tess.qtangent[0]), h_low );
-
-	for ( i = 0; i < face->numIndices; i += 3 ) {
-		i0 = indices[i + 0];
-		i1 = indices[i + 1];
-		i2 = indices[i + 2];
-
-		if ( i0 >= face->numPoints || i1 >= face->numPoints || i2 >= face->numPoints )
-			continue;
-
-		xyz0 = face->points[i0];		// xyz
-		xyz1 = face->points[i1];
-		xyz2 = face->points[i2];
-
-		normal0 = face->points[i0]+3;	// normal
-		normal1 = face->points[i1]+3;
-		normal2 = face->points[i2]+3;
-
-		// squeezed in normals so start reading from index 6 instead of 3
-		st0 = face->points[i0]+6;		// st
-		st1 = face->points[i1]+6;
-		st2 = face->points[i2]+6;
-
-		R_CalcTangents( tangent, binormal,
-			xyz0, xyz1, xyz2, 
-			st0, st1, st2 );
-
-		qtangent0 = face->qtangents + indices[i + 0] * 4;
-		qtangent1 = face->qtangents + indices[i + 1] * 4;
-		qtangent2 = face->qtangents + indices[i + 2] * 4;		
-
-		R_TBNtoQtangents( tangent, binormal, normal0, qtangent0 );
-		R_TBNtoQtangents( tangent, binormal, normal1, qtangent1 );
-		R_TBNtoQtangents( tangent, binormal, normal2, qtangent2 );
-	}
-}
-
-static void GenerateTriTangents( srfTriangles_t *tri )
-{
-	srfVert_t	*dv0, *dv1, *dv2;
-	int			i, i0, i1, i2;
-	vec3_t		tangent, binormal;
-
-	for ( i = 0; i < tri->numIndexes; i += 3 ) {
-		i0 = tri->indexes[ i + 0 ];
-		i1 = tri->indexes[ i + 1 ];
-		i2 = tri->indexes[ i + 2 ];
-
-		if ( i0 >= tri->numVerts || i1 >= tri->numVerts || i2 >= tri->numVerts )
-			continue;
-
-		dv0 = &tri->verts[i0];
-		dv1 = &tri->verts[i1];
-		dv2 = &tri->verts[i2];
-
-		R_CalcTangents( tangent, binormal,
-			dv0->xyz, dv1->xyz, dv2->xyz, 
-			dv0->st, dv1->st, dv2->st );
-
-		R_TBNtoQtangents( tangent, binormal, dv0->normal, dv0->qtangent );
-		R_TBNtoQtangents( tangent, binormal, dv1->normal, dv1->qtangent );
-		R_TBNtoQtangents( tangent, binormal, dv2->normal, dv2->qtangent );
-	}
-}
 
 static void GenerateFaceLightDirs( srfSurfaceFace_t *face, world_t &worldData ) {
 	face->lightdir = (float*)ri.Hunk_Alloc( face->numPoints * sizeof(tess.lightdir[0]), h_low );
@@ -1220,7 +1144,7 @@ static void ParseFace( const dsurface_t *ds, const drawVert_t *verts, msurface_t
 	surf->cullinfo.plane = cv->plane;
 
 #ifdef USE_VK_PBR
-	GenerateFaceTangents( cv );
+	vk_mikkt_bsp_face_generate( cv );
 #endif
 	surf->data = (surfaceType_t *)cv;
 }
@@ -1400,7 +1324,7 @@ static void ParseTriSurf( const dsurface_t *ds, const drawVert_t *verts, msurfac
 	}
 
 #ifdef USE_VK_PBR
-	GenerateTriTangents( tri );
+	vk_mikkt_bsp_tri_generate( tri );
 #endif
 }
 

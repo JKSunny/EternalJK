@@ -758,59 +758,6 @@ VBO_t *R_CreateVBO( const char *name, const byte *vbo_data, int vbo_size )
 	return vbo;
 }
 
-static void VBO_CalculateTangentsMDXM( const mdxmSurface_t *surf, vec4_t *tangentsf )
-{
-	vec3_t	*xyz0, *xyz1, *xyz2;
-	vec2_t	*st0, *st1, *st2;
-	vec3_t	*normal0, *normal1, *normal2;
-	float	*qtangent0, *qtangent1, *qtangent2;
-	int		i, i0, i1, i2;
-	vec3_t	tangent, binormal;
-
-	mdxmTriangle_t *triangle = (mdxmTriangle_t *)((byte *)surf + surf->ofsTriangles);
-	mdxmVertex_t *vert = (mdxmVertex_t*)( (byte*)surf + surf->ofsVerts );
-	mdxmVertexTexCoord_t *tc = (mdxmVertexTexCoord_t*)(vert + surf->numVerts);
-	
-	// revisit this
-	for ( i = 0; i < surf->numTriangles; i++ ) 
-	{
-		i0 = triangle[i].indexes[0];
-		i1 = triangle[i].indexes[1];
-		i2 = triangle[i].indexes[2];
-
-		if ( i0 >= surf->numVerts || i1 >= surf->numVerts || i2 >= surf->numVerts )
-			continue;
-
-		xyz0 = &vert[i0].vertCoords;
-		xyz1 = &vert[i1].vertCoords;
-		xyz2 = &vert[i2].vertCoords;
-
-		normal0 = &vert[i0].normal;
-		normal1 = &vert[i1].normal;
-		normal2 = &vert[i2].normal;
-
-		st0 = &tc[i0].texCoords;
-		st1 = &tc[i1].texCoords;
-		st2 = &tc[i2].texCoords;
-
-		qtangent0 = *(tangentsf + i0);
-		qtangent1 = *(tangentsf + i1);
-		qtangent2 = *(tangentsf + i2);
-		
-		R_CalcTangents( tangent, binormal,
-			(float*)xyz0, (float*)xyz1, (float*)xyz2, 
-			(float*)st0, (float*)st1, (float*)st2 );
-
-		if ( tangent[0] == 0.0f && tangent[1] == 0.0f && tangent[2] == 0.0f ){
-			continue;
-		}
-
-		R_TBNtoQtangents( tangent, binormal, (float*)normal0, qtangent0 );
-		R_TBNtoQtangents( tangent, binormal, (float*)normal1, qtangent1 );
-		R_TBNtoQtangents( tangent, binormal, (float*)normal2, qtangent2 );
-	}
-}
-
 typedef struct mdxm_attributes_s {
 	vec4_t	*verts;
 	vec4_t	*normals;
@@ -976,8 +923,10 @@ void R_BuildMDXM( model_t *mod, mdxmHeader_t *mdxm )
 		for ( n = 0; n < mdxm->numSurfaces; n++ )
 		{
 			mdxmTriangle_t *t = (mdxmTriangle_t *)((byte *)surf + surf->ofsTriangles);
+			glIndex_t *surf_indices = (glIndex_t *)ri.Hunk_AllocateTempMemory(sizeof(glIndex_t) * surf->numTriangles * 3);
+			glIndex_t *surf_index = surf_indices;
 
-			for ( k = 0; k < surf->numTriangles; k++, index += 3 )
+			for ( k = 0; k < surf->numTriangles; k++, index += 3, surf_index += 3 )
 			{
 				index[0] = t[k].indexes[0] + baseVertexes[n];
 				assert( index[0] >= 0 && index[0] < numVerts );
@@ -987,10 +936,24 @@ void R_BuildMDXM( model_t *mod, mdxmHeader_t *mdxm )
 
 				index[2] = t[k].indexes[2] + baseVertexes[n];
 				assert( index[2] >= 0 && index[2] < numVerts );
-			}
 
-			// Build tangent space
-			VBO_CalculateTangentsMDXM( surf, tangentsf + baseVertexes[n] );
+				surf_index[0] = t[k].indexes[0];
+				surf_index[1] = t[k].indexes[1];
+				surf_index[2] = t[k].indexes[2];
+			}
+		
+			mdxmVertex_t *vertices = (mdxmVertex_t *)((byte *)surf + surf->ofsVerts);
+			mdxmVertexTexCoord_t *textureCoordinates = (mdxmVertexTexCoord_t *)(vertices + surf->numVerts);
+
+			vk_mikkt_mdxm_generate(
+				surf->numTriangles,
+				vertices,
+				textureCoordinates,
+				tangentsf + baseVertexes[n],
+				surf_indices
+			);
+
+			ri.Hunk_FreeTempMemory( surf_indices );
 
 			surf = (mdxmSurface_t *)((byte *)surf + surf->ofsEnd);
 		}
@@ -1127,45 +1090,6 @@ void R_BuildMDXM( model_t *mod, mdxmHeader_t *mdxm )
 }
 #endif
 
-static void VBO_CalculateTangentsMD3( const mdvSurface_t *surf, vec4_t *tangentsf )
-{
-	mdvVertex_t	*dv0, *dv1, *dv2;
-	float		*st0, *st1, *st2;
-	float	*qtangent0, *qtangent1, *qtangent2;
-	int			i, i0, i1, i2;
-	vec3_t		tangent, binormal;
-
-	for ( i = 0; i < surf->numIndexes; i += 3 ) 
-	{
-		i0 = surf->indexes[ i + 0 ];
-		i1 = surf->indexes[ i + 1 ];
-		i2 = surf->indexes[ i + 2 ];
-
-		if ( i0 >= surf->numVerts || i1 >= surf->numVerts || i2 >= surf->numVerts )
-			continue;
-
-		dv0 = &surf->verts[i0];
-		dv1 = &surf->verts[i1];
-		dv2 = &surf->verts[i2];
-
-		st0 = surf->st[i0].st;
-		st1 = surf->st[i1].st;
-		st2 = surf->st[i2].st;
-
-		qtangent0 = *(tangentsf + i0);
-		qtangent1 = *(tangentsf + i1);
-		qtangent2 = *(tangentsf + i2);
-
-		R_CalcTangents( tangent, binormal,
-			dv0->xyz, dv1->xyz, dv2->xyz, 
-			st0, st1, st2 );
-
-		R_TBNtoQtangents( tangent, binormal, dv0->normal, qtangent0 );
-		R_TBNtoQtangents( tangent, binormal, dv1->normal, qtangent1 );
-		R_TBNtoQtangents( tangent, binormal, dv2->normal, qtangent2 );
-	}
-}
-
 void R_BuildMD3( model_t *mod, mdvModel_t *mdvModel ) 
 {
 	mdvVertex_t    *v;
@@ -1240,7 +1164,14 @@ void R_BuildMD3( model_t *mod, mdvModel_t *mdvModel )
 	for (i = 0; i < mdvModel->numSurfaces; i++, surf++)
 	{
 		vec4_t *tangentsf = (vec4_t *)ri.Hunk_AllocateTempMemory(sizeof(vec4_t) * surf->numVerts);
-		VBO_CalculateTangentsMD3( surf, tangentsf + 0 );
+
+		vk_mikkt_mdv_generate(
+			surf->numIndexes / 3,
+			surf->verts,
+			tangentsf,
+			surf->st,
+			surf->indexes
+		);
 
 		for ( k = 0; k < surf->numIndexes; k++)
 		{

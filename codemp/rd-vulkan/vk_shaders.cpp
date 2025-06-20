@@ -52,12 +52,10 @@ static VkShaderModule SHADER_MODULE( const uint8_t *bytes, const int count ) {
 #define SHADER_MODULE( name ) SHADER_MODULE( name, sizeof( name ) )
 
 #include "shaders/spirv/shader_binding.c"
-#include "shaders/spirv/shader_binding_pixel.c"
 
 void vk_create_shader_modules( void )
 {
     vk_bind_generated_shaders();
-    vk_bind_generated_pixel_shaders();
 
 #if 0
     int i, j, k, l, m, n, o;

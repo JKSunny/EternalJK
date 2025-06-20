@@ -223,7 +223,7 @@ static void vk_vbo_bind_geometry_mdv( int32_t flags )
 	if (flags & TESS_ST2)
 		vk.cmd->vbo_offset[4] = vbo->offsets[2];
 
-	if (flags & TESS_QTANGENT)
+	if (flags & TESS_TANGENT)
 		vk.cmd->vbo_offset[8] = vbo->offsets[8];
 
 	bind_base = 0;
@@ -252,7 +252,7 @@ static void vk_vbo_bind_geometry_ghoul2( uint32_t flags )
 	if (flags & TESS_ST2)
 		vk.cmd->vbo_offset[4] = vbo->offsets[2];
 
-	if (flags & TESS_QTANGENT)
+	if (flags & TESS_TANGENT)
 		vk.cmd->vbo_offset[8] = vbo->offsets[8];
 
 	bind_base = 0;
@@ -326,7 +326,7 @@ void vk_bind_geometry( uint32_t flags )
 			vk_bind_index_attr(7);
 		}
 
-		if (flags & TESS_QTANGENT) {
+		if (flags & TESS_TANGENT) {
 			vk.cmd->vbo_offset[8] = tess.shader->qtangentOffset;
 			vk_bind_index_attr(8);
 		}
@@ -371,7 +371,7 @@ void vk_bind_geometry( uint32_t flags )
 		if (flags & TESS_RGBA2)
 			vk_bind_attr(7, sizeof(color4ub_t), tess.svars.colors[2]);
 
-		if (flags & TESS_QTANGENT)
+		if (flags & TESS_TANGENT)
 			vk_bind_attr(8, sizeof(tess.qtangent[0]), tess.qtangent);
 
 		if (flags & TESS_LIGHTDIR)
@@ -2300,6 +2300,7 @@ void RB_StageIteratorGeneric( void )
 	else
 #endif
 	{
+		// if !tess.vbo_model_index .. 
 		RB_DeformTessGeometry();
 	}
 

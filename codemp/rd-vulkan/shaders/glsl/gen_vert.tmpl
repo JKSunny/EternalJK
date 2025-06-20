@@ -6,8 +6,12 @@
 	#define USE_LIGHT
 #endif
 
-#if defined(USE_LIGHT)
-	#define PER_PIXEL_LIGHTING
+#if defined(USE_LIGHT) && !defined(USE_FAST_LIGHT)
+	#define PER_PIXEL_LIGHTING 
+#endif
+
+#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
+	#define USE_VBO_MODEL
 #endif
 
 #ifdef USE_TX2
@@ -40,7 +44,7 @@ layout(set = 0, binding = 0) uniform UBO {
 };
 #endif
 
-#if defined(PER_PIXEL_LIGHTING) || defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
+#if defined(PER_PIXEL_LIGHTING) || defined(USE_LIGHT_VECTOR) || defined(USE_VBO_MODEL)
 	struct tcMod_t {
 		vec4	matrix;
 		vec4	offTurb;
@@ -102,11 +106,12 @@ layout(set = 0, binding = 0) uniform UBO {
 	};	
 #endif
 
-#if defined(PER_PIXEL_LIGHTING) && !defined(USE_FAST_LIGHT)
+#ifdef PER_PIXEL_LIGHTING 
 	layout(location = 10) out vec4 var_Normal;
 	layout(location = 11) out vec4 var_LightDir;
 	layout(location = 12) out vec4 var_ViewDir;
 	layout(location = 13) out flat int Var_RenderMode;
+	layout(location = 14) out vec4 var_Tangent;
 #endif
 
 #if defined(USE_VBO_GHOUL2)
@@ -117,7 +122,7 @@ layout(set = 0, binding = 0) uniform UBO {
 
 layout(location = 0) in vec3 in_position;
 
-#if defined(USE_CL0_IDENT) || defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
+#if defined(USE_CL0_IDENT) || defined(USE_VBO_MODEL)
 // use fixed color from frag.spec.constant.8
 #else
 layout(location = 1) in vec4 in_color0;
@@ -134,14 +139,17 @@ layout(location = 3) in vec2 in_tex_coord1;
 layout(location = 4) in vec2 in_tex_coord2;
 #endif
 
-#if defined(USE_ENV) || defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
-layout(location = 5) in vec3 in_normal;
+#if defined(PER_PIXEL_LIGHTING) || defined(USE_ENV) || defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
+	layout(location = 5) in vec3 in_normal;
+#elif defined(USE_LIGHT_VECTOR) && defined(USE_FAST_LIGHT)
+	layout(location = 5) in vec3 in_normal;
 #endif
 
-#if defined(USE_CL1) && !defined(USE_VBO_GHOUL2) && !defined(USE_VBO_MDV)
+
+#if defined(USE_CL1) && !defined(USE_VBO_MODEL)
 layout(location = 6) in vec4 in_color1;
 #endif
-#if defined(USE_CL2) && !defined(USE_VBO_GHOUL2) && !defined(USE_VBO_MDV)
+#if defined(USE_CL2) && !defined(USE_VBO_MODEL)
 layout(location = 7) in vec4 in_color2;
 #endif
 
@@ -176,28 +184,8 @@ layout(location = 4) out vec2 fog_tex_coord;
 #endif
 
 #if defined(PER_PIXEL_LIGHTING)
-	struct NTB {
-		vec3 normal, tangent, binormal;
-	};
+	layout(location = 8) in vec4 in_tangent;
 	
-	vec3 QuatTransVec( in vec4 quat, in vec3 vec ) {
-		vec3 tmp = 2.0 * cross( quat.xyz, vec );
-		return vec + quat.w * tmp + cross( quat.xyz, tmp );
-	}
-
-	void QTangentToNTB( in vec4 qtangent, out NTB ntb ) {
-		ntb.normal = QuatTransVec( qtangent, vec3( 0.0, 0.0, 1.0 ) );
-		ntb.tangent = QuatTransVec( qtangent, vec3( 1.0, 0.0, 0.0 ) );
-		ntb.tangent *= sign( qtangent.w );
-		ntb.binormal = QuatTransVec( qtangent, vec3( 0.0, 1.0, 0.0 ) );
-	}
-
-	layout(location = 8) in vec4 in_qtangent;
-	
-	#if !defined(USE_FAST_LIGHT)
-		layout(location = 14) out NTB out_ntb;
-	#endif
-
 	#if !defined(USE_LIGHT_VECTOR)
 		layout(location = 9) in vec4 in_lightdir;
 	#endif
@@ -207,7 +195,7 @@ out gl_PerVertex {
 	vec4 gl_Position;
 };
 
-#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
+#if defined(USE_VBO_MODEL)
 vec4 CalcColor( int index, in vec3 position, in vec3 normal ) {
 	vec4 color = ( u_bundle[index].vertColor * vec4( 0.0 ) ) + u_bundle[index].baseColor;		// skip vertColor?
 
@@ -450,15 +438,13 @@ mat4x3 GetBoneMatrix(uint index)
 #endif
 
 void main() {
-//#if defined(PER_PIXEL_LIGHTING)
-#if (defined(PER_PIXEL_LIGHTING) && !defined(USE_FAST_LIGHT) ) || ( defined(PER_PIXEL_LIGHTING) && defined(USE_LIGHT_VECTOR))
-	NTB ntb;
-	QTangentToNTB( in_qtangent, ntb );
-#endif
-
 #if defined(USE_VBO_MDV)
 	vec3 position = in_position;
 	vec3 normal = normalize(in_normal);
+
+	#ifdef PER_PIXEL_LIGHTING
+		vec3 tangent = normalize(in_tangent.xyz);
+	#endif
 
 	if ( u_deform.type != 0 ){ // !DEFORM_NONE
 		position	= DeformPosition( position, normal, frag_tex_coord0 );
@@ -474,8 +460,8 @@ void main() {
 	vec3 position = skin_matrix * vec4(in_position, 1.0);
 	vec3 normal = normalize(skin_matrix * vec4(in_normal, 0.0));
 
-	#if defined(PER_PIXEL_LIGHTING) && !defined(USE_FAST_LIGHT)
-		ntb.tangent = normalize(skin_matrix * vec4(ntb.tangent, 0.0));	
+	#ifdef PER_PIXEL_LIGHTING 
+		vec3 tangent = normalize(skin_matrix * vec4(in_tangent.xyz, 0.0));	
 	#endif
 
 	if ( u_deform.type != 0 ){ // !DEFORM_NONE
@@ -484,29 +470,42 @@ void main() {
 	}
 #else
 	vec3 position = in_position;
-	#if (defined(PER_PIXEL_LIGHTING) && !defined(USE_FAST_LIGHT) ) || ( defined(PER_PIXEL_LIGHTING) && defined(USE_LIGHT_VECTOR))
-		vec3 normal = ntb.normal;
-	#elif defined(USE_ENV)
+
+	#if defined(USE_ENV) || (defined(USE_LIGHT) && (!defined(USE_FAST_LIGHT) || defined(USE_LIGHT_VECTOR)))
 		vec3 normal = in_normal;
+	#endif
+
+	#ifdef PER_PIXEL_LIGHTING 
+		vec3 tangent = in_tangent.xyz;
 	#endif
 #endif
 
+
+/*
+#if !defined(USE_VBO_GHOUL2)
+	normal  = normal  * 2.0 - vec3(1.0);
+  #if defined(USE_LIGHT)
+	tangent = tangent * 2.0 - vec3(1.0);
+  #endif
+#endif
+*/
+
 #ifndef USE_CL0_IDENT
-	#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
+	#if defined(USE_VBO_MODEL)
 		frag_color0 = CalcColor( 0, position, normal );
 	#else
 		frag_color0 = in_color0;
 	#endif
 #endif
 #ifdef USE_CL1
-	#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
+	#if defined(USE_VBO_MODEL)
 		frag_color1 = CalcColor( 1, position, normal );
 	#else
 		frag_color1 = in_color1;
 	#endif
 #endif
 #ifdef USE_CL2
-	#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
+	#if defined(USE_VBO_MODEL)
 		frag_color2 = CalcColor( 2, position, normal );
 	#else
 		frag_color2 = in_color2;
@@ -534,7 +533,7 @@ void main() {
 #endif
 
 // tcGen & tcMod
-#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
+#if defined(USE_VBO_MODEL)
 	#ifndef USE_ENV
 		frag_tex_coord0 = GenTexCoords( in_tex_coord0.st, u_bundle[0].tcGen.type, position, normal, u_bundle[0].tcGen.vector0, u_bundle[0].tcGen.vector1 );
 	#endif
@@ -576,24 +575,23 @@ void main() {
 	fog_tex_coord = vec2(s, t);
 #endif
 
-#if defined(PER_PIXEL_LIGHTING)
-	#if (defined(PER_PIXEL_LIGHTING) && !defined(USE_FAST_LIGHT) ) || ( defined(PER_PIXEL_LIGHTING) && defined(USE_LIGHT_VECTOR))
+#if defined(USE_LIGHT)
+	#if !defined(USE_FAST_LIGHT) || defined(USE_LIGHT_VECTOR)
 		position		= (u_ModelMatrix * vec4(position, 1.0)).xyz;
 		normal			= normalize(mat3(u_ModelMatrix) * normal);
+		#if !defined(USE_FAST_LIGHT)
+			tangent			= normalize(mat3(u_ModelMatrix) * tangent);
+		#endif
 	#endif
 
 	#if defined(USE_LIGHT_VECTOR)
 		vec3 L	= u_LocalLightOrigin.xyz - (position * u_LocalLightOrigin.w);
-		
-		#if !defined(USE_FAST_LIGHT)
-			ntb.tangent	 = normalize(mat3(u_ModelMatrix) * ntb.tangent);
-			ntb.binormal = normalize(mat3(u_ModelMatrix) * ntb.binormal);
-		#endif
 
-	#elif !defined(USE_FAST_LIGHT)
-		vec3 L	= in_lightdir.xyz * 2.0 - vec3(1.0);
+	#elif defined(PER_PIXEL_LIGHTING)
+		//vec3 L	= in_lightdir.xyz * 2.0 - vec3(1.0);
+		vec3 L	= in_lightdir.xyz;
 		L		= ( u_ModelMatrix * vec4( L, 0.0 ) ).xyz;
-		L		= normalize( ( L * 0.5 ) + vec3( 0.5 ) );
+		//L		= normalize( ( L * 0.5 ) + vec3( 0.5 ) );
 	#endif
 #endif
 
@@ -610,13 +608,13 @@ void main() {
 	#endif
 #endif
 
-#if defined(PER_PIXEL_LIGHTING) && !defined(USE_FAST_LIGHT)
+#ifdef PER_PIXEL_LIGHTING 
 	vec3 viewDir = u_ViewOrigin.xyz - position;
 
-	out_ntb = ntb;
 	var_LightDir	= vec4(L, 0.0);	
 	var_Normal		= vec4(normal, 0.0);
 	var_ViewDir		= vec4(viewDir, 0.0);
+	var_Tangent		= vec4(tangent, in_tangent.w);
 	
 	Var_RenderMode = int(renderMode);
 #endif

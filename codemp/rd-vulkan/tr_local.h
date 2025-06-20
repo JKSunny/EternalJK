@@ -3019,11 +3019,6 @@ void		VBO_GetSoftbuffer( DrawItem& drawItem );
 
 #ifdef USE_VK_PBR
 // pbr
-void		R_CalcTangents( vec3_t tangent, vec3_t binormal,
-				const vec3_t v0, const vec3_t v1, const vec3_t v2,
-				const vec2_t t0, const vec2_t t1, const vec2_t t2 );
-void		R_TBNtoQtangents( const vec3_t tangent, const vec3_t binormal,
-		       const vec3_t normal, vec4_t qtangent );
 void		R_AddConvolveCubemapCmd( cubemap_t *cubemap , int cubemapId );
 #endif
 
@@ -3085,6 +3080,12 @@ static QINLINE unsigned int log2pad(unsigned int v, int roundup)
 
 void		ComputeColors( const int b, color4ub_t *dest, const shaderStage_t *pStage, int forceRGBGen );
 void		ComputeTexCoords( const int b, const textureBundle_t *bundle );
+
+// mikktspace
+void		vk_mikkt_bsp_tri_generate( srfTriangles_t *tri );
+void		vk_mikkt_bsp_face_generate( srfSurfaceFace_t *face );
+void		vk_mikkt_mdxm_generate( int numSurfaces, mdxmVertex_t *vertices, mdxmVertexTexCoord_t *st, vec4_t *tangents, glIndex_t *indices );
+void		vk_mikkt_mdv_generate( int numSurfaces, mdvVertex_t *verts, vec4_t *tangents, mdvSt_t *st, glIndex_t *indices );
 
 #ifdef USE_VBO
 // VBO functions

@@ -4951,7 +4951,7 @@ shader_t *FinishShader( void )
 				if ( def.vk_light_flags ) 
 				{
 					//if ( !vk.useFastLight)
-						pStage->tessFlags |= TESS_QTANGENT;
+						pStage->tessFlags |= TESS_TANGENT | TESS_NNN;
 
 					if ( def.vk_light_flags & LIGHTDEF_USE_LIGHTMAP ) {
 						pStage->tessFlags |= TESS_LIGHTDIR;
