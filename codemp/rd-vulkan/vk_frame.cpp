@@ -1731,38 +1731,43 @@ void vk_present_frame( void )
 		return;
 	}
 
-	present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-	present_info.pNext = NULL;
-	present_info.waitSemaphoreCount = 1;
-	present_info.pWaitSemaphores = &vk.swapchain_rendering_finished[ vk.cmd->swapchain_image_index ];
-	present_info.swapchainCount = 1;
-	present_info.pSwapchains = &vk.swapchain;
-	present_info.pImageIndices = &vk.cmd->swapchain_image_index;
-	present_info.pResults = NULL;
+#ifdef VK_CUBEMAP
+    if ( backEnd.viewParms.targetCube == nullptr )
+#endif
+    {
+	    present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	    present_info.pNext = NULL;
+	    present_info.waitSemaphoreCount = 1;
+	    present_info.pWaitSemaphores = &vk.swapchain_rendering_finished[ vk.cmd->swapchain_image_index ];
+	    present_info.swapchainCount = 1;
+	    present_info.pSwapchains = &vk.swapchain;
+	    present_info.pImageIndices = &vk.cmd->swapchain_image_index;
+	    present_info.pResults = NULL;
 
-    vk.cmd->swapchain_image_acquired = qfalse;
+        vk.cmd->swapchain_image_acquired = qfalse;
 
-    size_t present_task = vk_imgui_profiler_start_task( "Present", RGBA_LE(0xc0392bffu) );
-    res = qvkQueuePresentKHR( vk.queue, &present_info );
-    vk_imgui_profiler_end_task( present_task );
+        size_t present_task = vk_imgui_profiler_start_task( "Present", RGBA_LE(0xc0392bffu) );
+        res = qvkQueuePresentKHR( vk.queue, &present_info );
+        vk_imgui_profiler_end_task( present_task );
 
-    switch ( res ) {
-		case VK_SUCCESS:
-			break;
-		case VK_SUBOPTIMAL_KHR:
-		case VK_ERROR_OUT_OF_DATE_KHR:
-			// swapchain re-creation needed
-			vk_restart_swapchain( __func__ );
-			break;
-		case VK_ERROR_DEVICE_LOST:
-			// we can ignore that
-			ri.Printf( PRINT_DEVELOPER, "vkQueuePresentKHR: device lost\n" );
-			break;
-		default:
-			// or we don't
-			ri.Error( ERR_FATAL, "vkQueuePresentKHR returned %s", vk_result_string( res ) );
-	}
-    
+        switch ( res ) {
+		    case VK_SUCCESS:
+			    break;
+		    case VK_SUBOPTIMAL_KHR:
+		    case VK_ERROR_OUT_OF_DATE_KHR:
+			    // swapchain re-creation needed
+			    vk_restart_swapchain( __func__ );
+			    break;
+		    case VK_ERROR_DEVICE_LOST:
+			    // we can ignore that
+			    ri.Printf( PRINT_DEVELOPER, "vkQueuePresentKHR: device lost\n" );
+			    break;
+		    default:
+			    // or we don't
+			    ri.Error( ERR_FATAL, "vkQueuePresentKHR returned %s", vk_result_string( res ) );
+	    }
+    }
+
     vk_imgui_profiler_end_frame();
 
 	// pickup next command buffer for rendering
