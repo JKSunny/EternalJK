@@ -2100,7 +2100,6 @@ static qboolean ParseStage(shaderStage_t *stage, const char **text)
 #ifdef USE_VK_PBR
 	if ( !vk.useFastLight && ( physicalAlbedoName || stage->physicalMapType != PHYS_NONE ) ) 
 	{
-		uint32_t i;
 		imgFlags_t flags = IMGFLAG_NOLIGHTSCALE;
 
 		if (!shader.noMipMaps)
@@ -2115,52 +2114,12 @@ static qboolean ParseStage(shaderStage_t *stage, const char **text)
 		// load defined physical map, if not loaded $whiteimage
 		if ( !stage->physicalMap && stage->physicalMapType != PHYS_NONE )
 			vk_create_phyisical_texture( stage, bufferPackedTextureName, flags );
-		
-		// scan for a potential physical map
-		if ( !stage->physicalMap && physicalAlbedoName ) {
-			for ( i = 0; i < ARRAY_LEN( textureMapTypes ); i++ ) {
-				COM_StripExtension( physicalAlbedoName, bufferPackedTextureName, MAX_QPATH );
-				
-				Q_strcat( bufferPackedTextureName, MAX_QPATH, textureMapTypes[i].suffix );
-				stage->physicalMapType = textureMapTypes[i].type;
 
-				if ( vk_create_phyisical_texture( stage, bufferPackedTextureName, flags ) ) {
-					break;
-				}
-			}
-		}
-		
 		flags |= IMGFLAG_NO_COMPRESSION;
 		
 		// load defined normal map
 		if ( stage->normalMapType != PHYS_NONE )
 			vk_create_normal_texture( stage, bufferNormalTextureName, flags );
-		
-		// scan for a potential normal map
-		if ( !stage->normalMap && physicalAlbedoName ) {	
-			for ( i = 0; i < ARRAY_LEN( textureMapTypes ); i++ ) {
-				COM_StripExtension( physicalAlbedoName, bufferNormalTextureName, MAX_QPATH );
-				
-				Q_strcat( bufferNormalTextureName, MAX_QPATH, textureMapTypes[i].suffix );
-				stage->normalMapType = textureMapTypes[i].type;
-
-				if ( vk_create_normal_texture( stage, bufferNormalTextureName, flags ) ) {
-					break;
-				}
-			}
-		}
-
-		// set whiteImage when normalMap is found
-		if ( stage->normalMap && !stage->physicalMap ) {
-			stage->specularScale[0] = 0.0f;
-			stage->specularScale[2] =
-			stage->specularScale[3] = 1.0f;
-			stage->specularScale[1] = 0.5f;
-
-			stage->physicalMap = tr.whiteImage;
-			stage->physicalMapType = PHYS_RMO;
-			stage->vk_pbr_flags |= PBR_HAS_PHYSICALMAP;
-		}
 	}
 
 #endif
@@ -4713,6 +4672,70 @@ shader_t *FinishShader( void )
 
 #ifdef USE_PMLIGHT
 	FindLightingStage( stage );
+#endif
+
+#ifdef USE_VK_PBR
+	if ( !vk.useFastLight ) 
+	{
+		for ( i = 0; i < MAX_SHADER_STAGES; i++ )
+		{
+			char imageName[MAX_QPATH];
+			shaderStage_t* pStage = &stages[i];
+			image_t *albedo;
+			uint32_t j;
+
+			if ( !pStage->active ) continue;
+			if ( pStage->bundle[0].isLightmap ) continue;
+			if ( (albedo = pStage->bundle[0].image[0]) == NULL ) continue;
+
+			imgFlags_t flags = IMGFLAG_NOLIGHTSCALE;
+
+			if ( !shader.noMipMaps )	flags |= IMGFLAG_MIPMAP;
+			if ( !shader.noPicMip )		flags |= IMGFLAG_PICMIP;
+			if ( shader.noTC )			flags |= IMGFLAG_NO_COMPRESSION;
+
+			if ( !pStage->physicalMap ) 
+			{
+				for ( j = 0; j < ARRAY_LEN( textureMapTypes ); j++ ) 
+				{
+					COM_StripExtension( albedo->imgName, imageName, MAX_QPATH );
+					Q_strcat( imageName, MAX_QPATH, textureMapTypes[j].suffix );
+					pStage->physicalMapType = textureMapTypes[j].type;
+
+					if ( vk_create_phyisical_texture( pStage, imageName, flags ) ) {
+						break;
+					}
+				}
+			}
+
+			flags |= IMGFLAG_NO_COMPRESSION;
+
+			if ( !pStage->normalMap ) 
+			{
+				for ( j = 0; j < ARRAY_LEN( textureMapTypes ); j++ ) 
+				{
+					COM_StripExtension( albedo->imgName, imageName, MAX_QPATH );
+					Q_strcat( imageName, MAX_QPATH, textureMapTypes[j].suffix );
+					pStage->normalMapType = textureMapTypes[j].type;
+
+					if ( vk_create_normal_texture( pStage, imageName, flags ) ) {
+						break;
+					}
+				}
+			}
+
+			if ( pStage->normalMap && !pStage->physicalMap ) 
+			{
+				pStage->specularScale[0] = 0.0f;
+				pStage->specularScale[2] =
+				pStage->specularScale[3] = 1.0f;
+				pStage->specularScale[1] = 0.5f;
+				pStage->physicalMap = tr.whiteImage;
+				pStage->physicalMapType = PHYS_RMO;
+				pStage->vk_pbr_flags |= PBR_HAS_PHYSICALMAP;
+			}
+		}
+	}
 #endif
 
 	//
