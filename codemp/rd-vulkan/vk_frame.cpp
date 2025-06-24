@@ -1496,7 +1496,7 @@ void vk_begin_frame( void )
 		VK_CHECK( qvkResetFences( vk.device, 1, &vk.cmd->rendering_finished_fence ) );
     }
 
-	if ( !ri.VK_IsMinimized() && !vk.cmd->swapchain_image_acquired ) {
+	if ( !ri.VK_IsMinimized() && !vk.cmd->swapchain_image_acquired && backEnd.viewParms.targetCube == NULL ) {
 		qboolean retry = qfalse;
 _retry:
         size_t acquire_task = vk_imgui_profiler_start_task( "ImageAcquire",	RGBA_LE(0xd35400ffu) );
@@ -1696,6 +1696,7 @@ void vk_end_frame( void )
 {
  #ifdef USE_UPLOAD_QUEUE
 	VkSemaphore waits[2], signals[2];
+    uint32_t wait_count, signal_count; 
 	const VkPipelineStageFlags wait_dst_stage_mask[2] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 #else
 	const VkPipelineStageFlags wait_dst_stage_mask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -1740,7 +1741,7 @@ void vk_end_frame( void )
             qvkCmdDraw(vk.cmd->command_buffer, 4, 1, 0, 0);
         }
 
-        if ( !ri.VK_IsMinimized() ) {
+        if ( !ri.VK_IsMinimized() && backEnd.viewParms.targetCube == NULL ) {
             vk_end_render_pass();
 
             vk.renderWidth = glConfig.vidWidth;
@@ -1780,55 +1781,55 @@ void vk_end_frame( void )
     submit_info.commandBufferCount = 1;
     submit_info.pCommandBuffers = &vk.cmd->command_buffer;
 
-    if ( !ri.VK_IsMinimized() ) {
-#ifdef USE_UPLOAD_QUEUE
-		if ( vk.image_uploaded != VK_NULL_HANDLE ) {
-			waits[0] = vk.cmd->image_acquired;
-			waits[1] = vk.image_uploaded;
-			submit_info.waitSemaphoreCount = 2;
-			submit_info.pWaitSemaphores = &waits[0];
-			submit_info.pWaitDstStageMask = &wait_dst_stage_mask[0];
-			signals[0] = vk.swapchain_rendering_finished[ vk.cmd->swapchain_image_index ];
-			signals[1] = vk.cmd->rendering_finished2;
-			submit_info.signalSemaphoreCount = 2;
-			submit_info.pSignalSemaphores = &signals[0];
+    wait_count = 0;
+    signal_count = 0;
+    Com_Memset( signals, NULL, sizeof(signals) );
+    Com_Memset( waits, NULL, sizeof(waits) );
 
+#ifdef VK_CUBEMAP
+    if ( backEnd.viewParms.targetCube != NULL )
+    {
+        if ( vk.image_uploaded != VK_NULL_HANDLE )
+        {
+            waits[wait_count++] = vk.image_uploaded;
+            vk.image_uploaded = VK_NULL_HANDLE;
+        }
+
+        vk.cmd->swapchain_image_acquired = qfalse; // prevent present  
+    } else 
+#endif
+    if ( !ri.VK_IsMinimized() ) 
+    {
+#ifdef VK_CUBEMAP
+        if ( vk.cmd->swapchain_image_acquired )
+#endif
+        {
+            signals[signal_count++] = vk.swapchain_rendering_finished[ vk.cmd->swapchain_image_index ];
+        }
+        waits[wait_count++] = vk.cmd->image_acquired;
+
+#ifdef USE_UPLOAD_QUEUE
+		if ( vk.image_uploaded != VK_NULL_HANDLE ) 
+        {
+			waits[wait_count++] = vk.image_uploaded;
+			signals[signal_count++] = vk.cmd->rendering_finished2;
 			vk.rendering_finished = vk.cmd->rendering_finished2;
 			vk.image_uploaded = VK_NULL_HANDLE;
-		} else if ( vk.rendering_finished != VK_NULL_HANDLE ) {
-			waits[0] = vk.cmd->image_acquired;
-			waits[1] = vk.rendering_finished;
-			submit_info.waitSemaphoreCount = 2;
-			submit_info.pWaitSemaphores = &waits[0];
-			submit_info.pWaitDstStageMask = &wait_dst_stage_mask[0];
-			signals[0] = vk.swapchain_rendering_finished[ vk.cmd->swapchain_image_index ];
-			signals[1] = vk.cmd->rendering_finished2;
-			submit_info.signalSemaphoreCount = 2;
-			submit_info.pSignalSemaphores = &signals[0];
-
+		} 
+        else if ( vk.rendering_finished != VK_NULL_HANDLE ) 
+        {
+			waits[wait_count++] = vk.rendering_finished;
+            signals[signal_count++] = vk.cmd->rendering_finished2;
 			vk.rendering_finished = vk.cmd->rendering_finished2;
-		} else {
-			submit_info.waitSemaphoreCount = 1;
-			submit_info.pWaitSemaphores = &vk.cmd->image_acquired;
-			submit_info.pWaitDstStageMask = &wait_dst_stage_mask[0];
-			submit_info.signalSemaphoreCount = 1;
-			submit_info.pSignalSemaphores = &vk.swapchain_rendering_finished[ vk.cmd->swapchain_image_index ];
 		}
-#else
-		submit_info.waitSemaphoreCount = 1;
-		submit_info.pWaitSemaphores = &vk.cmd->image_acquired;
-		submit_info.pWaitDstStageMask = &wait_dst_stage_mask;
-		submit_info.signalSemaphoreCount = 1;
-		submit_info.pSignalSemaphores = &vk.swapchain_rendering_finished[ vk.cmd->swapchain_image_index ];
 #endif
     }
-    else {
-        submit_info.waitSemaphoreCount = 0;
-        submit_info.pWaitSemaphores = NULL;
-        submit_info.pWaitDstStageMask = NULL;
-        submit_info.signalSemaphoreCount = 0;
-        submit_info.pSignalSemaphores = NULL;
-    }
+
+	submit_info.waitSemaphoreCount      = wait_count;
+	submit_info.pWaitSemaphores         = &waits[0];
+	submit_info.pWaitDstStageMask       = &wait_dst_stage_mask[0];
+	submit_info.signalSemaphoreCount    = signal_count;
+    submit_info.pSignalSemaphores       = &signals[0];
 
     size_t submit_task = vk_imgui_profiler_start_task( "Submit", RGBA_LE(0x9b59b6ffu) );
     VK_CHECK( qvkQueueSubmit( vk.queue, 1, &submit_info, vk.cmd->rendering_finished_fence ) );
@@ -1846,6 +1847,14 @@ void vk_present_frame( void )
 	VkPresentInfoKHR present_info;
 	VkResult res;
 
+#ifdef VK_CUBEMAP
+    // using vk.cmd->swapchain_image_acquired = qfalse; in vk_end_frame()
+    // to omit presenting, if !vk.cmd->swapchain_image_acquired 
+    // statement changes here, uncomment this
+    //if ( backEnd.viewParms.targetCube != nullptr )
+    //    return;
+#endif
+
 	if ( ri.VK_IsMinimized() || !vk.cmd->swapchain_image_acquired )
 		return;
 
@@ -1854,42 +1863,37 @@ void vk_present_frame( void )
 		return;
 	}
 
-#ifdef VK_CUBEMAP
-    if ( backEnd.viewParms.targetCube == nullptr )
-#endif
-    {
-	    present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-	    present_info.pNext = NULL;
-	    present_info.waitSemaphoreCount = 1;
-	    present_info.pWaitSemaphores = &vk.swapchain_rendering_finished[ vk.cmd->swapchain_image_index ];
-	    present_info.swapchainCount = 1;
-	    present_info.pSwapchains = &vk.swapchain;
-	    present_info.pImageIndices = &vk.cmd->swapchain_image_index;
-	    present_info.pResults = NULL;
+	present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	present_info.pNext = NULL;
+	present_info.waitSemaphoreCount = 1;
+	present_info.pWaitSemaphores = &vk.swapchain_rendering_finished[ vk.cmd->swapchain_image_index ];
+	present_info.swapchainCount = 1;
+	present_info.pSwapchains = &vk.swapchain;
+	present_info.pImageIndices = &vk.cmd->swapchain_image_index;
+	present_info.pResults = NULL;
 
-        vk.cmd->swapchain_image_acquired = qfalse;
+    vk.cmd->swapchain_image_acquired = qfalse;
 
-        size_t present_task = vk_imgui_profiler_start_task( "Present", RGBA_LE(0xc0392bffu) );
-        res = qvkQueuePresentKHR( vk.queue, &present_info );
-        vk_imgui_profiler_end_task( present_task );
+    size_t present_task = vk_imgui_profiler_start_task( "Present", RGBA_LE(0xc0392bffu) );
+    res = qvkQueuePresentKHR( vk.queue, &present_info );
+    vk_imgui_profiler_end_task( present_task );
 
-        switch ( res ) {
-		    case VK_SUCCESS:
-			    break;
-		    case VK_SUBOPTIMAL_KHR:
-		    case VK_ERROR_OUT_OF_DATE_KHR:
-			    // swapchain re-creation needed
-			    vk_restart_swapchain( __func__ );
-			    break;
-		    case VK_ERROR_DEVICE_LOST:
-			    // we can ignore that
-			    ri.Printf( PRINT_DEVELOPER, "vkQueuePresentKHR: device lost\n" );
-			    break;
-		    default:
-			    // or we don't
-			    ri.Error( ERR_FATAL, "vkQueuePresentKHR returned %s", vk_result_string( res ) );
-	    }
-    }
+    switch ( res ) {
+		case VK_SUCCESS:
+			break;
+		case VK_SUBOPTIMAL_KHR:
+		case VK_ERROR_OUT_OF_DATE_KHR:
+			// swapchain re-creation needed
+			vk_restart_swapchain( __func__ );
+			break;
+		case VK_ERROR_DEVICE_LOST:
+			// we can ignore that
+			ri.Printf( PRINT_DEVELOPER, "vkQueuePresentKHR: device lost\n" );
+			break;
+		default:
+			// or we don't
+			ri.Error( ERR_FATAL, "vkQueuePresentKHR returned %s", vk_result_string( res ) );
+	}
 
     #ifdef USE_RTX
         vk.frame_counter++;
