@@ -4825,19 +4825,17 @@ shader_t *FinishShader( void )
 				def.vk_pbr_flags = pStage->vk_pbr_flags;
 #endif
 
-				if ( def.vk_light_flags ) 
+				if ( def.vk_light_flags && !vk.useFastLight ) 
 				{
-					//if ( !vk.useFastLight)
-						pStage->tessFlags |= TESS_TANGENT | TESS_NNN;
+					pStage->tessFlags |= TESS_TANGENT | TESS_NNN;
 
-					if ( def.vk_light_flags & LIGHTDEF_USE_LIGHTMAP ) {
+					if ( !(def.vk_light_flags & LIGHTDEF_USE_LIGHT_VECTOR) )
 						pStage->tessFlags |= TESS_LIGHTDIR;
-#ifdef HDR_DELUXE_LIGHTMAP
-						if ( pStage->bundle[1].deluxeMap )
-							def.vk_pbr_flags |= PBR_HAS_DELUXEMAP;
-#endif
-					}
 
+#ifdef HDR_DELUXE_LIGHTMAP
+					if ( def.vk_light_flags & LIGHTDEF_USE_LIGHTMAP && pStage->bundle[1].deluxeMap )
+						def.vk_pbr_flags |= PBR_HAS_DELUXEMAP;
+#endif
 				}
 			}
 
