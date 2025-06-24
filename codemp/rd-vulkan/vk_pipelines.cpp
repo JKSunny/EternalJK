@@ -488,12 +488,12 @@ static void vk_push_vertex_input_binding_attribute( const Vk_Pipeline_Def *def )
     }
 
  #ifdef USE_VK_PBR 
-    if ( def->vk_light_flags )
+    if ( def->vk_light_flags && !vk.useFastLight )
     {
         vk_push_bind( 8, sizeof(vec4_t) );                          // qtangent
         vk_push_attr( 8, 8, VK_FORMAT_R32G32B32A32_SFLOAT );
 
-        if ( def->vk_light_flags & LIGHTDEF_USE_LIGHTMAP )
+        if ( !(def->vk_light_flags & LIGHTDEF_USE_LIGHT_VECTOR) )
         {
             vk_push_bind( 9, sizeof(vec4_t) );                      // lightdir
             vk_push_attr( 9, 9, VK_FORMAT_R32G32B32A32_SFLOAT );
@@ -536,7 +536,12 @@ static void vk_push_vertex_input_binding_attribute( const Vk_Pipeline_Def *def )
             case TYPE_BLEND3_DST_COLOR_SRC_ALPHA_ENV:  
                 break;
             default:
-                if ( def->vk_light_flags || is_ghoul2_vbo || is_mdv_vbo ) 
+                if ( (def->vk_light_flags && !vk.useFastLight) || is_ghoul2_vbo || is_mdv_vbo ) 
+                {
+                    vk_push_bind( 5, sizeof( vec4_t ) );    // normals
+                    vk_push_attr( 5, 5, VK_FORMAT_R32G32B32A32_SFLOAT );
+                } 
+                else if ((def->vk_light_flags & LIGHTDEF_USE_LIGHT_VECTOR) && vk.useFastLight ) 
                 {
                     vk_push_bind( 5, sizeof( vec4_t ) );    // normals
                     vk_push_attr( 5, 5, VK_FORMAT_R32G32B32A32_SFLOAT );
@@ -684,7 +689,14 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
     unsigned int atest_bits;
     unsigned int state_bits = def->state_bits;
 
-    const int light = def->vk_light_flags;
+    int light = 0;
+    if ( def->vk_light_flags & LIGHTDEF_USE_LIGHTMAP )
+        light = 1;
+    else if ( def->vk_light_flags & LIGHTDEF_USE_LIGHT_VECTOR )
+        light = 2;
+    else if ( def->vk_light_flags & LIGHTDEF_USE_LIGHT_VERTEX )
+        light = 3;
+
     const int fastlight = vk.useFastLight ? 1 : 0;
 
     const int pbr = def->vk_pbr_flags ? 1 : 0;      // 0: off, 1: on
