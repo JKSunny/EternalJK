@@ -52,6 +52,12 @@ for %%f in (%glsl%*.geom) do (
     del /Q "%tmpf%"
 )
 
+for %%f in (%glsl%*.comp) do (
+    "%cl%" -S comp -V -o "%tmpf%" "%%f"
+    "%bh%" "%tmpf%" %outf% %%~nf_comp_spv
+    del /Q "%tmpf%"
+)
+
 "%cl%" -S vert -V -o "%tmpf%" %glsl%gen_vert.tmpl -DUSE_CL0_IDENT
 "%bh%" "%tmpf%" %outf% vert_tx0_ident
 

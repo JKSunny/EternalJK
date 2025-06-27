@@ -160,6 +160,8 @@ PFN_vkResetCommandPool							qvkResetCommandPool;
 #endif
 
 PFN_vkCmdDrawIndexedIndirect					qvkCmdDrawIndexedIndirect;
+PFN_vkCmdDispatch								qvkCmdDispatch;
+PFN_vkCreateComputePipelines					qvkCreateComputePipelines;
 
 #ifdef USE_RTX
 PFN_vkGetPhysicalDeviceFeatures2					qvkGetPhysicalDeviceFeatures2;
@@ -1456,6 +1458,8 @@ __initStart:
 	INIT_DEVICE_FUNCTION_EXT(vkCmdClearColorImage)
 
 	INIT_DEVICE_FUNCTION(vkCmdDrawIndexedIndirect)
+	INIT_DEVICE_FUNCTION(vkCmdDispatch)
+	INIT_DEVICE_FUNCTION(vkCreateComputePipelines)
 
 #ifdef USE_VK_IMGUI
 	INIT_DEVICE_FUNCTION(vkFlushMappedMemoryRanges)

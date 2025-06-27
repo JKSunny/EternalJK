@@ -99,6 +99,9 @@ void vk_create_shader_modules( void )
     }
 #endif
 
+#ifdef VK_COMPUTE_NORMALMAP
+    vk.shaders.normalmap = SHADER_MODULE(normalmap_comp_spv);
+#endif
     vk.shaders.frag.gen0_df = SHADER_MODULE(frag_tx0_df);
     VK_SET_OBJECT_NAME(vk.shaders.frag.gen0_df, "single-texture df fragment module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
 

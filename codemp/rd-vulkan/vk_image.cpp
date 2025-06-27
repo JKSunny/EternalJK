@@ -433,6 +433,11 @@ void vk_record_image_layout_transition( VkCommandBuffer cmdBuf, VkImage image,
 			src_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
 			barrier.srcAccessMask = VK_ACCESS_NONE;
 			break;
+		case VK_IMAGE_LAYOUT_GENERAL:
+			// For old layout = GENERAL, we assume compute shader write/read access.
+			src_stage = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+			barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT;
+			break;
 		default:
 			ri.Error( ERR_DROP, "unsupported old layout %i", old_layout );
 			src_stage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
@@ -464,6 +469,11 @@ void vk_record_image_layout_transition( VkCommandBuffer cmdBuf, VkImage image,
 		case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
 			dst_stage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 			barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
+			break;
+		case VK_IMAGE_LAYOUT_GENERAL:
+			// For new layout = GENERAL, allow compute shader read/write.
+			dst_stage = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+			barrier.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT;
 			break;
 		default:
 			ri.Error( ERR_DROP, "unsupported new layout %i", new_layout);
@@ -543,6 +553,7 @@ void vk_upload_image( image_t *image, byte *pic ) {
 	image->uploadWidth = w;
 	image->uploadHeight = h;
 	image->layers = 1;
+	image->mipLevels = upload_data.mip_levels;
 
 	vk_create_image( image, w, h, upload_data.mip_levels );
 	vk_upload_image_data( image, 0, 0, w, h, upload_data.mip_levels, upload_data.buffer, upload_data.buffer_size, qfalse );
@@ -616,6 +627,9 @@ void vk_generate_image_upload_data( image_t *image, byte *data, Image_Upload_Dat
 			}
 		}
 	}
+
+	if ( r_smartpicmip && r_smartpicmip->integer && Q_stricmpn( image->imgName, "textures/", 9 ) )
+		picmip = qfalse;
 
 	//
 	// perform optional picmip operation
@@ -1293,6 +1307,11 @@ void vk_create_image( image_t *image, int width, int height, int mip_levels ) {
 
 	// create image
 	{
+		VkImageUsageFlags usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+		
+		if ( image->flags & IMGFLAG_STORAGE )
+			usage |= VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT ;
+
 		VkImageCreateInfo desc;
 		desc.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 		desc.pNext = NULL;
@@ -1306,7 +1325,7 @@ void vk_create_image( image_t *image, int width, int height, int mip_levels ) {
 		desc.arrayLayers = image->layers;
 		desc.samples = VK_SAMPLE_COUNT_1_BIT;
 		desc.tiling = VK_IMAGE_TILING_OPTIMAL;
-		desc.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+		desc.usage = usage;
 		desc.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 		desc.queueFamilyIndexCount = 0;
 		desc.pQueueFamilyIndices = NULL;
@@ -1480,10 +1499,6 @@ image_t *R_CreateImage( const char *name, byte *pic, int width, int height, imgF
         image->wrapClampMode = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
     else
         image->wrapClampMode = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-
-	if (r_smartpicmip && r_smartpicmip->integer && Q_stricmpn(name, "textures/", 9)) {
-		image->flags &= ~(IMGFLAG_PICMIP);
-	}
 
 	image->handle = VK_NULL_HANDLE;
 	image->view = VK_NULL_HANDLE;

@@ -33,10 +33,15 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 	#define VK_DLIGHT_GPU		// 
 	#define VK_PBR_BRDFLUT		// for inspecting codebase, does not toggle brdflut. 
 	#define VK_CUBEMAP	
+	#define VK_COMPUTE_NORMALMAP	
 
 	#ifdef VK_CUBEMAP
 		#define REF_CUBEMAP_IRRADIANCE_SIZE 64
 		#define REF_CUBEMAP_SIZE			256
+	#endif
+
+	#ifdef VK_COMPUTE_NORMALMAP
+		#define MAX_BATCH_COMPUTE_NORMALMAPS 1024
 	#endif
 #endif
 
@@ -294,6 +299,7 @@ typedef enum
 	IMGFLAG_NOSCALE			= 0x0100,
 	IMGFLAG_RGB				= 0x0200,
 	IMGFLAG_COLORSHIFT		= 0x0400,
+	IMGFLAG_STORAGE			= 0x0800,
 } imgFlags_t;
 
 #if defined( _WIN32 )
@@ -358,6 +364,13 @@ typedef struct cubemap_s {
 	image_t		*prefiltered_image;
 	image_t		*irradiance_image;
 } cubemap_t;
+
+#ifdef VK_COMPUTE_NORMALMAP
+typedef struct {
+	image_t* normal;
+	VkDescriptorSet descriptor_set;
+} comp_normalmap_item_t;
+#endif
 
 typedef struct VBO_s
 {	
@@ -1876,7 +1889,10 @@ typedef struct trGlobals_s {
 #ifdef USE_PMLIGHT
 	int						lightCount;			// incremented for each dlight in the view
 #endif
-
+#ifdef VK_COMPUTE_NORMALMAP
+	comp_normalmap_item_t	compute_normalmaps[MAX_BATCH_COMPUTE_NORMALMAPS];
+	uint32_t				compute_normalmaps_batch_num;
+#endif
 	int						frameSceneNum;		// zeroed at RE_BeginFrame
 
 	qboolean				worldMapLoaded;
@@ -2235,6 +2251,9 @@ extern cvar_t	*r_baseParallax;
 extern cvar_t	*r_baseSpecular;
 #ifdef VK_CUBEMAP
 extern cvar_t	*r_cubeMapping;
+#endif
+#ifdef VK_COMPUTE_NORMALMAP
+extern cvar_t	*r_genNormalMaps;
 #endif
 #endif
 
@@ -3087,6 +3106,13 @@ void		vk_mikkt_bsp_tri_generate( srfTriangles_t *tri );
 void		vk_mikkt_bsp_face_generate( srfSurfaceFace_t *face );
 void		vk_mikkt_mdxm_generate( int numSurfaces, mdxmVertex_t *vertices, mdxmVertexTexCoord_t *st, vec4_t *tangents, glIndex_t *indices );
 void		vk_mikkt_mdv_generate( int numSurfaces, mdvVertex_t *verts, vec4_t *tangents, mdvSt_t *st, glIndex_t *indices );
+
+#ifdef VK_COMPUTE_NORMALMAP
+// compute normalmap
+void		vk_create_compute_normalmap_pipelines( void );
+void		vk_dispatch_compute_normalmaps( void );
+void		vk_add_compute_normalmap( shaderStage_t *stage, image_t *albedo, imgFlags_t flags );
+#endif
 
 #ifdef USE_VBO
 // VBO functions
