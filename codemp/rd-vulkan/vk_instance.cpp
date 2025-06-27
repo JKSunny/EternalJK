@@ -160,6 +160,8 @@ PFN_vkResetCommandPool							qvkResetCommandPool;
 #endif
 
 PFN_vkCmdDrawIndexedIndirect					qvkCmdDrawIndexedIndirect;
+PFN_vkCmdDispatch								qvkCmdDispatch;
+PFN_vkCreateComputePipelines					qvkCreateComputePipelines;
 
 static char *Q_stradd( char *dst, const char *src )
 {
@@ -1071,6 +1073,8 @@ __initStart:
 	INIT_DEVICE_FUNCTION_EXT(vkCmdClearColorImage)
 
 	INIT_DEVICE_FUNCTION(vkCmdDrawIndexedIndirect)
+	INIT_DEVICE_FUNCTION(vkCmdDispatch)
+	INIT_DEVICE_FUNCTION(vkCreateComputePipelines)
 
 #ifdef USE_VK_IMGUI
 	INIT_DEVICE_FUNCTION(vkFlushMappedMemoryRanges)
@@ -1208,6 +1212,8 @@ void vk_deinit_library( void )
 #endif
 
 	qvkCmdDrawIndexedIndirect = NULL;
+	qvkCmdDispatch = NULL;
+	qvkCreateComputePipelines = NULL;
 }
 
 #define FORMAT_DEPTH(format, r_bits, g_bits, b_bits) case(VK_FORMAT_##format): *r = r_bits; *b = b_bits; *g = g_bits; return qtrue;

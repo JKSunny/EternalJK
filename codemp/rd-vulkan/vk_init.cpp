@@ -592,6 +592,9 @@ void vk_initialize( void )
 		VK_CHECK(qvkCreatePipelineCache(vk.device, &ci, VK_NULL_HANDLE, &vk.pipelineCache));
 	}
 
+#ifdef VK_COMPUTE_NORMALMAP
+	vk_create_compute_normalmap_pipelines();
+#endif
 	vk.renderPassIndex = RENDER_PASS_MAIN; // default render pass
 	vk.initSwapchainLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 

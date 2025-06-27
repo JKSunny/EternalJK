@@ -1357,7 +1357,9 @@ void vk_begin_frame( void )
 #ifdef USE_UPLOAD_QUEUE
 	vk_flush_staging_buffer( qtrue );
 #endif
-
+#ifdef VK_COMPUTE_NORMALMAP
+	vk_dispatch_compute_normalmaps();
+#endif
 	vk.cmd = &vk.tess[ vk.cmd_index ];
 
     vk_imgui_profiler_begin_frame();
@@ -1671,8 +1673,6 @@ void vk_end_frame( void )
             waits[wait_count++] = vk.image_uploaded;
             vk.image_uploaded = VK_NULL_HANDLE;
         }
-
-        vk.cmd->swapchain_image_acquired = qfalse; // prevent present  
     } else 
 #endif
     if ( !ri.VK_IsMinimized() ) 
@@ -1725,11 +1725,8 @@ void vk_present_frame( void )
 	VkResult res;
 
 #ifdef VK_CUBEMAP
-    // using vk.cmd->swapchain_image_acquired = qfalse; in vk_end_frame()
-    // to omit presenting, if !vk.cmd->swapchain_image_acquired 
-    // statement changes here, uncomment this
-    //if ( backEnd.viewParms.targetCube != nullptr )
-    //    return;
+    if ( backEnd.viewParms.targetCube != nullptr )
+        return;
 #endif
 
 	if ( ri.VK_IsMinimized() || !vk.cmd->swapchain_image_acquired )
