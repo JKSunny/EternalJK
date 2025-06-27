@@ -477,6 +477,8 @@ extern PFN_vkResetCommandPool							qvkResetCommandPool;
 #endif
 
 extern PFN_vkCmdDrawIndexedIndirect						qvkCmdDrawIndexedIndirect;
+extern PFN_vkCmdDispatch								qvkCmdDispatch;
+extern PFN_vkCreateComputePipelines						qvkCreateComputePipelines;
 
 typedef union floatint_u
 {
@@ -963,6 +965,12 @@ typedef struct {
 	VkDescriptorSetLayout	set_layout_uniform;		// dynamic uniform buffer
 	VkDescriptorSetLayout	set_layout_storage;		// feedback buffer
 
+#ifdef VK_COMPUTE_NORMALMAP
+	VkDescriptorSetLayout	set_layout_compute_normalmap;
+	VkPipelineLayout		pipeline_layout_compute_normalmap;
+	VkPipeline				compute_normalmap_pipeline;
+#endif
+
 	// pipeline(s)
 	VkPipelineLayout pipeline_layout;				// default shaders
 	VkPipelineLayout pipeline_layout_storage;		// flare test shader layout
@@ -1072,6 +1080,8 @@ typedef struct {
 		VkShaderModule prefilterenvmap_fs;
 		VkShaderModule refraction_vs[3];
 		VkShaderModule refraction_fs;
+
+		VkShaderModule normalmap;
 	} shaders;
 
 	uint32_t frame_count;

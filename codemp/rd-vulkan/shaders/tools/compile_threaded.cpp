@@ -306,8 +306,8 @@ static void compile_and_convert_template_shaders( void )
 
 static void compile_and_convert_individual_shaders( void )
 {
-    const char *stages[] = { "vert", "frag", "geom" };
-    const char *stage_exts[] = { ".vert", ".frag", ".geom" };
+    const char *stages[] = { "vert", "frag", "geom", "comp" };
+    const char *stage_exts[] = { ".vert", ".frag", ".geom", ".comp" };
 
     char find_pattern[256];
     struct _finddata_t f;
@@ -315,7 +315,7 @@ static void compile_and_convert_individual_shaders( void )
 
     char input_file[256], cmd[512], array_name[128];
 
-    for (int i = 0; i < 3; ++i) {
+    for (int i = 0; i < ARRAY_LEN(stages); ++i) {
         snprintf(find_pattern, sizeof(find_pattern), "%s\\*%s", glsl_root_path.c_str(), stage_exts[i]);
         handle = _findfirst(find_pattern, &f);
 

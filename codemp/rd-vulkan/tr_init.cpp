@@ -229,6 +229,9 @@ cvar_t  *r_baseSpecular;
 #ifdef VK_CUBEMAP
 cvar_t	*r_cubeMapping;
 #endif
+#ifdef VK_COMPUTE_NORMALMAP
+cvar_t	*r_genNormalMaps;
+#endif
 #endif
 
 
@@ -985,6 +988,9 @@ void R_Register( void )
 	r_baseSpecular						= ri.Cvar_Get("r_baseSpecular",						"0.04",						CVAR_ARCHIVE | CVAR_LATCH, "" );
 #ifdef VK_CUBEMAP
 	r_cubeMapping						= ri.Cvar_Get("r_cubeMapping",						"0",						CVAR_ARCHIVE | CVAR_LATCH, "" );
+#endif
+#ifdef VK_COMPUTE_NORMALMAP
+	r_genNormalMaps						= ri.Cvar_Get("r_genNormalMaps",					"0",						CVAR_ARCHIVE | CVAR_LATCH, "Approximate normal maps from baked diffuse (albedo) textures" );
 #endif
 #endif
 

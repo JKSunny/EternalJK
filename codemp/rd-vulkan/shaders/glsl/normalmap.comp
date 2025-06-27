@@ -1,0 +1,35 @@
+#version 450
+layout (binding = 0) uniform sampler2D albedo;
+layout (binding = 1, rgba8) writeonly uniform image2D outNormal;
+
+layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+void main() {
+    ivec2 pos = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 size = imageSize(outNormal);
+    if (pos.x >= size.x || pos.y >= size.y) return;
+
+    vec2 texelSize = 1.0 / vec2(size);
+	vec2 uv = (vec2(pos) + 0.5) * texelSize;
+
+	float heightL = dot(texture(albedo, uv + vec2(-1, 0) * texelSize).rgb, vec3(0.3, 0.59, 0.11));
+	float heightR = dot(texture(albedo, uv + vec2( 1, 0) * texelSize).rgb, vec3(0.3, 0.59, 0.11));
+	float heightD = dot(texture(albedo, uv + vec2(0, -1) * texelSize).rgb, vec3(0.3, 0.59, 0.11));
+	float heightU = dot(texture(albedo, uv + vec2(0,  1) * texelSize).rgb, vec3(0.3, 0.59, 0.11));
+
+	float scale = 2.5; // tweak this to your liking
+
+	vec3 normal = normalize(vec3(
+		(heightL - heightR) * scale,
+		(heightD - heightU) * scale,
+		1.0
+	));
+
+	normal.xy = normal.xy * 0.5 + 0.5;
+#if 0
+    imageStore(outNormal, pos, vec4(normal, 1.0));
+#else
+	// pre swizzle to type: _n
+	imageStore(outNormal, pos, vec4(1.0, normal.y, normal.z, normal.x));
+#endif
+}
