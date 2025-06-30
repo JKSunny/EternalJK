@@ -321,6 +321,8 @@ typedef struct {
 typedef struct VBO_s
 {	
 	int				index;
+	int				size;
+	void			*mapped;
 
 	VkBuffer		buffer;
 	VkDeviceMemory	memory;
@@ -330,6 +332,9 @@ typedef struct VBO_s
 
 typedef struct IBO_s
 {
+	int				size;
+	void			*mapped;
+
 	VkBuffer		buffer;
 	VkDeviceMemory	memory;
 } IBO_t;
@@ -1173,6 +1178,36 @@ typedef struct srfVert_s {
 	byte		color[MAXLIGHTMAPS][4];
 } srfVert_t;
 
+#ifdef _G2_GORE
+typedef struct
+{
+	vec4_t		verts;
+	vec4_t		normals;
+	vec2_t		texcoords;
+	byte		bonerefs[4];
+	byte		weights[4];
+	vec4_t		tangents;
+} g2GoreVert_t;
+
+typedef struct srfG2GoreSurface_s
+{
+	surfaceType_t   surfaceType;
+
+	// indexes
+	int             numIndexes;
+	glIndex_t      *indexes;
+
+	// vertexes
+	int             numVerts;
+	g2GoreVert_t    *verts;
+
+	// BSP VBO offsets
+	int             firstVert;
+	int             firstIndex;
+
+} srfG2GoreSurface_t;
+
+#endif
 typedef struct srfGridMesh_s {
 	surfaceType_t	surfaceType;
 
@@ -1875,6 +1910,14 @@ typedef struct trGlobals_s {
 	int						numIBOs;
 	IBO_t					*ibos[4069];
 
+#ifdef _G2_GORE
+	VBO_t					*goreVBO;
+	int						*goreVBOIndex;
+	int						goreVBOCurrentIndex;
+	IBO_t					*goreIBO;
+	int						goreIBOCurrentIndex;
+#endif
+
 	// shader indexes from other modules will be looked up in tr.shaders[]
 	// shader indexes from drawsurfs will be looked up in sortedShaders[]
 	// lower indexed sortedShaders must be rendered first (opaque surfaces before translucent)
@@ -2522,7 +2565,8 @@ public:
 #endif
 	mdxmSurface_t	*surfaceData;		// pointer to surface data loaded into file - only used by client renderer DO NOT USE IN GAME SIDE - if there is a vid restart this will be out of wack on the game
 #ifdef _G2_GORE
-	float			*alternateTex;		// alternate texture coordinates.
+	///float			*alternateTex;		// alternate texture coordinates.
+	srfG2GoreSurface_t *alternateTex;		// alternate texture coordinates.
 	void			*goreChain;
 
 	float			scale;
@@ -2536,8 +2580,10 @@ public:
 		ident			= src.ident;
 		boneCache		= src.boneCache;
 		surfaceData		= src.surfaceData;
+#ifdef _G2_GORE
 		alternateTex	= src.alternateTex;
 		goreChain		= src.goreChain;
+#endif
 #ifdef USE_VBO_GHOUL2
 		vboMesh			= src.vboMesh;
 #endif
@@ -2566,8 +2612,10 @@ CRenderableSurface():
 		ident			= SF_MDX;
 		boneCache		= nullptr;
 		surfaceData		= nullptr;
+#ifdef _G2_GORE
 		alternateTex	= nullptr;
 		goreChain		= nullptr;
+#endif
 #ifdef USE_VBO_GHOUL2
 		vboMesh			= nullptr;
 #endif
@@ -2974,6 +3022,10 @@ void		vk_add_compute_normalmap( shaderStage_t *stage, image_t *albedo, imgFlags_
 extern void R_BuildWorldVBO( msurface_t *surf, int surfCount );
 extern void R_BuildMDXM( model_t *mod, mdxmHeader_t *mdxm );
 extern void R_BuildMD3( model_t *mod, mdvModel_t *mdvModel );
+#ifdef _G2_GORE
+extern void R_CreateGoreVBO( void );
+extern void R_UpdateGoreVBO( srfG2GoreSurface_t *goreSurface );
+#endif
 
 extern void VBO_PushData( int itemIndex, shaderCommands_t *input );
 extern void VBO_UnBind( void );

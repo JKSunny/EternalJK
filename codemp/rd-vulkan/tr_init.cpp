@@ -1171,6 +1171,9 @@ void R_Init( void ) {
 	R_Set2DRatio();
 	R_InitImages();	
 
+#ifdef _G2_GORE
+	R_CreateGoreVBO();
+#endif
 	vk_create_pipelines();	// Vulkan
 
 #ifdef VK_PBR_BRDFLUT
