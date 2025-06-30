@@ -134,8 +134,6 @@ void vk_add_compute_normalmap( shaderStage_t *stage, image_t *albedo, imgFlags_t
 		ri.Error( ERR_DROP, "%s: MAX_BATCH_COMPUTE_NORMALMAPS hit", __func__ );
 	}
 
-	Com_Printf("%s \n", albedo->imgName );
-
 	VkWriteDescriptorSet writes[2] = {};
 	Vk_Sampler_Def sampler_def;
 	VkDescriptorImageInfo image_info, normal_info;
@@ -299,8 +297,6 @@ void vk_dispatch_compute_normalmaps( void )
 		VkCommandBuffer command_buffer = vk_begin_command_buffer();
 		for (uint32_t i = 0; i < tr.compute_normalmaps_batch_num; i++) {
 			comp_normalmap_item_t* item = &tr.compute_normalmaps[i];
-
-			//Com_Printf("%s \n", item->normal->imgName);
 
 			vk_record_image_layout_transition(
 				command_buffer,
