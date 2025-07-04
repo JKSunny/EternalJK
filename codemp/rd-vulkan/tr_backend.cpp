@@ -508,12 +508,39 @@ static void vk_update_ghoul2_constants( const trRefdef_t *refdef ) {
 	}
 }
 
+static void vk_update_fog_constants(const trRefdef_t* refdef)
+{
+	uint32_t i;
+	size_t size;
+	vkUniformFog_t uniform = {};
+
+	uniform.num_fogs = tr.world ? ( tr.world->numfogs - 1 ) : 0;
+
+	size = sizeof(vec4_t);
+
+	for ( i = 0; i < uniform.num_fogs; ++i )
+	{
+		const fog_t *fog = tr.world->fogs + i + 1;
+		vkUniformFogEntry_t *fogData = uniform.fogs + i;
+
+		VectorCopy4( fog->surface, fogData->plane );
+		VectorCopy4( fog->color, fogData->color );
+		fogData->depthToOpaque = sqrtf(-logf(1.0f / 255.0f)) / fog->parms.depthForOpaque;
+		fogData->hasPlane = fog->hasSurface;
+	}
+
+	size += (i * sizeof(vkUniformFogEntry_t));
+
+	vk.cmd->fogs_ubo_offset = vk_append_uniform( &uniform, size, vk.uniform_fogs_item_size );
+}
+
 static void RB_UpdateUniformConstants( const trRefdef_t *refdef, const viewParms_t *viewParms ) 
 {
 	vk_update_camera_constants( refdef, viewParms );
 	vk_update_light_constants( refdef );
 	vk_update_entity_constants( refdef );
 	vk_update_ghoul2_constants( refdef );
+	vk_update_fog_constants( refdef );
 }
 
 void RB_BindDescriptorSets( const DrawItem& drawItem ) 
@@ -534,6 +561,7 @@ void RB_BindDescriptorSets( const DrawItem& drawItem )
 		offsets[offset_count++] = drawItem.descriptor_set.offset[VK_DESC_UNIFORM_LIGHT_BINDING];
 		offsets[offset_count++] = drawItem.descriptor_set.offset[VK_DESC_UNIFORM_ENTITY_BINDING];
 		offsets[offset_count++] = drawItem.descriptor_set.offset[VK_DESC_UNIFORM_BONES_BINDING];
+		offsets[offset_count++] = drawItem.descriptor_set.offset[VK_DESC_UNIFORM_FOGS_BINDING];
 		offsets[offset_count++] = drawItem.descriptor_set.offset[VK_DESC_UNIFORM_GLOBAL_BINDING];
 	}
 

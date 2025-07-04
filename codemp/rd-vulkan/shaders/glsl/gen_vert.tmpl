@@ -95,7 +95,7 @@ layout(set = 0, binding = 0) uniform UBO {
 		mat4 u_ModelMatrix;
 	};
 
-	layout(set = 0, binding = 5) uniform Global {
+	layout(set = 0, binding = 6) uniform Global {
 		vkBundle_t			u_bundle[3];
 		vkDisintegration_t	u_disintegration;
 		vkDeform_t			u_deform;
@@ -179,7 +179,7 @@ layout(location = 3) out vec2 frag_tex_coord2;
 #endif
 
 #ifdef USE_FOG
-layout(location = 4) out vec2 fog_tex_coord;
+layout(location = 4) out vec3 fog_tex_coord;
 #endif
 
 #if defined(PER_PIXEL_LIGHTING)
@@ -188,6 +188,10 @@ layout(location = 4) out vec2 fog_tex_coord;
 	#if !defined(USE_LIGHT_VECTOR)
 		layout(location = 9) in vec4 in_lightdir;
 	#endif
+#endif
+
+#ifdef USE_FOG
+	layout (constant_id = 0) const int hw_fog = 0;
 #endif
 
 out gl_PerVertex {
@@ -553,25 +557,36 @@ void main() {
 	#endif
 #endif
 
-#ifdef USE_FOG
-	float s = dot(position, fogDistanceVector.xyz) + fogDistanceVector.w;
-	float t = dot(position, fogDepthVector.xyz) + fogDepthVector.w;
-
-	if ( fogEyeT.y == 1.0 ) {
-		if ( t < 0.0 ) {
-			t = 1.0 / 32.0;
-		} else {
-			t = 31.0 / 32.0;
-		}
-	} else {
-		if ( t < 1.0 ) {
-			t = 1.0 / 32.0;
-		} else {
-			t = 1.0 / 32.0 + (30.0 / 32.0 * t) / ( t - fogEyeT.x );
-		}
+#ifdef USE_FOG	
+	if ( hw_fog == 1 ) 
+	{
+		#ifdef USE_VBO_MODEL
+			fog_tex_coord = (u_ModelMatrix * vec4(position, 1.0)).xyz;
+		#else
+			fog_tex_coord = position;
+		#endif
 	}
+	else 
+	{
+		float s = dot(position, fogDistanceVector.xyz) + fogDistanceVector.w;
+		float t = dot(position, fogDepthVector.xyz) + fogDepthVector.w;
 
-	fog_tex_coord = vec2(s, t);
+		if ( fogEyeT.y == 1.0 ) {
+			if ( t < 0.0 ) {
+				t = 1.0 / 32.0;
+			} else {
+				t = 31.0 / 32.0;
+			}
+		} else {
+			if ( t < 1.0 ) {
+				t = 1.0 / 32.0;
+			} else {
+				t = 1.0 / 32.0 + (30.0 / 32.0 * t) / ( t - fogEyeT.x );
+			}
+		}
+
+		fog_tex_coord.xy = vec2(s, t);
+	}
 #endif
 
 #if defined(USE_LIGHT)
