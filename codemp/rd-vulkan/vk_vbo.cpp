@@ -1416,9 +1416,9 @@ void R_CreateGoreVBO( void )
 	tr.goreVBO->offsets[0] = ofsPosition;
 	tr.goreVBO->offsets[5] = ofsNormals;
 	tr.goreVBO->offsets[2] = ofsTexcoords;
-	tr.goreVBO->offsets[8] = ofsBoneRefs;
-	tr.goreVBO->offsets[9] = ofsWeights;
-	//tr.goreVBO->offsets[8] = ofsTangents;
+	tr.goreVBO->offsets[10] = ofsBoneRefs;
+	tr.goreVBO->offsets[11] = ofsWeights;
+	tr.goreVBO->offsets[8]	= ofsTangents;
 
 	tr.goreIBO = R_CreateDynamicIBO( "Gore IBO", GORE_INDEX_SIZE );
 
