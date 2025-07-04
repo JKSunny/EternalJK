@@ -873,6 +873,83 @@ static void RB_LightingPass( void )
 }
 #endif
 
+static void vk_update_camera_constants( const trRefdef_t *refdef, const viewParms_t *viewParms ) 
+{
+	// set
+	vkUniformCamera_t uniform = {};
+
+	Com_Memcpy( uniform.viewOrigin, refdef->vieworg, sizeof( vec3_t) );
+	uniform.viewOrigin[3] = 0.0f;
+
+	/*
+	const float* p = viewParms->projectionMatrix;
+	float proj[16];
+	Com_Memcpy(proj, p, 64);
+
+	proj[5] = -p[5];
+	//myGlMultMatrix(vk_world.modelview_transform, proj, uniform.mvp);
+	myGlMultMatrix(viewParms->world.modelViewMatrix, proj, uniform.mvp);
+	*/
+
+	vk.cmd->camera_ubo_offset = vk_append_uniform( &uniform, sizeof(uniform), vk.uniform_camera_item_size );
+}
+
+static void vk_update_entity_light_constants( vkUniformEntity_t &uniform, const trRefEntity_t *refEntity ) 
+{
+	static const float normalizeFactor = 1.0f / 255.0f;
+
+	VectorScale(refEntity->ambientLight, normalizeFactor, uniform.ambientLight);
+	VectorScale(refEntity->directedLight, normalizeFactor, uniform.directedLight);
+	VectorCopy(refEntity->lightDir, uniform.lightOrigin);
+
+	uniform.lightOrigin[3] = 0.0f;
+}
+
+static void vk_update_entity_matrix_constants( vkUniformEntity_t &uniform, const trRefEntity_t *refEntity ) 
+{
+	orientationr_t ori;
+
+	// backend ref cant be right
+	/*if ( refEntity == &tr.worldEntity ) {
+		ori = backEnd.viewParms.world;
+		Matrix16Identity( uniform.modelMatrix );
+	}else{
+		R_RotateForEntity( refEntity, &backEnd.viewParms, &ori );
+		Matrix16Copy( ori.modelMatrix, uniform.modelMatrix );
+	}*/
+
+	R_RotateForEntity(refEntity, &backEnd.viewParms, &ori);
+	Matrix16Copy(ori.modelMatrix, uniform.modelMatrix);
+	VectorCopy(ori.viewOrigin, uniform.localViewOrigin);
+
+	Com_Memcpy( &uniform.localViewOrigin, ori.viewOrigin, sizeof( vec3_t) );
+	uniform.localViewOrigin[3] = 0.0f;
+}
+
+static void vk_update_entity_constants( const trRefdef_t *refdef ) {
+	uint32_t i;
+	Com_Memset( vk.cmd->entity_ubo_offset, 0, sizeof(vk.cmd->entity_ubo_offset) );
+
+	for ( i = 0; i < refdef->num_entities; i++ ) {
+		trRefEntity_t *ent = &refdef->entities[i];
+
+		R_SetupEntityLighting( refdef, ent );
+
+		vkUniformEntity_t uniform = {};
+		vk_update_entity_light_constants( uniform, ent );
+		vk_update_entity_matrix_constants( uniform, ent );
+
+		vk.cmd->entity_ubo_offset[i] = vk_append_uniform( &uniform, sizeof(uniform), vk.uniform_entity_item_size );
+	}
+
+	const trRefEntity_t *ent = &tr.worldEntity;
+	vkUniformEntity_t uniform = {};
+	vk_update_entity_light_constants( uniform, ent );
+	vk_update_entity_matrix_constants( uniform, ent );
+
+	vk.cmd->entity_ubo_offset[REFENTITYNUM_WORLD] = vk_append_uniform( &uniform, sizeof(uniform), vk.uniform_entity_item_size );
+}
+
 static void vk_update_ghoul2_constants( const trRefdef_t *refdef ) {
 	uint32_t i;
 
@@ -905,9 +982,44 @@ static void vk_update_ghoul2_constants( const trRefdef_t *refdef ) {
 	}
 
 }
+
+static void vk_update_fog_constants(const trRefdef_t* refdef)
+{
+	uint32_t i;
+	size_t size;
+	vkUniformFog_t uniform = {};
+
+	uniform.num_fogs = tr.world ? ( tr.world->numfogs - 1 ) : 0;
+
+	size = sizeof(vec4_t);
+
+	for ( i = 0; i < uniform.num_fogs; ++i )
+	{
+		const fog_t *fog = tr.world->fogs + i + 1;
+		vkUniformFogEntry_t *fogData = uniform.fogs + i;
+
+		VectorCopy4( fog->surface, fogData->plane );
+		VectorCopy4( fog->color, fogData->color );
+		fogData->depthToOpaque = sqrtf(-logf(1.0f / 255.0f)) / fog->parms.depthForOpaque;
+		fogData->hasPlane = fog->hasSurface;
+	}
+
+	size += (i * sizeof(vkUniformFogEntry_t));
+
+	vk.cmd->fogs_ubo_offset = vk_append_uniform( &uniform, size, vk.uniform_fogs_item_size );
+}
+
 static void RB_UpdateUniformConstants( const trRefdef_t *refdef, const viewParms_t *viewParms ) 
 {
-	vk_update_ghoul2_constants( refdef );
+	vk_update_camera_constants( refdef, viewParms );
+
+	if ( vk.vboGhoul2Active ) 
+	{
+		vk_update_entity_constants( refdef );
+		vk_update_ghoul2_constants( refdef );
+	}
+
+	vk_update_fog_constants( refdef );
 }
 
 /*

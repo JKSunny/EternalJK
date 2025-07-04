@@ -868,7 +868,8 @@ void R_Register( void )
 	r_drawfog							= ri.Cvar_Get("r_drawfog",							"2",						CVAR_ARCHIVE_ND, "Fog mode\n"
 		" 0 - disabled\n"
 		" 1 - legacy fog\n"
-		" 2 - fog collapse\n");
+		" 2 - \"hardware\" fog + collapse\n"
+		" 3 - legacy fog + collapse\n");
 	r_lightmap							= ri.Cvar_Get( "r_lightmap",						"0",						CVAR_ARCHIVE_ND, "" );
 	r_distanceCull						= ri.Cvar_Get( "r_distanceCull",					"0",						CVAR_ARCHIVE_ND, "" );
 	r_portalOnly						= ri.Cvar_Get( "r_portalOnly",						"0",						CVAR_CHEAT, "" );

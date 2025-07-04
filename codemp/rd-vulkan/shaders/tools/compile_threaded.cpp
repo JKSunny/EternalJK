@@ -221,6 +221,10 @@ static void compile_and_convert_template_shaders( void )
     const char* fog_flags[]         = { "", "-DUSE_FOG" };
     const char* fog_ids[]           = { "", "_fog" };
 
+    // fog only
+    const char* fog_only_flags[]    = { "-DUSE_FOG_LINEAR", "-DUSE_FOG_EXP" };
+    const char* fog_only_ids[]      = { "linear", "exp" };
+
     // single-texture fragment, depth-fragment
     create_shader_task("gen_frag.tmpl", "frag", "frag_tx0_df", NULL, "-DUSE_CLX_IDENT -DUSE_ATEST -DUSE_DF");
 
@@ -235,6 +239,24 @@ static void compile_and_convert_template_shaders( void )
     create_shader_task( "light_frag.tmpl", "frag", "frag_light_line_fog", NULL, "-DUSE_LINE -DUSE_FOG");
 
     std::string underscore = "";
+
+    // fog-only shaders
+    for ( i = 0; i < ARRAY_LEN(vbo_flags); ++i ) { // vbo
+        for ( j = 0; j < ARRAY_LEN(fog_only_flags); ++j ) { // fog only mode
+            defines = join_flags({ vbo_flags[i], fog_only_flags[j] });
+            name    = "vert_fog_only_" + std::string(vbo_ids[i]) + fog_only_ids[j];
+            ids     = join_indexes("vk.shaders.vert.fog", { i, j });
+
+            create_shader_task("fog_vert.tmpl", "vert", name.c_str(), ids.c_str(), defines.c_str()); 
+        }
+    }
+
+    for ( i = 0; i < ARRAY_LEN(fog_only_flags); ++i ) { // vbo
+        defines = join_flags({ fog_only_flags[i] });
+        name    = "frag_fog_only_" + std::string(fog_only_ids[i]);
+        ids     = join_indexes("vk.shaders.frag.fog", { i });
+        create_shader_task("fog_frag.tmpl", "frag", name.c_str(), ids.c_str(), defines.c_str());
+    }
 
     // ident / fixed vertex shaders
     for ( i = 0; i < ARRAY_LEN(vbo_flags); ++i ) { // vbo

@@ -45,23 +45,44 @@ static void vk_create_layout_binding( int binding, VkDescriptorType type,
     bind[count].stageFlags = flags;
     bind[count].pImmutableSamplers = NULL;
     count++;
-#if defined(USE_VBO_GHOUL2)
-    if ( is_uniform && vk.vboGhoul2Active ) {
+
+    if ( is_uniform ) {
+        bind[count].binding = VK_DESC_UNIFORM_CAMERA_BINDING;
+        bind[count].descriptorType = type;
+        bind[count].descriptorCount = 1;
+        bind[count].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+        bind[count].pImmutableSamplers = NULL;
+        count++;    
+
         bind[count].binding = VK_DESC_UNIFORM_ENTITY_BINDING;
         bind[count].descriptorType = type;
         bind[count].descriptorCount = 1;
         bind[count].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
         bind[count].pImmutableSamplers = NULL;
         count++;
-
-        bind[count].binding = VK_DESC_UNIFORM_BONES_BINDING; 
+ 
+        bind[count].binding = VK_DESC_UNIFORM_BONES_BINDING;
         bind[count].descriptorType = type;
         bind[count].descriptorCount = 1;
         bind[count].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
         bind[count].pImmutableSamplers = NULL;
         count++;  
+
+        bind[count].binding = VK_DESC_UNIFORM_FOGS_BINDING;
+        bind[count].descriptorType = type;
+        bind[count].descriptorCount = 1;
+        bind[count].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        bind[count].pImmutableSamplers = NULL;
+        count++;  
+        
+        bind[count].binding = VK_DESC_UNIFORM_GLOBAL_BINDING;
+        bind[count].descriptorType = type;
+        bind[count].descriptorCount = 1;
+        bind[count].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+        bind[count].pImmutableSamplers = NULL;
+        count++;  
     }
-#endif
+
     desc.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     desc.pNext = NULL;
     desc.flags = 0;
@@ -85,12 +106,7 @@ void vk_create_descriptor_layout( void )
         pool_size[0].descriptorCount = MAX_DRAWIMAGES + 1 + 1 + 1 + ( VK_NUM_BLUR_PASSES * 4 ) + 1;
 
         pool_size[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-        pool_size[1].descriptorCount = NUM_COMMAND_BUFFERS;
-
-#if defined(USE_VBO_GHOUL2)
-        if ( vk.vboGhoul2Active )
-            pool_size[1].descriptorCount += NUM_COMMAND_BUFFERS * 2;
-#endif
+        pool_size[1].descriptorCount = VK_DESC_UNIFORM_COUNT * NUM_COMMAND_BUFFERS;
 
         pool_size[2].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
         pool_size[2].descriptorCount = 1;
@@ -629,14 +645,15 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
     VkPipelineDynamicStateCreateInfo dynamic_state;
     VkDynamicState dynamic_state_array[3] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR, VK_DYNAMIC_STATE_DEPTH_BIAS };
     VkGraphicsPipelineCreateInfo create_info;
-    //int32_t vert_spec_data[1]; // clipping (def->clipping_plane). NULL  
-    //VkSpecializationInfo vert_spec_info;
+    int32_t vert_spec_data[1]; // clipping (def->clipping_plane). NULL  
+    VkSpecializationInfo vert_spec_info;
     struct FragSpecData {
         int32_t alpha_test_func; 
         float   alpha_test_value;
         float   depth_fragment;
         int32_t alpha_to_coverage;
         int32_t color_mode;
+        int32_t hw_fog;
         int32_t abs_light; 
         int32_t tex_mode;
         int32_t discard_mode;
@@ -644,7 +661,7 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
         float   identity_alpha;
         int32_t acff;
     } frag_spec_data; 
-    VkSpecializationMapEntry spec_entries[12];
+    VkSpecializationMapEntry spec_entries[13];
     VkSpecializationInfo frag_spec_info;
     VkBool32 alphaToCoverage = VK_FALSE;
     unsigned int atest_bits;
@@ -811,8 +828,8 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
 
         case TYPE_FOG_ONLY:
             // ghoul2 requires strides & bones, mdv only strides
-            vs_module = &vk.shaders.fog_vs[ def->vbo_ghoul2 ? 1 : 0 ]; 
-            fs_module = &vk.shaders.fog_fs;
+            vs_module = &vk.shaders.vert.fog[vbo][vk.hw_fog]; 
+            fs_module = &vk.shaders.frag.fog[vk.hw_fog];
             break;
 
         case TYPE_DOT:
@@ -991,11 +1008,13 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
 		frag_spec_data.acff = 0;
 	}
 
+	frag_spec_data.hw_fog = vert_spec_data[0] = vk.hw_fog;
+
 	//
 	// vertex module specialization data
 	//
- #if 0
-    spec_entries[0].constantID = 0; // clip_plane
+
+    spec_entries[0].constantID = 0; // hw_fog
     spec_entries[0].offset = 0 * sizeof( int32_t );
     spec_entries[0].size = sizeof( int32_t );
 
@@ -1004,7 +1023,7 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
     vert_spec_info.dataSize = ARRAY_LEN( vert_spec_data ) * sizeof( int32_t );
     vert_spec_info.pData = &vert_spec_data[0];
     shader_stages[0].pSpecializationInfo = &vert_spec_info;
-#endif
+
 
     //
     // fragment module specialization data
@@ -1030,30 +1049,34 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
     spec_entries[5].size = sizeof(frag_spec_data.color_mode);
 
     spec_entries[6].constantID = 5;
-    spec_entries[6].offset = offsetof(struct FragSpecData, abs_light);
-    spec_entries[6].size = sizeof(frag_spec_data.abs_light);
+    spec_entries[6].offset = offsetof(struct FragSpecData, hw_fog);
+    spec_entries[6].size = sizeof(frag_spec_data.hw_fog);
 
     spec_entries[7].constantID = 6;
-    spec_entries[7].offset = offsetof(struct FragSpecData, tex_mode);
-    spec_entries[7].size = sizeof(frag_spec_data.tex_mode);
+    spec_entries[7].offset = offsetof(struct FragSpecData, abs_light);
+    spec_entries[7].size = sizeof(frag_spec_data.abs_light);
 
     spec_entries[8].constantID = 7;
-    spec_entries[8].offset = offsetof(struct FragSpecData, discard_mode);
-    spec_entries[8].size = sizeof(frag_spec_data.discard_mode);
+    spec_entries[8].offset = offsetof(struct FragSpecData, tex_mode);
+    spec_entries[8].size = sizeof(frag_spec_data.tex_mode);
 
     spec_entries[9].constantID = 8;
-    spec_entries[9].offset = offsetof(struct FragSpecData, identity_color);
-    spec_entries[9].size = sizeof(frag_spec_data.identity_color);
+    spec_entries[9].offset = offsetof(struct FragSpecData, discard_mode);
+    spec_entries[9].size = sizeof(frag_spec_data.discard_mode);
 
     spec_entries[10].constantID = 9;
-    spec_entries[10].offset = offsetof(struct FragSpecData, identity_alpha);
-    spec_entries[10].size = sizeof(frag_spec_data.identity_alpha);
+    spec_entries[10].offset = offsetof(struct FragSpecData, identity_color);
+    spec_entries[10].size = sizeof(frag_spec_data.identity_color);
 
     spec_entries[11].constantID = 10;
-    spec_entries[11].offset = offsetof(struct FragSpecData, acff);
-    spec_entries[11].size = sizeof(frag_spec_data.acff);
+    spec_entries[11].offset = offsetof(struct FragSpecData, identity_alpha);
+    spec_entries[11].size = sizeof(frag_spec_data.identity_alpha);
 
-    frag_spec_info.mapEntryCount = 11;
+    spec_entries[12].constantID = 11;
+    spec_entries[12].offset = offsetof(struct FragSpecData, acff);
+    spec_entries[12].size = sizeof(frag_spec_data.acff);
+
+    frag_spec_info.mapEntryCount = 12;
     frag_spec_info.pMapEntries = spec_entries + 1;
     frag_spec_info.dataSize = sizeof( frag_spec_data );
     frag_spec_info.pData = &frag_spec_data;

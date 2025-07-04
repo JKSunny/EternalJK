@@ -102,9 +102,12 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define VK_DESC_FOG_DLIGHT				VK_DESC_TEXTURE1
 
 #define VK_DESC_UNIFORM_MAIN_BINDING		0
-#define VK_DESC_UNIFORM_ENTITY_BINDING		1
-#define VK_DESC_UNIFORM_BONES_BINDING		2
-#define VK_DESC_UNIFORM_COUNT				3
+#define VK_DESC_UNIFORM_CAMERA_BINDING		1
+#define VK_DESC_UNIFORM_ENTITY_BINDING		2
+#define VK_DESC_UNIFORM_BONES_BINDING		3
+#define VK_DESC_UNIFORM_FOGS_BINDING		4
+#define VK_DESC_UNIFORM_GLOBAL_BINDING		5
+#define VK_DESC_UNIFORM_COUNT				6
 
 //#define MIN_IMAGE_ALIGN				( 128 * 1024 )
 
@@ -546,26 +549,44 @@ typedef struct vkDeform_s {
 	vec2_t	pad0;
 } vkDeform_t;
 
-typedef struct vkUniformData_s {
-	vec4_t				localViewOrigin;
-	vec4_t				ambientLight;
-	vec4_t				directedLight;
-	vec4_t				lightDir;
+typedef struct vkUniformCamera_s {
+	vec4_t viewOrigin;
+} vkUniformCamera_t;
 
+typedef struct vkUniformEntity_s {
+	vec4_t ambientLight;
+	vec4_t directedLight;
+	vec4_t lightOrigin;
+	vec4_t localViewOrigin;
+	mat4_t modelMatrix;
+} vkUniformEntity_t;
+
+typedef struct vkUniformGlobal_s {
 	vkBundle_t			bundle[3];
 	vkDisintegration_t	disintegration;
 	vkDeform_t			deform;
-
 	float				portalRange;
 	vec3_t				pad0;
+} vkUniformGlobal_t;
 
-	mat4_t modelMatrix;
-} vkUniformData_t;
-
-typedef struct vkUniformGhoul_s {
+typedef struct vkUniformBones_s {
 	mat3x4_t boneMatrices[72];
 } vkUniformBones_t;
 #endif
+
+typedef struct vkUniformFogEntry_s {
+	vec4_t	plane;
+	vec4_t	color;
+	float	depthToOpaque;
+	int		hasPlane;
+	vec2_t	pad0;
+} vkUniformFogEntry_t;
+
+typedef struct vkUniformFog_s {
+	int			num_fogs;
+	vec3_t		pad0;
+	vkUniformFogEntry_t fogs[16];
+} vkUniformFog_t;
 
 typedef struct {
 	VkSamplerAddressMode address_mode; // clamp/repeat texture addressing mode
@@ -653,7 +674,10 @@ typedef struct vk_tess_s {
 	Vk_Depth_Range		depth_range;
 	VkRect2D			scissor_rect;
 
+	uint32_t			camera_ubo_offset;
+	uint32_t			entity_ubo_offset[REFENTITYNUM_WORLD + 1];
 	uint32_t			bones_ubo_offset;
+	uint32_t			fogs_ubo_offset;
 } vk_tess_t;
 
 // Vk_Instance contains engine-specific vulkan resources that persist entire renderer lifetime.
@@ -812,8 +836,11 @@ typedef struct {
 	uint32_t uniform_alignment;
 	uint32_t storage_alignment;
 
+	uint32_t uniform_fogs_item_size;
+	uint32_t uniform_camera_item_size;
 #ifdef USE_VBO_GHOUL2
-	uint32_t uniform_data_item_size;
+	uint32_t uniform_global_item_size;
+	uint32_t uniform_entity_item_size;
 	uint32_t uniform_bones_item_size;
 
 	uint32_t ghoul2_vbo_stride;
@@ -919,6 +946,7 @@ typedef struct {
 			VkShaderModule ident1[3][2][2][2];
 			VkShaderModule fixed[3][2][2][2];
 			VkShaderModule light[2]; // fog[0,1]
+			VkShaderModule fog[3][2];	// vbo[0,1,2], fog mode[0,1]
 		}	vert;
 
 		struct {
@@ -927,6 +955,7 @@ typedef struct {
 			VkShaderModule ident1[3][2][2]; // tx[0,1], fog[0,1]
 			VkShaderModule fixed[3][2][2];  // tx[0,1], fog[0,1]
 			VkShaderModule light[2][2]; // linear[0,1] fog[0,1]
+			VkShaderModule fog[2];	// vbo[0,1,2], fog mode[0,1]
 		}	frag;
 
 		VkShaderModule dot_fs;
@@ -934,9 +963,6 @@ typedef struct {
 
 		VkShaderModule gamma_fs;
 		VkShaderModule gamma_vs;
-
-		VkShaderModule fog_vs[2];
-		VkShaderModule fog_fs;
 
 		VkShaderModule color_vs;
 		VkShaderModule color_fs;
@@ -986,6 +1012,8 @@ typedef struct {
 	int			blitX0;
 	int			blitY0;
 	int			blitFilter;
+
+	uint32_t	hw_fog;	// "hardware" fog mode: r_drawfog 2
 
 	uint32_t screenMapWidth;
 	uint32_t screenMapHeight;

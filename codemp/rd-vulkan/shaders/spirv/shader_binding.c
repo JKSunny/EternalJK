@@ -3,6 +3,22 @@ static void vk_set_shader_name( VkShaderModule shader, const char *name ) {
     VK_SET_OBJECT_NAME( shader, name, VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT );
 }
 void vk_bind_generated_shaders( void ){
+    vk.shaders.vert.fog[0][0] = SHADER_MODULE( vert_fog_only_linear );
+    vk_set_shader_name( vk.shaders.vert.fog[0][0], "vert_fog_only_linear" );
+    vk.shaders.vert.fog[0][1] = SHADER_MODULE( vert_fog_only_exp );
+    vk_set_shader_name( vk.shaders.vert.fog[0][1], "vert_fog_only_exp" );
+    vk.shaders.vert.fog[1][0] = SHADER_MODULE( vert_fog_only_ghoul2_linear );
+    vk_set_shader_name( vk.shaders.vert.fog[1][0], "vert_fog_only_ghoul2_linear" );
+    vk.shaders.vert.fog[1][1] = SHADER_MODULE( vert_fog_only_ghoul2_exp );
+    vk_set_shader_name( vk.shaders.vert.fog[1][1], "vert_fog_only_ghoul2_exp" );
+    vk.shaders.vert.fog[2][0] = SHADER_MODULE( vert_fog_only_mdv_linear );
+    vk_set_shader_name( vk.shaders.vert.fog[2][0], "vert_fog_only_mdv_linear" );
+    vk.shaders.vert.fog[2][1] = SHADER_MODULE( vert_fog_only_mdv_exp );
+    vk_set_shader_name( vk.shaders.vert.fog[2][1], "vert_fog_only_mdv_exp" );
+    vk.shaders.frag.fog[0] = SHADER_MODULE( frag_fog_only_linear );
+    vk_set_shader_name( vk.shaders.frag.fog[0], "frag_fog_only_linear" );
+    vk.shaders.frag.fog[1] = SHADER_MODULE( frag_fog_only_exp );
+    vk_set_shader_name( vk.shaders.frag.fog[1], "frag_fog_only_exp" );
     vk.shaders.vert.ident1[0][0][0][0] = SHADER_MODULE( vert_tx0_ident1 );
     vk_set_shader_name( vk.shaders.vert.ident1[0][0][0][0], "vert_tx0_ident1" );
     vk.shaders.vert.ident1[0][0][0][1] = SHADER_MODULE( vert_tx0_ident1_fog );

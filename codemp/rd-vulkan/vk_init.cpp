@@ -406,12 +406,14 @@ void vk_initialize( void )
 	vk.cmd = &vk.tess[vk.cmd_index];
 
 	// Memory alignment
-	vk.uniform_alignment = props.limits.minUniformBufferOffsetAlignment;
-	vk.uniform_item_size = PAD( sizeof(vkUniform_t), (size_t)vk.uniform_alignment );
-#ifdef USE_VBO_GHOUL2
-	vk.uniform_data_item_size = PAD( sizeof(vkUniformData_t), vk.uniform_alignment );
-	vk.uniform_bones_item_size = PAD( sizeof(vkUniformBones_t), vk.uniform_alignment );
-#endif
+	vk.uniform_alignment		= props.limits.minUniformBufferOffsetAlignment;
+	vk.uniform_item_size		= PAD( sizeof(vkUniform_t),			(size_t)vk.uniform_alignment );
+	vk.uniform_camera_item_size	= PAD( sizeof(vkUniformCamera_t),	(size_t)vk.uniform_alignment );
+	vk.uniform_entity_item_size = PAD( sizeof(vkUniformEntity_t),	(size_t)vk.uniform_alignment );
+	vk.uniform_bones_item_size	= PAD( sizeof(vkUniformBones_t),	(size_t)vk.uniform_alignment );
+	vk.uniform_global_item_size	= PAD( sizeof(vkUniformGlobal_t),	(size_t)vk.uniform_alignment );
+	vk.uniform_fogs_item_size	= PAD( sizeof(vkUniformFog_t),		(size_t)vk.uniform_alignment );
+
 	vk.storage_alignment = MAX( props.limits.minStorageBufferOffsetAlignment, sizeof(uint32_t) ); //for flare visibility tests
 
 	vk.defaults.geometry_size = VERTEX_BUFFER_SIZE;
@@ -540,6 +542,9 @@ void vk_initialize( void )
 	// Dynamic glow
 	if ( vk.fboActive && glConfig.maxActiveTextures >= 4 && r_DynamicGlow->integer )
 		vk.dglowActive = qtrue;
+
+	// "Hardware" fog mode
+	vk.hw_fog = r_drawfog->integer == 2 ? 1 : 0;
 
 	// Refraction
 	if ( vk.fboActive && glConfig.maxActiveTextures >= 4 )

@@ -138,16 +138,6 @@ void vk_create_shader_modules( void )
     VK_SET_OBJECT_NAME(vk.shaders.color_vs, "refraction vertex module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
     VK_SET_OBJECT_NAME(vk.shaders.color_fs, "refraction fragment module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
 
-
-    vk.shaders.fog_vs[0] = SHADER_MODULE(fog_vert_spv);
-    vk.shaders.fog_fs = SHADER_MODULE(fog_frag_spv);
-    VK_SET_OBJECT_NAME(vk.shaders.fog_vs[0], "fog-only vertex module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
-    VK_SET_OBJECT_NAME(vk.shaders.fog_fs, "fog-only fragment module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
-#ifdef USE_VBO_GHOUL2
-    vk.shaders.fog_vs[1] = SHADER_MODULE(fog_ghoul2_vert_spv);
-    VK_SET_OBJECT_NAME(vk.shaders.fog_vs[1], "fog-only ghoul2 vbo vertex module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
-#endif
-
     vk.shaders.dot_vs = SHADER_MODULE(dot_vert_spv);
     vk.shaders.dot_fs = SHADER_MODULE(dot_frag_spv);
     VK_SET_OBJECT_NAME(vk.shaders.dot_vs, "dot vertex module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
@@ -241,6 +231,20 @@ void vk_destroy_shader_modules( void )
 	    }
     }
 
+    for (i = 0; i < 2; i++) {
+        if (vk.shaders.frag.fog[i] != VK_NULL_HANDLE) {
+            qvkDestroyShaderModule(vk.device, vk.shaders.frag.fog[i], NULL);
+            vk.shaders.frag.fog[i] = VK_NULL_HANDLE;
+        }
+
+        for (j = 0; j < 3; j++) {
+            if (vk.shaders.vert.fog[j][i] != VK_NULL_HANDLE) {
+                qvkDestroyShaderModule(vk.device, vk.shaders.vert.fog[j][i], NULL);
+                vk.shaders.vert.fog[j][i] = VK_NULL_HANDLE;
+            }
+        }
+    }
+
     qvkDestroyShaderModule(vk.device, vk.shaders.frag.gen0_df, NULL);
 
     qvkDestroyShaderModule(vk.device, vk.shaders.color_fs, NULL);
@@ -250,12 +254,6 @@ void vk_destroy_shader_modules( void )
         qvkDestroyShaderModule(vk.device, vk.shaders.refraction_vs[i], NULL);
 
     qvkDestroyShaderModule(vk.device, vk.shaders.refraction_fs, NULL);
-
-    qvkDestroyShaderModule(vk.device, vk.shaders.fog_vs[0], NULL);
-    qvkDestroyShaderModule(vk.device, vk.shaders.fog_fs, NULL);
-#ifdef USE_VBO_GHOUL2
-    qvkDestroyShaderModule(vk.device, vk.shaders.fog_vs[1], NULL);
-#endif
 
     qvkDestroyShaderModule(vk.device, vk.shaders.dot_vs, NULL);
     qvkDestroyShaderModule(vk.device, vk.shaders.dot_fs, NULL);
