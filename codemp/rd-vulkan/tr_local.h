@@ -375,28 +375,35 @@ typedef struct {
 typedef struct VBO_s
 {	
 	int				index;
-	int				size;
-	void			*mapped;
 
 	VkBuffer		buffer;
 	VkDeviceMemory	memory;
 
 	uint32_t		offsets[12];
-#if defined(USE_RTX) && defined(USE_RTX_GLOBAL_MODEL_VBO)
+
 	size_t			size;
-#endif
+	void			*mapped;
+	struct {
+		VkBuffer		buffer;
+		VkDeviceMemory	memory;
+	} staging;
 } VBO_t;
 
 typedef struct IBO_s
 {
-	int				size;
+	VkBuffer		buffer;
+	VkDeviceMemory	memory;
+
+	size_t			size;
 	void			*mapped;
 
 	VkBuffer		buffer;
 	VkDeviceMemory	memory;
-#if defined(USE_RTX) && defined(USE_RTX_GLOBAL_MODEL_VBO)
-	size_t			size;
-#endif
+
+	struct {
+		VkBuffer		buffer;
+		VkDeviceMemory	memory;
+	} staging;	
 } IBO_t;
 
 //===============================================================================

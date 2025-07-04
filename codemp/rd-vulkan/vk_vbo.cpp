@@ -770,6 +770,7 @@ VBO_t *R_CreateDynamicVBO( const char *name, int size )
 	VkBufferCreateInfo desc;
 	VkMemoryRequirements vb_mem_reqs;
 	VkMemoryAllocateInfo alloc_info;
+	VkDeviceSize buffer_offset = 0;
 
 	VBO_t *vbo;
 
@@ -778,21 +779,34 @@ VBO_t *R_CreateDynamicVBO( const char *name, int size )
 	}
 
 	vk_release_model_vbo( tr.numVBOs );
-
 	vbo = tr.vbos[tr.numVBOs] = (VBO_t *)ri.Hunk_Alloc(sizeof(*vbo), h_low);
 
-	Com_Memset( &desc, 0, sizeof(VkBufferCreateInfo) );
+	// Create device-local vertex buffer
+	Com_Memset(&desc, 0, sizeof(desc));
 	desc.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	desc.pNext = NULL;
+	desc.flags = 0;
 	desc.size = size;
-	desc.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+	desc.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 	desc.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
 	VK_CHECK( qvkCreateBuffer( vk.device, &desc, NULL, &vbo->buffer ) );
-
 	qvkGetBufferMemoryRequirements( vk.device, vbo->buffer, &vb_mem_reqs );
-	
-	Com_Memset( &alloc_info, 0, sizeof(VkMemoryAllocateInfo) );
+
+	Com_Memset( &alloc_info, 0, sizeof(alloc_info) );
+	alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	alloc_info.pNext = NULL;
+	alloc_info.allocationSize = vb_mem_reqs.size;
+	alloc_info.memoryTypeIndex = vk_find_memory_type( vb_mem_reqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT );
+
+	VK_CHECK( qvkAllocateMemory( vk.device, &alloc_info, NULL, &vbo->memory ) );
+	VK_CHECK( qvkBindBufferMemory( vk.device, vbo->buffer, vbo->memory, buffer_offset ) );
+
+	// Create host-visible staging buffer
+	desc.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+	VK_CHECK( qvkCreateBuffer( vk.device, &desc, NULL, &vbo->staging.buffer ) );
+
+	qvkGetBufferMemoryRequirements( vk.device, vbo->staging.buffer, &vb_mem_reqs );
 	alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	alloc_info.pNext = NULL;
 	alloc_info.allocationSize = vb_mem_reqs.size;
@@ -800,12 +814,12 @@ VBO_t *R_CreateDynamicVBO( const char *name, int size )
 		vb_mem_reqs.memoryTypeBits,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-	VK_CHECK( qvkAllocateMemory( vk.device, &alloc_info, NULL, &vbo->memory ) );
-	VK_CHECK( qvkBindBufferMemory( vk.device, vbo->buffer, vbo->memory, 0 ) );
+	VK_CHECK( qvkAllocateMemory( vk.device, &alloc_info, NULL, &vbo->staging.memory ) );
+	VK_CHECK( qvkBindBufferMemory( vk.device, vbo->staging.buffer, vbo->staging.memory, buffer_offset ) );
 
-	// persistent mapping
+	// Map the staging buffer
 	void *mapped;
-	VK_CHECK( qvkMapMemory( vk.device, vbo->memory, 0, size, 0, &mapped ) );
+	VK_CHECK( qvkMapMemory( vk.device, vbo->staging.memory, 0, size, 0, &mapped ) );
 	vbo->mapped = mapped;
 
 	vbo->size = size;
@@ -814,6 +828,8 @@ VBO_t *R_CreateDynamicVBO( const char *name, int size )
 
 	VK_SET_OBJECT_NAME( vbo->buffer, va("dynamic VBO %s", name), VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT );
 	VK_SET_OBJECT_NAME( vbo->memory, va("dynamic VBO memory %s", name), VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT );
+	VK_SET_OBJECT_NAME( vbo->staging.buffer, va("staging VBO %s", name), VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT );
+	VK_SET_OBJECT_NAME( vbo->staging.memory, va("staging VBO memory %s", name), VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT );
 
 	return vbo;
 }
@@ -822,8 +838,9 @@ VBO_t *R_CreateDynamicVBO( const char *name, int size )
 IBO_t *R_CreateDynamicIBO( const char *name, int size )
 {
 	VkBufferCreateInfo desc;
-	VkMemoryRequirements vb_mem_reqs;
+	VkMemoryRequirements mem_reqs;
 	VkMemoryAllocateInfo alloc_info;
+	VkDeviceSize buffer_offset = 0;
 
 	IBO_t *ibo;
 
@@ -835,31 +852,45 @@ IBO_t *R_CreateDynamicIBO( const char *name, int size )
 
 	ibo = tr.ibos[tr.numIBOs] = (IBO_t *)ri.Hunk_Alloc(sizeof(*ibo), h_low);
 
-	Com_Memset( &desc, 0, sizeof(VkBufferCreateInfo) );
+	// --- Device-local buffer (for GPU use)
+	Com_Memset( &desc, 0, sizeof(desc) );
 	desc.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	desc.pNext = NULL;
+	desc.flags = 0;
 	desc.size = size;
-	desc.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+	desc.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 	desc.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
 	VK_CHECK( qvkCreateBuffer( vk.device, &desc, NULL, &ibo->buffer ) );
+	qvkGetBufferMemoryRequirements( vk.device, ibo->buffer, &mem_reqs );
 
-	qvkGetBufferMemoryRequirements( vk.device, ibo->buffer, &vb_mem_reqs );
-
-	Com_Memset( &alloc_info, 0, sizeof(VkMemoryAllocateInfo) );
+	Com_Memset( &alloc_info, 0, sizeof(alloc_info) );
 	alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	alloc_info.pNext = NULL;
-	alloc_info.allocationSize = vb_mem_reqs.size;
-	alloc_info.memoryTypeIndex = vk_find_memory_type(
-			vb_mem_reqs.memoryTypeBits,
-			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+	alloc_info.allocationSize = mem_reqs.size;
+	alloc_info.memoryTypeIndex = vk_find_memory_type( mem_reqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT );
 
 	VK_CHECK( qvkAllocateMemory( vk.device, &alloc_info, NULL, &ibo->memory ) );
-	VK_CHECK( qvkBindBufferMemory( vk.device, ibo->buffer, ibo->memory, 0 ) );
+	VK_CHECK( qvkBindBufferMemory( vk.device, ibo->buffer, ibo->memory, buffer_offset ) );
 
-	// persistent mapping
+	// --- Staging buffer (host-visible, persistently mapped)
+	desc.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+	VK_CHECK( qvkCreateBuffer( vk.device, &desc, NULL, &ibo->staging.buffer ) );
+
+	qvkGetBufferMemoryRequirements( vk.device, ibo->staging.buffer, &mem_reqs );
+	alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	alloc_info.pNext = NULL;
+	alloc_info.allocationSize = mem_reqs.size;
+	alloc_info.memoryTypeIndex = vk_find_memory_type(
+		mem_reqs.memoryTypeBits,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+	VK_CHECK( qvkAllocateMemory( vk.device, &alloc_info, NULL, &ibo->staging.memory ) );
+	VK_CHECK( qvkBindBufferMemory( vk.device, ibo->staging.buffer, ibo->staging.memory, buffer_offset ) );
+
+	// Persistent mapping
 	void *mapped;
-	VK_CHECK( qvkMapMemory( vk.device, ibo->memory, 0, size, 0, &mapped ) );
+	VK_CHECK( qvkMapMemory( vk.device, ibo->staging.memory, 0, size, 0, &mapped ) );
 	ibo->mapped = mapped;
 
 	ibo->size = size;
@@ -867,10 +898,25 @@ IBO_t *R_CreateDynamicIBO( const char *name, int size )
 
 	VK_SET_OBJECT_NAME( ibo->buffer, va("dynamic IBO %s", name), VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT );
 	VK_SET_OBJECT_NAME( ibo->memory, va("dynamic IBO memory %s", name), VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT );
+	VK_SET_OBJECT_NAME( ibo->staging.buffer, va("staging IBO %s", name), VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT );
+	VK_SET_OBJECT_NAME( ibo->staging.memory, va("staging IBO memory %s", name), VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT );
 
 	return ibo;
 }
 
+void R_UpdateDynamicBuffer(VkBuffer dstBuffer, VkBuffer srcBuffer, VkDeviceSize offset, VkDeviceSize size)
+{
+	VkCommandBuffer cmd = vk_begin_command_buffer();
+
+	VkBufferCopy region;
+	region.srcOffset = offset;
+	region.dstOffset = offset;
+	region.size      = size;
+
+	qvkCmdCopyBuffer( cmd, srcBuffer, dstBuffer, 1, &region );
+
+	vk_end_command_buffer( cmd, __func__ );
+}
 
 typedef struct mdxm_attributes_s {
 	vec4_t	*verts;
@@ -1364,6 +1410,13 @@ void R_BuildMD3( model_t *mod, mdvModel_t *mdvModel )
 }
 
 #ifdef _G2_GORE
+
+#define GORE_VERTEX_SIZE	2 * 1024 * 1024
+#define GORE_INDEX_SIZE		2 * 1024 * 1024
+
+#define MAX_GORE_VERTICES	GORE_VERTEX_SIZE / sizeof(g2GoreVert_t)
+
+#define MAX_GORE_INDIDCES	GORE_INDEX_SIZE / sizeof(glIndex_t)
 void R_CreateGoreVBO( void )
 {
 	mdxm_attributes_t attr = {};
@@ -1373,10 +1426,7 @@ void R_CreateGoreVBO( void )
 	int ofsPosition, ofsNormals, ofsTexcoords, ofsBoneRefs, ofsWeights, ofsTangents;
 	int stride = 0;
 
-	const int maxVerts   = MAX_LODS * MAX_GORE_RECORDS * MAX_GORE_VERTS * MAX_FRAMES;
-	const int maxIndices = MAX_LODS * MAX_GORE_RECORDS * MAX_GORE_INDECIES * MAX_FRAMES;
-
-	tr.goreVBO = R_CreateDynamicVBO( "Gore VBO", sizeof(g2GoreVert_t) * maxVerts );
+	tr.goreVBO = R_CreateDynamicVBO( "Gore VBO", GORE_VERTEX_SIZE );
 
 	dataSize += sizeof (*attr.verts);
 	dataSize += sizeof (*attr.normals);
@@ -1413,18 +1463,19 @@ void R_CreateGoreVBO( void )
 
 	ri.Hunk_FreeTempMemory ( data );
 
-	tr.goreVBO->offsets[0]	= ofsPosition;
-	tr.goreVBO->offsets[5]	= ofsNormals;
-	tr.goreVBO->offsets[2]	= ofsTexcoords;
-	tr.goreVBO->offsets[10] = ofsBoneRefs;
-	tr.goreVBO->offsets[11] = ofsWeights;
-	tr.goreVBO->offsets[8]	= ofsTangents;
+	tr.goreVBO->offsets[0] = ofsPosition;
+	tr.goreVBO->offsets[5] = ofsNormals;
+	tr.goreVBO->offsets[2] = ofsTexcoords;
+	tr.goreVBO->offsets[8] = ofsBoneRefs;
+	tr.goreVBO->offsets[9] = ofsWeights;
+	//tr.goreVBO->offsets[8] = ofsTangents;
 
-	tr.goreIBO = R_CreateDynamicIBO( "Gore IBO", sizeof(glIndex_t) * maxIndices );
+	tr.goreIBO = R_CreateDynamicIBO( "Gore IBO", GORE_INDEX_SIZE );
 
 	tr.goreIBOCurrentIndex = 0;
 	tr.goreVBOCurrentIndex = 0;
 }
+
 
 void R_UpdateGoreVBO( srfG2GoreSurface_t *goreSurface )
 {
@@ -1434,21 +1485,25 @@ void R_UpdateGoreVBO( srfG2GoreSurface_t *goreSurface )
 
 	const int num_vertexes = goreSurface->numVerts;
 	const int num_indexes = goreSurface->numIndexes;
-	const int max_vertexes = MAX_LODS * MAX_GORE_RECORDS * MAX_GORE_VERTS * MAX_FRAMES;
-	const int max_indexes = MAX_LODS * MAX_GORE_RECORDS * MAX_GORE_INDECIES * MAX_FRAMES;
 
-	if ( tr.goreVBOCurrentIndex + num_vertexes >= max_vertexes )
+	if ( tr.goreVBOCurrentIndex + num_vertexes >= MAX_GORE_VERTICES )
 		tr.goreVBOCurrentIndex = 0;
 
-	if ( tr.goreIBOCurrentIndex + num_indexes >= max_indexes )
+	if ( tr.goreIBOCurrentIndex + num_indexes >= MAX_GORE_INDIDCES )
 		tr.goreIBOCurrentIndex = 0;
 
 	const int vbo_offset = tr.goreVBOCurrentIndex * sizeof(g2GoreVert_t);
 	const int ibo_offset = tr.goreIBOCurrentIndex * sizeof(glIndex_t);
 
-	// coppy using persistent mapping
-	Com_Memcpy( (byte *)tr.goreVBO->mapped + vbo_offset, goreSurface->verts, sizeof(g2GoreVert_t) * num_vertexes );
-	Com_Memcpy( (byte *)tr.goreIBO->mapped + ibo_offset, goreSurface->indexes, sizeof(glIndex_t) * num_indexes );
+	size_t vbo_size = sizeof(g2GoreVert_t) * num_vertexes;
+	size_t ibo_size = sizeof(glIndex_t) * num_indexes;
+
+	Com_Memcpy((byte *)tr.goreVBO->mapped + vbo_offset, goreSurface->verts, vbo_size);
+	Com_Memcpy((byte *)tr.goreIBO->mapped + ibo_offset, goreSurface->indexes, ibo_size);
+
+	// Upload to GPU
+	R_UpdateDynamicBuffer(tr.goreVBO->buffer, tr.goreVBO->staging.buffer, vbo_offset, vbo_size);
+	R_UpdateDynamicBuffer(tr.goreIBO->buffer, tr.goreIBO->staging.buffer, ibo_offset, ibo_size);
 
 	goreSurface->firstVert  = tr.goreVBOCurrentIndex;
 	goreSurface->firstIndex = tr.goreIBOCurrentIndex;
