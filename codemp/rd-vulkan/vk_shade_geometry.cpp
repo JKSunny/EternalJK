@@ -450,6 +450,7 @@ void vk_update_uniform_descriptor( VkDescriptorSet descriptor, VkBuffer buffer )
 	vk_write_uniform_descriptor( desc, info, buffer, descriptor, VK_DESC_UNIFORM_LIGHT_BINDING, sizeof(vkUniformLight_t) );
 	vk_write_uniform_descriptor( desc, info, buffer, descriptor, VK_DESC_UNIFORM_ENTITY_BINDING, sizeof(vkUniformEntity_t) );
 	vk_write_uniform_descriptor( desc, info, buffer, descriptor, VK_DESC_UNIFORM_BONES_BINDING, sizeof(vkUniformBones_t) );
+	vk_write_uniform_descriptor( desc, info, buffer, descriptor, VK_DESC_UNIFORM_FOGS_BINDING, sizeof(vkUniformFog_t) );
 	vk_write_uniform_descriptor( desc, info, buffer, descriptor, VK_DESC_UNIFORM_GLOBAL_BINDING, sizeof(vkUniformGlobal_t) );
 
 	qvkUpdateDescriptorSets(vk.device, VK_DESC_UNIFORM_COUNT, desc, 0, NULL);
@@ -835,6 +836,7 @@ void vk_bind_descriptor_sets( void )
 		offsets[offset_count++] = vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_LIGHT_BINDING];	
 		offsets[offset_count++] = vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_ENTITY_BINDING];
 		offsets[offset_count++] = vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_BONES_BINDING];	
+		offsets[offset_count++] = vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_FOGS_BINDING];	
 		offsets[offset_count++] = vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_GLOBAL_BINDING];
 	}
 
@@ -1353,6 +1355,16 @@ static void vk_set_light_params( vkUniform_t *uniform, const dlight_t *dl ) {
 static void vk_set_fog_params( vkUniform_t *uniform, int *fogStage )
 {
 	if (tess.fogNum && tess.shader->fogPass) {
+		if ( vk.hw_fog ) {
+			// re-use these bits
+			uniform->fog.fogDistanceVector[0] = tr.world ? (tr.world->globalFog - 1) : -1;
+			uniform->fog.fogDistanceVector[1] = tess.fogNum ? (tess.fogNum - 1) : -1;
+			uniform->fog.fogDistanceVector[2] = backEnd.isGlowPass ? 0.0f : 1.0f;
+			//Com_Memcpy( uniform->fog.fogEyeT, backEnd.refdef.vieworg, sizeof( vec3_t) );
+			*fogStage = 1;
+			return;
+		}
+		
 		const fogProgramParms_t *fp = RB_CalcFogProgramParms();
 		// vertex data
 		VectorCopy4(fp->fogDistanceVector, uniform->fog.fogDistanceVector);
@@ -2123,6 +2135,7 @@ void RB_AddDrawItemUniformBinding( DrawItem &item, const trRefEntity_t *refEntit
 
 	vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_CAMERA_BINDING] = vk.cmd->camera_ubo_offset;
 	vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_LIGHT_BINDING] = vk.cmd->light_ubo_offset;
+	vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_FOGS_BINDING] = vk.cmd->fogs_ubo_offset;
 
 	if ( backEnd.currentEntity ) 
 	{
@@ -2318,7 +2331,7 @@ void RB_StageIteratorGeneric( void )
 	fogCollapse = qfalse;
 
 #ifdef USE_FOG_COLLAPSE
-	if ( tess.fogNum && tess.shader->fogPass && tess.shader->fogCollapse && r_drawfog->value == 2 ) {
+	if ( tess.fogNum && tess.shader->fogPass && tess.shader->fogCollapse && r_drawfog->value >= 2 ) {
 		vk_set_fog_params( &uniform, &fog_stage );
 
 		fogCollapse = qtrue;

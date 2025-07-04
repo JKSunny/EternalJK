@@ -116,8 +116,9 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define VK_DESC_UNIFORM_LIGHT_BINDING		2
 #define VK_DESC_UNIFORM_ENTITY_BINDING		3
 #define VK_DESC_UNIFORM_BONES_BINDING		4
-#define VK_DESC_UNIFORM_GLOBAL_BINDING		5
-#define VK_DESC_UNIFORM_COUNT				6
+#define VK_DESC_UNIFORM_FOGS_BINDING		5
+#define VK_DESC_UNIFORM_GLOBAL_BINDING		6
+#define VK_DESC_UNIFORM_COUNT				7
 
 //#define MIN_IMAGE_ALIGN				( 128 * 1024 )
 
@@ -668,6 +669,25 @@ typedef struct vkUniformBones_s {
 } vkUniformBones_t;
 #endif
 
+
+
+
+typedef struct vkUniformFogEntry_s {
+	vec4_t	plane;
+	vec4_t	color;
+	float	depthToOpaque;
+	int		hasPlane;
+	vec2_t	pad0;
+} vkUniformFogEntry_t;
+
+typedef struct vkUniformFog_s {
+	int			num_fogs;
+	vec3_t		pad0;
+	vkUniformFogEntry_t fogs[16];
+} vkUniformFog_t;
+
+
+
 typedef struct vkUniformGlobal_s {
 	vkBundle_t			bundle[3];
 	vkDisintegration_t	disintegration;
@@ -783,6 +803,7 @@ typedef struct vk_tess_s {
 	uint32_t			light_ubo_offset;
 	uint32_t			entity_ubo_offset[REFENTITYNUM_WORLD + 1];
 	uint32_t			bones_ubo_offset;
+	uint32_t			fogs_ubo_offset;
 } vk_tess_t;
 
 
@@ -1189,6 +1210,7 @@ typedef struct {
 	uint32_t uniform_light_item_size;
 	uint32_t uniform_entity_item_size;
 	uint32_t uniform_bones_item_size;
+	uint32_t uniform_fogs_item_size;
 
 	uint32_t ghoul2_vbo_stride;
 	uint32_t mdv_vbo_stride;
@@ -1306,6 +1328,7 @@ typedef struct {
 			VkShaderModule gen[3][2][4][3][2][2][2]; // vbo[0,1], pbr[0,1], tx[0,1,2], cl[0,1] env0[0,1] fog[0,1]
 			VkShaderModule light[2]; // fog[0,1]
 			VkShaderModule gen0_ident;
+			VkShaderModule fog[3][2];	// vbo[0,1,2], fog mode[0,1]
 		}	vert;
 
 		struct {
@@ -1313,6 +1336,7 @@ typedef struct {
 			VkShaderModule gen0_df;
 			VkShaderModule gen[2][4][3][2][2]; // pbr[0,1], tx[0,1,2] cl[0,1] fog[0,1]
 			VkShaderModule light[2][2]; // linear[0,1] fog[0,1]
+			VkShaderModule fog[2];	// vbo[0,1,2], fog mode[0,1]
 		}	frag;
 
 		VkShaderModule dot_fs;
@@ -1320,9 +1344,6 @@ typedef struct {
 
 		VkShaderModule gamma_fs;
 		VkShaderModule gamma_vs;
-
-		VkShaderModule fog_vs[2];
-		VkShaderModule fog_fs;
 
 		VkShaderModule color_vs[2];
 		VkShaderModule color_fs;
@@ -1391,6 +1412,12 @@ typedef struct {
 	int			blitX0;
 	int			blitY0;
 	int			blitFilter;
+
+	// Fog mode
+	// 1: legacy fog
+	// 2: legacy "hardware" fog + stage collapsing
+	// 3: legacy fog + stage collapsing
+	uint32_t	hw_fog;
 
 	uint32_t screenMapWidth;
 	uint32_t screenMapHeight;
