@@ -321,22 +321,32 @@ typedef struct {
 typedef struct VBO_s
 {	
 	int				index;
-	int				size;
-	void			*mapped;
 
 	VkBuffer		buffer;
 	VkDeviceMemory	memory;
 
 	uint32_t		offsets[12];
+
+	int				size;
+	void			*mapped;
+	struct {
+		VkBuffer		buffer;
+		VkDeviceMemory	memory;
+	} staging;
 } VBO_t;
 
 typedef struct IBO_s
 {
+	VkBuffer		buffer;
+	VkDeviceMemory	memory;
+
 	int				size;
 	void			*mapped;
 
-	VkBuffer		buffer;
-	VkDeviceMemory	memory;
+	struct {
+		VkBuffer		buffer;
+		VkDeviceMemory	memory;
+	} staging;	
 } IBO_t;
 
 //===============================================================================
