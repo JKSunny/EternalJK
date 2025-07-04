@@ -820,7 +820,7 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
         case TYPE_COLOR_GREEN:
         case TYPE_COLOR_RED:
         case TYPE_COLOR_ORANGE:
-            vs_module = &vk.shaders.color_vs[vbo_g2_fog];
+            vs_module = &vk.shaders.color_vs[def->vbo_ghoul2 ? 1 : 0];
             fs_module = &vk.shaders.color_fs;
             break;
 
