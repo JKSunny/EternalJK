@@ -412,6 +412,7 @@ void vk_initialize( void )
 	vk.uniform_entity_item_size = PAD( sizeof(vkUniformEntity_t),	(size_t)vk.uniform_alignment );
 	vk.uniform_bones_item_size	= PAD( sizeof(vkUniformBones_t),	(size_t)vk.uniform_alignment );
 	vk.uniform_global_item_size = PAD( sizeof(vkUniformGlobal_t),	(size_t)vk.uniform_alignment );
+	vk.uniform_fogs_item_size	= PAD( sizeof(vkUniformFog_t),		(size_t)vk.uniform_alignment );
 
 	vk.storage_alignment = MAX( props.limits.minStorageBufferOffsetAlignment, sizeof(uint32_t) ); //for flare visibility tests
 
@@ -552,8 +553,11 @@ void vk_initialize( void )
 		vk.bloomActive = qtrue;
 
 	// Dynamic glow
-	if( glConfig.maxActiveTextures >= 4 && r_DynamicGlow->integer )
+	if ( glConfig.maxActiveTextures >= 4 && r_DynamicGlow->integer )
 		vk.dglowActive = qtrue;
+
+	// "Hardware" fog mode
+	vk.hw_fog = r_drawfog->integer == 2 ? 1 : 0;
 
 	// Screenmap
 	vk.screenMapSamples = MIN(vkMaxSamples, VK_SAMPLE_COUNT_4_BIT);
