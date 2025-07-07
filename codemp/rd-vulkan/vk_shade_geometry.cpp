@@ -1406,7 +1406,7 @@ static void RB_FogPass( void ) {
 	if ( !tess.vbo_model_index && vk.hw_fog 
 		&& backEnd.currentEntity && !( backEnd.currentEntity == &backEnd.entity2D || backEnd.currentEntity == &tr.worldEntity ) ) 
 	{
-		uniform.fog.fogDistanceVector[2] = 1;	// is_entity
+		uniform.fog.fogDistanceVector[3] = 1;	// is_entity
 
 		trRefEntity_t *refEntity = backEnd.currentEntity;
 		orientationr_t ori;
