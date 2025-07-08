@@ -457,9 +457,10 @@ typedef struct {
 
 	qboolean				polygon_offset;
 	qboolean				mirror;
+#ifdef USE_VBO
 	qboolean				vbo_ghoul2;
 	qboolean				vbo_mdv;
-
+#endif
 	Vk_Shader_Type			shader_type;	
 	Vk_Shadow_Phase			shadow_phase;
 	Vk_Primitive_Topology	primitives;

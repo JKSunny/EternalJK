@@ -2158,7 +2158,7 @@ void RB_StageIteratorGeneric( void )
 
 	vk_bind_index();
 
-#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
+#ifdef USE_VBO
 	if ( tess.vbo_model_index ) 
 	{
 		is_ghoul2_vbo = (qboolean)( tess.surfType == SF_MDX );
@@ -2406,7 +2406,7 @@ void RB_StageIteratorGeneric( void )
 		if ( vk.hw_fog )
 			vk_update_descriptor_offset( VK_DESC_UNIFORM_FOGS_BINDING, vk.cmd->fogs_ubo_offset );
 
-#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
+#ifdef USE_VBO
 		if ( tess.vbo_model_index  ) {
 			vk_push_uniform_global( &uniform_global );
 		}

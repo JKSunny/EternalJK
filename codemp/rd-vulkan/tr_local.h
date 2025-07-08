@@ -1851,6 +1851,7 @@ extern cvar_t	*r_roundImagesDown;
 extern cvar_t	*r_nomip;				// apply picmip only on worldspawn textures
 #ifdef USE_VBO
 extern cvar_t	*r_vbo;
+extern cvar_t	*r_vbo_models;
 #endif
 
 /*

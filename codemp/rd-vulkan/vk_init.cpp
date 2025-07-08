@@ -504,10 +504,10 @@ void vk_initialize( void )
 		vk.fboActive = qtrue;		
 
 #ifdef USE_VBO
-	if ( r_vbo->integer && r_vbo->integer <= 2 )
+	if ( r_vbo->integer )
 		vk.vboWorldActive = qtrue;
 
-	if ( r_vbo->integer >= 2 ) {
+	if ( r_vbo_models->integer ) {
 		vk.vboGhoul2Active = qtrue;
 		vk.vboMdvActive = qtrue;
 	}

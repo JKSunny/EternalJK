@@ -55,10 +55,18 @@ static VkShaderModule SHADER_MODULE( const uint8_t *bytes, const int count ) {
 #ifdef _DEBUG
 static void vk_test_generated_shaders( void )
 {
-    int i, j, k, l, m, cl;
+    int i, j, k, l, m;
 
+    // fog
+    for (i = 0; i < 2; i++) {
+        assert (vk.shaders.frag.fog[i] != VK_NULL_HANDLE);
+
+        for (j = 0; j < 3; j++)
+            assert (vk.shaders.vert.fog[j][i] != VK_NULL_HANDLE);
+    }
+
+    // general
     for ( i = 0; i < 3; i++ ) {             // vbo
-
         // refraction
         assert (vk.shaders.refraction_vs[i] != VK_NULL_HANDLE);
 
@@ -80,6 +88,7 @@ static void vk_test_generated_shaders( void )
         }
     }
 
+    // light
     for ( i = 0; i < 2; i++ ) {
         assert (vk.shaders.vert.light[i] != VK_NULL_HANDLE);
 
@@ -88,6 +97,7 @@ static void vk_test_generated_shaders( void )
         }
     }
 
+    // ident and fixed
     for ( i = 0; i < 3; i++ ) {             // vbo
         for ( j = 0; j < 2; j++ ) {         // tx
 		    for ( k = 0; k < 2; k++ ) {     // env
