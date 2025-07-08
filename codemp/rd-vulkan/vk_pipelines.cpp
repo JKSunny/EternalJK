@@ -37,62 +37,35 @@ static qboolean is_ghoul2_vbo;
 static qboolean is_mdv_vbo;
 #endif
 
+static void vk_push_layout_binding( VkDescriptorSetLayoutBinding *bind, VkDescriptorType type,
+    uint32_t binding,VkShaderStageFlags flags ) 
+{
+    bind[binding].binding = binding;
+    bind[binding].descriptorType = type;
+    bind[binding].descriptorCount = 1;
+    bind[binding].stageFlags = flags;
+    bind[binding].pImmutableSamplers = NULL;
+}
+
 static void vk_create_layout_binding( int binding, VkDescriptorType type, 
     VkShaderStageFlags flags, VkDescriptorSetLayout *layout, qboolean is_uniform ) 
 {
-    uint32_t count = 0;
+    uint32_t count = 1;
     VkDescriptorSetLayoutBinding bind[VK_DESC_UNIFORM_COUNT];
     VkDescriptorSetLayoutCreateInfo desc;
-
-    bind[count].binding = binding;
-    bind[count].descriptorType = type;
-    bind[count].descriptorCount = 1;
-    bind[count].stageFlags = flags;
-    bind[count].pImmutableSamplers = NULL;
-    count++;
+    
+   vk_push_layout_binding( bind, type, binding, flags );
 
     if ( is_uniform ) {
-        bind[count].binding = VK_DESC_UNIFORM_CAMERA_BINDING;
-        bind[count].descriptorType = type;
-        bind[count].descriptorCount = 1;
-        bind[count].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-        bind[count].pImmutableSamplers = NULL;
-        count++;    
+        const VkShaderStageFlags uniform_flags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+        vk_push_layout_binding( bind, type, VK_DESC_UNIFORM_CAMERA_BINDING, uniform_flags );
+        vk_push_layout_binding( bind, type, VK_DESC_UNIFORM_LIGHT_BINDING, VK_SHADER_STAGE_FRAGMENT_BIT );
+        vk_push_layout_binding( bind, type, VK_DESC_UNIFORM_ENTITY_BINDING, uniform_flags );
+        vk_push_layout_binding( bind, type, VK_DESC_UNIFORM_BONES_BINDING, VK_SHADER_STAGE_VERTEX_BIT );
+        vk_push_layout_binding( bind, type, VK_DESC_UNIFORM_FOGS_BINDING, VK_SHADER_STAGE_FRAGMENT_BIT );
+        vk_push_layout_binding( bind, type, VK_DESC_UNIFORM_GLOBAL_BINDING, uniform_flags );
 
-        bind[count].binding = VK_DESC_UNIFORM_LIGHT_BINDING;
-        bind[count].descriptorType = type;
-        bind[count].descriptorCount = 1;
-        bind[count].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-        bind[count].pImmutableSamplers = NULL;
-        count++;
-
-        bind[count].binding = VK_DESC_UNIFORM_ENTITY_BINDING;
-        bind[count].descriptorType = type;
-        bind[count].descriptorCount = 1;
-        bind[count].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-        bind[count].pImmutableSamplers = NULL;
-        count++;
- 
-        bind[count].binding = VK_DESC_UNIFORM_BONES_BINDING;
-        bind[count].descriptorType = type;
-        bind[count].descriptorCount = 1;
-        bind[count].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-        bind[count].pImmutableSamplers = NULL;
-        count++;  
-
-        bind[count].binding = VK_DESC_UNIFORM_FOGS_BINDING;
-        bind[count].descriptorType = type;
-        bind[count].descriptorCount = 1;
-        bind[count].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-        bind[count].pImmutableSamplers = NULL;
-        count++;  
-        
-        bind[count].binding = VK_DESC_UNIFORM_GLOBAL_BINDING;
-        bind[count].descriptorType = type;
-        bind[count].descriptorCount = 1;
-        bind[count].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-        bind[count].pImmutableSamplers = NULL;
-        count++;  
+        count = VK_DESC_UNIFORM_COUNT;
     }
 
     desc.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -538,7 +511,7 @@ static void vk_push_vertex_input_binding_attribute( const Vk_Pipeline_Def *def )
             case TYPE_BLEND3_DST_COLOR_SRC_ALPHA_ENV:  
                 break;
             default:
-                if ( (def->vk_light_flags && !vk.useFastLight) || is_ghoul2_vbo || is_mdv_vbo ) 
+                if ( (def->vk_light_flags && !vk.useFastLight) || def->vbo_ghoul2 || def->vbo_mdv ) 
                 {
                     vk_push_bind( 5, sizeof( vec4_t ) );    // normals
                     vk_push_attr( 5, 5, VK_FORMAT_R32G32B32A32_SFLOAT );
@@ -551,7 +524,7 @@ static void vk_push_vertex_input_binding_attribute( const Vk_Pipeline_Def *def )
                 break;
         }
 
-        if ( is_ghoul2_vbo ) 
+        if ( def->vbo_ghoul2 ) 
         {
             vk_push_bind( 10, sizeof( vec4_t ) );		// bone indexes
             vk_push_attr( 10, 10, VK_FORMAT_R8G8B8A8_UINT );
@@ -2047,16 +2020,17 @@ void vk_alloc_persistent_pipelines( void )
                     def.vbo_ghoul2 = qfalse;
                     def.vbo_mdv = qfalse;
                     vk.std_pipeline.fog_pipelines[0][i][j][k] = vk_find_pipeline_ext(0, &def, qtrue);
-#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)                 
+#ifdef USE_VBO                 
                     if ( vk.vboGhoul2Active ) {
                         def.vbo_ghoul2 = qtrue;
                         vk.std_pipeline.fog_pipelines[1][i][j][k] = vk_find_pipeline_ext(0, &def, qtrue);
+                        def.vbo_ghoul2 = qfalse;
                     }
 
                     if ( vk.vboMdvActive ) {
-                        def.vbo_ghoul2 = qfalse;
                         def.vbo_mdv = qtrue;
                         vk.std_pipeline.fog_pipelines[2][i][j][k] = vk_find_pipeline_ext(0, &def, qtrue);
+                        def.vbo_mdv = qfalse;
                     }
 #endif
                    // def.shader_type = TYPE_SINGLE_TEXTURE;
