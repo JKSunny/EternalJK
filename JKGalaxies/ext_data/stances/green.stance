@@ -1,0 +1,409 @@
+{
+	// STANCE DATA
+	// This is basically the equivalent of Yellow stance.
+	"name_technical": "Ataru",		// for advanced HUD
+	"name_simple": "Green",		// for simple HUD -- unused atm
+
+	"offensiveStanceAnim": "BOTH_STAND2IDLE1",
+	"projectileBlockAnim": "BOTH_SABERDUAL_STANCE",
+
+	"isStaffFriendly": "0",		// can be used with staff
+	"isDualsFriendly": "0",		// and duals...
+	"isStaffOnly": "0",			// but is not restricted to staff (and does not ignite both blades)
+	"isDualsOnly": "0",			// or duals (and does not ignite both blades)
+	"sabSpecific": "0",			// unused --eez
+
+	"maxChainCount": "5",
+	"baseDamageDefault": "37",
+	"baseDamageMin": "7",
+	"baseDamageMax": "45",
+	
+	"BPdrain": "6",
+
+	"SpecialMoves": {
+		"allowBackAttack": "1",
+		"allowCrouchedBackAttack": "1",
+		"allowBackflipAttack": "1",
+		"allowSpeedLunge": "1",
+		"allowStabDown": "1",
+		"allowRollStab": "1",
+		"allowButterfly": "1",
+		"allowLunge": "1"
+	},
+
+
+	// All the moves -- consult wiki for more info on each one --eez
+	// Attacks
+	"LS_A_TL2BR": {
+		"anim": "BOTH_A2_TL_BR",
+		"animspeedscale": "0.80",
+		"fpdrain": "12"
+	},
+
+	"LS_A_L2R": {
+		"anim": "BOTH_A2__L__R",
+		"animspeedscale": "0.80",
+		"fpdrain": "12"
+	},
+
+	"LS_A_BL2TR": {
+		"anim": "BOTH_A2_BL_TR",
+		"animspeedscale": "0.80",
+		"fpdrain": "12"
+	},
+
+	"LS_A_BR2TL": {
+		"anim": "BOTH_A2_BR_TL",
+		"animspeedscale": "0.80",
+		"fpdrain": "12"
+	},
+
+	"LS_A_R2L": {
+		"anim": "BOTH_A2__R__L",
+		"animspeedscale": "0.80",
+		"fpdrain": "12"
+	},
+
+	"LS_A_TR2BL": {
+		"anim": "BOTH_A2_TR_BL",
+		"animspeedscale": "0.80",
+		"fpdrain": "12"
+	},
+
+	"LS_A_T2B": {
+		"anim": "BOTH_A2_T__B_",
+		"animspeedscale": "0.80",
+		"fpdrain": "12"
+	},
+
+
+	// Special attacks
+	"LS_A_BACK": {
+		"animspeedscale": "0.70"
+	},
+
+	"LS_A_BACK_CR": {
+		"animspeedscale": "0.70"
+	},
+
+	
+	// Starts
+	"LS_S_TL2BR": {
+		"animspeedscale": "0.75",
+		"anim": "BOTH_S2_S1_TL"
+	},
+
+	"LS_S_L2R": {
+		"animspeedscale": "0.75",
+		"anim": "BOTH_S2_S1__L"
+	},
+
+	"LS_S_BL2TR": {
+		"animspeedscale": "0.75",
+		"anim": "BOTH_S2_S1_BL"
+	},
+
+	"LS_S_BR2TL": {
+		"animspeedscale": "0.75",
+		"anim": "BOTH_S2_S1_BR"
+	},
+
+	"LS_S_R2L": {
+		"animspeedscale": "0.75",
+		"anim": "BOTH_S2_S1__R"
+	},
+
+	"LS_S_TR2BL": {
+		"animspeedscale": "0.75",
+		"anim": "BOTH_S2_S1_TR"
+	},
+
+	"LS_S_T2B": {
+		"animspeedscale": "0.75",
+		"anim": "BOTH_S2_S1_T_"
+	},
+	
+
+	// Returns
+	"LS_R_TL2BR": {
+		"animspeedscale": "1.15",
+		"anim": "BOTH_R2_BR_S1"
+	},
+
+	"LS_R_L2R": {
+		"animspeedscale": "1.15",
+		"anim": "BOTH_R2__R_S1"
+	},
+
+	"LS_R_BL2TR": {
+		"animspeedscale": "1.15",
+		"anim": "BOTH_R2_TR_S1"
+	},
+
+	"LS_R_BR2TL": {
+		"animspeedscale": "1.15",
+		"anim": "BOTH_R2_TL_S1"
+	},
+
+	"LS_R_R2L": {
+		"animspeedscale": "1.15",
+		"anim": "BOTH_R2__L_S1"
+	},
+
+	"LS_R_TR2BL": {
+		"animspeedscale": "1.15",
+		"anim": "BOTH_R2_BL_S1"
+	},
+
+	"LS_R_T2B": {
+		"animspeedscale": "1.15",
+		"anim": "BOTH_R2_B__S1"
+	},
+
+
+	// Transitions (just shoot me now...)
+	"LS_T1_BR__R": {
+		"anim": "BOTH_T2_BR__R"
+	},
+
+	"LS_T1_BR_TR": {
+		"anim": "BOTH_T2_BR_TR"
+	},
+
+	"LS_T1_BR_T_": {
+		"anim": "BOTH_T2_BR_T_"
+	},
+
+	"LS_T1_BR_TL": {
+		"anim": "BOTH_T2_BR_TL"
+	},
+
+	"LS_T1_BR__L": {
+		"anim": "BOTH_T2_BR__L"
+	},
+
+	"LS_T1_BR_BL": {
+		"anim": "BOTH_T2_BR_BL"
+	},
+
+	"LS_T1__R_BR": {
+		"anim": "BOTH_T2__R_BR"
+	},
+
+	"LS_T1__R_TR": {
+		"anim": "BOTH_T2__R_TR"
+	},
+
+	"LS_T1__R_T_": {
+		"anim": "BOTH_T2__R_T_"
+	},
+
+	"LS_T1__R_TL": {
+		"anim": "BOTH_T2__R_TL"
+	},
+
+	"LS_T1__R__L": {
+		"anim": "BOTH_T2__R__L"
+	},
+
+	"LS_T1__R_BL": {
+		"anim": "BOTH_T2__R_BL"
+	},
+
+	"LS_T1_TR_BR": {
+		"anim": "BOTH_T2_TR_BR"
+	},
+
+	"LS_T1_TR__R": {
+		"anim": "BOTH_T2_TR__R"
+	},
+
+	"LS_T1_TR_T_": {
+		"anim": "BOTH_T2_TR_T_"
+	},
+
+	"LS_T1_TR_TL": {
+		"anim": "BOTH_T2_TR_TL"
+	},
+
+	"LS_T1_TR__L": {
+		"anim": "BOTH_T2_TR__L"
+	},
+
+	"LS_T1_TR_BL": {
+		"anim": "BOTH_T2_TR_BL"
+	},
+
+	"LS_T1_T__BR": {
+		"anim": "BOTH_T2_T__BR"
+	},
+
+	"LS_T1_T___R": {
+		"anim": "BOTH_T2_T___R"
+	},
+
+	"LS_T1_T__TR": {
+		"anim": "BOTH_T2_T__TR"
+	},
+
+	"LS_T1_T__TL": {
+		"anim": "BOTH_T2_T__TL"
+	},
+
+	"LS_T1_T___L": {
+		"anim": "BOTH_T2_T___L"
+	},
+
+	"LS_T1_T__BL": {
+		"anim": "BOTH_T2_T__BL"
+	},
+
+	"LS_T1_TL_BR": {
+		"anim": "BOTH_T2_TL_BR"
+	},
+
+	"LS_T1_TL__R": {
+		"anim": "BOTH_T2_TL__R"
+	},
+
+	"LS_T1_TL_TR": {
+		"anim": "BOTH_T2_TL_TR"
+	},
+
+	"LS_T1_TL_T_": {
+		"anim": "BOTH_T2_TL_T_"
+	},
+
+	"LS_T1_TL__L": {
+		"anim": "BOTH_T2_TL__L"
+	},
+
+	"LS_T1_TL_BL": {
+		"anim": "BOTH_T2_TL_BL"
+	},
+
+	"LS_T1__L_BR": {
+		"anim": "BOTH_T2__L_BR"
+	},
+
+	"LS_T1__L__R": {
+		"anim": "BOTH_T2__L__R"
+	},
+
+	"LS_T1__L_TR": {
+		"anim": "BOTH_T2__L_TR"
+	},
+
+	"LS_T1__L_T_": {
+		"anim": "BOTH_T2__L_T_"
+	},
+
+	"LS_T1__L_TL": {
+		"anim": "BOTH_T2__L_TL"
+	},
+
+	"LS_T1__L_BL": {
+		"anim": "BOTH_T2__L_BL"
+	},
+
+	"LS_T1_BL_BR": {
+		"anim": "BOTH_T2_BL_BR"
+	},
+
+	"LS_T1_BL__R": {
+		"anim": "BOTH_T2_BL__R"
+	},
+
+	"LS_T1_BL_TR": {
+		"anim": "BOTH_T2_BL_TR"
+	},
+
+	"LS_T1_BL_T_": {
+		"anim": "BOTH_T2_BL_T_"
+	},
+
+	"LS_T1_BL_TL": {
+		"anim": "BOTH_T2_BL_TL"
+	},
+
+	"LS_T1_BL__L": {
+		"anim": "BOTH_T2_BL__L"
+	},
+
+	// Bounces
+	"LS_B1_BR": {
+		"animspeedscale": "0.75",
+		"anim": "BOTH_B2_BR___"
+	},
+
+	"LS_B1__R": {
+		"animspeedscale": "0.75",
+		"anim": "BOTH_B2__R___"
+	},
+
+	"LS_B1_TR": {
+		"animspeedscale": "0.75",
+		"anim": "BOTH_B2_TR___"
+	},
+
+	"LS_B1_T_": {
+		"animspeedscale": "0.75",
+		"anim": "BOTH_B2_T____"
+	},
+
+	"LS_B1_TL": {
+		"animspeedscale": "0.75",
+		"anim": "BOTH_B2_TL___"
+	},
+
+	"LS_B1__L": {
+		"animspeedscale": "0.75",
+		"anim": "BOTH_B2__L___"
+	},
+
+	"LS_B1_BL": {
+		"animspeedscale": "0.75",
+		"anim": "BOTH_B2_BL___"
+	},
+
+	// Deflected Attacks
+	"LS_D1_BR": {
+		"animspeedscale": "0.80",
+		"anim": "BOTH_D2_BR___"
+	},
+
+	"LS_D1__R": {
+		"animspeedscale": "0.80",
+		"anim": "BOTH_D2__R___"
+	},
+
+	"LS_D1_TR": {
+		"animspeedscale": "0.80",
+		"anim": "BOTH_D2_TR___"
+	},
+
+	"LS_D1_T_": {
+		"animspeedscale": "0.80",
+		"anim": "BOTH_B2_T____"
+	},
+
+	"LS_D1_TL": {
+		"animspeedscale": "0.80",
+		"anim": "BOTH_D2_TL___"
+	},
+
+	"LS_D1__L": {
+		"animspeedscale": "0.80",
+		"anim": "BOTH_D2__L___"
+	},
+
+	"LS_D1_BL": {
+		"animspeedscale": "0.80",
+		"anim": "BOTH_D2_BL___"
+	},
+
+	"LS_D1_B_": {
+		"animspeedscale": "0.80",
+		"anim": "BOTH_D2_B____"
+	}
+}
