@@ -40,12 +40,10 @@ Native implemention of the Vulkan renderer module.
 ---
 
 ### :name_badge: **Beta**
-Based on master, with addition of features like instanced MD3 and Ghoul2 model caching on the gpu.
-> **cvar r_vbo:** Cache static surfaces: 0 - off 1 - world 2 - world + models
+> Based on master
 
 [![master-todo](https://img.shields.io/badge/todo-list-grey.svg)](https://github.com/users/JKSunny/projects/1/views/1?filterQuery=branch%3Abeta)
 [![beta-release](https://img.shields.io/badge/Download-Beta-ef7b3c.svg)](https://github.com/JKSunny/EternalJK/releases/tag/latest-beta/)
-[![beta-comparision-video](https://img.shields.io/badge/See-Comparison_video-yellow.svg)](https://www.youtube.com/watch?v=kZs6kEVgMok)
 
 ---
 
@@ -110,9 +108,9 @@ Overview of prototyped features like bindless rendering, depth-z-prepass is in t
 
 In addition to this fork, I also have implemented the Vulkan renderer to my other forks 
 
-[![jedi-academy-openjk](https://img.shields.io/badge/Jedi_Academy-OpenJK-brightgreen.svg)](https://github.com/JKSunny/OpenJK/) - *based on beta branch* \
+[![jedi-academy-openjk](https://img.shields.io/badge/Jedi_Academy-OpenJK-brightgreen.svg)](https://github.com/JKSunny/OpenJK/) - *based on master branch* \
 [![jedi-outcast-jk2mv](https://img.shields.io/badge/Jedi_Outcast_&#x2800;-JK2MV-brightgreen.svg)](https://github.com/JKSunny/jk2mv/) - *based on master branch - (Implemented modular renderer)* \
-[![jedi-outcast-jk2mv](https://img.shields.io/badge/Jedi_Academy-JKGalaxies-brightgreen.svg)](https://github.com/JKSunny/JediKnightGalaxies) - *based on master branch*
+[![jedi-knight-galaxies](https://img.shields.io/badge/Jedi_Academy-JKGalaxies-brightgreen.svg)](https://github.com/JKSunny/JediKnightGalaxies) - *based on master branch*
 
 
 ## For players
