@@ -19,10 +19,10 @@
 	"baseDamageMax": "40",
 	
 	"BPdrain": "20",
+	"perfectBlockBPBonus": "4",	//how much BP to regen on a perfect block
 	"transitionSpeedModifier": "0.3",
 	"defensePenetration": 18,
 	"attackBackSpeedModifier": "0.6",
-
 
 
 	"SpecialMoves": {
