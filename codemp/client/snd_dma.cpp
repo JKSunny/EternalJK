@@ -465,7 +465,7 @@ void S_Init( void ) {
 
 	s_language = Cvar_Get("s_language","english",CVAR_ARCHIVE | CVAR_NORESTART);
 
-	s_doppler = Cvar_Get("s_doppler", "1", CVAR_ARCHIVE);
+	s_doppler = Cvar_Get("s_doppler", "0", CVAR_ARCHIVE);
 
 	MP3_InitCvars();
 
