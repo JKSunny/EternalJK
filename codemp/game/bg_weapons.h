@@ -724,6 +724,7 @@ typedef struct
 	int baseDamageMin;
 	int baseDamageMax;
 	int BPdrain;						// how much to drain BP (based on NUMBER of PLANES)
+	int perfectBlockBPBonus;			// how much to regen BP (when a perfect block is executed)
 
 
 	int defensePenetration;				// higher numbers for faster stances.

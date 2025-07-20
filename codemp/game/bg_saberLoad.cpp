@@ -1872,6 +1872,17 @@ qboolean JKG_ParseSaberStanceFile( char *filename )
 		theStance.BPdrain = 16;
 	}
 
+	jsonNode = cJSON_GetObjectItem(json, "perfectBlockBPBonus");
+	if (jsonNode)
+	{
+		stance = cJSON_ToInteger(jsonNode);
+		theStance.perfectBlockBPBonus = stance;
+	}
+	else
+	{
+		theStance.perfectBlockBPBonus = 5; //default, BP to regen on perfect block
+	}
+
 	jsonNode = cJSON_GetObjectItem (json, "defensePenetration");
     if(jsonNode)
 	{

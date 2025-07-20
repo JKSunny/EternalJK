@@ -3183,7 +3183,7 @@ weapChecks:
 		if ( !BG_KickingAnim(pm->ps->torsoAnim) &&
 			!BG_KickingAnim(pm->ps->legsAnim) &&
 			!BG_InRoll(pm->ps, pm->ps->legsAnim) &&
-//			!BG_KickMove( pm->ps->saberMove )//not already in a kick
+//			!BG_KickMove( pm->ps->saberMove ) && //not already in a kick
 			pm->ps->saberMove == LS_READY
 			&& !(pm->ps->pm_flags&PMF_DUCKED)//not ducked
 			&& (pm->cmd.upmove >= 0 ) //not trying to duck
@@ -3693,6 +3693,8 @@ void PM_SetSaberMove(short newMove)
 		{
 			setflags |= SETANIM_FLAG_OVERRIDE;
 		}
+
+		//old way of doing it, replaced with BG_SaberInSPecial() check above
 		/*
 		if ( newMove == LS_A_LUNGE 
 			|| newMove == LS_A_JUMP_T__B_ 

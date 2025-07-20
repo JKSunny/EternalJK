@@ -55,7 +55,7 @@ void WP_SaberRemoveG2Model( gentity_t *saberent );
 ///													JEDI KNIGHT GALAXIES														///
 ///											EXHAUSTIVE LIGHTSABER COMBAT SYSTEM													///
 ///																																///
-///						System designed by Pande, eezstreet. Visuals designed by BlackResuru. (c) 2012 JKG						///
+///					System designed by Pande, eezstreet, and Futuza. Visuals designed by BlackResuru. (c) 2012 JKG				///
 ///																																///
 ///																																///
 /// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// ///
@@ -3880,7 +3880,14 @@ unsigned char JKG_GetBPNeededForBlock( gentity_t *blocker, int attackerSaberMove
 		}
 	}
 
-	//return 30; // for now
+	//return 30; // default loss value
+
+	//if a "perfect block"
+	if (numPlanesWrong == 0)
+	{
+		blocker->client->ps.blockPoints += SaberStances[blocker->client->ps.fd.saberAnimLevel].perfectBlockBPBonus;
+		//also do efx here/sound indicating perfect block?
+	}
 
 	return SaberStances[attackerSaberStyle].BPdrain*numPlanesWrong;
 }

@@ -16,9 +16,14 @@
 	"maxChainCount": "5",
 	"baseDamageDefault": "37",
 	"baseDamageMin": "7",
-	"baseDamageMax": "45",
+	"baseDamageMax": "40",
 	
-	"BPdrain": "6",
+	"BPdrain": "20",
+	"transitionSpeedModifier": "0.3",
+	"defensePenetration": 18,
+	"attackBackSpeedModifier": "0.6",
+
+
 
 	"SpecialMoves": {
 		"allowBackAttack": "1",
@@ -26,9 +31,10 @@
 		"allowBackflipAttack": "1",
 		"allowSpeedLunge": "1",
 		"allowStabDown": "1",
-		"allowRollStab": "1",
+		//"allowRollStab": "1", //seems to not trigger correctly, probably interferring with lunge
 		"allowButterfly": "1",
-		"allowLunge": "1"
+		"allowLunge": "1",
+		"allowCartwheel": "1"
 	},
 
 
@@ -42,7 +48,7 @@
 
 	"LS_A_L2R": {
 		"anim": "BOTH_A2__L__R",
-		"animspeedscale": "0.80",
+		"animspeedscale": "0.40",
 		"fpdrain": "12"
 	},
 
@@ -60,7 +66,7 @@
 
 	"LS_A_R2L": {
 		"anim": "BOTH_A2__R__L",
-		"animspeedscale": "0.80",
+		"animspeedscale": "0.40",
 		"fpdrain": "12"
 	},
 
