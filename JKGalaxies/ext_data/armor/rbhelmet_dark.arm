@@ -6,7 +6,7 @@
 
 	"visuals": {
 		"model":	"models/players/rebel/model.glm*default4",
-		"modelGroup":	"rebel",
+		"modelGroup":	"rebel_dark",
 
 		"armorOnSurfaces": [
 			"head_helmet"

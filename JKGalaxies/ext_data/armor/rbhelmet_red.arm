@@ -6,7 +6,7 @@
 
 	"visuals": {
 		"model":	"models/players/rebel/model.glm*red",
-		"modelGroup":	"rebel",
+		"modelGroup":	"rebel_red",
 
 		"armorOnSurfaces": [
 			"head_helmet"

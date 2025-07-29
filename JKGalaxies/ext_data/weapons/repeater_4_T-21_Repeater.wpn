@@ -51,7 +51,7 @@
                 "sound/weapons/blasters/walker4.mp3"
             ],
             "projectilefx": "blasters/shot_Red_big",
-            "miss":         { "impactfx": "weapons/blaster_impact_red_big_fire" },
+            "miss":         { "impactfx": "weapons/blaster_impact_red_huge_fire" },
             "hit":          { "impactfx": "blasters/red_flesh_impact",
 							  "shieldimpactfx": "red_shield_impact"
 							},
