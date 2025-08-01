@@ -519,6 +519,7 @@ typedef struct
 {
 	char			hiltname[MAX_QPATH];		// We get this from the .sab files.
 	char			defaultcrystal[MAX_QPATH];	// Crystal that gets chucked into this puppy by default...
+	char			currentcrystal[MAX_QPATH];	// Crystal the user has placed in this saber, overrides default - not yet used
 } saberWeaponData_t;
 
 typedef struct
@@ -657,6 +658,7 @@ extern saberCrystalData_t saberCrystalsLookup[MAX_SABER_CRYSTALS];
 
 void JKG_InitializeSaberCrystalData( void );
 const saberCrystalData_t *JKG_GetSaberCrystal( const char *crystalName );
+const saberCrystalData_t *JKG_GetSaberCrystal( const weaponData_t *weapon );
 
 typedef struct
 {
