@@ -174,7 +174,7 @@ struct PNGFileReader
 		// Check and make sure the filename is valid (because you can never be too careful...)
 		if( !filename || !filename[0] )
 		{
-			ri->Printf( PRINT_ERROR, "PNG read called with invalid filename.\n" );
+			ri.Printf( PRINT_ERROR, "PNG read called with invalid filename.\n" );
 			return 0;
 		}
 

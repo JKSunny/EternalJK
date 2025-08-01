@@ -1,7 +1,7 @@
 # Make sure the user is not executing this script directly
-if(NOT InOpenJK)
+if(NOT InJKG)
 	message(FATAL_ERROR "Use the top-level cmake script!")
-endif(NOT InOpenJK)
+endif(NOT InJKG)
 
 set(MPRend2IncludeDirectories
 	"${SharedDir}"
@@ -105,6 +105,7 @@ set(MPRend2Files ${MPRend2Files} ${MPRend2RdCommonFiles})
 
 set(MPRend2CommonFiles
 	"${MPDir}/qcommon/matcomp.cpp"
+	"${MPDir}/qcommon/q_math.cpp"
 	"${MPDir}/qcommon/q_shared.cpp"
 	"${SharedCommonFiles}")
 source_group("common" FILES ${MPRend2CommonFiles})
@@ -188,7 +189,7 @@ add_executable(compact_glsl
 	${MPDir}/rd-rend2/tr_allocator.cpp
 	${MPDir}/rd-rend2/tr_allocator.h
 	${MPDir}/rd-rend2/tr_glsl_parse.cpp)
-target_compile_definitions(compact_glsl PRIVATE "GLSL_BUILDTOOL" "NOMINMAX")
+target_compile_definitions(compact_glsl PRIVATE "GLSL_BUILDTOOL" "NOMINMAX" "ENGINE")
 if (NOT WIN32 AND NOT APPLE)
 	target_compile_definitions(compact_glsl PRIVATE "ARCH_STRING=\"${Architecture}\"")
 endif()
