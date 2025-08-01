@@ -1118,6 +1118,17 @@ void WP_SetSaber( int entNum, saberInfo_t *sabers, int saberNum, const char *sab
 unsigned int numLoadedCrystals = 0;
 saberCrystalData_t saberCrystalsLookup[MAX_SABER_CRYSTALS];
 
+const saberCrystalData_t *JKG_GetSaberCrystal( const weaponData_t *weapon )
+{
+	if(weapon->weaponBaseIndex != WP_SABER)
+		return NULL;
+
+	if(weapon->sab.currentcrystal)
+		return JKG_GetSaberCrystal(weapon->sab.currentcrystal);
+	else
+		return JKG_GetSaberCrystal(weapon->sab.defaultcrystal);
+}
+
 const saberCrystalData_t *JKG_GetSaberCrystal( const char *crystalName )
 {
 	int i;

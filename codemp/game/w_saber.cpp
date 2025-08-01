@@ -8686,7 +8686,30 @@ void JKG_NetworkSaberCrystals( playerState_t *ps, std::size_t invId, int weaponI
 	}
 
 	// ok go
-	//ps->saberCrystal[0] = itm->calc1;	// FIXME: need stuff for akimbo...
+	const weaponData_t* weaponData;
+	weaponData = GetWeaponData(ps->weapon, ps->weaponVariation);
+	const saberCrystalData_t* crystal = JKG_GetSaberCrystal(weaponData);
+	if (crystal)
+	{
+		//if server side is different
+		if(ent->s.saberCrystal[0] != crystal->crystalID)
+		{
+			pm->ps->saberCrystal[0] = crystal->crystalID;		//player movement state
+			ent->s.saberCrystal[0] = crystal->crystalID;			//modify server
+			ent->client->ps.saberCrystal[0] = crystal->crystalID;	//and client player state
+			
+			
+			//pm->ps->saberCrystal[1] = crystal->crystalID; // FIXME: need stuff for akimbo...(dual weilding)
+			//ent->s.saberCrystal[1] = crystal->crystalID;	
+			//ent->client->ps.saberCrystal[0] = crystal->crystalID;
+		}
+	
+		//if it is the same
+		else
+		{
+			pm->ps->saberCrystal[0] = crystal->crystalID;
+		}
+	}
 }
 
 void JKG_DoubleCheckWeaponChange( usercmd_t *cmd, playerState_t *ps )

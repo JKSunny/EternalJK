@@ -1442,7 +1442,7 @@ void CG_EntityEvent( centity_t *cent, vec3_t position ) {
 				WP_SetSaber( es->number, cgs.clientinfo[es->number].saber, 0, weaponData->sab.hiltname );
 				JKG_SwapToSaber( 0, &cgs.clientinfo[es->number], weaponData->sab.hiltname, weapon, variation );
 
-				const saberCrystalData_t* crystal = JKG_GetSaberCrystal(weaponData->sab.defaultcrystal);
+				const saberCrystalData_t* crystal = JKG_GetSaberCrystal(weaponData);
 				if(crystal)
 				{
 					cg.predictedPlayerState.saberCrystal[0] = crystal->crystalID;
