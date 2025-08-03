@@ -1485,6 +1485,8 @@ static qboolean ParseStage( shaderStage_t *stage, const char **text )
 					}
 					stage->bundle[0].numImageAnimations++;
 				}
+
+				shader.frameOverride = -1;	// JKG: default is -1, weapon ammo indicators may overwrite this in bg_weapons_load.cpp if "overrideIndicatorFrame" is set (default is not 0 due to 0 being a valid frame)
 			}
 		}
 		else if ( !Q_stricmp( token, "videoMap" ) )
@@ -5138,5 +5140,17 @@ void R_InitShaders( qboolean server ) {
 		ScanAndLoadShaderFiles();
 
 		CreateExternalShaders();
+	}
+}
+
+// JKG: Replacement code for hacks in jkg_wpindicators.c --eez
+void R_OverrideShaderFrame(qhandle_t shader, int desiredFrame, int time)
+{
+	shader_t* thisShader = tr.shaders[shader];
+	// WTF hack here...
+	thisShader->frameOverride = desiredFrame;
+	if (thisShader->next != nullptr && !Q_stricmp(thisShader->next->name, thisShader->name))
+	{
+		thisShader->next->frameOverride = desiredFrame;
 	}
 }

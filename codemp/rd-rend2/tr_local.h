@@ -56,7 +56,7 @@ typedef unsigned int glIndex_t;
 #define MAX_VISCOUNTS 5
 #define MAX_VBOS      4096
 #define MAX_IBOS      4096
-#define MAX_G2_BONES  72
+#define MAX_G2_BONES  80
 
 #define MAX_CALC_PSHADOWS    64
 #define MAX_DRAWN_PSHADOWS    32 // do not increase past 32, because bit flags are used on surfaces
@@ -807,7 +807,7 @@ struct surfaceSprite_t
 	int spriteUboOffset;
 };
 
-#define	MAX_IMAGE_ANIMATIONS	(32)
+#define	MAX_IMAGE_ANIMATIONS	(64)
 
 typedef struct {
 	image_t			*image[MAX_IMAGE_ANIMATIONS];
@@ -1001,6 +1001,8 @@ typedef struct shader_s {
 
 	float clampTime;                                  // time this shader is clamped to
 	float timeOffset;                                 // current time offset for this shader
+
+	int frameOverride;	// JKG: for animmaps, we want to override the frame if not -1
 
 	struct shader_s *remappedShader;                  // current shader this one is remapped too
 

@@ -2132,6 +2132,7 @@ void RE_WorldEffectCommand(const char *cmd);
 
 void stub_RE_AddWeatherZone ( const vec3_t mins, const vec3_t maxs ) {} // Intentionally left blank. Rend2 reads the zones manually on bsp load
 static void RE_SetRefractionProperties ( float distortionAlpha, float distortionStretch, qboolean distortionPrePost, qboolean distortionNegate ) { }
+extern void R_OverrideShaderFrame( qhandle_t shader, int desiredFrame, int time );
 
 void C_LevelLoadBegin(const char *psMapName, ForceReload_e eForceReload)
 {
@@ -2363,6 +2364,8 @@ Q_EXPORT refexport_t* QDECL GetRefAPI ( int apiVersion, refimport_t *rimp ) {
 	Ghoul2 Insert End
 	*/
 
+	re.G2API_GetSurfaceCount = G2API_GetSurfaceCount;
+	re.OverrideShaderFrame = R_OverrideShaderFrame;
 	//re.ext.Font_StrLenPixels = RE_Font_StrLenPixelsNew;
 
 	return &re;
