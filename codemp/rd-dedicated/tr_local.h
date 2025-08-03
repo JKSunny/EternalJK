@@ -26,6 +26,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 typedef unsigned int GLuint;
 
 #include "qcommon/qfiles.h"
+#include "rd-common/tr_common.h"
 #include "rd-common/tr_public.h"
 #include "ghoul2/ghoul2_shared.h" //rwwRMG - added
 
@@ -839,6 +840,42 @@ typedef struct world_s {
 } world_t;
 
 //======================================================================
+
+typedef enum {
+	MOD_BAD,
+	MOD_BRUSH,
+	MOD_MESH,
+/*
+Ghoul2 Insert Start
+*/
+   	MOD_MDXM,
+	MOD_MDXA
+/*
+Ghoul2 Insert End
+*/
+
+} modtype_t;
+
+typedef struct model_s {
+	char		name[MAX_QPATH];
+	modtype_t	type;
+	int			index;				// model = tr.models[model->mod_index]
+	
+	int			dataSize;			// just for listing purposes
+	bmodel_t	*bmodel;			// only if type == MOD_BRUSH
+	md3Header_t	*md3[MD3_MAX_LODS];	// only if type == MOD_MESH
+/*
+Ghoul2 Insert Start
+*/
+	mdxmHeader_t *mdxm;				// only if type == MOD_GL2M which is a GHOUL II Mesh file NOT a GHOUL II animation file
+	mdxaHeader_t *mdxa;				// only if type == MOD_GL2A which is a GHOUL II Animation file
+/*
+Ghoul2 Insert End
+*/
+	unsigned char	numLods;
+	bool			bspInstance;			// model is a bsp instance
+} model_t;
+
 
 #define	MAX_MOD_KNOWN	1024
 
@@ -1854,7 +1891,5 @@ typedef struct decalPoly_s
 	polyVert_t			verts[MAX_VERTS_ON_DECAL_POLY];
 
 } decalPoly_t;
-
-extern refimport_t *ri;
 
 qboolean ShaderHashTableExists(void);

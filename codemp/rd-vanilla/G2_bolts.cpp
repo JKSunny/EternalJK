@@ -22,6 +22,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include "ghoul2/G2.h"
 #include "ghoul2/g2_local.h"
+#include "tr_local.h"
 
 //=====================================================================================================================
 // Bolt List handling routines - so entities can attach themselves to any part of the model in question
@@ -193,7 +194,7 @@ int G2_Add_Bolt(CGhoul2Info *ghlInfo, boltInfo_v &bltlist, surfaceInfo_v &slist,
 		// didn't find it? Error
 		//assert(0&&x == mod_a->mdxa->numBones);
 #ifdef _DEBUG
-//		ri->Printf( PRINT_ALL, "WARNING: %s not found on skeleton\n", boneName);
+//		ri.Printf( PRINT_ALL, "WARNING: %s not found on skeleton\n", boneName);
 #endif
 		return -1;
 	}

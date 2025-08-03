@@ -139,7 +139,7 @@ void RE_AddPolyToScene( qhandle_t hShader, int numVerts, const polyVert_t *verts
 	}
 
 	if ( !hShader ) {
-		ri->Printf( PRINT_ALL, S_COLOR_YELLOW  "WARNING: RE_AddPolyToScene: NULL poly shader\n");
+		ri.Printf( PRINT_ALL, S_COLOR_YELLOW  "WARNING: RE_AddPolyToScene: NULL poly shader\n");
 		return;
 	}
 
@@ -151,7 +151,7 @@ void RE_AddPolyToScene( qhandle_t hShader, int numVerts, const polyVert_t *verts
       since we don't plan on changing the const and making for room for those effects
       simply cut this message to developer only
       */
-			ri->Printf( PRINT_DEVELOPER, S_COLOR_YELLOW  "WARNING: RE_AddPolyToScene: r_max_polys or r_max_polyverts reached\n");
+			ri.Printf( PRINT_DEVELOPER, S_COLOR_YELLOW  "WARNING: RE_AddPolyToScene: r_max_polys or r_max_polyverts reached\n");
 			return;
 		}
 
@@ -216,7 +216,7 @@ void RE_AddRefEntityToScene( const refEntity_t *ent ) {
 	}
 
 	if ( r_numentities >= MAX_REFENTITIES ) {
-		ri->Printf(PRINT_DEVELOPER, "RE_AddRefEntityToScene: Dropping refEntity, reached MAX_REFENTITIES\n");
+		ri.Printf(PRINT_DEVELOPER, "RE_AddRefEntityToScene: Dropping refEntity, reached MAX_REFENTITIES\n");
 		return;
 	}
 
@@ -224,7 +224,7 @@ void RE_AddRefEntityToScene( const refEntity_t *ent ) {
 		static qboolean firstTime = qtrue;
 		if (firstTime) {
 			firstTime = qfalse;
-			ri->Printf( PRINT_WARNING, "RE_AddRefEntityToScene passed a refEntity which has an origin with a NaN component\n");
+			ri.Printf( PRINT_WARNING, "RE_AddRefEntityToScene passed a refEntity which has an origin with a NaN component\n");
 		}
 		return;
 	}*/
@@ -256,7 +256,7 @@ void RE_AddRefEntityToScene( const refEntity_t *ent ) {
 
 		if (!ghoul2[0].mModel)
 		{
-			ri->Printf( PRINT_ALL, "Your ghoul2 instance has no model!\n");
+			ri.Printf( PRINT_ALL, "Your ghoul2 instance has no model!\n");
 		}
 	}
 
@@ -412,7 +412,7 @@ void RE_RenderScene( const refdef_t *fd ) {
 		return;
 	}
 
-	startTime = ri->Milliseconds()*ri->Cvar_VariableValue( "timescale" );
+	startTime = ri.Milliseconds()*ri.Cvar_VariableValue( "timescale" );
 
 	if (!tr.world && !( fd->rdflags & RDF_NOWORLDMODEL ) ) {
 		Com_Error (ERR_DROP, "R_RenderScene: NULL worldmodel");
@@ -559,7 +559,7 @@ void RE_RenderScene( const refdef_t *fd ) {
 
 	refEntParent = -1;
 
-	tr.frontEndMsec += ri->Milliseconds()*ri->Cvar_VariableValue( "timescale" ) - startTime;
+	tr.frontEndMsec += ri.Milliseconds()*ri.Cvar_VariableValue( "timescale" ) - startTime;
 
 	RE_RenderWorldEffects();
 

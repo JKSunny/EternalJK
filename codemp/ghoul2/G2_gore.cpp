@@ -23,6 +23,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "G2_gore.h"
 #include "../rd-common/tr_common.h"
 
+#ifdef _G2_GORE
+
 GoreTextureCoordinates::GoreTextureCoordinates()
 {
 	Com_Memset (tex, 0, sizeof (tex));
@@ -34,8 +36,10 @@ GoreTextureCoordinates::~GoreTextureCoordinates()
 	{
 		if ( tex[i] )
 		{
-			ri->Z_Free(tex[i]);
+			ri.Z_Free(tex[i]);
 			tex[i] = NULL;
 		}
 	}
 }
+
+#endif

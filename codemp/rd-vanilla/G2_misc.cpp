@@ -26,10 +26,9 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "server/server.h"
 #include "ghoul2/g2_local.h"
 
+#include "tr_local.h"
 #ifdef _G2_GORE
 #include "ghoul2/G2_gore.h"
-
-#include "tr_local.h"
 
 #define GORE_TAG_UPPER (256)
 #define GORE_TAG_MASK (~255)
@@ -284,13 +283,13 @@ void G2_List_Model_Surfaces(const char *fileName)
 
 	for ( x = 0 ; x < mod_m->mdxm->numSurfaces ; x++)
 	{
-		ri->Printf( PRINT_ALL, "Surface %i Name %s\n", x, surf->name);
+		ri.Printf( PRINT_ALL, "Surface %i Name %s\n", x, surf->name);
 		if ( r_verbose->integer )
 		{
-			ri->Printf( PRINT_ALL, "Num Descendants %i\n",  surf->numChildren);
+			ri.Printf( PRINT_ALL, "Num Descendants %i\n",  surf->numChildren);
 			for (i=0; i<surf->numChildren; i++)
 			{
-				ri->Printf( PRINT_ALL, "Descendant %i\n", surf->childIndexes[i]);
+				ri.Printf( PRINT_ALL, "Descendant %i\n", surf->childIndexes[i]);
 			}
 		}
 		// find the next surface
@@ -322,17 +321,17 @@ void G2_List_Model_Bones(const char *fileName, int frame)
 	for (x=0; x< mod_a->mdxa->numBones; x++)
 	{
 		skel = (mdxaSkel_t *)((byte *)header + sizeof(mdxaHeader_t) + offsets->offsets[x]);
-		ri->Printf( PRINT_ALL, "Bone %i Name %s\n", x, skel->name);
+		ri.Printf( PRINT_ALL, "Bone %i Name %s\n", x, skel->name);
 
-		ri->Printf( PRINT_ALL, "X pos %f, Y pos %f, Z pos %f\n", skel->BasePoseMat.matrix[0][3], skel->BasePoseMat.matrix[1][3], skel->BasePoseMat.matrix[2][3]);
+		ri.Printf( PRINT_ALL, "X pos %f, Y pos %f, Z pos %f\n", skel->BasePoseMat.matrix[0][3], skel->BasePoseMat.matrix[1][3], skel->BasePoseMat.matrix[2][3]);
 
 		// if we are in verbose mode give us more details
 		if ( r_verbose->integer )
 		{
-			ri->Printf( PRINT_ALL, "Num Descendants %i\n",  skel->numChildren);
+			ri.Printf( PRINT_ALL, "Num Descendants %i\n",  skel->numChildren);
 			for (i=0; i<skel->numChildren; i++)
 			{
-				ri->Printf( PRINT_ALL, "Num Descendants %i\n",  skel->numChildren);
+				ri.Printf( PRINT_ALL, "Num Descendants %i\n",  skel->numChildren);
 			}
 		}
 	}
@@ -557,9 +556,10 @@ void G2_TransformModel(CGhoul2Info_v &ghoul2, const int frameNum, vec3_t scale, 
 	vec3_t			correctScale;
 	qboolean		firstModelOnly = qfalse;
 
+#ifdef _G2_GORE
 	if ( cg_g2MarksAllModels == NULL )
 	{
-		cg_g2MarksAllModels = ri->Cvar_Get( "cg_g2MarksAllModels", "0", 0 );
+		cg_g2MarksAllModels = ri.Cvar_Get( "cg_g2MarksAllModels", "0", 0, "" );
 	}
 
 	if (cg_g2MarksAllModels == NULL
@@ -567,7 +567,7 @@ void G2_TransformModel(CGhoul2Info_v &ghoul2, const int frameNum, vec3_t scale, 
 	{
 		firstModelOnly = qtrue;
 	}
-
+#endif
 
 	VectorCopy(scale, correctScale);
 	// check for scales of 0 - that's the default I believe
@@ -1170,7 +1170,7 @@ static bool G2_TracePolys(const mdxmSurface_t *surface, const mdxmSurfHierarchy_
 							newCol.mLocation = *(hitMatReg[shader->hitLocation].loc +
 												((int)(y_pos * hitMatReg[shader->hitLocation].height) * hitMatReg[shader->hitLocation].width) +
 												((int)(x_pos * hitMatReg[shader->hitLocation].width)));
-							ri->Printf( PRINT_ALL, "G2_TracePolys hit location: %d\n", newCol.mLocation);
+							ri.Printf( PRINT_ALL, "G2_TracePolys hit location: %d\n", newCol.mLocation);
 						}
 
 						if (shader->hitMaterial)
@@ -1506,9 +1506,10 @@ void G2_TraceModels(CGhoul2Info_v &ghoul2, vec3_t rayStart, vec3_t rayEnd, Colli
 	shader_t		*cust_shader;
 	qboolean		firstModelOnly = qfalse;
 
+#ifdef _G2_GORE
 	if ( cg_g2MarksAllModels == NULL )
 	{
-		cg_g2MarksAllModels = ri->Cvar_Get( "cg_g2MarksAllModels", "0", 0 );
+		cg_g2MarksAllModels = ri.Cvar_Get( "cg_g2MarksAllModels", "0", 0, "" );
 	}
 
 	if (cg_g2MarksAllModels == NULL
@@ -1516,6 +1517,7 @@ void G2_TraceModels(CGhoul2Info_v &ghoul2, vec3_t rayStart, vec3_t rayEnd, Colli
 	{
 		firstModelOnly = qtrue;
 	}
+#endif
 
 	// walk each possible model for this entity and try tracing against it
 	for (i=0; i<ghoul2.size(); i++)
@@ -1561,6 +1563,7 @@ void G2_TraceModels(CGhoul2Info_v &ghoul2, vec3_t rayStart, vec3_t rayEnd, Colli
 		}
 
 		lod = G2_DecideTraceLod(ghoul2[i],useLod);
+#ifdef _G2_GORE
 		if ( skipIfLODNotMatch )
 		{//we only want to hit this SPECIFIC LOD...
 			if ( lod != useLod )
@@ -1568,7 +1571,7 @@ void G2_TraceModels(CGhoul2Info_v &ghoul2, vec3_t rayStart, vec3_t rayEnd, Colli
 				continue;
 			}
 		}
-
+#endif
 		//reset the quick surface override lookup
 		G2_FindOverrideSurface(-1, ghoul2[i].mSlist);
 
