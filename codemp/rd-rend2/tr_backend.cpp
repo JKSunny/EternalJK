@@ -947,11 +947,29 @@ SamplerBindingsWriter& SamplerBindingsWriter::AddAnimatedImage( textureBundle_t 
 		// exactly with waveforms of the same frequency
 		index = Q_ftol( tess.shaderTime * bundle->imageAnimationSpeed * FUNCTABLE_SIZE );
 		index = Q_max(0, index >> FUNCTABLE_SIZE2);
+
+		if ( tess.shader->frameOverride != -1 )
+		{
+			index = tess.shader->frameOverride;
+		}
+		else if ( index < 0 ) {
+			index = 0;	// may happen with shader time offsets
+		}
 	}
 
 	if ( bundle->oneShotAnimMap )
 	{
 		index = Q_min(index, bundle->numImageAnimations - 1);
+	}
+	else if( tess.shader->frameOverride == -1 || index >= bundle->numImageAnimations)
+	{
+		// loop
+		if (bundle->numImageAnimations != 0) {
+			index %= bundle->numImageAnimations;
+		}
+		else {
+			index = 0;
+		}
 	}
 	else
 	{
