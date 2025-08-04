@@ -1380,6 +1380,9 @@ static qboolean ParseStage(shaderStage_t *stage, const char **text)
 				}
 
 				totalImages++;
+#ifdef USE_JKG
+				shader.frameOverride = -1;	//default is -1, weapon ammo indicators may overwrite this in bg_weapons_load.cpp if "overrideIndicatorFrame" is set (default is not 0 due to 0 being a valid frame)
+#endif
 			}
 
 			// Copy image ptrs into an array of ptrs
