@@ -42,6 +42,7 @@ option(BuildMPGame "Whether to create projects for the MP server-side gamecode (
 option(BuildMPCGame "Whether to create projects for the MP clientside gamecode (cgamex86.dll)" ON)
 option(BuildMPUI "Whether to create projects for the MP UI code (uix86.dll)" ON)
 option(BuildMPRend2 "Whether to create projects for the EXPERIMENTAL MP rend2 renderer (rd-rend2_x86.dll)" ON)
+option(BuildMPRdVulkan "Whether to create projects for the MP vulkan renderer (rd-vulkan_x86.dll)" ON)
 
 # Configure the use of bundled libraries.  By default, we assume the user is on
 # a platform that does not require any bundling.
@@ -133,6 +134,7 @@ get_git_head_revision(GIT_REFSPEC GIT_SHA1)
 # Binary names
 set(MPEngine "jkgalaxies.${Architecture}")
 set(MPVanillaRenderer "rd-galaxies_${Architecture}")
+set(MPVulkanRenderer "rd-vulkan_${Architecture}")
 set(MPDed "jkgalaxiesded.${Architecture}")
 set(MPGame "game${Architecture}")
 set(MPCGame "cgame${Architecture}")
