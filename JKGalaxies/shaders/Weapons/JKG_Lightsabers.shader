@@ -53,6 +53,17 @@ gfx/lightsabers/rgb_glow_static
     }
 }
 
+gfx/lightsabers/rgb_glow_ring
+{
+	cull	twosided
+    {
+        map gfx/lightsabers/glow_ring
+        blendFunc GL_ONE GL_ONE
+        glow
+        rgbGen vertex
+    }
+}
+
 gfx/lightsabers/rgb_blade_sharp
 {
 	cull	twosided
@@ -613,6 +624,17 @@ gfx/lightsabers/black_glow_static
     }
 }
 
+gfx/lightsabers/black_glow_ring
+{
+	cull	twosided
+    {
+        map gfx/lightsabers/glow_ring
+        blendFunc GL_ZERO GL_ONE_MINUS_SRC_COLOR
+        glow
+        rgbGen vertex
+    }
+}
+
 gfx/lightsabers/black_blade_sharp
 {
 	cull	twosided
@@ -672,3 +694,4 @@ gfx/lightsabers/black_trail
 }
 
 // Last modified by: BlasTech on 2010-10-18
+// Last modified by: Futuza on 2025-07-22

@@ -1536,6 +1536,8 @@
 		"bladeEffect":	"cheap"
 		
 	},
+	
+	//special crystals
 	"Futuza Red":
 	{
 		// Unstable blade, red
@@ -1546,8 +1548,116 @@
 			"g":	49,
 			"b":	7
 		},
-
 		"bladeEffect":	"unstable",
-		"trailEffect":	"unstable"
+		"trailEffect":	"unstable",
+		"glowEffect":	"static"
+	},
+	"Jenraux":
+	{
+		//deep violet
+		"name": "jenraux",
+		"rgb":
+		{
+			"r":	53,
+			"g":	2,
+			"b":	145
+		},
+		"glowEffect": "ring"
+	},
+	"Heartaker":
+	{
+		//pink-fuchsia
+		"name": "heartaker",
+		"rgb":
+		{
+			"r":	252,
+			"g":	55,
+			"b":	124
+		},
+		"bladeEffect": "sharp",
+		"trailEffect": "unstable"
+	},
+	"Nextor":
+	{
+		//white, cheap, sharp
+		"name": "nextor",
+		"rgb":
+		{
+			"r":	252,
+			"g":	252,
+			"b":	252
+		},
+		"bladeEffect": "cheap",
+		"trailEffect": "unstable"
+	},
+	"Solari":
+	{
+		//orange cheap 
+		"name": "solari",
+		"rgb":
+		{
+			"r":	219,
+			"g":	120,
+			"b":	12
+		},
+		"bladeEffect": "cheap"
+	},
+	"Jade Nephrite":
+	{
+		//lime green cheap 
+		"name": "jade-nephrite",
+		"rgb":
+		{
+			"r":	184,
+			"g":	216,
+			"b":	0
+		},
+		"bladeEffect": "unstable",
+		"glowEffect":	"static"
+	},
+	"Blood Nephrite":
+	{
+		//lime green cheap 
+		"name": "blood-nephrite",
+		"rgb":
+		{
+			"r":	138,
+			"g":	3,
+			"b":	3
+		},
+		"bladeEffect": "unstable",
+		"trailEffect": "black_trail",
+		"glowEffect": "static"
+	},
+	"Opilia":
+	{
+		//sky blue 
+		"name": "opilia",
+		"rgb":
+		{
+			"r":	127,
+			"g":	196,
+			"b":	249
+		}
+	},
+	"Netharite":
+	{
+		//dim white, sharp unstable
+		"name": "netharite",
+		"rgb":
+		{
+			"r":	2,
+			"g":	2,
+			"b":	2
+		},
+		//"bladergb":			//note: 'bladergb' is unused atm
+		//{
+			//"r":	0,
+			//"g":	0,
+			//"b":	0
+		//},
+		"bladeEffect": "black_blade_cheap", //valid blades: black_blade_dull, black_blade_sharp, black_blade_cheap, black_blade_cheap_static
+		"trailEffect": "black_trail",
+		"glowEffect": "black_glow" //valid glows: black_glow, black_glow_static, black_glow_ring
 	}
 }

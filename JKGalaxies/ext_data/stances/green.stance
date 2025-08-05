@@ -1,11 +1,11 @@
 {
 	// STANCE DATA
-	// This is basically the equivalent of Yellow stance.
+	// This is basically the equivalent of Yoda's stance.
 	"name_technical": "Ataru",		// for advanced HUD
-	"name_simple": "Green",		// for simple HUD -- unused atm
+	"name_simple": "Wild",		// for simple HUD -- unused atm
 
-	"offensiveStanceAnim": "BOTH_STAND2IDLE1",
-	"projectileBlockAnim": "BOTH_SABERDUAL_STANCE",
+	"offensiveStanceAnim": "BOTH_SABERDUAL_STANCE",
+	"projectileBlockAnim": "BOTH_STAND2IDLE1",
 
 	"isStaffFriendly": "0",		// can be used with staff
 	"isDualsFriendly": "0",		// and duals...
@@ -13,7 +13,7 @@
 	"isDualsOnly": "0",			// or duals (and does not ignite both blades)
 	"sabSpecific": "0",			// unused --eez
 
-	"maxChainCount": "5",
+	"maxChainCount": "6",
 	"baseDamageDefault": "37",
 	"baseDamageMin": "7",
 	"baseDamageMax": "40",

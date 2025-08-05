@@ -1122,11 +1122,12 @@ const saberCrystalData_t *JKG_GetSaberCrystal( const weaponData_t *weapon )
 {
 	if(weapon->weaponBaseIndex != WP_SABER)
 		return NULL;
-
-	if(weapon->sab.currentcrystal)
-		return JKG_GetSaberCrystal(weapon->sab.currentcrystal);
+	
+	//if empty, check default - otherwise check current
+	if (weapon->sab.currentcrystal[0] == '\0' || !weapon->sab.currentcrystal)
+		JKG_GetSaberCrystal(weapon->sab.defaultcrystal);
 	else
-		return JKG_GetSaberCrystal(weapon->sab.defaultcrystal);
+		return JKG_GetSaberCrystal(weapon->sab.currentcrystal);
 }
 
 const saberCrystalData_t *JKG_GetSaberCrystal( const char *crystalName )

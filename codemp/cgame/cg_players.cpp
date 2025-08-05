@@ -5056,6 +5056,11 @@ void CG_DoSaber( vec3_t origin, vec3_t dir, float length, float lengthMax, float
  	{
 		glow = trap->R_RegisterShader("gfx/lightsabers/rgb_glow");
 	}
+	//check for black glow
+	else if (!Q_stricmpn(saberCrystalsLookup[crystal].glowEffect, "black_glow", strlen("black_glow")))
+	{
+		glow = trap->R_RegisterShader(va("gfx/lightsabers/%s", saberCrystalsLookup[crystal].glowEffect));
+	}
 	else
 	{
 		glow = trap->R_RegisterShader(va("gfx/lightsabers/rgb_glow_%s", saberCrystalsLookup[crystal].glowEffect));
@@ -5066,10 +5071,25 @@ void CG_DoSaber( vec3_t origin, vec3_t dir, float length, float lengthMax, float
 	{
 		blade = trap->R_RegisterShader("gfx/lightsabers/rgb_blade_dull");
 	}
+	
+	//check for black blades
+	else if( !Q_stricmpn(saberCrystalsLookup[crystal].bladeEffect, "black_blade", strlen("black_blade")))
+	{
+		if (!Q_stricmp(saberCrystalsLookup[crystal].bladeEffect, "black_blade"))	//special shorthand
+		{
+			blade = trap->R_RegisterShader(va("gfx/lightsabers/black_blade_dull"));
+		}
+		else
+			blade = trap->R_RegisterShader(va("gfx/lightsabers/%s", saberCrystalsLookup[crystal].bladeEffect));
+	}
+	//todo white blades? (maybe unnecessary since we can just max out rgb for white)
+
+	//default to rgb blades
 	else
 	{
 		blade = trap->R_RegisterShader(va("gfx/lightsabers/rgb_blade_%s", saberCrystalsLookup[crystal].bladeEffect));
 	}
+
 
 	if (doLight)
 	{	// always add a light because sabers cast a nice glow before they slice you in half!!  or something...
@@ -5914,7 +5934,16 @@ CheckTrail:
 								(saberCrystalsLookup[cent->currentState.saberCrystal[saberNum]].trailEffect[0] &&
 								Q_stricmp(saberCrystalsLookup[cent->currentState.saberCrystal[saberNum]].trailEffect, "NULL_TRAIL")))
 							{
-								fx.mShader = trap->R_RegisterShader(va("gfx/lightsabers/rgb_trail_%s", saberCrystalsLookup[cent->currentState.saberCrystal[saberNum]].trailEffect));
+								//check for black sabers
+								if (!Q_stricmp(saberCrystalsLookup[cent->currentState.saberCrystal[saberNum]].trailEffect, "black_trail"))
+								{
+									fx.mShader = trap->R_RegisterShader(va("gfx/lightsabers/black_trail"));
+								}
+								//normal rgb sabers
+								else
+								{
+									fx.mShader = trap->R_RegisterShader(va("gfx/lightsabers/rgb_trail_%s", saberCrystalsLookup[cent->currentState.saberCrystal[saberNum]].trailEffect));
+								}
  							}
 							else
 							{
