@@ -9,7 +9,8 @@
 		"modelGroup":	"rebel_pilot",
 
 		"armorOnSurfaces": [
-			"head_helmet"
+			"head_helmet",
+			"head_goggles"
 		],
 
 		"bodyOffSurfaces": [
@@ -17,6 +18,7 @@
 			"head_hair",
 			"head_haira",
 			"head_hairb",
+			"head_head",
 			"head_l_hairback",
 			"heada",
 			"headb",

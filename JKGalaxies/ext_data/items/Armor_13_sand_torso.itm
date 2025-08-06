@@ -1,0 +1,10 @@
+{
+	"name":             "Sandtrooper Torso Body Armor",
+	"internal":             "torso_sandtrooper",
+	"itemtype":             "armor",
+	"armor":		"sdtorso",
+	"weight":		"2",
+	"cost":			"575",
+	"itemIcon":		"gfx/item_icons/stormtrooper_torso.tga",
+	"itemDescription": "This standard issue stormtrooper armor has been modified specifically for desert operations, including a heat reflective coating."
+}

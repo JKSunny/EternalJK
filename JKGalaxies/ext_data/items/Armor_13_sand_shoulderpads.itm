@@ -1,0 +1,10 @@
+{
+	"name":         "Sandtrooper Shoulder Armor",
+	"internal":     "shoulderpads_sandtrooper",
+	"itemtype":     "armor",
+	"armor":		"sdshoulderpads",
+	"weight":		"1",
+	"cost":			"300",
+	"itemIcon":		"gfx/item_icons/stormtrooper_pauldron.tga",
+	"itemDescription": "This standard issue stormtrooper armor has been modified specifically for desert operations, including a heat reflective coating. This armor also features a large pauldron for additional protection, and extra storage for supplies."
+}

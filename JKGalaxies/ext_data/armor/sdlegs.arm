@@ -1,0 +1,63 @@
+{
+	"ref":		"sdlegs",
+	"slot":		"legs",
+	"armor":		120,
+	"movemodifier":	0.925,
+	"resistances": [            
+        {
+            "means": "MOD_LAVA",
+            "resistance": 0.9
+        },
+        {
+            "means": "MOD_FIRE",
+            "resistance": 0.9
+        },
+        {
+            "means": "MOD_IGNITED",
+            "resistance": 0.9
+        }
+    ],
+
+	"visuals": {
+		"model":	"models/players/stormtrooper_armor/model.glm*default_sand",
+		"modelGroup":	"sandtrooper_armor",
+
+		"armorOnSurfaces": [
+			"hips",
+			"l_leg_knee",
+			"r_leg_knee",
+			"hips_holster",
+			"hips_augment",
+			"sand_pouch2",
+			"sand_pouch3"
+		],
+
+		"bodyOffSurfaces": [
+			"hips",
+			"hipsb",
+			"hipsc",
+			"hipsd",
+			"hipse",
+			"hipsf",
+			"hipsg",
+			"hips_lower",
+			"hips_legs",
+			"hips_vest",
+			"l_leg_knee",
+			"r_leg_knee",
+			"hips_holster",
+			"hips_augment",
+			"hips_belt",
+			"hips_l_packlarge",
+			"hips_l_packwide",
+			"hips_lowerarmor",
+			"hips_r_packsmall",
+			"hips_r_strap",
+			"hips_flaps",
+			"hips_torso",
+			"torso_lower",
+			"sand_pouch2",
+			"sand_pouch3"
+		]
+	}
+}

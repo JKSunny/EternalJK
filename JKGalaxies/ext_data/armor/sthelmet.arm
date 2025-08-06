@@ -6,7 +6,7 @@
 
 	"visuals": {
 		"model":	"models/players/stormtrooper/model.glm*default",
-		"modelGroup":	"stormtrooper",
+		"modelGroup":	"stormtrooper_armor",
 
 		"armorOnSurfaces": [
 			"head",
@@ -22,6 +22,7 @@
 			"head_haira",
 			"head_hairb",
 			"head_l_hairback",
+			"head_head",
 			"heada",
 			"headb",
 			"heada_mouth",

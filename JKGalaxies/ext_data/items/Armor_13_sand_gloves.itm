@@ -1,0 +1,10 @@
+{
+	"name":             "Sandtrooper Gloves",
+	"internal":             "gloves_sandtrooper",
+	"itemtype":             "armor",
+	"armor":		"sdgloves",
+	"weight":		"2",
+	"cost":			"125",
+	"itemIcon":		"gfx/item_icons/stormtrooper_gloves.tga",
+	"itemDescription": "This standard issue stormtrooper armor has been modified specifically for desert operations, including a heat reflective coating. It protects the wearers hands and forearms."
+}

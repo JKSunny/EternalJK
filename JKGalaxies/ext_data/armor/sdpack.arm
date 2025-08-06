@@ -1,0 +1,21 @@
+{
+	"ref":		"sdpack",		
+	"slot":		"neck",			// neck slot isn't a hit location yet :(
+	"hp": 			10,
+	"movemodifier":	0.97,
+	
+	"visuals": {
+		"model":	"models/players/stormtrooper_armor/model.glm*default_sand",
+		"modelGroup":	"sandtrooper_armor",
+
+		"armorOnSurfaces": [
+			"sand_pack1",
+			"sand_pack2"
+		],
+
+		"bodyOffSurfaces": [
+			"torso_cape",
+			"torso_augment"
+		]
+	}
+}

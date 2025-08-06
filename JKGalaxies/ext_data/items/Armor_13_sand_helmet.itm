@@ -1,0 +1,10 @@
+{
+	"name":             "Sandtrooper Helmet",
+	"internal":             "helmet_sandtrooper",
+	"itemtype":             "armor",
+	"armor":		"sdhelmet",
+	"weight":		"2",
+	"cost":			"365",
+	"itemIcon":		"gfx/item_icons/stormtrooper_helmet.tga",
+	"itemDescription": "This standard issue stormtrooper armor has been modified specifically for desert operations, including a heat reflective coating. The helmet features additional particle filtration and automatic polarized lenses."
+}

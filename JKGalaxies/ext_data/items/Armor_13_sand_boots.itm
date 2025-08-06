@@ -1,0 +1,10 @@
+{
+	"name":         "Sandtrooper Boots",
+	"internal":		"boots_sandtrooper",
+	"itemtype":		"armor",
+	"armor":		"sdboots",
+	"weight":		"2",
+	"cost":			"425",
+	"itemIcon":		"gfx/item_icons/stormtrooper_boots.tga",
+	"itemDescription": "This standard issue stormtrooper armor has been modified specifically for desert operations, including a heat reflective coating. It protects the wearer's feet."
+}

@@ -1,0 +1,51 @@
+{
+	"ref":		"sdboots",
+	"slot":		"boots",
+	"armor":		100,
+	"movemodifier":	0.925,
+	"resistances": [            
+        {
+            "means": "MOD_LAVA",
+            "resistance": 0.9
+        },
+        {
+            "means": "MOD_FIRE",
+            "resistance": 0.9
+        },
+        {
+            "means": "MOD_IGNITED",
+            "resistance": 0.9
+        }
+    ],
+
+	"visuals": {
+		"model":	"models/players/stormtrooper_armor/model.glm*default_sand",
+		"modelGroup":	"sandtrooper_armor",
+
+		"armorOnSurfaces": [
+			"r_leg",
+			"l_leg"
+		],
+
+		"bodyOffSurfaces": [
+			"r_leg_foot",
+			"l_leg_foot",
+			"r_lega",
+			"r_legb",
+			"r_legc",
+			"r_legd",
+			"r_lege",
+			"r_legf",
+			"r_legg",
+			"l_lega",
+			"l_legb",
+			"l_legc",
+			"l_legd",
+			"l_lege",
+			"l_legf",
+			"l_legg",
+			"r_leg",
+			"l_leg"
+		]
+	}
+}

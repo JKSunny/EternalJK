@@ -1,0 +1,10 @@
+{
+	"name":             "SD-48 survival backpack",
+	"internal":             "pack_sandtrooper",
+	"itemtype":             "armor",
+	"armor":		"sdpack",
+	"weight":		"2",
+	"cost":			"800",
+	"itemIcon":		"gfx/item_icons/stormtrooper_pauldron.tga",
+	"itemDescription": "Standard issue imperial utility pack for harsh, dry environments. Contains all the necessities for surviving arid climates and personal air conditioning. While the air conditioning was a welcome addition, it was barely adequate."
+}

@@ -1,0 +1,59 @@
+{
+	"ref":		"sdgloves",
+	"slot":		"gloves",
+	"armor":		50,
+	"movemodifier":	1.0,
+	"resistances": [            
+        {
+            "means": "MOD_LAVA",
+            "resistance": 0.9
+        },
+        {
+            "means": "MOD_FIRE",
+            "resistance": 0.9
+        },
+        {
+            "means": "MOD_IGNITED",
+            "resistance": 0.9
+        }
+    ],
+
+	"visuals": {
+		"model":	"models/players/stormtrooper_armor/model.glm*default_sand",
+		"modelGroup":	"sandtrooper_armor",
+
+		"armorOnSurfaces": [
+			"l_arm_wristarmor",
+			"r_arm_wristarmor",
+			"l_hand",
+			"l_hand_plate",
+			"r_hand",
+			"r_hand_plate"
+		],
+
+		"bodyOffSurfaces": [
+			"l_arm_wristarmor",
+			"r_arm_wristarmor",
+			"l_hand_wrist",
+			"r_hand_wrist",
+			"l_hand",
+			"l_handa",
+			"l_handb",
+			"l_handc",
+			"l_handd",
+			"l_hande",
+			"l_handf",
+			"r_handa",
+			"r_handb",
+			"r_handc",
+			"r_handd",
+			"r_hande",
+			"r_handf",
+			"l_hand_plate",
+			"r_hand",
+			"r_hand_plate",
+			"r_hand_inner_glove",
+			"l_hand_inner_glove"
+		]
+	}
+}

@@ -1,0 +1,10 @@
+{
+	"name":         "Sandtrooper Legguards",
+	"internal":     "legs_sandtrooper",
+	"itemtype":     "armor",
+	"armor":		"sdlegs",
+	"weight":		"2",
+	"cost":			"425",
+	"itemIcon":		"gfx/item_icons/stormtrooper_legs.tga",
+	"itemDescription": "This standard issue stormtrooper armor has been modified specifically for desert operations, including a heat reflective coating. It features additional storage for supplies and protects the wearer's legs."
+}
