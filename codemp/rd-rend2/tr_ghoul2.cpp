@@ -4411,7 +4411,7 @@ qboolean R_LoadMDXM(model_t *mod, void *buffer, const char *mod_name, qboolean &
 					lastWeight -= weights[w];
 				}
 
-				assert(lastWeight > 0);
+				assert(lastWeight >= 0);
 
 				// Ensure that all the weights add up to 1.0
 				weights[lastInfluence] = lastWeight;
