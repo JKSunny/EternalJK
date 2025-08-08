@@ -1125,7 +1125,7 @@ const saberCrystalData_t *JKG_GetSaberCrystal( const weaponData_t *weapon )
 	
 	//if empty, check default - otherwise check current
 	if (weapon->sab.currentcrystal[0] == '\0' || !weapon->sab.currentcrystal)
-		JKG_GetSaberCrystal(weapon->sab.defaultcrystal);
+		return JKG_GetSaberCrystal(weapon->sab.defaultcrystal);
 	else
 		return JKG_GetSaberCrystal(weapon->sab.currentcrystal);
 }
