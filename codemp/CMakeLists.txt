@@ -88,6 +88,11 @@ if(BuildMPRend2)
 	add_subdirectory("${MPDir}/rd-rend2")
 endif(BuildMPRend2)
 
+#	 Add Vulkan JKA Renderer Project
+if(BuildMPRdVulkan)
+	add_subdirectory("${MPDir}/rd-vulkan")
+endif(BuildMPRdVulkan)
+
 #    Common things between Engine and Dedicated Server
 if(BuildMPEngine OR BuildMPDed)
 
