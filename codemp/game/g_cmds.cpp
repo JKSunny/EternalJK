@@ -2318,8 +2318,7 @@ void Cmd_ShowInv_f(gentity_t *ent)
 	memset(buffer, '\0', sizeof(buffer));
 
 	for (auto it = ent->inventory->begin(); it != ent->inventory->end(); ++it) {
-
-		Q_strcat(buffer, sizeof(buffer), va(S_COLOR_WHITE "%3i | %4i | %-40s | %4i /%4i | %8i | %6.2f | %5s |\n", it - ent->inventory->begin(), it->id->itemID, it->id->displayName, (it->id->itemTier == TIER_LEGENDARY ? 999 : it->durability), it->id->maxDurability, it->quantity, it->id->weight, (it->equipped == true ? "Y" : "N") ));
+		Q_strcat(buffer, sizeof(buffer), va(S_COLOR_WHITE "%3i | %4i | %-40s | %4i /%4i | %8i | %6.2f | %5s |\n", it - ent->inventory->begin(), it->id->itemID, it->id->internalName, (it->id->itemTier == TIER_LEGENDARY ? 999 : it->durability), it->id->maxDurability, it->quantity, it->id->weight, (it->equipped == true ? "Y" : "N")));
 		weight = weight + (it->id->weight * it->quantity);
 		if (it->equipped)
 		{

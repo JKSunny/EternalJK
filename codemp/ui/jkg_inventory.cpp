@@ -1043,7 +1043,7 @@ void JKG_Inventory_OwnerDraw_ItemName(itemDef_t* item, int ownerDrawID) {
 		return;
 	}
 	itemInstance_t* pItem = pItems[nItemNum].second;
-	Q_strncpyz(item->text, pItem->id->displayName, sizeof(item->text));
+	Q_strncpyz(item->text, UI_GetStringEdString2(pItem->id->displayName), sizeof(item->text));
 
 	//figure out color based on item tier
 	vec4_t color;
