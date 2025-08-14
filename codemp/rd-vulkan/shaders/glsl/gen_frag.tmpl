@@ -665,7 +665,11 @@ void main() {
 			diffuse = base;
 			attenuation = 1.0;
 		#elif defined(USE_LIGHT_VERTEX)
-			lightColor = vec3(1.0);
+			#ifdef USE_CL0_IDENT
+				lightColor = vec3(identity_color);
+			#else
+				lightColor = frag_color0.rgb;
+			#endif
 			diffuse = base;
 			ambientColor = vec3 (0.0);
 			attenuation = 1.0;
