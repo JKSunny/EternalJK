@@ -1619,6 +1619,21 @@ static void R_GenerateDrawSurfs( viewParms_t *viewParms, trRefdef_t *refdef )
 	R_SetupProjectionZ( &tr.viewParms );
 
 	R_AddEntitySurfaces( refdef );
+
+	
+#ifdef USE_VBO_SS
+	if ( tr.ss.groups_count )
+	{
+		//tr.shiftedEntityNum = REFENTITYNUM_WORLD << QSORT_REFENTITYNUM_SHIFT;
+
+		srfSprites_t *ss = (srfSprites_t*)Hunk_Alloc(sizeof(srfSprites_t), h_low);
+		ss->surfaceType = SF_SPRITES;
+		//R_AddDrawSurf( (surfaceType_t *)ss, tr.shadowShader, 0, 0 );
+		R_AddDrawSurf( (surfaceType_t *)ss, REFENTITYNUM_WORLD, tr.shadowShader, 0, 0 );
+
+		//tr.shiftedEntityNum = tr.currentEntityNum << QSORT_REFENTITYNUM_SHIFT;
+	}
+#endif
 }
 
 /*

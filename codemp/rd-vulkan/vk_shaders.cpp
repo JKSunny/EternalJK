@@ -102,6 +102,19 @@ void vk_create_shader_modules( void )
 #ifdef VK_COMPUTE_NORMALMAP
     vk.shaders.normalmap = SHADER_MODULE(normalmap_comp_spv);
 #endif
+
+#ifdef USE_VBO_SS
+    vk.shaders.surface_sprite_fs[0] = SHADER_MODULE(frag_surface_sprites);
+    vk.shaders.surface_sprite_fs[1] = SHADER_MODULE(frag_surface_sprites_fog);
+    VK_SET_OBJECT_NAME(vk.shaders.surface_sprite_fs[0], "surface sprite fragment module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
+    VK_SET_OBJECT_NAME(vk.shaders.surface_sprite_fs[1], "surface sprite fog fragment module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
+
+    vk.shaders.surface_sprite_vs[0] = SHADER_MODULE(vert_surface_sprites);
+    vk.shaders.surface_sprite_vs[1] = SHADER_MODULE(vert_surface_sprites_fog);
+    VK_SET_OBJECT_NAME(vk.shaders.surface_sprite_vs[0], "surface sprite vertex module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
+    VK_SET_OBJECT_NAME(vk.shaders.surface_sprite_vs[1], "surface sprite fog vertex module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
+#endif
+
     vk.shaders.frag.gen0_df = SHADER_MODULE(frag_tx0_df);
     VK_SET_OBJECT_NAME(vk.shaders.frag.gen0_df, "single-texture df fragment module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
 
@@ -269,4 +282,11 @@ void vk_destroy_shader_modules( void )
     qvkDestroyShaderModule(vk.device, vk.shaders.filtercube_gm, NULL);
     qvkDestroyShaderModule(vk.device, vk.shaders.prefilterenvmap_fs, NULL);
     qvkDestroyShaderModule(vk.device, vk.shaders.irradiancecube_fs, NULL);
+
+#ifdef USE_VBO_SS
+    for ( i = 0; i < 2; i++ ) {
+        qvkDestroyShaderModule(vk.device, vk.shaders.surface_sprite_fs[i], NULL);
+        qvkDestroyShaderModule(vk.device, vk.shaders.surface_sprite_vs[i], NULL);
+    }
+ #endif
 }

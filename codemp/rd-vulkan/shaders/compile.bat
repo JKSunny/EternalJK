@@ -87,6 +87,19 @@ for %%f in (%glsl%*.comp) do (
 "%cl%" -S frag -V -o "%tmpf%" %glsl%light_frag.tmpl -DUSE_LINE -DUSE_FOG
 "%bh%" "%tmpf%" %outf% frag_light_line_fog
 
+@rem compile surface sprites from templates
+"%cl%" -S vert -V -o "%tmpf%" %glsl%surface_sprite_vert.tmpl
+"%bh%" "%tmpf%" %outf% vert_surface_sprites
+
+"%cl%" -S vert -V -o "%tmpf%" %glsl%surface_sprite_vert.tmpl  -DUSE_FOG
+"%bh%" "%tmpf%" %outf% vert_surface_sprites_fog
+
+"%cl%" -S frag -V -o "%tmpf%" %glsl%surface_sprite_frag.tmpl -DUSE_ATEST
+"%bh%" "%tmpf%" %outf% frag_surface_sprites
+
+"%cl%" -S frag -V -o "%tmpf%" %glsl%surface_sprite_frag.tmpl  -DUSE_ATEST -DUSE_FOG
+"%bh%" "%tmpf%" %outf% frag_surface_sprites_fog
+
 @rem template shader identifiers and flags
 set "vbo[0]="
 set "vbo[1]=-DUSE_VBO_GHOUL2"
