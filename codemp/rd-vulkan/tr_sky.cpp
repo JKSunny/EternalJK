@@ -458,6 +458,7 @@ static void DrawSkySide( image_t *image, const int mins[2], const int maxs[2] )
 		{
 			DrawItem item = {};
 			item.pipeline = vk.std_pipeline.skybox_pipeline;
+			item.pipeline_layout = vk.pipeline_layout;
 			item.depthRange = r_showsky->integer ? DEPTH_RANGE_ZERO : DEPTH_RANGE_ONE;
 			item.polygonOffset = tess.shader->polygonOffset;
 			item.identifier = 6;
