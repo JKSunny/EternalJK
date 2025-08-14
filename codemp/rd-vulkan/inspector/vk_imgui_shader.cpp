@@ -641,7 +641,7 @@ static void vk_imgui_draw_inspector_shader_visualize( int index ) {
 						ImGui::SameLine();
 					}
 
-					if ( pStage->ss && pStage->ss->surfaceSpriteType ) {
+					if ( pStage->ss && pStage->ss->type ) {
 						drawList->AddText( ImVec2( pos.x + region.x - 30.0f, pos.y ), RGBA_LE(0x6cfa61ffu), ICON_FA_LEAF );
 						ImGui::SetCursorScreenPos( ImVec2( pos.x + region.x - 30.0f, pos.y) );
 						ImGui::Dummy( ImVec2(20.0f, 20.0f));

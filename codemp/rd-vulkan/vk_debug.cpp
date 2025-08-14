@@ -209,6 +209,7 @@ void DrawTris( const shaderCommands_t *pInput){
 	{
 		DrawItem item = {};
 		item.pipeline = pipeline;
+		item.pipeline_layout = vk.pipeline_layout;
 		item.depthRange = DEPTH_RANGE_ZERO;
 		item.polygonOffset = tess.shader->polygonOffset;
 		item.indexed = qtrue;
@@ -257,6 +258,7 @@ void DrawNormals( const shaderCommands_t *input)
 	{
 		DrawItem item = {};
 		item.pipeline = vk.std_pipeline.normals_debug_pipeline;
+		item.pipeline_layout = vk.pipeline_layout;
 		item.depthRange = DEPTH_RANGE_ZERO;
 		item.polygonOffset = tess.shader->polygonOffset;
 		item.indexed = qtrue;
@@ -336,6 +338,7 @@ void RB_ShowImages ( image_t** const pImg, uint32_t numImages )
 		{
 			DrawItem item = {};
 			item.pipeline = vk.std_pipeline.images_debug_pipeline;
+			item.pipeline_layout = vk.pipeline_layout;
 			item.depthRange = DEPTH_RANGE_NORMAL;
 			item.draw.params.arrays.num_vertexes = tess.numVertexes;
 			item.polygonOffset = tess.shader->polygonOffset;

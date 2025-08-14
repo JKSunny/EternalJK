@@ -363,7 +363,27 @@ static void R_AddWorldSurface( msurface_t *surf, const trRefEntity_t *entity,
 #ifdef USE_PMLIGHT
 	{
 		surf->vcVisible = tr.viewCount;
+		//R_AddDrawSurf( surf->data, surf->shader, surf->fogIndex, 0 );
 		R_AddDrawSurf( surf->data, entityNum, surf->shader, surf->fogIndex, surf->cubemapIndex );
+
+#if defined(USE_VBO_SS)
+		if ( vk.vboWorldActive && r_surfaceSprites->integer )
+		{
+			for ( uint32_t i = 0, numSprites = surf->surface_sprites.num_stages; i < numSprites; ++i )
+			{
+				spriteStage_t *sprite_stage = surf->surface_sprites.stage + i;
+
+				vk_ss_group_def_t group;
+				Com_Memset(&group, 0, sizeof(group));
+				group.shader		= sprite_stage->shader;
+				group.ssbo_bits		= sprite_stage->sprite->ssbo_bits;
+				group.surf_bits		= SS_PACK_SURF_BITS( entityNum, ( sprite_stage->vbo->index - 1 ), sprite_stage->fogIndex );
+
+				vk_push_surface_sprites_cmd( &group, sprite_stage->firstInstance, sprite_stage->instanceCount );
+			}
+		}
+#endif
+
 
 #ifdef USE_VK_IMGUI
 		if ( vk_imgui_outline_selected() ) {

@@ -51,7 +51,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 	#define MAX_VBOS      4096
 
 	#define USE_VBO_GHOUL2
-	#define USE_VBO_MDV
+	#define USE_VBO_MDV	
+	#define USE_VBO_SS
 #endif
 
 
@@ -687,27 +688,59 @@ typedef struct texModInfo_s {
 	float			translate[2];		// t' = s * m[0][1] + t * m[0][1] + trans[1]
 } texModInfo_t;
 
+#define SSDEF_FACE_CAMERA     0x01
+#define SSDEF_ALPHA_TEST      0x02
+#define SSDEF_FACE_UP         0x04
+#define SSDEF_FX_SPRITE       0x08
+#define SSDEF_USE_FOG         0x10
+#define SSDEF_FOG_MODULATE    0x20
+#define SSDEF_ADDITIVE        0x40
+#define SSDEF_FLATTENED       0x80
 
-#define SURFSPRITE_NONE			0
-#define SURFSPRITE_VERTICAL		1
-#define SURFSPRITE_ORIENTED		2
-#define SURFSPRITE_EFFECT		3
-#define SURFSPRITE_WEATHERFX	4
-#define SURFSPRITE_FLATTENED	5
-
-#define SURFSPRITE_FACING_NORMAL	0
-#define SURFSPRITE_FACING_UP		1
-#define SURFSPRITE_FACING_DOWN		2
-#define SURFSPRITE_FACING_ANY		3
+#define SSDEF_ALL             0xFF
+#define SSDEF_COUNT           (SSDEF_ALL + 1)
 
 typedef struct surfaceSprite_s
 {
-	int				surfaceSpriteType;
+	int				type;
 	float			width, height, density, wind, windIdle, fadeDist, fadeMax, fadeScale;
 	float			fxAlphaStart, fxAlphaEnd, fxDuration, vertSkew;
 	vec2_t			variance, fxGrow;
 	int				facing;		// Hangdown on vertical sprites, faceup on others.
+	uint32_t		ssbo_bits;
 } surfaceSprite_t;
+
+enum type_t
+{
+	SURFSPRITE_NONE,
+	SURFSPRITE_VERTICAL,
+	SURFSPRITE_ORIENTED,
+	SURFSPRITE_EFFECT,
+	SURFSPRITE_WEATHERFX,
+	SURFSPRITE_FLATTENED,
+};
+
+enum surfaceSpriteOrientation_t
+{
+	SURFSPRITE_FACING_NORMAL,
+	SURFSPRITE_FACING_UP,
+	SURFSPRITE_FACING_DOWN,
+	SURFSPRITE_FACING_ANY,
+};
+
+struct SurfaceSpriteBlock
+{
+	vec2_t fxGrow;
+	float fxDuration;
+	float fadeStartDistance;
+	float fadeEndDistance;
+	float fadeScale;
+	float wind;
+	float windIdle;
+	float fxAlphaStart;
+	float fxAlphaEnd;
+	float pad0[2];
+};
 
 #define	MAX_IMAGE_ANIMATIONS	32
 
@@ -906,6 +939,12 @@ typedef struct shader_s {
 	qboolean	hasPBR;
 #endif
 
+	struct {
+		int			num_stages;
+		uint32_t	ssbo_index;
+	} surface_sprites;
+
+
 #ifdef USE_VBO
 	// VBO structures
 	qboolean	isStaticShader;
@@ -1086,11 +1125,12 @@ typedef enum surfaceType_e {
 	SF_MDX,
 	SF_FLARE,
 	SF_ENTITY,				// beams, rails, lightning, etc that can be determined by entity
-#ifdef USE_VBO_MDV
 	SF_VBO_MDVMESH,
-#endif
+	SF_SPRITES,
+
 	SF_NUM_SURFACE_TYPES,
-	SF_MAX = 0x7fffffff			// ensures that sizeof( surfaceType_t ) == sizeof( int )
+
+	SF_MAX = 0x7fffffff				// ensures that sizeof( surfaceType_t ) == sizeof( int )
 } surfaceType_t;
 
 typedef struct drawSurf_s {
@@ -1164,6 +1204,65 @@ typedef struct flare_s {
 } flare_t;
 
 extern flare_t *r_activeFlares;
+
+#ifdef USE_VBO_SS
+#define SS_ENT_BITS							11
+#define SS_VBO_BITS							10
+#define SS_FOG_BITS							7
+#define SS_ENT_MASK							((1U << SS_ENT_BITS) - 1)
+#define SS_VBO_MASK							((1U << SS_VBO_BITS) - 1)
+#define SS_FOG_MASK							((1U << SS_FOG_BITS) - 1)
+
+#define SS_PACK_SURF_BITS(ent,vbo,fog)		(((ent) & SS_ENT_MASK) | (((vbo) & SS_VBO_MASK) << SS_ENT_BITS) | (((fog) & SS_FOG_MASK) << (SS_ENT_BITS + SS_VBO_BITS)))
+#define SS_PACK_SSBO_BITS(index, offset)	((uint32_t)(((uint32_t)(index) << 16) | ((uint32_t)(offset) & 0xFFFF)))
+
+#define SS_UNPACK_SSBO_INDEX(packed)		( ( packed ) >> 16 )
+#define SS_UNPACK_SSBO_OFFSET(packed)		( ( packed ) & 0xFFFF )
+#define SS_UNPACK_ENT(surf_bits)			((surf_bits) & SS_ENT_MASK)
+#define SS_UNPACK_VBO(surf_bits)			(((surf_bits) >> SS_ENT_BITS) & SS_VBO_MASK)
+#define SS_UNPACK_FOG(surf_bits)			(((surf_bits) >> (SS_ENT_BITS + SS_VBO_BITS)) & SS_FOG_MASK)
+
+struct sprite_t
+{
+	vec4_t		position;
+	vec3_t		normal;
+	color4ub_t	color;
+	vec2_t		widthHeight;
+	vec2_t		skew;
+};
+
+struct spriteStage_t
+{
+	shader_t				*shader;
+	VBO_t					*vbo;
+	const surfaceSprite_t	*sprite;
+	int						firstInstance;
+	int						instanceCount;
+	int						fogIndex;
+};
+
+typedef struct {
+	shader_t		*shader;
+	uint32_t		surf_bits;	// ent/vbo/fog
+	uint32_t		ssbo_bits;	// index/offset
+} vk_ss_group_def_t;
+
+typedef struct { // indirect command
+	int numInstances;
+	int firstInstance;
+} vk_ss_group_cmd_t;
+
+typedef struct {
+	vk_ss_group_def_t	def;
+	vk_ss_group_cmd_t	cmd[1024];
+	int					num_commands;
+} vk_ss_group_t;
+
+typedef struct {
+	surfaceType_t	surfaceType;
+} srfSprites_t;
+#endif
+
 
 #ifdef USE_VK_PBR			// sqeeuzed in a vec3 for normals
 #define VERTEX_LM			8
@@ -1329,6 +1428,12 @@ typedef struct msurface_s {
 	int					vcVisible;		// if == tr.viewCount, is actually VISIBLE in this frame, i.e. passed facecull and has been added to the drawsurf list
 	int					lightCount;		// if == tr.lightCount, already added to the litsurf list for the current light
 #endif
+
+	struct {
+		uint32_t		num_stages;
+		spriteStage_t	*stage;
+	} surface_sprites;
+
 	surfaceType_t		*data;			// any of srf*_t
 } msurface_t;
 
@@ -1928,6 +2033,15 @@ typedef struct trGlobals_s {
 	int						goreIBOCurrentIndex;
 #endif
 
+#ifdef USE_VBO_SS
+	struct {
+		vk_ss_group_t			groups[1024];
+		uint32_t				groups_count;
+		VBO_t					*vbo;
+		IBO_t					*ibo;
+	} ss;
+#endif
+
 	// shader indexes from other modules will be looked up in tr.shaders[]
 	// shader indexes from drawsurfs will be looked up in sortedShaders[]
 	// lower indexed sortedShaders must be rendered first (opaque surfaces before translucent)
@@ -2373,14 +2487,13 @@ struct shaderCommands_s
 	stageVars_t		svars QALIGN(16);
 
 #ifdef USE_VBO
-	surfaceType_t		surfType;
-
-	int					vbo_world_index;		// world item index
-	int					vbo_model_index;		// ghoul2/mdv item index
-
-	int					vboStage;
-	qboolean			allowVBO;
-
+	surfaceType_t	surfType;
+	int				vbo_world_index; // world item index
+	VBO_t			*vbo_model; // ghoul2/mdv item index
+	IBO_t			*ibo_model; // ghoul2/mdv item index
+	int				vboStage;
+	qboolean		allowVBO;
+	
 #endif
 
 	shader_t		*shader;
@@ -2832,6 +2945,7 @@ struct DrawItem
 	IBO_t				*ibo;				// model vbo/ibo
 
 	uint32_t			pipeline;
+	VkPipelineLayout	pipeline_layout;
 	Vk_Depth_Range		depthRange;
 	qboolean			polygonOffset;
 	qboolean			reset_uniform;
@@ -2843,7 +2957,7 @@ struct DrawItem
 	struct {
 		uint32_t		start, end;
 		VkDescriptorSet	current[VK_DESC_COUNT];			// 0:uniform, 1:color0, 2:color1, 3:color2, 4:fog, 5:brdf lut, 6:normal, 7:physical, 8:prefilterd envmap, !9:irradiance envmap
-		uint32_t		offset[VK_DESC_UNIFORM_COUNT];	// 0:uniform, 1: camera, 2: light, 3:ghoul2, 4: global
+		uint32_t		offset[VK_DESC_UNIFORM_COUNT + 1];	// 0:uniform, 1: camera, 2: light, 3:ghoul2, 4: global, ( +1 surface_sprites ssbo :( )
 	} descriptor_set;
 
 	VkBuffer			shade_buffers[12];
@@ -2954,6 +3068,9 @@ void		VBO_GetSoftbuffer( DrawItem& drawItem );
 void		R_AddConvolveCubemapCmd( cubemap_t *cubemap , int cubemapId );
 #endif
 
+// shader
+shader_t	*R_CreateShaderFromTextureBundle( const char *name, const textureBundle_t *bundle, uint32_t stateBits );
+
 // debug
 void		DrawTris( const shaderCommands_t *pInput );
 void		DrawNormals( const shaderCommands_t *pInput );
@@ -2996,6 +3113,13 @@ int RB_GetBoneUboOffset( CRenderableSurface *surf );
 void		vk_generate_cubemaps( cubemap_t *cube );
 #endif
 
+// surface sprites
+#ifdef USE_VBO_SS
+	void	vk_clean_surface_sprites( void );
+	void	vk_push_surface_sprites_cmd( const vk_ss_group_def_t *def, int firstInstance, int instanceCount );
+	void	RB_SurfaceSpritesVBO( srfSprites_t *surf );
+#endif
+
 static QINLINE unsigned int log2pad(unsigned int v, int roundup)
 {
 	unsigned int x = 1;
@@ -3030,6 +3154,7 @@ void		vk_add_compute_normalmap( shaderStage_t *stage, image_t *albedo, imgFlags_
 #ifdef USE_VBO
 // VBO functions
 extern void R_BuildWorldVBO( msurface_t *surf, int surfCount );
+extern void R_BuildSurfaceSpritesVBO( const world_t &worldData, int index ) ;
 extern void R_BuildMDXM( model_t *mod, mdxmHeader_t *mdxm );
 extern void R_BuildMD3( model_t *mod, mdvModel_t *mdvModel );
 #ifdef _G2_GORE
@@ -3044,6 +3169,9 @@ extern void VBO_Cleanup( void );
 extern void VBO_QueueItem( int itemIndex );
 extern void VBO_ClearQueue( void );
 extern void VBO_Flush( void );
+
+IBO_t *R_CreateIBO( const char *name, const byte *vbo_data, int vbo_size );
+VBO_t *R_CreateVBO( const char *name, const byte *vbo_data, int vbo_size );
 #endif
 
 #ifdef USE_VK_IMGUI

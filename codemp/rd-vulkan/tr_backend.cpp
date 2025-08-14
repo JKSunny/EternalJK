@@ -368,7 +368,7 @@ static void vk_update_camera_constants( const trRefdef_t *refdef, const viewParm
 	vkUniformCamera_t uniform = {};
 
 	Com_Memcpy( uniform.viewOrigin, refdef->vieworg, sizeof( vec3_t) );
-	uniform.viewOrigin[3] = 0.0f;
+	uniform.viewOrigin[3] = refdef->floatTime;
 
 	/*
 	const float* p = viewParms->projectionMatrix;
@@ -545,7 +545,7 @@ static void RB_UpdateUniformConstants( const trRefdef_t *refdef, const viewParms
 
 void RB_BindDescriptorSets( const DrawItem& drawItem ) 
 {
-	uint32_t offsets[VK_DESC_UNIFORM_COUNT], offset_count;
+	uint32_t offsets[VK_DESC_UNIFORM_COUNT + 1], offset_count;
 	uint32_t start, end, count;
 
 	start = drawItem.descriptor_set.start;
@@ -563,12 +563,19 @@ void RB_BindDescriptorSets( const DrawItem& drawItem )
 		offsets[offset_count++] = drawItem.descriptor_set.offset[VK_DESC_UNIFORM_BONES_BINDING];
 		offsets[offset_count++] = drawItem.descriptor_set.offset[VK_DESC_UNIFORM_FOGS_BINDING];
 		offsets[offset_count++] = drawItem.descriptor_set.offset[VK_DESC_UNIFORM_GLOBAL_BINDING];
+		
+		// ~sunny, bit of a hack
+		if ( drawItem.pipeline_layout == vk.pipeline_layout_surface_sprite )
+		{
+			offsets[offset_count] = drawItem.descriptor_set.offset[offset_count];
+			offset_count++;
+		}
 	}
 
 	count = end - start + 1;
 
 	qvkCmdBindDescriptorSets(vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-		vk.pipeline_layout, start, count, drawItem.descriptor_set.current + start, offset_count, offsets);
+		drawItem.pipeline_layout, start, count, drawItem.descriptor_set.current + start, offset_count, offsets);
 }
 
 static Pass *RB_CreatePass( Allocator& allocator, int capacity )
@@ -625,7 +632,12 @@ static void RB_DrawItems( int numDrawItems, const DrawItem *drawItems )
 		if ( drawItem.ibo != nullptr ) 
 		{		
 			if ( drawItem.indexedIndirect ) {
-				vk_bind_index_buffer( drawItem.ibo->buffer,  0 );
+
+				// ~sunny, bit of a hack
+				if ( drawItem.pipeline_layout == vk.pipeline_layout_surface_sprite )
+					vk_bind_index_buffer( drawItem.ibo->buffer, 0, VK_INDEX_TYPE_UINT16 );
+				else
+					vk_bind_index_buffer( drawItem.ibo->buffer, 0 );
 
 				qvkCmdDrawIndexedIndirect( 
 					vk.cmd->command_buffer, 
