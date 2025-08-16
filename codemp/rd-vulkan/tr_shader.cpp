@@ -3694,6 +3694,10 @@ static int CollapseMultitexture( unsigned int st0bits, shaderStage_t *st0, shade
 		return 0;
 	}
 
+	// do not collapse surface sprite stages
+	if ( st0->ss || st1->ss )
+		return 0;
+
 	if (st0->depthFragment || (st0->stateBits & GLS_ATEST_BITS)) {
 		return 0;
 	}
