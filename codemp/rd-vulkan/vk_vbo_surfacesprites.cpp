@@ -563,10 +563,32 @@ static void vk_flush_surface_sprites_instances( int index, sprite_t *instances, 
 	*surf_count = 0;
 }
 
+//
+// surface sprites can be affected by weather stage settings 'ssFXWeather'
+//
+static float vk_adjust_surface_sprites_stage_for_weather( int type, float density )
+{	
+	// cannot account for R_IsRaining() || R_IsPuffing() during preload.
+	// 	
+	// no weather affecting this stage
+	if ( type != SURFSPRITE_WEATHERFX )
+		return density;
+
+	// weatherfx stages are not rendered/enabled
+	if ( r_surfaceWeather->value < 0.01 )
+		return 0.0f;
+
+	// ~sunny, lets worry about this later :)
+	return 0.0f;
+
+	return density /= ( r_surfaceWeather->value / 2 );
+}
+
 static void vk_estimate_surface_sprite_count( const world_t &worldData, uint32_t *num_instances, uint32_t *num_surfs  )
 {
 	uint32_t i, j;
 	msurface_t *surfaces = worldData.surfaces;
+	float density;
 
 	for ( i = 0; i < worldData.numsurfaces; ++i )
 	{
@@ -593,7 +615,12 @@ static void vk_estimate_surface_sprite_count( const world_t &worldData, uint32_t
 			if ( j > 0 && (stage->stateBits & GLS_DEPTHFUNC_EQUAL) )
 				continue;
 
-			(*num_instances) += vk_surface_sprites_estimate( surf, stage->ss->density, stage );
+			density = vk_adjust_surface_sprites_stage_for_weather( stage->ss->type, stage->ss->density );
+
+			if ( density == 0.0f )
+				continue;
+
+			(*num_instances) += vk_surface_sprites_estimate( surf, density, stage );
 			(*num_surfs)++;
 		}
 	}
@@ -614,12 +641,11 @@ static uint32_t UpdateHash( const char *text, uint32_t hash )
 	return (hash ^ (hash >> 10) ^ (hash >> 20));
 }
 
-static spriteStage_t* vk_build_surface_sprite_stage( const int index, msurface_t *surf, uint32_t stage_index, uint32_t sprite_index, 
+static spriteStage_t* vk_build_surface_sprite_stage( const int index, msurface_t *surf, const shaderStage_t *stage, uint32_t sprite_index, 
 	uint32_t num_instances, uint32_t num_surf_instances )
 {
 	uint32_t i;
 	const shader_t *shader = surf->shader;
-	const shaderStage_t *stage = shader->stages[stage_index];
 
 	spriteStage_t *sprite_stage		= surf->surface_sprites.stage + sprite_index;
 	sprite_stage->sprite			= stage->ss;
@@ -720,6 +746,8 @@ void R_BuildSurfaceSpritesVBO( const world_t &worldData, int index )
 	spriteStage_t **sprites_surf = (spriteStage_t **)ri.Hunk_AllocateTempMemory( sizeof(spriteStage_t *) * estimate_num_surfs );
 
 	msurface_t *surfaces = worldData.surfaces;
+	float density;
+
 	for ( i = 0; i < worldData.numsurfaces; ++i )
 	{
 		msurface_t *surf = surfaces + i;
@@ -750,17 +778,18 @@ void R_BuildSurfaceSpritesVBO( const world_t &worldData, int index )
 			if ( j > 0 && (stage->stateBits & GLS_DEPTHFUNC_EQUAL) )
 			{
 				ri.Printf(PRINT_WARNING, "depthFunc equal is not supported on surface sprites in rend2/vulkan. Skipping stage\n");
-				surf->surface_sprites.num_stages -= 1;
 				continue;
 			}
 
-			uint32_t num_surf_instances = vk_surface_sprites_create_vertex_data( surf, stage->ss->density, stage, &sprite_instances[num_instances] );
+			density = vk_adjust_surface_sprites_stage_for_weather( stage->ss->type, stage->ss->density );
+
+			if ( density == 0.0f )
+				continue;
+
+			uint32_t num_surf_instances = vk_surface_sprites_create_vertex_data( surf, density, stage, &sprite_instances[num_instances] );
 
 			if ( !num_surf_instances ) 
-			{
-				surf->surface_sprites.num_stages -= 1;
 				continue;
-			}
 
 			if ( (num_instances + num_surf_instances) > estimate_num_instances ) 
 				ri.Error( ERR_DROP, "Too many sprite instances: %d > %d", num_instances + num_surf_instances, estimate_num_instances );
@@ -771,7 +800,7 @@ void R_BuildSurfaceSpritesVBO( const world_t &worldData, int index )
 			sprites_surf[num_surfs++] = vk_build_surface_sprite_stage( 
 				index,
 				surf, 
-				j, 
+				stage, 
 				sprite_index, 
 				num_instances, 
 				num_surf_instances 
@@ -780,6 +809,8 @@ void R_BuildSurfaceSpritesVBO( const world_t &worldData, int index )
 			num_instances += num_surf_instances;
 			++sprite_index;
 		}
+
+		surf->surface_sprites.num_stages = sprite_index;
 #endif // USE_FOG_COLLAPSE
 	}
 
@@ -794,8 +825,6 @@ void R_BuildSurfaceSpritesVBO( const world_t &worldData, int index )
 
 void vk_clean_surface_sprites( void )
 {
-	uint32_t i;
-
 	vk_destroy_surface_sprites_ssbos();
 	
 	// instance quad mesh
@@ -804,13 +833,5 @@ void vk_clean_surface_sprites( void )
 
 	tr.ss.groups_count = 0;
 	Com_Memset( tr.ss.groups, 0, ARRAY_LEN(tr.ss.groups) * sizeof(vk_ss_group_t) );
-
-	for ( i = 0; i < tr.numShaders; ++i ) 
-	{
-		shader_t *shader = tr.shaders[i];
-
-		shader->surface_sprites.num_stages = 0;
-		shader->surface_sprites.ssbo_index = ~0U;
-	}
 }
 #endif // USE_VBO_SS
