@@ -38,24 +38,13 @@ static void vk_create_surface_sprite_quad( void ) {
 		tr.ss.ibo = R_CreateIBO( "surface sprite quad", (byte*)indices, sizeof(indices) );
 }
 
-int get_surface_sprite_stride( void ) {
-	int stride = 0;
-
-	if ( vk.surface_sprites_vbo_stride )
-		return vk.surface_sprites_vbo_stride;
-
-	vk.surface_sprites_vbo_stride = sizeof(sprite_t);
-
-	return stride;
-}
-
 //
 // indirect instanced
 //
 static uint32_t vk_alloc_ss_group( const vk_ss_group_def_t *def ) {
     vk_ss_group_t *group;
 
-    if ( tr.ss.groups_count >= 1024 ) {
+    if ( tr.ss.groups_count >= SS_MAX_GROUP ) {
         ri.Error(ERR_DROP, "alloc_pipeline: MAX_VK_PIPELINES reached");
         return 0;
     }
@@ -133,7 +122,7 @@ void vk_push_surface_sprites_cmd( const vk_ss_group_def_t *def, int firstInstanc
         return;
 #endif
 
-	if ( group->num_commands < 1024 ) 
+	if ( group->num_commands < SS_MAX_GROUP_CMD ) 
 	{
 		vk_ss_group_cmd_t *cmd = &group->cmd[group->num_commands++];
 
@@ -141,8 +130,6 @@ void vk_push_surface_sprites_cmd( const vk_ss_group_def_t *def, int firstInstanc
 		cmd->numInstances = instanceCount;
 		return;
 	}
-
-
 }
 
 //
