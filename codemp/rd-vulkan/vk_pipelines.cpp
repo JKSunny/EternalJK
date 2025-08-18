@@ -41,7 +41,6 @@ static uint32_t num_attrs;
 #ifdef USE_VBO
 static qboolean is_ghoul2_vbo;
 static qboolean is_mdv_vbo;
-static qboolean is_surface_sprite;
 #endif
 
 static void vk_push_layout_binding( VkDescriptorSetLayoutBinding *bind, VkDescriptorType type,
@@ -205,8 +204,6 @@ static uint32_t vk_bind_stride( uint32_t in )
         return get_mdxm_stride();
     else if ( is_mdv_vbo )
         return get_mdv_stride();
-    else if ( is_surface_sprite )
-        return get_surface_sprite_stride();
 #endif
     return in;
 }
@@ -257,22 +254,21 @@ static void vk_push_vertex_input_binding_attribute( const Vk_Pipeline_Def *def )
 #ifdef USE_VBO
     is_ghoul2_vbo = def->vbo_ghoul2;
     is_mdv_vbo = def->vbo_mdv;
-    is_surface_sprite = def->surface_sprite_flags ? qtrue: qfalse;
 #endif
 #ifdef USE_VBO_SS
-    if ( is_surface_sprite )
+    if ( def->surface_sprite_flags )
     {
         // quad mesh
         vk_push_bind( 0, sizeof( uint32_t ) );					    // xyz array
-        bindings[0].stride = sizeof(uint32_t); 
         vk_push_attr( 0, 0, VK_FORMAT_R32_UINT );
         
         // instance
-        vk_push_bind_instance( 1, sizeof( vec4_t ) );			    // xyz array
-        vk_push_bind_instance( 2, sizeof( vec3_t ) );			    // normal
-        vk_push_bind_instance( 3, sizeof( color4ub_t ) );			// color
-        vk_push_bind_instance( 4, sizeof( vec2_t ) );			    // width height
-        vk_push_bind_instance( 5, sizeof( vec2_t ) );			    // skew
+        const size_t stride = sizeof( sprite_t );
+        vk_push_bind_instance( 1, stride );                         // xyz array
+        vk_push_bind_instance( 2, stride );                         // normal
+        vk_push_bind_instance( 3, stride );                         // color
+        vk_push_bind_instance( 4, stride );                         // width height
+        vk_push_bind_instance( 5, stride );                         // skew
         vk_push_attr( 1, 1, VK_FORMAT_R32G32B32A32_SFLOAT );
         vk_push_attr( 2, 2, VK_FORMAT_R32G32B32_SFLOAT );
         vk_push_attr( 3, 3, VK_FORMAT_R8G8B8A8_UNORM );
