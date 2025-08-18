@@ -1227,8 +1227,6 @@ typedef struct {
 	vk_storage_buffer_t surface_sprites_ssbo[MAX_SUB_BSP + 1];
 	uint32_t			surface_sprites_ssbo_item_size;
 	uint32_t			surface_sprites_ssbo_count;
-
-	uint32_t			surface_sprites_vbo_stride;
 #endif
 
 	// statistics
@@ -1547,7 +1545,6 @@ void		VBO_ClearQueue( void );
 
 int			get_mdv_stride( void );
 int			get_mdxm_stride( void );
-int			get_surface_sprite_stride( void );
 
 // shader
 void		vk_create_shader_modules( void );

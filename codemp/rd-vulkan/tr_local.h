@@ -1270,6 +1270,9 @@ typedef struct flare_s {
 extern flare_t *r_activeFlares;
 
 #ifdef USE_VBO_SS
+#define SS_MAX_GROUP						1024
+#define SS_MAX_GROUP_CMD					1024
+
 #define SS_ENT_BITS							11
 #define SS_VBO_BITS							10
 #define SS_FOG_BITS							7
@@ -1318,7 +1321,7 @@ typedef struct { // indirect command
 
 typedef struct {
 	vk_ss_group_def_t	def;
-	vk_ss_group_cmd_t	cmd[1024];
+	vk_ss_group_cmd_t	cmd[SS_MAX_GROUP_CMD];
 	int					num_commands;
 } vk_ss_group_t;
 
@@ -2143,7 +2146,7 @@ typedef struct trGlobals_s {
 
 #ifdef USE_VBO_SS
 	struct {
-		vk_ss_group_t			groups[1024];
+		vk_ss_group_t			groups[SS_MAX_GROUP];
 		uint32_t				groups_count;
 		VBO_t					*vbo;
 		IBO_t					*ibo;
