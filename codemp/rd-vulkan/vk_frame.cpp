@@ -1248,6 +1248,23 @@ _retry:
 
     Com_Memset(&vk.cmd->scissor_rect, 0, sizeof(vk.cmd->scissor_rect));
 
+#ifdef G2_INSTANCED
+    // ~sunny, why not use MAX()?
+    if ( vk.cmd->global_ssbo_count > vk.stats.max_global_ssbo_entries )
+        vk.stats.max_global_ssbo_entries = vk.cmd->global_ssbo_count;
+
+    if ( vk.cmd->entity_ssbo_count > vk.stats.max_entities_ssbo_entries )
+        vk.stats.max_entities_ssbo_entries = vk.cmd->entity_ssbo_count;
+
+    if ( vk.cmd->instance_count > vk.stats.max_model_instance_count )
+        vk.stats.max_model_instance_count = vk.cmd->instance_count;
+
+    vk.cmd->entity_ssbo_count = 0;
+    vk.cmd->global_ssbo_count = 0;
+    vk.cmd->instance_count = 0;
+#endif
+
+
 #ifdef USE_VK_STATS
     // other stats
     vk.stats.push_size = 0;
@@ -1496,6 +1513,9 @@ void vk_end_frame( void )
     backEnd.pc.msec = ri.Milliseconds() - backEnd.pc.msec;
 
     vk.renderPassIndex = RENDER_PASS_MAIN;
+
+	tr.indirect_groups_count = 0;
+	reset_in_group_count();
 }
 
 void vk_present_frame( void )
@@ -1544,6 +1564,7 @@ void vk_present_frame( void )
 	vk.cmd_index++;
 	vk.cmd_index %= NUM_COMMAND_BUFFERS;
 	vk.cmd = &vk.tess[ vk.cmd_index ];
+    vk.cmd->draw_id = 0;
 }
 
 static qboolean is_bgr( VkFormat format ) {

@@ -28,25 +28,60 @@ layout(set = 0, binding = 0) uniform UBO {
 };
 
 #if defined(USE_VBO_MODEL)
-	layout(set = 0, binding = 2) uniform Entity {
-		vec4 u_ambientLight;
-		vec4 u_directedLight;
-		vec4 u_LocalLightOrigin;
-		vec4 u_localViewOrigin;
-		mat4 u_ModelMatrix;
+
+
+	struct vkUniformBones_t {
+		mat3x4 BoneMatrices[72];
 	};
+
+	struct vkUniformEntity_t {
+		vec4 ambientLight;
+		vec4 directedLight;
+		vec4 LocalLightOrigin;
+		vec4 localViewOrigin;
+		mat4 ModelMatrix;
+	};
+#ifdef USE_VBO_MODEL
+	layout(location = 10) in vec4 i_mvp_a;
+	layout(location = 11) in vec4 i_mvp_b;
+	layout(location = 12) in vec4 i_mvp_c;
+	layout(location = 13) in vec4 i_mvp_d;
+	layout(location = 14) in uvec4 i_extra;
+
+	layout(std430, set = 0, binding = 2) readonly buffer EntityBuffer {
+		vkUniformEntity_t entities[];
+	};
+
+	layout(std430, set = 0, binding = 3) readonly buffer BonesBuffer {
+		vkUniformBones_t bones[];
+	};
+
+	#define u_ModelMatrix		entity_data.ModelMatrix
+
+	vkUniformEntity_t entity_data = entities[i_extra.x];
+	//vkUniformGlobal_t global_data = global[i_extra.y];
+
+	#define GET_BONE_BY_INDEX bones[i_extra.z].BoneMatrices[index];
+#else
+	layout(set = 0, binding = 2) uniform Entity {
+		vkUniformEntity_t entity_data;
+	};
+
+	layout(set = 0, binding = 3) uniform Bones {
+		vkUniformBones_t bones;
+	};
+
+	#define GET_BONE_BY_INDEX bones.BoneMatrices[index]
+#endif
 #endif
 
-#ifdef USE_VBO_GHOUL2
-	layout(set = 0, binding = 3) uniform Bones {
-		mat3x4 u_BoneMatrices[72];
-	};	
+#ifdef USE_VBO_GHOUL2	
 	layout(location = 8) in uvec4 in_bones;
 	layout(location = 9) in vec4 in_weights;
 
 	mat4x3 GetBoneMatrix(uint index)
 	{
-		mat3x4 bone = u_BoneMatrices[index];
+		mat3x4 bone = GET_BONE_BY_INDEX;
 		return mat4x3(
 			bone[0].x, bone[1].x, bone[2].x,
 			bone[0].y, bone[1].y, bone[2].y,
@@ -69,19 +104,27 @@ out gl_PerVertex {
 };
 
 void main() {
-	#ifdef USE_VBO_GHOUL2
-		mat4x3 skin_matrix =
-			GetBoneMatrix(in_bones.x) * in_weights.x +
-			GetBoneMatrix(in_bones.y) * in_weights.y +
-			GetBoneMatrix(in_bones.z) * in_weights.z +
-			GetBoneMatrix(in_bones.w) * in_weights.w;
+	#ifdef USE_VBO_MODEL
+		#ifdef USE_VBO_GHOUL2
+			mat4x3 skin_matrix =
+				GetBoneMatrix(in_bones.x) * in_weights.x +
+				GetBoneMatrix(in_bones.y) * in_weights.y +
+				GetBoneMatrix(in_bones.z) * in_weights.z +
+				GetBoneMatrix(in_bones.w) * in_weights.w;
 
-		vec3 position = skin_matrix * vec4(in_position, 1.0);
-
-		gl_Position = mvp * vec4(position, 1.0);
+			vec3 position = skin_matrix * vec4(in_position, 1.0);
+		#else
+			vec3 position = in_position;
+		#endif
 	#else
-		gl_Position = mvp * vec4(in_position, 1.0);
+		vec3 position = in_position;
 	#endif
+
+#if defined(USE_VBO_MODEL)
+	gl_Position = mat4( i_mvp_a, i_mvp_b, i_mvp_c, i_mvp_d ) * vec4(position, 1.0);
+#else
+	gl_Position = mvp * vec4(position, 1.0);
+#endif
 
 	#ifdef USE_FOG_LINEAR
 		float s = dot(in_position, fogDistanceVector.xyz) + fogDistanceVector.w;

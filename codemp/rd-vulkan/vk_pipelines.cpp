@@ -34,8 +34,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define INIT_SPEC_ENTRY_FRAG( index, member ) \
     ALLOC_SPEC_ENTRY( frag_spec_entries, index, struct FragSpecData, frag_spec_data, member )
 
-static VkVertexInputBindingDescription bindings[10];
-static VkVertexInputAttributeDescription attribs[8];
+static VkVertexInputBindingDescription bindings[17];    // why?
+static VkVertexInputAttributeDescription attribs[15];   // why?
 static uint32_t num_binds;
 static uint32_t num_attrs;
 #ifdef USE_VBO
@@ -54,7 +54,7 @@ static void vk_push_layout_binding( VkDescriptorSetLayoutBinding *bind, VkDescri
 }
 
 static void vk_create_layout_binding( int binding, VkDescriptorType type, 
-    VkShaderStageFlags flags, VkDescriptorSetLayout *layout, qboolean is_uniform ) 
+    VkShaderStageFlags flags, VkDescriptorSetLayout *layout, qboolean is_uniform, qboolean is_model = qfalse ) 
 {
     uint32_t count = 1;
     VkDescriptorSetLayoutBinding bind[VK_DESC_UNIFORM_COUNT];
@@ -71,6 +71,15 @@ static void vk_create_layout_binding( int binding, VkDescriptorType type,
         vk_push_layout_binding( bind, type, VK_DESC_UNIFORM_GLOBAL_BINDING, uniform_flags );
 
         count = VK_DESC_UNIFORM_COUNT;
+    }
+
+    if ( is_model )
+    {
+        const VkShaderStageFlags uniform_flags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+        const VkDescriptorType desc_type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        vk_push_layout_binding( bind, desc_type, VK_DESC_UNIFORM_ENTITY_BINDING, uniform_flags );
+        vk_push_layout_binding( bind, desc_type, VK_DESC_UNIFORM_BONES_BINDING, VK_SHADER_STAGE_VERTEX_BIT );
+        vk_push_layout_binding( bind, desc_type, VK_DESC_UNIFORM_GLOBAL_BINDING, uniform_flags );
     }
 
     desc.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -123,6 +132,7 @@ void vk_create_descriptor_layout( void )
         vk_create_layout_binding( 0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, &vk.set_layout_sampler, qfalse );
         vk_create_layout_binding( 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT, &vk.set_layout_uniform, qtrue );
         vk_create_layout_binding( 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT, &vk.set_layout_storage, qfalse );
+        vk_create_layout_binding( 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT, &vk.set_layout_model, qtrue, qtrue );
     }
 }
 
@@ -153,6 +163,11 @@ void vk_create_pipeline_layout( void )
     desc.pPushConstantRanges = &push_range;
     VK_CHECK(qvkCreatePipelineLayout(vk.device, &desc, NULL, &vk.pipeline_layout));
     VK_SET_OBJECT_NAME(vk.pipeline_layout, "pipeline layout - main", VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT);
+
+    set_layouts[0] = vk.set_layout_model; 
+    VK_CHECK(qvkCreatePipelineLayout(vk.device, &desc, NULL, &vk.pipeline_layout_model));
+    VK_SET_OBJECT_NAME(vk.pipeline_layout_model, "pipeline layout - model", VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT);
+    set_layouts[0] = vk.set_layout_uniform;
 
 #ifdef USE_VBO_SS
     // surface sprites ssbo
@@ -578,6 +593,31 @@ static void vk_push_vertex_input_binding_attribute( const Vk_Pipeline_Def *def )
                 vk_push_bind( 9, sizeof( vec4_t ) );		// bone weights
                 vk_push_attr( 9, 9, VK_FORMAT_R8G8B8A8_UNORM );
             }
+
+            if ( def->vbo_ghoul2 || def->vbo_mdv ) 
+            {
+                //if ( def->instanced ){
+                    // ~sunny, yet anoter hack
+                    qboolean was_ghoul2_vbo = is_ghoul2_vbo;
+                    qboolean was_mdv_vbo = is_mdv_vbo;
+                    is_ghoul2_vbo = qfalse;
+                    is_mdv_vbo = qfalse;
+
+                    vk_push_bind_instance( 10, sizeof( Vk_Model_Instance ) );
+                    vk_push_bind_instance( 11, sizeof( Vk_Model_Instance ) );
+                    vk_push_bind_instance( 12, sizeof( Vk_Model_Instance ) );
+                    vk_push_bind_instance( 13, sizeof( Vk_Model_Instance ) );
+                    vk_push_bind_instance( 14, sizeof( Vk_Model_Instance ) );
+                    vk_push_attr( 10, 10, VK_FORMAT_R32G32B32A32_SFLOAT );
+                    vk_push_attr( 11, 11, VK_FORMAT_R32G32B32A32_SFLOAT );
+                    vk_push_attr( 12, 12, VK_FORMAT_R32G32B32A32_SFLOAT );
+                    vk_push_attr( 13, 13, VK_FORMAT_R32G32B32A32_SFLOAT );
+                    vk_push_attr( 14, 14, VK_FORMAT_R32G32B32A32_UINT);
+    
+                    is_ghoul2_vbo = was_ghoul2_vbo;
+                    is_mdv_vbo = was_mdv_vbo;
+                //}
+            }
         }
     }
 #endif
@@ -695,11 +735,12 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
 
     struct VertSpecData {
         int32_t hw_fog;
+        int32_t instanced;
 #ifdef USE_VBO_SS
         SurfaceSpritesData ss;
 #endif
     } vert_spec_data;
-    VkSpecializationMapEntry vert_spec_entries[7];
+    VkSpecializationMapEntry vert_spec_entries[8];
     VkSpecializationInfo vert_spec_info;
 
     struct FragSpecData {
@@ -1079,10 +1120,13 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
 
 	frag_spec_data.hw_fog = vert_spec_data.hw_fog = vk.hw_fog;
 
+    vert_spec_data.instanced = def->instanced ? 1 : 0;
+
 	//
 	// vertex module specialization data
 	//
     INIT_SPEC_ENTRY_VERT( 0, hw_fog )
+    INIT_SPEC_ENTRY_VERT( 1, instanced )
 
     vert_spec_info.mapEntryCount = ARRAY_LEN( vert_spec_entries );
     vert_spec_info.pMapEntries = vert_spec_entries;
@@ -1123,12 +1167,12 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
             SET_SSDEF( kUseFog,          SSDEF_USE_FOG )
         #undef SET_SSDEF
 
-        INIT_SPEC_ENTRY_VERT( 1,   ss.kFaceCamera )
-        INIT_SPEC_ENTRY_VERT( 2,   ss.kFaceUp )
-        INIT_SPEC_ENTRY_VERT( 3,   ss.kFaceFlattened )
-        INIT_SPEC_ENTRY_VERT( 4,   ss.kFxSprite )
-        INIT_SPEC_ENTRY_VERT( 5,   ss.kAdditive )
-        INIT_SPEC_ENTRY_VERT( 6,   ss.kUseFog )
+        INIT_SPEC_ENTRY_VERT( 2,   ss.kFaceCamera )
+        INIT_SPEC_ENTRY_VERT( 3,   ss.kFaceUp )
+        INIT_SPEC_ENTRY_VERT( 4,   ss.kFaceFlattened )
+        INIT_SPEC_ENTRY_VERT( 5,   ss.kFxSprite )
+        INIT_SPEC_ENTRY_VERT( 6,   ss.kAdditive )
+        INIT_SPEC_ENTRY_VERT( 7,   ss.kUseFog )
 
         INIT_SPEC_ENTRY_FRAG( 12,   ss.kFaceCamera )
         INIT_SPEC_ENTRY_FRAG( 13,   ss.kFaceUp )
@@ -1367,6 +1411,8 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
 
 	if ( def->shader_type == TYPE_DOT )
 		create_info.layout = vk.pipeline_layout_storage;
+    else if ( def->instanced )
+        create_info.layout = vk.pipeline_layout_model;
 #ifdef USE_VBO_SS
 	else if ( def->surface_sprite_flags )
 		create_info.layout = vk.pipeline_layout_surface_sprite;

@@ -1514,20 +1514,31 @@ static void R_AddEntitySurfaces( void ) {
 
 		case RT_MODEL:
 			// we must set up parts of tr.ori for model culling
+#ifdef G2_INSTANCED			
 			R_RotateForEntity(ent, &tr.viewParms, &tr.ori);
-
+#endif
 			tr.currentModel = R_GetModelByHandle(ent->e.hModel);
 			if (!tr.currentModel) {
 				R_AddDrawSurf(&entitySurface, tr.defaultShader, 0, 0);
 			}
 			else {
 				switch (tr.currentModel->type) {
+#ifdef G2_INSTANCED
+				case MOD_MESH:
+					break;
+#else
 				case MOD_MESH:
 					R_AddMD3Surfaces(ent);
 					break;
+#endif
 				case MOD_BRUSH:
 					R_AddBrushModelSurfaces(ent);
 					break;
+#ifdef G2_INSTANCED
+				case MOD_MDXM:
+				case MOD_BAD:
+					break;
+#else
 					/*
 					Ghoul2 Insert Start
 					*/
@@ -1559,6 +1570,7 @@ static void R_AddEntitySurfaces( void ) {
 					/*
 					Ghoul2 Insert End
 					*/
+#endif
 				default:
 					Com_Error(ERR_DROP, "R_AddEntitySurfaces: Bad modeltype");
 					break;
@@ -1603,7 +1615,13 @@ static void R_GenerateDrawSurfs( void ) {
 
 	R_AddEntitySurfaces();
 
-	
+#ifdef G2_INSTANCED
+		// yup needs some checks obvsly
+		srfInstancedModels_t *im = (srfInstancedModels_t*)Hunk_Alloc(sizeof(srfInstancedModels_t), h_low);
+		im->surfaceType = SF_INSTANCED;
+		R_AddDrawSurf( (surfaceType_t *)im, tr.shadowShader, 0, 0 );
+#endif
+
 #ifdef USE_VBO_SS
 	if ( tr.ss.groups_count )
 	{

@@ -153,6 +153,7 @@ PFN_vkGetImageMemoryRequirements2KHR			qvkGetImageMemoryRequirements2KHR;
 PFN_vkDebugMarkerSetObjectNameEXT				qvkDebugMarkerSetObjectNameEXT;
 
 PFN_vkCmdDrawIndexedIndirect					qvkCmdDrawIndexedIndirect;
+PFN_vkGetBufferDeviceAddress					qvkGetBufferDeviceAddress;
 
 static char *Q_stradd( char *dst, const char *src )
 {
@@ -226,9 +227,9 @@ static void vk_create_instance( void )
     appInfo.pEngineName = "Quake3";
     appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
 #ifdef _DEBUG
-	appInfo.apiVersion = VK_API_VERSION_1_1;
+	appInfo.apiVersion = VK_API_VERSION_1_2;
 #else
-	appInfo.apiVersion = VK_API_VERSION_1_0;
+	appInfo.apiVersion = VK_API_VERSION_1_2;
 #endif
 	flags = 0;
     count = 0;
@@ -1074,6 +1075,7 @@ __initStart:
 	}
 
 	INIT_DEVICE_FUNCTION(vkCmdDrawIndexedIndirect)
+	INIT_DEVICE_FUNCTION(vkGetBufferDeviceAddress)
 }
 
 #undef INIT_INSTANCE_FUNCTION
@@ -1199,6 +1201,7 @@ void vk_deinit_library( void )
 	qvkDebugMarkerSetObjectNameEXT = NULL;
 
 	qvkCmdDrawIndexedIndirect = NULL;
+	qvkGetBufferDeviceAddress = NULL;
 }
 
 #define FORMAT_DEPTH(format, r_bits, g_bits, b_bits) case(VK_FORMAT_##format): *r = r_bits; *b = b_bits; *g = g_bits; return qtrue;

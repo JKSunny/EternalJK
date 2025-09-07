@@ -438,3 +438,130 @@ void R_AddMD3Surfaces( trRefEntity_t *ent ) {
 	}
 
 }
+
+#ifdef G2_INSTANCED
+void vk_rtx_AddMD3Surfaces( trRefEntity_t *ent, int entityNum, const model_t *model )
+{
+	int				i;
+	mdvModel_t		*mdv_model = NULL;
+	mdvSurface_t	*surface = NULL;
+	shader_t		*shader = 0;
+	int				lod, cull;
+	qboolean		personalModel;
+
+	// don't add third_person objects if not in a portal
+	personalModel = (qboolean)((ent->e.renderfx & RF_THIRD_PERSON) && (tr.viewParms.portalView == PV_NONE));
+
+	if ( ent->e.renderfx & RF_WRAP_FRAMES ) 
+	{
+		ent->e.frame %= model->data.mdv[0]->numFrames;
+		ent->e.oldframe %= model->data.mdv[0]->numFrames;
+	}
+
+	if ( personalModel )
+		return;
+
+	//
+	// compute LOD
+	//
+#if 0
+	lod = R_ComputeLOD( ent );
+#else
+	lod = 0;
+#endif
+
+	mdv_model = model->data.mdv[lod];
+
+#if 0
+	// culling is disabled for now ..
+	cull = R_CullModel ( mdv_model, ent );
+	if ( cull == CULL_OUT ) {
+		return;
+	}
+#endif
+
+	// mvp
+	mat4_t mvp;
+	vk_get_model_instance_mvp( ent, mvp );
+
+	Vk_IN_Group_Def group;
+	surfaceType_t	surfType		= SF_VBO_MDVMESH;
+	int				fogIndex		= R_ComputeFogNum( mdv_model, ent );
+	int				forceRGBGen		= 0;
+	Vk_Depth_Range	depthRange		= DEPTH_RANGE_NORMAL;
+	bool			forceEntAlpha	= false;
+	bool			alphaDepth		= false;
+	bool			distortion		= false;
+
+	if (ent->e.renderfx & RF_RGB_TINT)	//want to use RGBGen from ent
+		forceRGBGen = CGEN_ENTITY;
+
+	else if ( ent->e.renderfx & RF_DISINTEGRATE1 )
+		forceRGBGen = (int)CGEN_DISINTEGRATION_1;
+
+	else if ( ent->e.renderfx & RF_DISINTEGRATE2 )
+		forceRGBGen = (int)CGEN_DISINTEGRATION_2;
+
+	// No depth at all, very rare but some things for seeing through walls
+	if ( ent->e.renderfx & RF_NODEPTH )
+		depthRange = DEPTH_RANGE_ZERO;
+
+	// hack the depth range to prevent view model from poking into walls
+	if ( ent->e.renderfx & RF_DEPTHHACK )
+		depthRange = DEPTH_RANGE_WEAPON;
+
+	if ( ent->e.renderfx & RF_FORCE_ENT_ALPHA ) 
+	{
+		forceEntAlpha = true;
+#ifdef RF_ALPHA_DEPTH
+		if ( ent->e.renderfx & RF_ALPHA_DEPTH )
+			alphaDepth = true;
+#endif
+	}
+
+	if ( ent->e.renderfx & RF_DISTORTION )
+		distortion = true;
+
+	// pack group def
+	group.group_bits = pack_vk_in_group_flags( surfType, forceRGBGen, 
+		fogIndex, depthRange, forceEntAlpha, alphaDepth, distortion );
+
+	// add surfaces
+	surface = mdv_model->surfaces;
+	for ( i = 0 ; i < mdv_model->numSurfaces ; i++ ) 
+	{
+		if ( ent->e.customShader ) 
+			shader = R_GetShaderByHandle( ent->e.customShader );
+
+		else if ( ent->e.customSkin > 0 && ent->e.customSkin < tr.numSkins ) 
+		{
+			const skin_t *skin;
+			int		j;
+
+			skin = R_GetSkinByHandle( ent->e.customSkin );
+
+			// match the surface name to something in the skin file
+			shader = tr.defaultShader;
+			for ( j = 0 ; j < skin->numSurfaces ; j++ ) 
+			{
+				// the names have both been lowercased
+				if ( !strcmp( skin->surfaces[j]->name, surface->name ) ) 
+				{
+					shader = (shader_t *)skin->surfaces[j]->shader;
+					break;
+				}
+			}
+		} 
+		else 
+			shader = tr.shaders[ surface->shaderIndexes[ ent->e.skinNum % surface->numShaderIndexes ] ];
+
+		if ( !personalModel )
+		{
+			maliasmesh_t *mesh = &mdv_model->vboSurfaces[i].rtx_mesh;
+			vk_build_indirect_instance( entityNum, &group, mvp, mesh, shader, 0 );
+		}
+
+		surface++;
+	}
+}
+#endif

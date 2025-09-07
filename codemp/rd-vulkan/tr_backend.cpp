@@ -920,7 +920,7 @@ static void vk_update_entity_matrix_constants( vkUniformEntity_t &uniform, const
 
 	R_RotateForEntity(refEntity, &backEnd.viewParms, &ori);
 	Matrix16Copy(ori.modelMatrix, uniform.modelMatrix);
-	VectorCopy(ori.viewOrigin, uniform.localViewOrigin);
+	//VectorCopy(ori.viewOrigin, uniform.localViewOrigin);
 
 	Com_Memcpy( &uniform.localViewOrigin, ori.viewOrigin, sizeof( vec3_t) );
 	uniform.localViewOrigin[3] = 0.0f;
@@ -930,7 +930,12 @@ static void vk_update_entity_constants( const trRefdef_t *refdef ) {
 	uint32_t i;
 	Com_Memset( vk.cmd->entity_ubo_offset, 0, sizeof(vk.cmd->entity_ubo_offset) );
 
-	for ( i = 0; i < refdef->num_entities; i++ ) {
+#ifdef G2_INSTANCED
+	Com_Memset( vk.cmd->entity_ssbo_index, 0, sizeof(vk.cmd->entity_ssbo_index) );
+#endif
+
+	for ( i = 0; i < refdef->num_entities; i++ ) 
+	{
 		trRefEntity_t *ent = &refdef->entities[i];
 
 		R_SetupEntityLighting( refdef, ent );
@@ -939,7 +944,13 @@ static void vk_update_entity_constants( const trRefdef_t *refdef ) {
 		vk_update_entity_light_constants( uniform, ent );
 		vk_update_entity_matrix_constants( uniform, ent );
 
+#ifdef G2_INSTANCED
+		uint32_t offset = vk.cmd->entity_ssbo_count * vk.storage_entity_item_size;
+		memcpy((uint8_t*)vk.cmd->entity.p + offset, &uniform, sizeof(vkUniformEntity_t));
+		vk.cmd->entity_ssbo_index[i] = vk.cmd->entity_ssbo_count++;
+#else
 		vk.cmd->entity_ubo_offset[i] = vk_append_uniform( &uniform, sizeof(uniform), vk.uniform_entity_item_size );
+#endif
 	}
 
 	const trRefEntity_t *ent = &tr.worldEntity;
@@ -947,18 +958,29 @@ static void vk_update_entity_constants( const trRefdef_t *refdef ) {
 	vk_update_entity_light_constants( uniform, ent );
 	vk_update_entity_matrix_constants( uniform, ent );
 
+#ifdef G2_INSTANCED
+	uint32_t offset = vk.cmd->entity_ssbo_count * vk.storage_entity_item_size;
+	memcpy((uint8_t*)vk.cmd->entity.p + offset, &uniform, sizeof(vkUniformEntity_t));
+	vk.cmd->entity_ssbo_index[REFENTITYNUM_WORLD] = vk.cmd->entity_ssbo_count++;
+#endif
+
+	// this mmight be needed for non instanced stuff?
 	vk.cmd->entity_ubo_offset[REFENTITYNUM_WORLD] = vk_append_uniform( &uniform, sizeof(uniform), vk.uniform_entity_item_size );
 }
 
-static void vk_update_ghoul2_constants( const trRefdef_t *refdef ) {
+static void vk_update_model_constants( const trRefdef_t *refdef ) {
 	uint32_t i;
 
-	if ( !vk.vboGhoul2Active )
-		return;
+#ifdef G2_INSTANCED
+	vk.bonesCount = 0;
+#endif
+
+	VkDescriptorSet	sets[VK_DESC_COUNT];
+	Com_Memcpy( sets, vk.cmd->descriptor_set.current, sizeof(sets) );
 
 	for ( i = 0; i < refdef->num_entities; i++ )
 	{
-		const trRefEntity_t *ent = &refdef->entities[i];
+		trRefEntity_t *ent = &refdef->entities[i];
 		if (ent->e.reType != RT_MODEL)
 			continue;
 
@@ -968,11 +990,18 @@ static void vk_update_ghoul2_constants( const trRefdef_t *refdef ) {
 
 		switch (model->type)
 		{
+		case MOD_MESH:
+			vk_rtx_AddMD3Surfaces( ent, i, model );
+			break;
 		case MOD_MDXM:
 		case MOD_BAD:
 		{
 			// Transform Bones and upload them
+#ifdef G2_INSTANCED
+			vk_rtx_AddGhoulSurfaces( ent, i );
+#else
 			RB_TransformBones( ent, refdef );
+#endif
 		}
 		break;
 
@@ -981,6 +1010,12 @@ static void vk_update_ghoul2_constants( const trRefdef_t *refdef ) {
 		}
 	}
 
+	Com_Memcpy( vk.cmd->descriptor_set.current, sets, sizeof(sets) );
+
+#ifdef G2_INSTANCED
+#endif
+
+	vk_upload_model_instances();
 }
 
 static void vk_update_fog_constants(const trRefdef_t* refdef)
@@ -1016,7 +1051,7 @@ static void RB_UpdateUniformConstants( const trRefdef_t *refdef, const viewParms
 	if ( vk.vboGhoul2Active ) 
 	{
 		vk_update_entity_constants( refdef );
-		vk_update_ghoul2_constants( refdef );
+		vk_update_model_constants( refdef ); // renamed from vk_update_ghoul2_constants
 	}
 
 	vk_update_fog_constants( refdef );
@@ -1170,6 +1205,9 @@ const void	*RB_SwapBuffers( const void *data ) {
 	tr.needScreenMap = 0;
 
 	vk_end_frame();
+
+	//tr.indirect_groups_count = 0;
+	//reset_in_group_count();
 
 	if ( backEnd.doneSurfaces && !glState.finishCalled ) {
 		vk_queue_wait_idle();

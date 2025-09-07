@@ -86,24 +86,77 @@ layout(set = 0, binding = 0) uniform UBO {
 		int		func;
 	};
 
-	layout(set = 0, binding = 2) uniform Entity {
-		vec4 u_ambientLight;
-		vec4 u_directedLight;
-		vec4 u_LocalLightOrigin;
-		vec4 u_localViewOrigin;
-		mat4 u_ModelMatrix;
+	struct vkUniformGlobal_t {
+		vkBundle_t			bundle[3];
+		vkDisintegration_t	disintegration;
+		vkDeform_t			deform;
+		float				portalRange;
 	};
 
-	layout(set = 0, binding = 3) uniform Bones {
-		mat3x4 u_BoneMatrices[72];
+	struct vkUniformBones_t {
+		mat3x4 BoneMatrices[72];
 	};
 
-	layout(set = 0, binding = 5) uniform Global {
-		vkBundle_t			u_bundle[3];
-		vkDisintegration_t	u_disintegration;
-		vkDeform_t			u_deform;
-		float				u_portalRange;
+	struct vkUniformEntity_t {
+		vec4 ambientLight;
+		vec4 directedLight;
+		vec4 LocalLightOrigin;
+		vec4 localViewOrigin;
+		mat4 ModelMatrix;
 	};
+
+	#ifdef USE_VBO_MODEL
+		layout(location = 10) in vec4 i_mvp_a;
+		layout(location = 11) in vec4 i_mvp_b;
+		layout(location = 12) in vec4 i_mvp_c;
+		layout(location = 13) in vec4 i_mvp_d;
+		layout(location = 14) in uvec4 i_extra;
+
+		layout(location = 9) out flat uint out_entity_index;
+		layout(location = 10) out flat uint out_global_index;
+
+		layout(std430, set = 0, binding = 2) readonly buffer EntityBuffer {
+			vkUniformEntity_t entities[];
+		};
+
+		layout(std430, set = 0, binding = 3) readonly buffer BonesBuffer {
+			vkUniformBones_t bones[];
+		};
+
+		layout(std430, set = 0, binding = 5) readonly buffer GlobalBuffer {
+			vkUniformGlobal_t global[];
+		};
+
+		#define u_ambientLight		entity_data.ambientLight
+		#define u_directedLight		entity_data.directedLight
+		#define u_LocalLightOrigin	entity_data.LocalLightOrigin
+		#define u_localViewOrigin	entity_data.localViewOrigin
+		#define u_ModelMatrix		entity_data.ModelMatrix
+
+		#define u_bundle			global_data.bundle
+		#define u_disintegration	global_data.disintegration
+		#define u_deform			global_data.deform
+		#define u_portalRange		global_data.portalRange
+
+		vkUniformEntity_t entity_data = entities[i_extra.x];
+		vkUniformGlobal_t global_data = global[i_extra.y];
+
+		#define GET_BONE_BY_INDEX bones[i_extra.z].BoneMatrices[index];
+	#else
+		layout(set = 0, binding = 2) uniform Entity {
+			vkUniformEntity_t entity_data;
+		};
+
+		layout(set = 0, binding = 3) uniform Bones {
+			vkUniformBones_t bones;
+		};
+
+		layout(set = 0, binding = 5) uniform Global {
+			vkUniformGlobal_t global_data;
+		};
+
+		#define GET_BONE_BY_INDEX bones.BoneMatrices[index]
+	#endif
 
 	layout(location = 7) out vec4 var_Normal;
 	layout(location = 8) out vec4 var_LightDir;
@@ -170,6 +223,9 @@ layout(location = 9) in vec4 in_weights;
 #ifdef USE_FOG
 	layout (constant_id = 0) const int hw_fog = 0;
 #endif
+
+layout (constant_id = 1) const int instanced = 0;
+
 
 out gl_PerVertex {
 	vec4 gl_Position;
@@ -406,7 +462,7 @@ vec2 ModTexCoords(vec2 st, vec3 position, vec4 texMatrix, vec4 offTurb)
 
 mat4x3 GetBoneMatrix(uint index)
 {
-	mat3x4 bone = u_BoneMatrices[index];
+	mat3x4 bone = GET_BONE_BY_INDEX;
 	return mat4x3(
 		bone[0].x, bone[1].x, bone[2].x,
 		bone[0].y, bone[1].y, bone[2].y,
@@ -434,6 +490,7 @@ void main() {
         GetBoneMatrix(in_bones.w) * in_weights.w;
 
 	vec3 position = skin_matrix * vec4(in_position, 1.0);
+
 	vec3 normal = normalize(skin_matrix * vec4(in_normal, 0.0));
 
 	if ( u_deform.type != 0 ){ // !DEFORM_NONE
@@ -472,7 +529,11 @@ void main() {
 	#endif
 #endif
 
+#if defined(USE_VBO_MODEL)
+	gl_Position = mat4( i_mvp_a, i_mvp_b, i_mvp_c, i_mvp_d ) * vec4(position, 1.0);
+#else
 	gl_Position = mvp * vec4(position, 1.0);
+#endif
 
 #ifdef USE_ENV
 	#if defined(USE_VBO_MODEL)
@@ -559,7 +620,7 @@ void main() {
 #if !defined(USE_CLX_IDENT) && defined(USE_VBO_MODEL)
 	position		= (u_ModelMatrix * vec4(position, 1.0)).xyz;
 	normal			= normalize(mat3(u_ModelMatrix) * normal);
-
+	
 	//vec3 viewDir = u_ViewOrigin.xyz - position;
 
 	vec3 L	= u_LocalLightOrigin.xyz - (position * u_LocalLightOrigin.w);
@@ -568,4 +629,9 @@ void main() {
 	var_Normal		= vec4(normal, 0.0);
 	//var_ViewDir		= vec4(viewDir, 0.0);
 #endif
+
+	#ifdef USE_VBO_MODEL
+		out_entity_index = i_extra.x;
+		out_global_index = i_extra.y;
+	#endif
 }

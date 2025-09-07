@@ -385,7 +385,7 @@ static void R_AddWorldSurface( msurface_t *surf, int dlightBits, qboolean noView
 				Com_Memset(&group, 0, sizeof(group));
 				group.shader		= sprite_stage->shader;
 				group.ssbo_bits		= sprite_stage->sprite->ssbo_bits;
-				group.surf_bits		= SS_PACK_SURF_BITS( tr.currentEntityNum, ( sprite_stage->vbo->index - 1 ), sprite_stage->fogIndex );
+				group.surf_bits		= SS_PACK_SURF_BITS( tr.currentEntityNum, sprite_stage->vbo->index, sprite_stage->fogIndex );
 
 				vk_push_surface_sprites_cmd( &group, sprite_stage->firstInstance, sprite_stage->instanceCount );
 			}

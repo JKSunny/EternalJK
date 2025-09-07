@@ -32,6 +32,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 	#define USE_VBO_GHOUL2
 	#define USE_VBO_MDV	
 	#define USE_VBO_SS
+	#define G2_INSTANCED
 #endif
 
 #define USE_FOG_ONLY
@@ -278,7 +279,6 @@ typedef struct image_s {
 typedef struct VBO_s
 {	
 	int				index;
-
 	VkBuffer		buffer;
 	VkDeviceMemory	memory;
 
@@ -294,6 +294,7 @@ typedef struct VBO_s
 
 typedef struct IBO_s
 {
+	int				index;
 	VkBuffer		buffer;
 	VkDeviceMemory	memory;
 
@@ -882,6 +883,7 @@ typedef enum surfaceType_e {
 	SF_ENTITY,				// beams, rails, lightning, etc that can be determined by entity
 	SF_VBO_MDVMESH,
 	SF_SPRITES,
+	SF_INSTANCED,
 
 	SF_NUM_SURFACE_TYPES,
 
@@ -892,6 +894,60 @@ typedef struct drawSurf_s {
 	unsigned			sort;			// bit combination for fast compares
 	surfaceType_t		*surface;		// any of surface*_t
 } drawSurf_t;
+
+#ifdef G2_INSTANCED
+typedef struct {
+	surfaceType_t surfaceType;
+} srfInstancedModels_t;
+
+typedef struct
+{
+	int indexOffset;	// same as indexOffset in parent struct
+	int numIndexes;		// same as numIndexes in parent struct
+	int meshIndex;
+	VBO_t	*vbo;
+	IBO_t	*ibo;
+} maliasmesh_t;
+
+typedef struct {
+	mat4_t		mvp;
+	uint32_t    entity_index;
+	uint32_t    global_index;
+	uint32_t    bone_index;
+	uint32_t    pad0;
+}	Vk_Model_Instance;
+
+typedef struct {
+	shader_t		*shader;
+	uint32_t		vbo_ibo_idx;
+	uint32_t		group_bits;
+} Vk_IN_Group_Def;
+
+typedef struct {
+	uint32_t			indexCount;
+	uint32_t			firstIndex;
+	Vk_Model_Instance	*instances;
+	uint32_t			num_instances;
+	uint32_t			max_instances;
+	uint32_t			firstInstance;
+} Vk_IN_Group_Indirect;
+
+typedef struct {
+	Vk_IN_Group_Def		def;
+	uint32_t			pipeline;
+	int					tess_flags;
+	VkDescriptorSet		desc_current[VK_DESC_COUNT];
+	uint32_t			desc_start;
+	uint32_t			desc_end;
+	uint32_t			desc_count;
+
+	Vk_IN_Group_Indirect *indirect;
+	uint32_t			 num_indirect;
+	uint32_t			max_indirect;
+
+	uint32_t			uniform_offset;
+} Vk_IN_Group;
+#endif
 
 #ifdef USE_PMLIGHT
 typedef struct litSurf_s {
@@ -1288,6 +1344,10 @@ typedef struct srfVBOMDVMesh_s
 	glIndex_t       minIndex;
 	glIndex_t       maxIndex;
 
+#ifdef G2_INSTANCED
+	maliasmesh_t	rtx_mesh;
+#endif
+
 	// static render data
 	VBO_t          *vbo;
 	IBO_t          *ibo;
@@ -1321,6 +1381,8 @@ typedef struct mdxmVBOMesh_s
 	int maxIndex;
 	int numIndexes;
 	int numVertexes;
+
+	maliasmesh_t rtx_mesh;
 
 	VBO_t *vbo;
 	IBO_t *ibo;
@@ -1693,10 +1755,10 @@ typedef struct trGlobals_s {
 	int						numBSPModels;
 
 	int						numVBOs;
-	VBO_t					*vbos[4069];
+	VBO_t					*vbos[4096];
 
 	int						numIBOs;
-	IBO_t					*ibos[4069];
+	IBO_t					*ibos[4096];
 
 #ifdef _G2_GORE
 	VBO_t					*goreVBO;
@@ -1713,6 +1775,10 @@ typedef struct trGlobals_s {
 		VBO_t					*vbo;
 		IBO_t					*ibo;
 	} ss;
+#endif
+#ifdef G2_INSTANCED
+	Vk_IN_Group	indirect_groups[1024];
+	uint32_t	indirect_groups_count;
 #endif
 
 	// shader indexes from other modules will be looked up in tr.shaders[]
@@ -2642,6 +2708,38 @@ int			RB_GetBoneUboOffset( CRenderableSurface *surf );
 	void	RB_SurfaceSpritesVBO( srfSprites_t *surf );
 #endif
 
+#ifdef G2_INSTANCED
+	uint32_t		pack_group_vbo_ibo( uint32_t vbo_idx, uint32_t ibo_idx );
+	void			set_group_vbo_ibo( uint32_t packed, VBO_t **vbo, IBO_t **ibo );
+
+	uint32_t		pack_stage_bits( uint32_t group_bits, int stage );
+	uint32_t		pack_vk_in_group_flags( surfaceType_t surfType, int forceRGBGen, int fogIndex, Vk_Depth_Range depthRange, bool forceEntAlpha, bool alphaDepth, bool distortion );
+	void			unpack_vk_in_group_flags( uint32_t packed, surfaceType_t* surfType, int* forceRGBGen, int* fogIndex,Vk_Depth_Range* depthRange, int* stage, bool* forceEntAlpha, bool* alphaDepth, bool *distortion );
+	surfaceType_t	unpack_surfType_from_group_bits( uint32_t group_bits );
+	Vk_Depth_Range	unpack_depthRange_from_group_bits( uint32_t group_bits );
+
+	void			reset_in_group_count( void );
+	inline void		vk_get_model_instance_mvp( trRefEntity_t* ent, float *mvp ) 
+	{
+		orientationr_t ori;
+		R_RotateForEntity( ent, &backEnd.viewParms, &ori );
+
+		const float* p = backEnd.viewParms.projectionMatrix;
+		float proj[16];
+		Com_Memcpy(proj, p, 64);
+		proj[5] = -p[5];
+
+		myGlMultMatrix( ori.modelViewMatrix, proj, mvp );
+	}
+	void			RB_InstancedModels( srfInstancedModels_t *surf );
+	uint32_t		vk_find_indirect_group_ext( const Vk_IN_Group_Def *def );
+	void			vk_build_indirect_instance( 
+		uint32_t entityNum, Vk_IN_Group_Def *group, 
+	    const float *mvp, const maliasmesh_t *mesh, 
+		const shader_t *shader, const uint32_t bone_index 
+	);
+#endif
+
 static QINLINE unsigned int log2pad(unsigned int v, int roundup)
 {
 	unsigned int x = 1;
@@ -2666,6 +2764,13 @@ extern void R_BuildWorldVBO( msurface_t *surf, int surfCount );
 extern void R_BuildSurfaceSpritesVBO( const world_t &worldData, int index ) ;
 extern void R_BuildMDXM( model_t *mod, mdxmHeader_t *mdxm );
 extern void R_BuildMD3( model_t *mod, mdvModel_t *mdvModel );
+
+#ifdef G2_INSTANCED
+void vk_rtx_AddMD3Surfaces( trRefEntity_t *ent, int entityNum, const model_t *model );
+void vk_rtx_AddGhoulSurfaces( trRefEntity_t *ent, int entityNum );
+void vk_upload_model_instances( void );
+#endif
+
 #ifdef _G2_GORE
 extern void R_CreateGoreVBO( void );
 extern void R_UpdateGoreVBO( srfG2GoreSurface_t *goreSurface );
@@ -2679,7 +2784,9 @@ extern void VBO_QueueItem( int itemIndex );
 extern void VBO_ClearQueue( void );
 extern void VBO_Flush( void );
 
-IBO_t *R_CreateIBO( const char *name, const byte *vbo_data, int vbo_size );
-VBO_t *R_CreateVBO( const char *name, const byte *vbo_data, int vbo_size );
+IBO_t	*R_CreateIBO( const char *name, const byte *vbo_data, int vbo_size );
+VBO_t	*R_CreateVBO( const char *name, const byte *vbo_data, int vbo_size );
+VBO_t	*R_CreateDynamicVBO( const char *name, int size );
+void	R_UpdateDynamicBuffer(VkBuffer dstBuffer, VkBuffer srcBuffer, VkDeviceSize offset, VkDeviceSize size);
 #endif
 #endif

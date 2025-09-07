@@ -456,6 +456,11 @@ void vk_info_f( void ) {
 
     if ( vbo_models_mode )
         ri.Printf( PRINT_ALL, ", num buffers: %i \n", tr.numVBOs );
+
+    ri.Printf(PRINT_ALL, "\n\nmax global ssbo entries %i\n", vk.stats.max_global_ssbo_entries );
+    ri.Printf(PRINT_ALL, "max entities ssbo entries %i\n", vk.stats.max_entities_ssbo_entries );
+    ri.Printf(PRINT_ALL, "max model instances %i\n", vk.stats.max_model_instance_count  );
+
 #endif
 #else
     ri.Printf(PRINT_ALL, "vk_info statistics are not enabled in this build.\n");

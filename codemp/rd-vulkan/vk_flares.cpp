@@ -318,7 +318,7 @@ static void RB_TestFlare( flare_t *f ) {
 	*/
 
 	// we neeed only single uint32_t but take care of alignment
-	offset = (f - r_flareStructs) * vk.storage_alignment;
+	offset = (f - r_flareStructs) * vk.storage_flares_item_size;
 
 	if (f->testCount) {
 		uint32_t *cnt = (uint32_t*)(vk.storage.buffer_ptr + offset);

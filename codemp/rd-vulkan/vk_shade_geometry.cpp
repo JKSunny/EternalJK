@@ -23,7 +23,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include "tr_local.h"
 
-static VkBuffer shade_bufs[10];
+static VkBuffer shade_bufs[17];
 static int bind_base;
 static int bind_count;
 
@@ -212,14 +212,12 @@ void vk_bind_index_ext( const int numIndexes, const uint32_t *indexes )
 }
 
 #ifdef USE_VBO_MDV
-static void vk_vbo_bind_geometry_mdv( int32_t flags )
+static void vk_vbo_bind_geometry_mdv( int32_t flags, qboolean instanced = qfalse )
 {
 	VBO_t *vbo = tess.vbo_model;
 
 	shade_bufs[0] = shade_bufs[1] = shade_bufs[2] = shade_bufs[3] = shade_bufs[4] = shade_bufs[5] = shade_bufs[6] = shade_bufs[7] = shade_bufs[8] = shade_bufs[9] = vbo->buffer;
 	
-	Com_Memset( vk.cmd->vbo_offset, 0, sizeof(vk.cmd->vbo_offset) );
-
 	vk.cmd->vbo_offset[0] = vbo->offsets[0];	// xyz
 	vk.cmd->vbo_offset[2] = vbo->offsets[2];	// texture coords
 	vk.cmd->vbo_offset[5] = vbo->offsets[5];	// normals
@@ -236,13 +234,34 @@ static void vk_vbo_bind_geometry_mdv( int32_t flags )
 	bind_base = 0;
 	bind_count = 10;
 
+	if ( instanced ) {
+		VBO_t* instance_vbo = (VBO_t*)vk.cmd->instance_buffer;
+
+		shade_bufs[10] = shade_bufs[11] = shade_bufs[12] = shade_bufs[13] = instance_vbo->buffer;
+		shade_bufs[14] = shade_bufs[15] = shade_bufs[16] = instance_vbo->buffer;
+		vk.cmd->vbo_offset[10] = 0;
+		vk.cmd->vbo_offset[11] = 16;
+		vk.cmd->vbo_offset[12] = 32;
+		vk.cmd->vbo_offset[13] = 48;
+		vk.cmd->vbo_offset[14] = 64;
+	} else {
+		shade_bufs[10] = shade_bufs[11] = shade_bufs[12] = shade_bufs[13] = vbo->buffer;
+		vk.cmd->vbo_offset[10] = 0;
+		vk.cmd->vbo_offset[11] = 0;
+		vk.cmd->vbo_offset[12] = 0;
+		vk.cmd->vbo_offset[13] = 0;
+		vk.cmd->vbo_offset[14] = 0;
+	}
+
+	bind_count = 15;
+
 	qvkCmdBindVertexBuffers(vk.cmd->command_buffer, bind_base, bind_count, shade_bufs, vk.cmd->vbo_offset + bind_base);
 
 }
 #endif
 
 #ifdef USE_VBO_GHOUL2
-static void vk_vbo_bind_geometry_ghoul2( uint32_t flags )
+static void vk_vbo_bind_geometry_ghoul2( uint32_t flags, qboolean instanced = qfalse )
 {
 	VBO_t *vbo = tess.vbo_model;
 
@@ -262,11 +281,33 @@ static void vk_vbo_bind_geometry_ghoul2( uint32_t flags )
 	if (flags & TESS_ST2)
 		vk.cmd->vbo_offset[4] = vbo->offsets[2];
 
+
 	/*if (flags & TESS_QTANGENT)
 		vk.cmd->vbo_offset[8] = vbo->offsets[8];*/
 
 	bind_base = 0;
 	bind_count = 10;
+
+	if ( instanced ) {
+		VBO_t* instance_vbo = (VBO_t*)vk.cmd->instance_buffer;
+
+		shade_bufs[10] = shade_bufs[11] = shade_bufs[12] = shade_bufs[13] = instance_vbo->buffer;
+		shade_bufs[14] = shade_bufs[15] = shade_bufs[16] = instance_vbo->buffer;
+		vk.cmd->vbo_offset[10] = 0;
+		vk.cmd->vbo_offset[11] = 16;
+		vk.cmd->vbo_offset[12] = 32;
+		vk.cmd->vbo_offset[13] = 48;
+		vk.cmd->vbo_offset[14] = 64;
+	} else {
+		shade_bufs[10] = shade_bufs[11] = shade_bufs[12] = shade_bufs[13] = vbo->buffer;
+		vk.cmd->vbo_offset[10] = 0;
+		vk.cmd->vbo_offset[11] = 0;
+		vk.cmd->vbo_offset[12] = 0;
+		vk.cmd->vbo_offset[13] = 0;
+		vk.cmd->vbo_offset[14] = 0;
+	}
+
+	bind_count = 15;
 
 	qvkCmdBindVertexBuffers(vk.cmd->command_buffer, bind_base, bind_count, shade_bufs, vk.cmd->vbo_offset + bind_base);
 }
@@ -295,8 +336,11 @@ static void vk_vbo_bind_geometry_surface_sprites ( uint32_t flags )
 }
 #endif
 
+
+
 void vk_bind_geometry( uint32_t flags )
 {
+
 	bind_base = -1;
 	bind_count = 0;
 
@@ -307,9 +351,14 @@ void vk_bind_geometry( uint32_t flags )
 	if ( tess.vbo_model ) {
 		Com_Memset( vk.cmd->vbo_offset, 0, sizeof(vk.cmd->vbo_offset) );
 
-		switch (tess.surfType) {
+		switch ( tess.surfType ) {
+#ifdef G2_INSTANCED
+			case SF_MDX:		return (void)0;
+			case SF_VBO_MDVMESH:return (void)0;
+#else
 			case SF_MDX:		return vk_vbo_bind_geometry_ghoul2( flags );
 			case SF_VBO_MDVMESH:return vk_vbo_bind_geometry_mdv( flags );
+#endif
 			case SF_SPRITES:	return vk_vbo_bind_geometry_surface_sprites( flags );
 		}
 	}
@@ -909,9 +958,11 @@ void vk_draw_geometry( Vk_Depth_Range depth_range, qboolean indexed )
 				indirectCmd.firstInstance = 0;
 
 				offset = vk_push_indirect( 1, &indirectCmd );
+				offset = 0;
 
 				if ( j  == 0 )
 					firstOffset = offset;
+
 			}
 
 			qvkCmdDrawIndexedIndirect( 
@@ -1277,7 +1328,7 @@ uint32_t vk_push_indirect( int count, const void *data )
 RB_CalcFogProgramParms
 ========================
 */
-const fogProgramParms_t *RB_CalcFogProgramParms( void )
+const fogProgramParms_t *RB_CalcFogProgramParms( int fogNum )
 {
 	static fogProgramParms_t parm;
 	const fog_t* fog;
@@ -1285,7 +1336,7 @@ const fogProgramParms_t *RB_CalcFogProgramParms( void )
 
 	Com_Memset(parm.fogDepthVector, 0, sizeof(parm.fogDepthVector));
 
-	fog = tr.world->fogs + tess.fogNum;
+	fog = tr.world->fogs + fogNum;
 
 	// all fogging distance is based on world Z units
 	VectorSubtract(backEnd.ori.origin, backEnd.viewParms.ori.origin, local);
@@ -1359,13 +1410,13 @@ static void vk_set_light_params( vkUniform_t *uniform, const dlight_t *dl ) {
 }
 #endif
 
-static void vk_set_fog_params( vkUniform_t *uniform, int *fogStage )
+static void vk_set_fog_params( vkUniform_t *uniform, int *fogStage, const int fogNum, const fogPass_t fogPass )
 {
-	if (tess.fogNum && tess.shader->fogPass) {
+	if ( fogNum && fogPass ) {
 		if ( vk.hw_fog ) {
 			// re-use these bits
 			uniform->fog.fogDistanceVector[0] = tr.world ? (tr.world->globalFog - 1) : -1;
-			uniform->fog.fogDistanceVector[1] = tess.fogNum ? (tess.fogNum - 1) : -1;
+			uniform->fog.fogDistanceVector[1] = fogNum ? (fogNum - 1) : -1;
 			uniform->fog.fogDistanceVector[2] = backEnd.isGlowPass ? 0.0f : 1.0f;
 			uniform->fog.fogDistanceVector[3] = 0; // is_entity (for non vbo models mode)
 			//Com_Memcpy( uniform->fog.fogEyeT, backEnd.refdef.vieworg, sizeof( vec3_t) );
@@ -1373,7 +1424,7 @@ static void vk_set_fog_params( vkUniform_t *uniform, int *fogStage )
 			return;
 		}
 		
-		const fogProgramParms_t *fp = RB_CalcFogProgramParms();
+		const fogProgramParms_t *fp = RB_CalcFogProgramParms( fogNum );
 		// vertex data
 		VectorCopy4(fp->fogDistanceVector, uniform->fog.fogDistanceVector);
 		VectorCopy4(fp->fogDepthVector, uniform->fog.fogDepthVector);
@@ -1419,7 +1470,7 @@ static void RB_FogPass( void ) {
 	int fog_stage;
 	
 	vk_bind_pipeline( pipeline );
-	vk_set_fog_params( &uniform, &fog_stage );
+	vk_set_fog_params( &uniform, &fog_stage, tess.fogNum, tess.shader->fogPass );
 
 	// when model vbos are disabled, but the shader still requires
 	// the modelmatrix (fog or refraction) to get world space positions.
@@ -1653,7 +1704,7 @@ void ComputeTexCoords( const int b, const textureBundle_t *bundle ) {
 	tess.svars.texcoordPtr[b] = src;
 }
 
-static void vk_compute_tex_mods( const textureBundle_t *bundle, float *outMatrix, float *outOffTurb ) {
+static void vk_compute_tex_mods( const trRefEntity_t* ent, const textureBundle_t *bundle, float *outMatrix, float *outOffTurb ) {
 	int tm;
 	float matrix[6], currentmatrix[6];
 
@@ -1681,7 +1732,7 @@ static void vk_compute_tex_mods( const textureBundle_t *bundle, float *outMatrix
 			break;
 
 		case TMOD_ENTITY_TRANSLATE:
-			RB_CalcScrollTexMatrix( backEnd.currentEntity->e.shaderTexCoord, matrix );
+			RB_CalcScrollTexMatrix( ent->e.shaderTexCoord, matrix );
 			break;
 
 		case TMOD_SCROLL:
@@ -1765,8 +1816,8 @@ static void vk_set_attr_color( color4ub_t *dest, const qboolean skip ){
 }
 #endif
 
-static void vk_compute_tex_coords( const textureBundle_t *bundle, vktcMod_t *tcMod, vktcGen_t *tcGen ) {
-	vk_compute_tex_mods( bundle, tcMod->matrix, tcMod->offTurb ); 
+static void vk_compute_tex_coords( const trRefEntity_t* ent, const textureBundle_t *bundle, vktcMod_t *tcMod, vktcGen_t *tcGen ) {
+	vk_compute_tex_mods( ent, bundle, tcMod->matrix, tcMod->offTurb ); 
 
 	tcGen->type = bundle->tcGen;
 	
@@ -1777,8 +1828,8 @@ static void vk_compute_tex_coords( const textureBundle_t *bundle, vktcMod_t *tcM
 	}
 }
 
-static void vk_compute_colors( const int b, const shaderStage_t *pStage, int forceRGBGen ){	
-	if ( backEnd.currentEntity->e.renderfx & RF_VOLUMETRIC ) 
+static void vk_compute_colors( const trRefEntity_t* ent, const int b, const shaderStage_t *pStage, int forceRGBGen ){
+	if (ent->e.renderfx & RF_VOLUMETRIC )
 		return;
 
 	float *baseColor, *vertColor;
@@ -1786,8 +1837,13 @@ static void vk_compute_colors( const int b, const shaderStage_t *pStage, int for
 	int rgbGen = forceRGBGen;
 	int alphaGen = pStage->bundle[b].alphaGen;
 
+#ifdef G2_INSTANCED
+	baseColor = (float*)vk.cmd->uniform_global.bundle[b].baseColor;
+	vertColor = (float*)vk.cmd->uniform_global.bundle[b].vertColor;
+#else
 	baseColor = (float*)uniform_global.bundle[b].baseColor;
 	vertColor = (float*)uniform_global.bundle[b].vertColor;
+#endif
 
 	baseColor[0] = baseColor[1] = baseColor[2] = baseColor[3] = 1.0f;  	
    	vertColor[0] = vertColor[1] = vertColor[2] = vertColor[3] = 0.0f;
@@ -1829,27 +1885,27 @@ static void vk_compute_colors( const int b, const shaderStage_t *pStage, int for
 			break;
 		case CGEN_ENTITY:
 		case CGEN_LIGHTING_DIFFUSE_ENTITY:
-			if ( backEnd.currentEntity )
+			if ( ent )
 			{
-				baseColor[0] = ((unsigned char *)backEnd.currentEntity->e.shaderRGBA)[0] / 255.0f;
-				baseColor[1] = ((unsigned char *)backEnd.currentEntity->e.shaderRGBA)[1] / 255.0f;
-				baseColor[2] = ((unsigned char *)backEnd.currentEntity->e.shaderRGBA)[2] / 255.0f;
-				baseColor[3] = ((unsigned char *)backEnd.currentEntity->e.shaderRGBA)[3] / 255.0f;
+				baseColor[0] = ((unsigned char *)ent->e.shaderRGBA)[0] / 255.0f;
+				baseColor[1] = ((unsigned char *)ent->e.shaderRGBA)[1] / 255.0f;
+				baseColor[2] = ((unsigned char *)ent->e.shaderRGBA)[2] / 255.0f;
+				baseColor[3] = ((unsigned char *)ent->e.shaderRGBA)[3] / 255.0f;
 
 				vertColor[0] = vertColor[1] = vertColor[2] = tr.identityLight;
 				vertColor[3] = 1.0f;
 
-				if ( alphaGen == AGEN_IDENTITY && backEnd.currentEntity->e.shaderRGBA[3] == 255 )
+				if ( alphaGen == AGEN_IDENTITY && ent->e.shaderRGBA[3] == 255 )
 					alphaGen = AGEN_SKIP;
 			}
 			break;
 		case CGEN_ONE_MINUS_ENTITY:
-			if ( backEnd.currentEntity )
+			if ( ent )
 			{
-				baseColor[0] = 1.0f - ((unsigned char *)backEnd.currentEntity->e.shaderRGBA)[0] / 255.0f;
-				baseColor[1] = 1.0f - ((unsigned char *)backEnd.currentEntity->e.shaderRGBA)[1] / 255.0f;
-				baseColor[2] = 1.0f - ((unsigned char *)backEnd.currentEntity->e.shaderRGBA)[2] / 255.0f;
-				baseColor[3] = 1.0f - ((unsigned char *)backEnd.currentEntity->e.shaderRGBA)[3] / 255.0f;
+				baseColor[0] = 1.0f - ((unsigned char *)ent->e.shaderRGBA)[0] / 255.0f;
+				baseColor[1] = 1.0f - ((unsigned char *)ent->e.shaderRGBA)[1] / 255.0f;
+				baseColor[2] = 1.0f - ((unsigned char *)ent->e.shaderRGBA)[2] / 255.0f;
+				baseColor[3] = 1.0f - ((unsigned char *)ent->e.shaderRGBA)[3] / 255.0f;
 			}
 			break;
 		case CGEN_LIGHTMAPSTYLE:
@@ -1877,14 +1933,14 @@ static void vk_compute_colors( const int b, const shaderStage_t *pStage, int for
 			vertColor[3] = 0.0f;
 			break;
 		case AGEN_ENTITY:
-			if ( backEnd.currentEntity )
-				baseColor[3] = ((unsigned char *)backEnd.currentEntity->e.shaderRGBA)[3] / 255.0f;
+			if ( ent )
+				baseColor[3] = ((unsigned char *)ent->e.shaderRGBA)[3] / 255.0f;
 
 			vertColor[3] = 0.0f;
 			break;
 		case AGEN_ONE_MINUS_ENTITY:
-			if ( backEnd.currentEntity )
-				baseColor[3] = 1.0f - ((unsigned char *)backEnd.currentEntity->e.shaderRGBA)[3] / 255.0f;
+			if ( ent )
+				baseColor[3] = 1.0f - ((unsigned char *)ent->e.shaderRGBA)[3] / 255.0f;
 
 			vertColor[3] = 0.0f;
 			break;
@@ -1909,8 +1965,8 @@ static void vk_compute_colors( const int b, const shaderStage_t *pStage, int for
 			break;
 	}
 
-	if ( backEnd.currentEntity && backEnd.currentEntity->e.renderfx & RF_FORCE_ENT_ALPHA ) {
-		baseColor[3] = backEnd.currentEntity->e.shaderRGBA[3] / 255.0f; 
+	if ( ent && ent->e.renderfx & RF_FORCE_ENT_ALPHA ) {
+		baseColor[3] = ent->e.shaderRGBA[3] / 255.0f; 
 		vertColor[3] = 0.0f;
 	}
 
@@ -1931,11 +1987,19 @@ static void vk_compute_colors( const int b, const shaderStage_t *pStage, int for
 		vertColor[2] *= scale;
 	}
 
+#ifdef G2_INSTANCED
+	vk.cmd->uniform_global.bundle[b].rgbGen = (uint32_t)rgbGen;
+	vk.cmd->uniform_global.bundle[b].alphaGen = (uint32_t)alphaGen;
+
+	if ( alphaGen == AGEN_PORTAL )
+		vk.cmd->uniform_global.portalRange = tess.shader->portalRange;
+#else
 	uniform_global.bundle[b].rgbGen = (uint32_t)rgbGen;
 	uniform_global.bundle[b].alphaGen = (uint32_t)alphaGen;
 
 	if ( alphaGen == AGEN_PORTAL )
 		uniform_global.portalRange = tess.shader->portalRange;
+#endif
 }
 
 static void vk_compute_deform( void ) {
@@ -1943,7 +2007,11 @@ static void vk_compute_deform( void ) {
 	int		waveFunc = GF_NONE;
 	vkDeform_t	*info;
 
+#ifdef G2_INSTANCED
+	info = &vk.cmd->uniform_global.deform;
+#else
 	info = &uniform_global.deform;
+#endif
 
 	Com_Memset( info + 0, 0, sizeof(float) * 12 );
 
@@ -2037,21 +2105,27 @@ static void vk_compute_deform( void ) {
 	}
 }
 
-static void vk_compute_disintegration( int *forceRGBGen )
+static void vk_compute_disintegration( const trRefEntity_t* ent, int *forceRGBGen )
 {
 	vkDisintegration_t	*info;
 
-	if ( backEnd.currentEntity->e.renderfx & RF_DISINTEGRATE1 )
+#ifndef G2_INSTANCED
+	if ( ent->e.renderfx & RF_DISINTEGRATE1 )
 		*forceRGBGen = (int)CGEN_DISINTEGRATION_1;
 	else
 		*forceRGBGen = (int)CGEN_DISINTEGRATION_2;
+#endif
 
+#ifdef G2_INSTANCED
+	info = &vk.cmd->uniform_global.disintegration;
+#else
 	info = &uniform_global.disintegration;
+#endif
 
-	info->origin[0] = backEnd.currentEntity->e.oldorigin[0];
-	info->origin[1] = backEnd.currentEntity->e.oldorigin[1];
-	info->origin[2] = backEnd.currentEntity->e.oldorigin[2];
-	info->threshold = ( backEnd.refdef.time - backEnd.currentEntity->e.endTime ) * 0.045f;
+	info->origin[0] = ent->e.oldorigin[0];
+	info->origin[1] = ent->e.oldorigin[1];
+	info->origin[2] = ent->e.oldorigin[2];
+	info->threshold = ( backEnd.refdef.time - ent->e.endTime ) * 0.045f;
 	info->threshold *= info->threshold;
 }
 #endif
@@ -2073,8 +2147,8 @@ void vk_lighting_pass( void )
 
 	// we may need to update programs for fog transitions
 	if (tess.dlightUpdateParams) {
-		vk_set_fog_params(&uniform, &fog_stage);
-		vk_set_light_params(&uniform, tess.light);
+		vk_set_fog_params( &uniform, &fog_stage, tess.fogNum, tess.shader->fogPass );
+		vk_set_light_params( &uniform, tess.light );
 
 		uniform_offset = vk_push_uniform(&uniform);
 
@@ -2204,7 +2278,7 @@ void RB_SurfaceSpritesVBO( srfSprites_t *surf )
 		tess.vbo_model = tr.vbos[SS_UNPACK_VBO(group->def.surf_bits)];
 		tess.fogNum = SS_UNPACK_FOG(group->def.surf_bits);
 
-		vk_set_fog_params( &uniform, &fog_stage );
+		vk_set_fog_params( &uniform, &fog_stage, tess.fogNum, tess.shader->fogPass );
 
 		if ( backEnd.viewParms.portalView == PV_MIRROR ) {
 			pipeline = firstStage->vk_mirror_pipeline[fog_stage];
@@ -2323,6 +2397,437 @@ void RB_SurfaceSpritesVBO( srfSprites_t *surf )
 }
 #endif
 
+void vk_upload_model_instances( void )
+{
+
+	uint32_t i, j, k, l;
+
+	int stage, tess_flags;
+	shaderStage_t* pStage;
+
+	qboolean push_uniform = qfalse;
+	qboolean is_ghoul2_vbo = qfalse;
+	qboolean is_mdv_vbo = qfalse;
+
+	Vk_Pipeline_Def			def;
+
+	surfaceType_t	surfType		= SF_BAD;
+	int				fogIndex		= 0;
+	int				forceRGBGen		= 0;
+	Vk_Depth_Range	depthRange		= DEPTH_RANGE_NORMAL;
+	bool			forceEntAlpha	= false;
+	bool			alphaDepth		= false;
+	bool			distortion		= false;
+	int				fog_stage		= 0;
+
+	for ( i = 0; i < tr.indirect_groups_count; i++ )
+	{
+		qboolean is_refraction = qfalse;
+		qboolean fogCollapse = qfalse;
+
+		Vk_IN_Group *group = &tr.indirect_groups[i];
+		
+		unpack_vk_in_group_flags( group->def.group_bits, &surfType, &forceRGBGen, 
+			&fogIndex, &depthRange, &stage, &forceEntAlpha, &alphaDepth, &distortion );
+
+		pStage = group->def.shader->stages[stage];
+
+		is_ghoul2_vbo = (qboolean)( surfType == SF_MDX );
+		is_mdv_vbo = (qboolean)( surfType == SF_VBO_MDVMESH );
+
+		tess_flags = stage > 0 ? group->def.shader->tessFlags : 0;
+		tess_flags |= pStage->tessFlags;
+
+		if ( group->def.shader->useDistortion == qtrue || distortion )
+			is_refraction = qtrue;
+
+#ifdef USE_FOG_COLLAPSE
+		if ( fogIndex && group->def.shader->fogPass && group->def.shader->fogCollapse && r_drawfog->value >= 2 )
+			fogCollapse = qtrue;
+#endif
+
+		group->uniform_offset	= 0;
+		group->desc_count = 0;
+		group->desc_current[0] = vk.ssboDescriptor[vk.cmd_index].set; // SSBO
+
+		for (k = 0; k < pStage->numTexBundles; k++) {
+			if (pStage->bundle[k].image[0] != NULL)
+			{
+				const textureBundle_t* bundle = &pStage->bundle[k];
+
+				if (bundle->isVideoMap || bundle->isScreenMap)
+					continue;
+
+				if (bundle->numImageAnimations <= 1) {
+					group->desc_current[k + VK_DESC_TEXTURE_BASE] = bundle->image[0]->descriptor_set;
+					group->desc_end = k + VK_DESC_TEXTURE_BASE;
+					continue;
+				}
+
+				int64_t index;
+#ifdef RF_SETANIMINDEX
+				if (backEnd.currentEntity->e.renderfx & RF_SETANIMINDEX)
+					index = backEnd.currentEntity->e.skinNum;
+				else
+#endif
+				{
+					index = Q_ftol(tess.shaderTime * bundle->imageAnimationSpeed * FUNCTABLE_SIZE);
+					index >>= FUNCTABLE_SIZE2;
+
+					if (index < 0) index = 0;	// may happen with shader time offsets
+				}
+
+				if (bundle->oneShotAnimMap)
+				{
+					if (index >= bundle->numImageAnimations)	// stick on last frame
+						index = bundle->numImageAnimations - 1;
+				}
+				else
+					index %= bundle->numImageAnimations;	// loop
+
+				group->desc_current[k + VK_DESC_TEXTURE_BASE] = bundle->image[index]->descriptor_set;
+				group->desc_end = k + VK_DESC_TEXTURE_BASE;
+			}
+		}
+
+		if ( fogCollapse ) {
+			vk_set_fog_params( &uniform, &fog_stage, fogIndex, group->def.shader->fogPass );
+			//VectorCopy( backEnd.ori.viewOrigin, uniform.eyePos );
+			group->desc_current[VK_DESC_FOG_COLLAPSE] = tr.fogImage->descriptor_set;
+			group->desc_end = VK_DESC_FOG_COLLAPSE;
+			push_uniform = qtrue;
+		}
+		else {
+			fog_stage = 0;
+			if ( tess_flags & TESS_VPOS ) {
+				VectorCopy( backEnd.ori.viewOrigin, uniform.eyePos );
+				tess_flags &= ~TESS_VPOS;
+				push_uniform = qtrue;
+			}
+		}
+
+		for ( k = group->desc_start + 1; k < group->desc_end; k++ ) {
+			if ( group->desc_current[k] == VK_NULL_HANDLE ) {
+				group->desc_current[k] = tr.whiteImage->descriptor_set;
+			}
+		}
+		group->desc_count = group->desc_end - group->desc_start + 1;
+
+		if ( backEnd.viewParms.portalView == PV_MIRROR )
+			vk_get_pipeline_def( pStage->vk_mirror_pipeline[fog_stage], &def );
+
+		else
+			vk_get_pipeline_def( pStage->vk_pipeline[fog_stage], &def );
+
+		// we want to be able to rip a hole in the thing being disintegrated,
+		// and by doing the depth-testing it avoids some kinds of artefacts, but will probably introduce others?
+		if ( forceRGBGen == CGEN_DISINTEGRATION_1 )	// use forcergbGEn bits
+			def.state_bits = GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA | GLS_DEPTHMASK_TRUE | GLS_ATEST_GE_C0;
+
+		// only force blend on the internal distortion shader
+		if ( group->def.shader == tr.distortionShader )
+			def.state_bits = GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA | GLS_DEPTHMASK_TRUE;
+			
+		if ( forceEntAlpha ) {
+			// doesnt work with vbo yet ..
+			//ForceAlpha((unsigned char*)tess.svars.colors, ent->e.shaderRGBA[3]);
+
+			def.state_bits = GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA;
+
+			// depth write, so faces through the model will be stomped over by nearer ones. this works because
+			// we draw RF_FORCE_ENT_ALPHA stuff after everything else, including standard alpha surfs.
+#ifdef RF_ALPHA_DEPTH
+			if ( alphaDepth )
+				def.state_bits |= GLS_DEPTHMASK_TRUE;
+#endif
+		}
+
+		//want to use RGBGen from ent
+		// "forceRGBGen override" requires +cl glsl shader, substitute if identity shader is set.
+		if ( forceRGBGen && !(tess_flags & TESS_RGBA0) )
+		{
+			tess_flags |= TESS_RGBA0;
+			def.shader_type = !pStage->mtEnv ? TYPE_SINGLE_TEXTURE :
+				((def.shader_type >= TYPE_MULTI_TEXTURE_MUL2_IDENTITY) ? TYPE_MULTI_TEXTURE_MUL2 : TYPE_MULTI_TEXTURE_ADD2);
+		}
+
+		if ( is_refraction )
+		{
+			def.shader_type = TYPE_REFRACTION;
+			def.face_culling = CT_TWO_SIDED;
+
+			tess_flags |= TESS_NNN;
+
+			group->desc_current[VK_DESC_TEXTURE0] = vk.refraction_extract_descriptor;
+		}
+
+		def.vbo_ghoul2	= is_ghoul2_vbo;
+		def.vbo_mdv		= is_mdv_vbo;
+		def.instanced	= qtrue;
+		group->pipeline	= vk_find_pipeline_ext(0, &def, qfalse);
+
+		group->tess_flags		= tess_flags;
+
+		if ( push_uniform ) 
+		{
+			push_uniform = qfalse;
+			group->uniform_offset = vk_append_uniform( &uniform, sizeof(uniform), vk.uniform_item_size );
+		}
+
+		// per-entitiy
+		for ( l = 0; l < group->num_indirect; l++ ) 
+		{
+			Vk_IN_Group_Indirect *ind = &group->indirect[l];
+
+			if ( ind->instances == NULL ) 
+				continue;
+
+			for ( j = 0; j < ind->num_instances; j++ )
+			{
+				Vk_Model_Instance* instance = &ind->instances[j];
+
+				trRefEntity_t* ent = &backEnd.refdef.entities[instance->entity_index];
+
+				if (is_ghoul2_vbo && ent->e.renderfx & (RF_DISINTEGRATE1 | RF_DISINTEGRATE2))
+					vk_compute_disintegration( ent, NULL );
+
+				vk_compute_deform(); // ~sunny, still used currentEntity..
+
+				for ( k = 0; k < pStage->numTexBundles; k++ ) 
+				{
+					if ( pStage->bundle[k].image[0] != NULL )
+					{
+						vk_compute_colors( ent, k, pStage, forceRGBGen );
+
+						if ( is_refraction && i >= 1 )
+							continue;
+
+						vk_compute_tex_coords( ent, &pStage->bundle[k], &vk.cmd->uniform_global.bundle[k].tcMod, &vk.cmd->uniform_global.bundle[k].tcGen );
+						vk.cmd->uniform_global.bundle[k].numTexMods = pStage->bundle[k].numTexMods;
+					}
+				}
+
+				uint32_t offset = vk.cmd->global_ssbo_count * vk.storage_global_item_size;
+				memcpy((uint8_t*)vk.cmd->global.p + offset, &vk.cmd->uniform_global, sizeof(vkUniformGlobal_t));
+				instance->global_index = vk.cmd->global_ssbo_count++;
+			}
+		}
+	}
+
+	// batched upload, (per view)
+	size_t		size = 0;
+	VBO_t		*vbo = (VBO_t*)vk.cmd->instance_buffer;
+	uint32_t	instances_count = 0;
+	size_t		instances_offset = vk.cmd->instance_count;
+
+	// upload to staging buffer
+	for ( i = 0; i < tr.indirect_groups_count; i++ )
+	{
+		Vk_IN_Group *group = &tr.indirect_groups[i];
+
+		for ( k = 0; k < group->num_indirect; k++ ) 
+		{
+			Vk_IN_Group_Indirect *ind = &group->indirect[k];
+
+			if ( ind->instances == NULL ) 
+				continue;
+
+			ind->firstInstance = vk.cmd->instance_count;
+
+			uint32_t size =  ind->num_instances * sizeof(Vk_Model_Instance);
+			uint32_t offset =  vk.cmd->instance_count * sizeof(Vk_Model_Instance);
+
+			Com_Memcpy( (uint8_t*)vbo->mapped + offset, ind->instances, size );
+
+			instances_count += ind->num_instances;
+			vk.cmd->instance_count += ind->num_instances;
+		}
+	}
+
+	/*Com_Printf("groups %d - instances_count b/a %d/%d - instances this view %d - entities %d\n", 
+		tr.indirect_groups_count, 
+		instances_offset, 
+		vk.cmd->instance_count, 
+		instances_count,
+		backEnd.refdef.num_entities );*/
+
+	if ( !instances_count )
+		return;
+
+	VkCommandBuffer cmd = vk_begin_command_buffer();
+	
+	VkBufferCopy region;
+	uint32_t offset =  instances_offset * sizeof(Vk_Model_Instance);
+	region.srcOffset = offset;
+	region.dstOffset = offset;
+	region.size = instances_count * sizeof(Vk_Model_Instance);
+
+	qvkCmdCopyBuffer( cmd, vbo->staging.buffer, vbo->buffer, 1, &region );
+
+	vk_end_command_buffer( cmd, __func__ ); 
+}
+
+static Vk_IN_Group *sorted_groups[1024];
+
+int compare_groups( const void *a, const void *b ) 
+{
+    Vk_IN_Group *ga = *(Vk_IN_Group **)a;
+    Vk_IN_Group *gb = *(Vk_IN_Group **)b;
+    return (int)ga->def.shader->sort - (int)gb->def.shader->sort; // ~sunny, what about polygonOffset?
+}
+
+void RB_InstancedModels( srfInstancedModels_t *surf )
+{
+
+	uint32_t i, k, offsets[3], offset_count;
+	uint32_t firstOffset, drawCount;
+	RB_EndSurface();
+
+	VkDescriptorSet	desc_current[VK_DESC_COUNT];
+	Com_Memset( &desc_current, 0, sizeof(desc_current) );
+
+	// ~sunny, maybe sort when adding instances by increasing tr.indirect_groups size * (SS_NEAREST + 1),
+	// then offset per SS_ enum index, basicly have a list per sort key?
+	// this array of ptrs is fine for now.
+	for (uint32_t i = 0; i < tr.indirect_groups_count; i++) {
+		sorted_groups[i] = &tr.indirect_groups[i];
+	}
+	qsort( sorted_groups, tr.indirect_groups_count, sizeof(Vk_IN_Group *), compare_groups );
+
+	for ( i = 0; i < tr.indirect_groups_count; i++ )
+	{
+		Vk_IN_Group *group = sorted_groups[i];
+
+		offset_count = 0;
+
+		if ( group->desc_start == VK_DESC_UNIFORM ) 
+		{
+			offsets[offset_count++] = group->uniform_offset;
+			offsets[offset_count++] = vk.cmd->camera_ubo_offset;
+			offsets[offset_count++] = vk.cmd->fogs_ubo_offset;
+		}
+
+		VkPipeline vkpipe = vk_gen_pipeline( group->pipeline);
+		qvkCmdBindPipeline(vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vkpipe);
+
+		qvkCmdBindDescriptorSets(vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+		vk.pipeline_layout_model, group->desc_start, group->desc_count, group->desc_current + group->desc_start, offset_count, offsets);
+
+		set_group_vbo_ibo( group->def.vbo_ibo_idx, &tess.vbo_model, &tess.ibo_model );
+		vk_bind_index_buffer( tess.ibo_model->buffer, 0 );
+
+		surfaceType_t surfType	= unpack_surfType_from_group_bits( group->def.group_bits );
+		Com_Memset( vk.cmd->vbo_offset, 0, sizeof(vk.cmd->vbo_offset) );
+		switch ( surfType ) {
+			case SF_MDX:		 vk_vbo_bind_geometry_ghoul2( group->tess_flags, qtrue ); break;
+			case SF_VBO_MDVMESH: vk_vbo_bind_geometry_mdv( group->tess_flags, qtrue ); break;
+		}
+
+		Vk_Depth_Range depth_range = unpack_depthRange_from_group_bits( group->def.group_bits );
+		vk_update_depth_range( depth_range );
+
+		if ( group->num_indirect == 1 ) 
+		{
+			Vk_IN_Group_Indirect *ind = &group->indirect[0];
+
+			qvkCmdDrawIndexed( 
+				vk.cmd->command_buffer, 
+				ind->indexCount, 
+				ind->num_instances, 
+				ind->firstIndex, 
+				0, 
+				ind->firstInstance
+			);
+
+			ind->num_instances = 0; // reset
+		}
+
+		// indirect
+		else
+		{
+			drawCount = 0;
+			firstOffset = 0;
+
+			for ( k = 0; k < group->num_indirect; k++ ) 
+			{
+				Vk_IN_Group_Indirect *ind = &group->indirect[k];
+
+				if (ind->num_instances == 0)
+					continue;
+
+				VkDrawIndexedIndirectCommand cmd = {};
+				cmd.indexCount = ind->indexCount;
+				cmd.instanceCount = ind->num_instances;
+				cmd.firstIndex = ind->firstIndex;
+				cmd.vertexOffset = 0;
+				cmd.firstInstance = ind->firstInstance;
+
+				uint32_t offset = vk_push_indirect(1, &cmd);
+				if (drawCount == 0)
+					firstOffset = offset;
+
+				drawCount++;
+
+				ind->num_instances = 0; // reset
+			}
+
+			if (drawCount > 0) {
+				qvkCmdDrawIndexedIndirect(
+					vk.cmd->command_buffer,
+					vk.cmd->indirect_buffer,
+					firstOffset,
+					drawCount,
+					sizeof(VkDrawIndexedIndirectCommand)
+				);
+			}
+		}
+
+		group->num_indirect = 0; // reset
+	}
+
+	tr.indirect_groups_count = 0;
+	reset_in_group_count();
+
+	tess.vbo_world_index = 0;
+	tess.vbo_model = nullptr;
+	tess.ibo_model = nullptr;
+
+	if ( vk.cmd->last_pipeline != VK_NULL_HANDLE )
+	{
+		// restore last pipeline
+		qvkCmdBindPipeline( vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.cmd->last_pipeline );
+
+		vk_update_mvp( NULL );
+
+		// force depth range and viewport/scissor updates
+		vk.cmd->depth_range = DEPTH_RANGE_COUNT;
+
+		uint32_t offsets[VK_DESC_UNIFORM_COUNT], offset_count;
+
+		// restore clobbered descriptor sets
+		for ( i = 0; i < VK_DESC_COUNT; i++ ) {
+			if ( vk.cmd->descriptor_set.current[i] != VK_NULL_HANDLE ) {
+				if ( /*i == VK_DESC_STORAGE ||*/ i == VK_DESC_UNIFORM ) {
+					offset_count = 0;
+
+					offsets[offset_count++] = vk.cmd->descriptor_set.offset[i];
+
+					// not required for dot storage flare test, chances are slim thats the previous pipeline.
+					offsets[offset_count++] = vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_CAMERA_BINDING];
+					offsets[offset_count++] = vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_ENTITY_BINDING];
+					offsets[offset_count++] = vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_BONES_BINDING];
+					offsets[offset_count++] = vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_FOGS_BINDING];
+					offsets[offset_count++] = vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_GLOBAL_BINDING];
+					
+					qvkCmdBindDescriptorSets( vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, i, 1, &vk.cmd->descriptor_set.current[i], offset_count, offsets );
+				}
+				else
+					qvkCmdBindDescriptorSets( vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, i, 1, &vk.cmd->descriptor_set.current[i], 0, NULL );
+			}
+		}
+	}
+}
+
 static ss_input ssInput;
 void RB_StageIteratorGeneric( void )
 {
@@ -2381,7 +2886,7 @@ void RB_StageIteratorGeneric( void )
 #endif
 
 	if ( fogCollapse ) {
-		vk_set_fog_params( &uniform, &fog_stage );
+		vk_set_fog_params( &uniform, &fog_stage, tess.fogNum, tess.shader->fogPass );
 		VectorCopy( backEnd.ori.viewOrigin, uniform.eyePos );
 		vk_update_descriptor( VK_DESC_FOG_COLLAPSE, tr.fogImage->descriptor_set );
 		push_uniform = qtrue;
@@ -2421,7 +2926,7 @@ void RB_StageIteratorGeneric( void )
 			assert( backEnd.currentEntity->e.renderfx >= 0 );
 #if defined(USE_VBO_GHOUL2)
 			if ( is_ghoul2_vbo && backEnd.currentEntity->e.renderfx & ( RF_DISINTEGRATE1 | RF_DISINTEGRATE2 ) )
-				vk_compute_disintegration( &forceRGBGen );
+				vk_compute_disintegration( backEnd.currentEntity, &forceRGBGen );
 
 			//want to use RGBGen from ent
 			else if ( backEnd.currentEntity->e.renderfx & RF_RGB_TINT )
@@ -2469,14 +2974,18 @@ void RB_StageIteratorGeneric( void )
 
 #if defined(USE_VBO_GHOUL2)
 				if ( tess.vbo_model ) {
-					vk_compute_colors( i, pStage, forceRGBGen );
+					vk_compute_colors( backEnd.currentEntity, i, pStage, forceRGBGen );
 
 					if ( is_refraction && i >= 1 )
 						continue;
 
-					vk_compute_tex_coords( &pStage->bundle[i], &uniform_global.bundle[i].tcMod, &uniform_global.bundle[i].tcGen );
-					uniform_global.bundle[i].numTexMods = pStage->bundle[i].numTexMods;
-
+					#ifdef G2_INSTANCED
+						vk_compute_tex_coords(backEnd.currentEntity, &pStage->bundle[i], &vk.cmd->uniform_global.bundle[i].tcMod, &vk.cmd->uniform_global.bundle[i].tcGen );
+						vk.cmd->uniform_global.bundle[i].numTexMods = pStage->bundle[i].numTexMods;
+					#else
+						vk_compute_tex_coords( &pStage->bundle[i], &uniform_global.bundle[i].tcMod, &uniform_global.bundle[i].tcGen );
+						uniform_global.bundle[i].numTexMods = pStage->bundle[i].numTexMods;
+					#endif
 					continue;
 				}
 #endif
@@ -2565,6 +3074,11 @@ void RB_StageIteratorGeneric( void )
 			def.vbo_ghoul2 = is_ghoul2_vbo;
 			def.vbo_mdv = is_mdv_vbo;
 
+#ifdef G2_INSTANCED
+			if ( def.vbo_ghoul2 )
+				def.instanced = qtrue;
+#endif
+
 			pipeline = vk_find_pipeline_ext( 0, &def, qfalse );
 		}
 	
@@ -2581,7 +3095,7 @@ void RB_StageIteratorGeneric( void )
 			
 			if ( !tess.vbo_model ) // else is set earlier
 			{
-				vk_compute_tex_coords( &pStage->bundle[0], &uniform.refraction.tcMod, &uniform.refraction.tcGen );
+				vk_compute_tex_coords( backEnd.currentEntity, &pStage->bundle[0], &uniform.refraction.tcMod, &uniform.refraction.tcGen );
 				
 				set_model_matrix = qtrue;
 			}
@@ -2590,7 +3104,8 @@ void RB_StageIteratorGeneric( void )
 		}
 
 		if ( !tess.vbo_model && vk.hw_fog && fogCollapse 
-			&& backEnd.currentEntity && !( backEnd.currentEntity == &backEnd.entity2D || backEnd.currentEntity == &tr.worldEntity ) ) 
+			&& backEnd.currentEntity && !( backEnd.currentEntity == &backEnd.entity2D || backEnd.currentEntity 
+				) ) 
 		{
 			set_model_matrix = qtrue;
 			uniform.fog.fogDistanceVector[3] = 1;	// is_entity
@@ -2618,7 +3133,6 @@ void RB_StageIteratorGeneric( void )
 		if ( vk.hw_fog )
 			vk_update_descriptor_offset( VK_DESC_UNIFORM_FOGS_BINDING, vk.cmd->fogs_ubo_offset );
 
-#ifdef USE_VBO
 		if ( tess.vbo_model  ) {
 			vk_push_uniform_global( &uniform_global );
 		}
@@ -2643,7 +3157,6 @@ void RB_StageIteratorGeneric( void )
 				vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_BONES_BINDING] = vk.cmd->bones_ubo_offset;
 			}
 		}
-#endif
 
 		vk_bind_pipeline( pipeline );
 		vk_bind_geometry( tess_flags );

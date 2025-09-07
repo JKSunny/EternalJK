@@ -2351,6 +2351,9 @@ void (*rb_surfaceTable[SF_NUM_SURFACE_TYPES])( void *) = {
 	(void(*)(void*))RB_SurfaceVBOMDVMesh,	// SF_VBO_MDVMESH
 #endif
 #ifdef USE_VBO_SS
-	(void(*)(void*))RB_SurfaceSpritesVBO	// SF_SPRITES
+	(void(*)(void*))RB_SurfaceSpritesVBO,	// SF_SPRITES
+#endif
+#ifdef G2_INSTANCED
+	(void(*)(void*))RB_InstancedModels		// SF_SPRITES
 #endif
 };

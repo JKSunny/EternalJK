@@ -1107,6 +1107,10 @@ void R_Init( void ) {
 	R_Set2DRatio();
 	R_InitImages();	
 
+#ifdef G2_INSTANCED
+	vk_create_model_instance_buffer();
+#endif
+
 #ifdef _G2_GORE
 	R_CreateGoreVBO();
 #endif

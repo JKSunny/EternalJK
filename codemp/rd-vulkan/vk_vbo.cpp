@@ -624,7 +624,7 @@ IBO_t *R_CreateIBO( const char *name, const byte *vbo_data, int vbo_size )
 	VK_SET_OBJECT_NAME( tr.ibos[tr.numIBOs]->buffer, va( "static IBO[2] %s", name ), VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT );
 	VK_SET_OBJECT_NAME( tr.ibos[tr.numIBOs]->memory, va( "static IBO[2] memory %s", name ), VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT );
 
-	tr.numIBOs++;
+	ibo->index = tr.numIBOs++;
 
 	ibo->size = vbo_size;
 	return ibo;
@@ -717,7 +717,6 @@ VBO_t *R_CreateVBO( const char *name, const byte *vbo_data, int vbo_size )
 	VK_SET_OBJECT_NAME( tr.vbos[tr.numVBOs]->memory, va( "static VBO[%d] memory %s", tr.numVBOs, name ), VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT );
 
 	vbo->index = tr.numVBOs++;
-	vbo->index++;
 	vbo->size = vbo_size;
 	return vbo;
 }
@@ -781,9 +780,8 @@ VBO_t *R_CreateDynamicVBO( const char *name, int size )
 	VK_CHECK( qvkMapMemory( vk.device, vbo->staging.memory, 0, size, 0, &mapped ) );
 	vbo->mapped = mapped;
 
-	vbo->size = size;
 	vbo->index = tr.numVBOs++;
-	vbo->index++;
+	vbo->size = size;
 
 	VK_SET_OBJECT_NAME( vbo->buffer, va("dynamic VBO %s", name), VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT );
 	VK_SET_OBJECT_NAME( vbo->memory, va("dynamic VBO memory %s", name), VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT );
@@ -852,8 +850,8 @@ IBO_t *R_CreateDynamicIBO( const char *name, int size )
 	VK_CHECK( qvkMapMemory( vk.device, ibo->staging.memory, 0, size, 0, &mapped ) );
 	ibo->mapped = mapped;
 
+	ibo->index = tr.numIBOs++;
 	ibo->size = size;
-	tr.numIBOs++;
 
 	VK_SET_OBJECT_NAME( ibo->buffer, va("dynamic IBO %s", name), VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT );
 	VK_SET_OBJECT_NAME( ibo->memory, va("dynamic IBO memory %s", name), VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT );
@@ -1159,6 +1157,12 @@ void R_BuildMDXM( model_t *mod, mdxmHeader_t *mdxm )
 			vboMeshes[n].numVertexes = surf->numVerts;
 			vboMeshes[n].numIndexes = surf->numTriangles * 3;
 
+			vboMeshes[n].rtx_mesh.indexOffset = vboMeshes[n].indexOffset;
+			vboMeshes[n].rtx_mesh.numIndexes = vboMeshes[n].numIndexes;
+			vboMeshes[n].rtx_mesh.meshIndex = n;
+			vboMeshes[n].rtx_mesh.vbo = vbo;
+			vboMeshes[n].rtx_mesh.ibo = ibo;
+
 			surf = (mdxmSurface_t *)((byte *)surf + surf->ofsEnd);
 		}
 
@@ -1312,6 +1316,14 @@ void R_BuildMD3( model_t *mod, mdvModel_t *mdvModel )
 		vboSurf->maxIndex = baseVertexes[i + 1] - 1;
 		vboSurf->numVerts = surf->numVerts;
 		vboSurf->numIndexes = surf->numIndexes;
+
+#ifdef G2_INSTANCED
+		vboSurf->rtx_mesh.indexOffset = vboSurf->indexOffset;
+		vboSurf->rtx_mesh.numIndexes = vboSurf->numIndexes;
+		vboSurf->rtx_mesh.meshIndex = i;
+		vboSurf->rtx_mesh.vbo = vbo;
+		vboSurf->rtx_mesh.ibo = ibo;
+#endif
 	}
 
 	ri.Hunk_FreeTempMemory(indexOffsets);

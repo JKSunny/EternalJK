@@ -416,6 +416,39 @@ extern PFN_vkGetImageMemoryRequirements2KHR				qvkGetImageMemoryRequirements2KHR
 extern PFN_vkDebugMarkerSetObjectNameEXT				qvkDebugMarkerSetObjectNameEXT;
 
 extern PFN_vkCmdDrawIndexedIndirect						qvkCmdDrawIndexedIndirect;
+extern PFN_vkGetBufferDeviceAddress						qvkGetBufferDeviceAddress;
+
+
+typedef struct {
+	VkDeviceSize	size;
+	byte* p;
+	VkBuffer		buffer;
+	VkDeviceMemory	memory;
+	VkDeviceAddress address;
+	int				is_mapped;
+} vkbuffer_t;
+
+typedef struct {
+	union {
+		VkDescriptorImageInfo* image;
+		VkDescriptorBufferInfo* buffer;
+	};
+	uint32_t updateSize;
+} vkdescriptorData_t;
+
+typedef struct {
+	size_t							size;
+	VkDescriptorSetLayoutBinding*	bindings;	// length = size
+	vkdescriptorData_t				*data;		// length = size
+	VkDescriptorSet					set;
+	VkDescriptorSetLayout			layout;
+	VkDescriptorPool				pool;
+
+	// ext
+	qboolean						lastBindingVariableSizeExt;
+	qboolean						needsUpdate;
+} vkdescriptor_t;
+
 
 typedef float mat4_t[16];
 typedef float mat3x4_t[12];
@@ -482,6 +515,7 @@ typedef struct {
 		byte rgb;
 		byte alpha;
 	} color;
+	qboolean instanced;
 } Vk_Pipeline_Def;
 
 typedef struct VK_Pipeline {
@@ -667,7 +701,8 @@ typedef struct vk_tess_s {
 
 	VkDescriptorSet		uniform_descriptor;
 	VkDeviceSize		buf_offset[8];
-	VkDeviceSize		vbo_offset[10];
+	VkDeviceSize		vbo_offset[15];
+
 
 	VkBuffer			curr_index_buffer;
 	uint32_t			curr_index_offset;
@@ -678,6 +713,9 @@ typedef struct vk_tess_s {
 		uint32_t		offset[VK_DESC_UNIFORM_COUNT];	// 0:uniform, 1:data uniform, 2:bones uniform
 	} descriptor_set;
 	
+	vkUniformGlobal_t	uniform_global;
+	uint32_t draw_id;
+
 	uint32_t			num_indexes; // value from most recent vk_bind_index() call
 	VkPipeline			last_pipeline;
 	Vk_Depth_Range		depth_range;
@@ -685,8 +723,19 @@ typedef struct vk_tess_s {
 
 	uint32_t			camera_ubo_offset;
 	uint32_t			entity_ubo_offset[REFENTITYNUM_WORLD + 1];
+	uint32_t			entity_ssbo_index[REFENTITYNUM_WORLD + 1];
 	uint32_t			bones_ubo_offset;
 	uint32_t			fogs_ubo_offset;
+
+#ifdef G2_INSTANCED
+	void				*instance_buffer;
+	uint32_t			instance_count;
+	vkbuffer_t			entity;
+	vkbuffer_t			bones;
+	vkbuffer_t			global;
+	uint32_t			entity_ssbo_count;		
+	uint32_t			global_ssbo_count;		
+#endif
 } vk_tess_t;
 
 // Vk_Instance contains engine-specific vulkan resources that persist entire renderer lifetime.
@@ -839,6 +888,7 @@ typedef struct {
 	uint32_t uniform_item_size;
 	uint32_t uniform_alignment;
 	uint32_t storage_alignment;
+	uint32_t storage_flares_item_size;
 
 	uint32_t uniform_fogs_item_size;
 	uint32_t uniform_camera_item_size;
@@ -850,6 +900,15 @@ typedef struct {
 	uint32_t ghoul2_vbo_stride;
 	uint32_t mdv_vbo_stride;
 #endif
+#ifdef G2_INSTANCED
+	uint32_t storage_global_item_size;
+	uint32_t storage_entity_item_size;
+	uint32_t storage_bones_item_size;
+#endif
+
+	uint32_t bonesCount;
+
+	vkdescriptor_t	ssboDescriptor[NUM_COMMAND_BUFFERS];
 
 	struct {
 		VkBuffer		vertex_buffer;
@@ -869,6 +928,9 @@ typedef struct {
 		VkDeviceSize	vertex_buffer_max;
 		uint32_t		push_size;
 		uint32_t		push_size_max;
+		uint32_t		max_global_ssbo_entries;
+		uint32_t		max_entities_ssbo_entries;
+		size_t			max_model_instance_count;
 	} stats;
 
 	// host visible memory that holds vertex, index and uniform data
@@ -885,9 +947,11 @@ typedef struct {
 	VkDescriptorSetLayout	set_layout_sampler;		// combined image sampler
 	VkDescriptorSetLayout	set_layout_uniform;		// dynamic uniform buffer
 	VkDescriptorSetLayout	set_layout_storage;		// feedback buffer
+	VkDescriptorSetLayout	set_layout_model;		// feedback buffer
 
 	// pipeline(s)
 	VkPipelineLayout pipeline_layout;				// default shaders
+	VkPipelineLayout pipeline_layout_model;				// default shaders
 	VkPipelineLayout pipeline_layout_storage;		// flare test shader layout
 #ifdef USE_VBO_SS
 	VkPipelineLayout pipeline_layout_surface_sprite;// surface sprites
@@ -1245,6 +1309,20 @@ const char	*renderer_name( const VkPhysicalDeviceProperties *props );
 void		vk_get_vulkan_properties( VkPhysicalDeviceProperties *props );
 void		vk_info_f( void );
 void		GfxInfo_f( void );
+
+// buffer
+VkResult	vk_rtx_buffer_create( vkbuffer_t *buf, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags mem_properties );
+VkResult	vk_rtx_buffer_destroy( vkbuffer_t *buf );
+void		VK_DestroyBuffer( vkbuffer_t *buffer );
+void		vk_rtx_destroy_buffers( void ) ;
+void		*buffer_map( vkbuffer_t *buf );
+void		buffer_unmap( vkbuffer_t *buf );
+void		vk_rtx_upload_buffer_data_offset( vkbuffer_t *buffer, VkDeviceSize offset, VkDeviceSize size, const byte *data ) ;
+void		vk_rtx_upload_buffer_data( vkbuffer_t *buffer, const byte *data ) ;
+
+void		vk_create_model_instance_buffer( void );
+void		vk_init_model_instance( void );
+void		vk_init_model_instance_descriptors( void );
 
 // debug
 void		vk_set_object_name( uint64_t obj, const char *objName, VkDebugReportObjectTypeEXT objType );

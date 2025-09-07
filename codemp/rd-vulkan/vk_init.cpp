@@ -414,8 +414,15 @@ void vk_initialize( void )
 	vk.uniform_global_item_size	= PAD( sizeof(vkUniformGlobal_t),	(size_t)vk.uniform_alignment );
 	vk.uniform_fogs_item_size	= PAD( sizeof(vkUniformFog_t),		(size_t)vk.uniform_alignment );
 
-	vk.storage_alignment = MAX( props.limits.minStorageBufferOffsetAlignment, sizeof(uint32_t) ); //for flare visibility tests
-	vk.surface_sprites_ssbo_item_size = PAD( sizeof(SurfaceSpriteBlock), (size_t)props.limits.minStorageBufferOffsetAlignment );
+	size_t  test1 = sizeof(vkUniformEntity_t); 
+	size_t  test2 = sizeof(vkUniformGlobal_t); 
+
+	vk.storage_alignment				= props.limits.minStorageBufferOffsetAlignment;
+	vk.storage_flares_item_size			= MAX( vk.storage_alignment,		sizeof(uint32_t) ); //for flare visibility tests
+	vk.surface_sprites_ssbo_item_size	= PAD( sizeof(SurfaceSpriteBlock),	(size_t)vk.storage_alignment );
+	vk.storage_entity_item_size			= PAD( sizeof(vkUniformEntity_t),	(size_t)vk.storage_alignment );
+	//vk.storage_bones_item_size			= PAD( sizeof(vkUniformBones_t),	(size_t)vk.storage_alignment );
+	vk.storage_global_item_size			= PAD( sizeof(vkUniformGlobal_t),	(size_t)vk.storage_alignment );
 
 	vk.defaults.geometry_size = VERTEX_BUFFER_SIZE;
 	vk.defaults.staging_size = STAGING_BUFFER_SIZE;
@@ -571,6 +578,9 @@ void vk_initialize( void )
 	vk_create_sync_primitives();
 	vk_create_command_pool();
 	vk_create_command_buffer();
+
+	vk_init_model_instance();
+
 	vk_create_descriptor_layout();
 	vk_create_pipeline_layout();
 
@@ -578,8 +588,10 @@ void vk_initialize( void )
 	vk.indirect_buffer_size_new = sizeof(VkDrawIndexedIndirectCommand) * 1024 * 1024;
 	vk_create_vertex_buffer( vk.geometry_buffer_size_new );
 	vk_create_indirect_buffer( vk.indirect_buffer_size_new );
-	vk_create_storage_buffer( &vk.storage, MAX_FLARES * vk.storage_alignment, "storage (flares)" );
+	vk_create_storage_buffer( &vk.storage, MAX_FLARES * vk.storage_flares_item_size, "storage (flares)" );
 	vk_create_shader_modules();
+
+	vk_init_model_instance_descriptors();
 
 	{
 		VkPipelineCacheCreateInfo ci;

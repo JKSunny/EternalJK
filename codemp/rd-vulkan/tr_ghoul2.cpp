@@ -5134,6 +5134,257 @@ qboolean R_LoadMDXA( model_t *mod, void *buffer, const char *mod_name, qboolean 
 
 
 
+#ifdef G2_INSTANCED
+// dedicated duplicate methods for rtx with unused code removed like shadows
+static void vk_rtx_RenderSurfaces_Ghoul2( CRenderSurface &RS, const trRefEntity_t *ent, 
+	int entityNum, Vk_IN_Group_Def *group, float *mvp ) 
+{
+	// back track and get the surfinfo struct for this surface
+	mdxmSurface_t			*surface;
+	mdxmHierarchyOffsets_t	*surfIndexes;
+	mdxmSurfHierarchy_t		*surfInfo;
+	const shader_t			*shader = 0;
+	int						offFlags = 0;	// sunny shouldnt this be uint?
+	uint32_t				i, stage;
+
+	assert( RS.currentModel );
+	assert( RS.currentModel->data.glm && RS.currentModel->data.glm->header );
+
+	// back track and get the surfinfo struct for this surface
+	surface		= (mdxmSurface_t *)G2_FindSurface( RS.currentModel, RS.surfaceNum, RS.lod );
+	surfIndexes = (mdxmHierarchyOffsets_t *)((byte *)RS.currentModel->data.glm->header + sizeof(mdxmHeader_t));
+	surfInfo	= (mdxmSurfHierarchy_t *)((byte *)surfIndexes + surfIndexes->offsets[surface->thisSurfaceIndex]);
+
+	// see if we have an override surface in the surface list
+	const surfaceInfo_t	*surfOverride = G2_FindOverrideSurface( RS.surfaceNum, RS.rootSList );
+
+	// really, we should use the default flags for this surface unless it's been overriden
+	offFlags = surfInfo->flags;
+
+	// set the off flags if we have some
+	if ( surfOverride )
+		offFlags = surfOverride->offFlags;
+
+	// if this surface is not off, add it to the shader render list
+	if ( !offFlags )
+	{
+		shader = R_GetShaderByHandle( surfInfo->shaderIndex );
+
+ 		if ( RS.cust_shader )
+			shader = RS.cust_shader;
+
+		else if ( RS.skin )
+		{
+			uint32_t j;
+
+			// match the surface name to something in the skin file
+			shader = tr.defaultShader;
+
+			for ( j = 0 ; j < RS.skin->numSurfaces ; j++ )
+			{
+				// the names have both been lowercased
+				if ( !strcmp( RS.skin->surfaces[j]->name, surfInfo->name ) )
+				{
+					shader = (shader_t*)RS.skin->surfaces[j]->shader;
+					break;
+				}
+			}
+		}
+
+		// don't add third_person objects if not viewing through a portal
+		if ( !RS.personalModel )
+		{
+			maliasmesh_t *mesh = &RS.currentModel->data.glm->vboModels[RS.lod].vboMeshes[RS.surfaceNum].rtx_mesh;
+			
+			const uint32_t bone_index = RS.boneCache ? RS.boneCache->uboOffset : 0;
+			vk_build_indirect_instance( entityNum, group, mvp, mesh, shader, bone_index );
+		}
+	}
+
+	// if we are turning off all descendants, then stop this recursion now
+	if ( offFlags & G2SURFACEFLAG_NODESCENDANTS )
+		return;
+
+	// now recursively call for the children
+	for ( i = 0; i < surfInfo->numChildren; i++ )
+	{
+		RS.surfaceNum = surfInfo->childIndexes[i];
+		vk_rtx_RenderSurfaces_Ghoul2( RS, ent, entityNum, group, mvp );
+	}
+}
+
+void vk_rtx_AddGhoulSurfaces( trRefEntity_t *ent, int entityNum ) 
+{
+	if ( ent->e.ghoul2 == NULL || !G2API_HaveWeGhoul2Models( *( (CGhoul2Info_v*)ent->e.ghoul2 ) ) )
+		return;
+
+	CGhoul2Info_v	&ghoul2 = *((CGhoul2Info_v *)ent->e.ghoul2);
+	mdxaBone_t		rootMatrix;
+	shader_t		*cust_shader = 0;
+	qboolean		personalModel;
+	int				whichLod, modelCount, fogNum, currentTime;
+	int				modelList[256] = { 0 };
+	skin_t			*skin;
+	uint32_t		i;
+
+	if ( !ghoul2.IsValid() )
+		return;
+
+	// if we don't want server ghoul2 models and this is one, or we just don't want ghoul2 models at all, then return
+	if ( r_noServerGhoul2->integer )
+		return;
+
+	if ( !G2_SetupModelPointers( ghoul2 ) )
+		return;
+
+	// mvp
+	mat4_t mvp;
+	vk_get_model_instance_mvp( ent, mvp );
+
+	currentTime = G2API_GetTime( tr.refdef.time );
+	fogNum = R_GComputeFogNum( ent );
+
+	// culling is disabled for now ..
+
+	HackadelicOnClient = true;
+
+	// are any of these models setting a new origin?
+	RootMatrix( ghoul2, currentTime, ent->e.modelScale,rootMatrix );
+
+   	// don't add third_person objects if not in a portal
+	personalModel = (qboolean)( (ent->e.renderfx & RF_THIRD_PERSON) && (tr.viewParms.portalView == PV_NONE) );
+
+	assert( ghoul2.size() <= 255 );
+	modelList[255] = 548;
+
+	// order sort the ghoul 2 models so bolt ons get bolted to the right model
+	G2_Sort_Models( ghoul2, modelList, ARRAY_LEN(modelList), &modelCount );
+	assert( modelList[255] == 548 );
+
+	// construct a world matrix for this entity
+	//G2_GenerateWorldMatrix( ent->e.angles, ent->e.origin );
+
+	// walk each possible model for this entity and try rendering it out
+	for ( i = 0; i < modelCount; i++ )
+	{
+		CGhoul2Info *model = &ghoul2[ modelList[ i ] ];
+
+		if (model->mValid && !(model->mFlags & GHOUL2_NOMODEL) && !(model->mFlags & GHOUL2_NORENDER))
+		{
+			//
+			// figure out whether we should be using a custom shader for this model
+			//
+			skin = NULL;
+			cust_shader = NULL;
+
+			if ( ent->e.customShader )
+				cust_shader = R_GetShaderByHandle( ent->e.customShader );
+
+			else
+			{
+				// figure out the custom skin thing
+				if ( model->mCustomSkin )
+					skin = R_GetSkinByHandle( model->mCustomSkin );
+
+				else if ( ent->e.customSkin )
+					skin = R_GetSkinByHandle( ent->e.customSkin );
+
+				else if ( model->mSkin > 0 && model->mSkin < tr.numSkins )
+					skin = R_GetSkinByHandle( model->mSkin );
+			}
+
+			// this eats performance and increases drawcalls for instanced
+#if 0
+			whichLod = G2_ComputeLOD(ent, model->currentModel, model->mLodBias);
+#else
+			whichLod = 0;
+#endif
 
 
+			// first view only ..
+			//if ( vk.cmd->instance_count == 0 `&& .. bones have been processed in prev view)
+			{ 
+				//
+				// bone matrices for this model
+				//
+				if ( i && model->mModelBoltLink != -1 )
+				{
+					int	boltMod = (model->mModelBoltLink >> MODEL_SHIFT) & MODEL_AND;
+					int	boltNum = (model->mModelBoltLink >> BOLT_SHIFT) & BOLT_AND;
+					mdxaBone_t bolt;
+					G2_GetBoltMatrixLow( ghoul2[boltMod], boltNum, ent->e.modelScale, bolt );
+					G2_TransformGhoulBones( model->mBlist, bolt, *model, currentTime );
+				}
+				else
+					G2_TransformGhoulBones( model->mBlist, rootMatrix, *model, currentTime );
 
+				CBoneCache* bc = model->mBoneCache;
+
+				uint8_t* dst = (uint8_t*)vk.cmd->bones.p + vk.bonesCount * sizeof(vkUniformBones_t);
+
+				for ( int bone = 0; bone < (int)bc->mBones.size(); bone++ )
+				{
+					const mdxaBone_t& b = bc->EvalRender( bone );
+					Com_Memcpy(dst + bone * sizeof(mat3x4_t), &b.matrix[0][0], sizeof(mat3x4_t));
+				}
+
+				bc->uboOffset = vk.bonesCount++;
+			}
+
+			//
+			// meshes (surfaces) for this model
+			//
+			G2_FindOverrideSurface( -1, model->mSlist ); //reset the quick surface override lookup;
+
+			CRenderSurface RS(model->mSurfaceRoot, model->mSlist, cust_shader, fogNum, personalModel, model->mBoneCache, ent->e.renderfx, skin, (model_t*)model->currentModel, whichLod, model->mBltlist, NULL, NULL);
+
+			Vk_IN_Group_Def group;
+			surfaceType_t	surfType		= SF_MDX;
+			int				fogIndex		= RS.fogNum;
+			int				forceRGBGen		= 0;
+			Vk_Depth_Range	depthRange		= DEPTH_RANGE_NORMAL;
+			bool			forceEntAlpha	= false;
+			bool			alphaDepth		= false;
+			bool			distortion		= false;
+
+			if (ent->e.renderfx & RF_RGB_TINT)	//want to use RGBGen from ent
+				forceRGBGen = CGEN_ENTITY;
+
+			else if ( ent->e.renderfx & RF_DISINTEGRATE1 )
+				forceRGBGen = (int)CGEN_DISINTEGRATION_1;
+
+			else if ( ent->e.renderfx & RF_DISINTEGRATE2 )
+				forceRGBGen = (int)CGEN_DISINTEGRATION_2;
+
+			// No depth at all, very rare but some things for seeing through walls
+			if ( ent->e.renderfx & RF_NODEPTH )
+				depthRange = DEPTH_RANGE_ZERO;
+
+			// hack the depth range to prevent view model from poking into walls
+			if ( ent->e.renderfx & RF_DEPTHHACK )
+				depthRange = DEPTH_RANGE_WEAPON;
+
+			if ( ent->e.renderfx & RF_FORCE_ENT_ALPHA ) 
+			{
+				forceEntAlpha = true;
+#ifdef RF_ALPHA_DEPTH
+				if ( ent->e.renderfx & RF_ALPHA_DEPTH )
+					alphaDepth = true;
+#endif
+			}
+
+			if ( ent->e.renderfx & RF_DISTORTION )
+				distortion = true;
+
+			// pack group def
+			group.group_bits = pack_vk_in_group_flags( surfType, forceRGBGen, 
+				fogIndex, depthRange, forceEntAlpha, alphaDepth, distortion );
+
+			// add surfaces
+			vk_rtx_RenderSurfaces_Ghoul2( RS, ent, entityNum, &group, mvp );
+		}
+	}
+
+	HackadelicOnClient = false;
+}
+#endif

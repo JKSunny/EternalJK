@@ -49,6 +49,11 @@
 	};
 #endif
 
+#ifdef USE_VBO_MODEL
+	layout(location = 9) in flat uint v_entity_index;
+	layout(location = 10) in flat uint v_global_index;
+#endif
+
 #if !defined(USE_CLX_IDENT) && defined(USE_VBO_MODEL)
 	struct tcMod_t {
 		vec4	matrix;
@@ -89,24 +94,64 @@
 		int		func;
 	};
 
-	layout(set = 0, binding = 2) uniform Entity {
-		vec4 u_ambientLight;
-		vec4 u_directedLight;
-		vec4 u_LocalLightOrigin;
-		vec4 u_localViewOrigin;
-		mat4 u_ModelMatrix;
+	struct vkUniformGlobal_t {
+		vkBundle_t			bundle[3];
+		vkDisintegration_t	disintegration;
+		vkDeform_t			deform;
+		float				portalRange;
 	};
 
-	layout(set = 0, binding = 3) uniform Bones {
-		mat3x4 u_BoneMatrices[72];
+	struct vkUniformBones_t {
+		mat3x4 BoneMatrices[72];
 	};
 
-	layout(set = 0, binding = 5) uniform Global {
-		vkBundle_t			u_bundle[3];
-		vkDisintegration_t	u_disintegration;
-		vkDeform_t			u_deform;
-		float				u_portalRange;
-	};	
+	struct vkUniformEntity_t {
+		vec4 ambientLight;
+		vec4 directedLight;
+		vec4 LocalLightOrigin;
+		vec4 localViewOrigin;
+		mat4 ModelMatrix;
+	};
+
+	#ifdef USE_VBO_MODEL
+		layout(std430, set = 0, binding = 2) readonly buffer EntityBuffer {
+			vkUniformEntity_t entities[];
+		};
+
+		layout(std430, set = 0, binding = 3) readonly buffer BonesBuffer {
+			vkUniformBones_t bones[];
+		};
+
+		layout(std430, set = 0, binding = 5) readonly buffer GlobalBuffer {
+			vkUniformGlobal_t global[];
+		};
+
+		#define u_ambientLight		entity_data.ambientLight
+		#define u_directedLight		entity_data.directedLight
+		#define u_LocalLightOrigin	entity_data.LocalLightOrigin
+		#define u_localViewOrigin	entity_data.localViewOrigin
+		#define u_ModelMatrix		entity_data.ModelMatrix
+
+		#define u_bundle			global_data.bundle
+		#define u_disintegration	global_data.disintegration
+		#define u_deform			global_data.deform
+		#define u_portalRange		global_data.portalRange
+
+		vkUniformGlobal_t global_data;
+		vkUniformEntity_t entity_data;
+	#else
+		layout(set = 0, binding = 2) uniform Entity {
+			vkUniformEntity_t entity_data;
+		};
+
+		layout(set = 0, binding = 3) uniform Bones {
+			vkUniformBones_t bones;
+		};
+
+		layout(set = 0, binding = 5) uniform Global {
+			vkUniformGlobal_t global_data;
+		};
+	#endif
 
 	layout(location = 7) in vec4 var_Normal;
 	layout(location = 8) in vec4 var_LightDir;
@@ -275,6 +320,11 @@ void main() {
 	float attenuation;
 	vec3 lightColor, ambientColor;
 	vec3 L, N;
+
+#if !defined(USE_CLX_IDENT) && defined(USE_VBO_MODEL)
+	global_data = global[v_global_index];
+	entity_data = entities[v_entity_index];
+#endif
 
 #ifdef USE_FIXED_COLOR
 	const vec4 frag_color = vec4(identity_color, identity_color,identity_color, identity_alpha);
