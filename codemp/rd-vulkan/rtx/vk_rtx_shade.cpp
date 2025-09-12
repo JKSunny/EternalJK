@@ -919,7 +919,7 @@ static void vk_rtx_prepare_ubo( trRefdef_t *refdef, world_t *world, mnode_t *vie
 static void vk_rtx_setup_rt_pipeline( VkCommandBuffer cmd_buf, VkPipelineBindPoint bind_point, uint32_t index )
 {
 	// https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/8038
-	qvkCmdBindPipeline( cmd_buf, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, vk.rt_pipelines[index] );
+	qvkCmdBindPipeline( cmd_buf, bind_point, vk.rt_pipelines[index] );
 
 	VkDescriptorSet desc_sets[] = {
 		vk.rt_descriptor_set[vk.current_frame_index].set,
@@ -929,7 +929,7 @@ static void vk_rtx_setup_rt_pipeline( VkCommandBuffer cmd_buf, VkPipelineBindPoi
 		vk.desc_set_vertex_buffer[vk.current_frame_index].set,
 	};
 
-	qvkCmdBindDescriptorSets( cmd_buf, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR,
+	qvkCmdBindDescriptorSets( cmd_buf, bind_point,
 			vk.rt_pipeline_layout, 0, ARRAY_LEN(desc_sets), desc_sets, 0, 0);
 }
 
@@ -951,7 +951,7 @@ static void dispatch_rays( VkCommandBuffer cmd_buf, uint32_t pipeline_index, pt_
 	VkStridedDeviceAddressRegionKHR miss_and_hit;
 	miss_and_hit.deviceAddress = vk.buf_shader_binding_table.address + sbt_offset;
 	miss_and_hit.stride = vk.shaderGroupBaseAlignment;
-	miss_and_hit.size = vk.shaderGroupBaseAlignment;
+	miss_and_hit.size = (VkDeviceSize)vk.shaderGroupBaseAlignment * SBT_ENTRIES_PER_PIPELINE;
 
 	VkStridedDeviceAddressRegionKHR callable;
 	callable.deviceAddress = NULL;

@@ -22,7 +22,9 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 
+#define NO_RTX
 #include "tr_local.h"
+#undef NO_RTX
 
 #ifdef _G2_GORE
 

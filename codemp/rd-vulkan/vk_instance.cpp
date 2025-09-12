@@ -166,8 +166,6 @@ PFN_vkCreateComputePipelines					qvkCreateComputePipelines;
 #ifdef USE_RTX
 PFN_vkGetPhysicalDeviceFeatures2					qvkGetPhysicalDeviceFeatures2;
 PFN_vkGetPhysicalDeviceProperties2					qvkGetPhysicalDeviceProperties2;
-PFN_vkCmdDispatch									qvkCmdDispatch;
-PFN_vkCreateComputePipelines						qvkCreateComputePipelines;
 
 PFN_vkCreateAccelerationStructureKHR				qvkCreateAccelerationStructureKHR;
 PFN_vkDestroyAccelerationStructureKHR				qvkDestroyAccelerationStructureKHR;
@@ -1468,9 +1466,6 @@ __initStart:
 
 #ifdef USE_RTX
 	if ( vk.rtxSupport ) {
-		INIT_DEVICE_FUNCTION(vkCmdDispatch);
-		INIT_DEVICE_FUNCTION(vkCreateComputePipelines);	
-
 		INIT_DEVICE_FUNCTION(vkCreateAccelerationStructureKHR);
 		INIT_DEVICE_FUNCTION(vkDestroyAccelerationStructureKHR);
 		INIT_DEVICE_FUNCTION(vkCmdBuildAccelerationStructuresKHR);
@@ -1625,13 +1620,12 @@ void vk_deinit_library( void )
 #endif
 
 	qvkCmdDrawIndexedIndirect = NULL;
+	qvkCmdDispatch = NULL;
+	qvkCreateComputePipelines = NULL;
 
 #ifdef USE_RTX
 	qvkGetPhysicalDeviceProperties2 = NULL;
 	qvkGetPhysicalDeviceFeatures2 = NULL;
-
-	qvkCmdDispatch = NULL;
-	qvkCreateComputePipelines = NULL;
 
 	qvkCreateAccelerationStructureKHR = NULL;
 	qvkDestroyAccelerationStructureKHR = NULL;

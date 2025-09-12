@@ -120,14 +120,9 @@ get_model_triangle(uint model_id, uint prim_id, uint idx_offset, uint vert_offse
 	t.tex_coords0[1] = get_model_float2(model_id, idx[1] + MODEL_VERTEX_TEXCOORD);
 	t.tex_coords0[2] = get_model_float2(model_id, idx[2] + MODEL_VERTEX_TEXCOORD);
 
-	NTB ntb[3];
-	QTangentToNTB( get_model_float4(model_id, idx[0] + MODEL_VERTEX_TANGENTS), ntb[0] );
-	QTangentToNTB( get_model_float4(model_id, idx[1] + MODEL_VERTEX_TANGENTS), ntb[1] );
-	QTangentToNTB( get_model_float4(model_id, idx[2] + MODEL_VERTEX_TANGENTS), ntb[2] );
-
-	t.tangents[0] = ntb[0].tangent.xyz;
-	t.tangents[1] = ntb[1].tangent.xyz;
-	t.tangents[2] = ntb[2].tangent.xyz;	
+	t.tangents[0] = get_model_float3(model_id, idx[0] + MODEL_VERTEX_TANGENTS);
+	t.tangents[1] = get_model_float3(model_id, idx[1] + MODEL_VERTEX_TANGENTS);
+	t.tangents[2] = get_model_float3(model_id, idx[2] + MODEL_VERTEX_TANGENTS);
 
 	t.material_id = 0; // needs to come from uniform buffer
 
@@ -173,14 +168,9 @@ get_mxdm_triangle(uint model_id, uint prim_id, uint idx_offset, uint vert_offset
 	t.tex_coords0[1] = get_model_float2(model_id, idx[1] + MODEL_MDXM_VERTEX_TEXCOORD);
 	t.tex_coords0[2] = get_model_float2(model_id, idx[2] + MODEL_MDXM_VERTEX_TEXCOORD);
 
-	NTB ntb[3];
-	QTangentToNTB( get_model_float4(model_id, idx[0] + MODEL_MDXM_VERTEX_TANGENTS), ntb[0] );
-	QTangentToNTB( get_model_float4(model_id, idx[1] + MODEL_MDXM_VERTEX_TANGENTS), ntb[1] );
-	QTangentToNTB( get_model_float4(model_id, idx[2] + MODEL_MDXM_VERTEX_TANGENTS), ntb[2] );
-
-	t.tangents[0] = ntb[0].tangent.xyz;
-	t.tangents[1] = ntb[1].tangent.xyz;
-	t.tangents[2] = ntb[2].tangent.xyz;	
+	t.tangents[0] = get_model_float3(model_id, idx[0] + MODEL_VERTEX_TANGENTS);
+	t.tangents[1] = get_model_float3(model_id, idx[1] + MODEL_VERTEX_TANGENTS);
+	t.tangents[2] = get_model_float3(model_id, idx[2] + MODEL_VERTEX_TANGENTS);
 
 	for ( int i_vtx = 0; i_vtx < 3; i_vtx++)
 	{

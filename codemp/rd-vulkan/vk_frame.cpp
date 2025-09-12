@@ -304,6 +304,29 @@ void vk_create_render_passes()
         VK_SET_OBJECT_NAME( vk.render_pass.refraction.extract, "render pass - refraction extract", VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT );        
     }
 
+#ifdef USE_RTX
+        // rtx post blit blend
+        if ( vk.rtxActive )     
+        {
+            // color buffer
+            attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; // load from previous pass
+
+            // depth buffer
+            attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+            attachments[1].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            attachments[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+            attachments[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+
+            if ( vk.msaaActive ) {
+                attachments[2].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+                attachments[2].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            }
+
+            VK_CHECK( qvkCreateRenderPass( device, &desc, NULL, &vk.render_pass.rtx_final_blit.blend ) );
+            VK_SET_OBJECT_NAME( vk.render_pass.rtx_final_blit.blend, "render pass - rtx final blit lancoz", VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT );
+        }
+#endif
+
     if ( vk.bloomActive || vk.dglowActive )
     {
         // color buffer
@@ -356,29 +379,6 @@ void vk_create_render_passes()
             VK_CHECK( qvkCreateRenderPass( device, &desc, NULL, &vk.render_pass.dglow.blend ) );
             VK_SET_OBJECT_NAME( vk.render_pass.dglow.blend, "render pass - dglow post blend", VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT );
         }
-
-#ifdef USE_RTX
-        // rtx post blit blend
-        if ( vk.rtxActive )     
-        {
-            // color buffer
-            attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; // load from previous pass
-
-            // depth buffer
-            attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-            attachments[1].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-            attachments[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-            attachments[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-
-            if ( vk.msaaActive ) {
-                attachments[2].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-                attachments[2].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-            }
-
-            VK_CHECK( qvkCreateRenderPass( device, &desc, NULL, &vk.render_pass.rtx_final_blit.blend ) );
-            VK_SET_OBJECT_NAME( vk.render_pass.rtx_final_blit.blend, "render pass - rtx final blit lancoz", VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT );
-        }
-#endif
 
         // bloom extraction, using resolved/main fbo as a source
         desc.attachmentCount = 1;

@@ -23,7 +23,6 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include "tr_local.h"
 #include "shaders/spirv/shader_data.c"
-#include "shaders/spirv/shader_data_pixel.c"
 
 // Vulkan has to be specified in a bytecode format which is called SPIR-V
 // and is designed to be work with both Vulkan and OpenCL.
@@ -56,48 +55,6 @@ static VkShaderModule SHADER_MODULE( const uint8_t *bytes, const int count ) {
 void vk_create_shader_modules( void )
 {
     vk_bind_generated_shaders();
-
-#if 0
-    int i, j, k, l, m, n, o;
-
-    const char *vbo[] = { "cpu ", "gpu ghoul2", "gpu mdv" };
-    const char *pbr[] = { "", "pbr " };
-    const char *light[] = { "", "lightmap", "vector", "vertex" };
-    const char *tx[]  = { "single", "double", "triple" };
-    const char *cl[]  = { "", "+cl" };
-    const char *env[] = { "", "+env" };
-    const char *fog[] = { "", "+fog" };
-
-    for ( i = 0; i < 3; i++ ) {
-        for ( j = 0; j < 2; j++ ) {
-            for ( k = 0; k < 4; k++ ) {
-                for ( l = 0; l < 3; l++ ) {
-                    for ( m = 0; m < 2; m++ ) {
-                        for ( n = 0; n < 2; n++ ) {
-                            for ( o = 0; o < 2; o++ ) 
-                            {
-                                const char *s = va( "%s texture %s%s%s%s%s%s vertex module", vbo[i], pbr[j], light[k], tx[l], cl[m], env[n], fog[o] );
-                                VK_SET_OBJECT_NAME( vk.shaders.vert.gen[i][j][k][l][m][n][o], s, VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT );
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    for ( j = 0; j < 2; j++ ) {
-        for ( k = 0; k < 4; k++ ) {
-            for ( l = 0; l < 3; l++ ) {
-                for ( m = 0; m < 2; m++ ) {
-                    for ( n = 0; n < 2; n++ ) {
-                        const char *s = va( "texture %s%s%s%s%s fragment module", pbr[j], light[k], tx[l], cl[m], fog[n] );
-                        VK_SET_OBJECT_NAME( vk.shaders.frag.gen[j][k][l][m][n], s, VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT );
-                    }
-                }
-            }
-        }
-    }
-#endif
 
 #ifdef VK_COMPUTE_NORMALMAP
     vk.shaders.normalmap = SHADER_MODULE(normalmap_comp_spv);

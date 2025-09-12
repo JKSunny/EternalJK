@@ -481,8 +481,6 @@ extern PFN_vkCreateRayTracingPipelinesKHR					qvkCreateRayTracingPipelinesKHR;
 extern PFN_vkCmdTraceRaysKHR								qvkCmdTraceRaysKHR;
 extern PFN_vkGetRayTracingShaderGroupHandlesKHR				qvkGetRayTracingShaderGroupHandlesKHR;
 
-extern PFN_vkCmdDispatch									qvkCmdDispatch;
-extern PFN_vkCreateComputePipelines							qvkCreateComputePipelines;
 extern PFN_vkCmdFillBuffer									qvkCmdFillBuffer;
 
 extern PFN_vkCmdBeginDebugUtilsLabelEXT						qvkCmdBeginDebugUtilsLabelEXT;

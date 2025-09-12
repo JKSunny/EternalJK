@@ -49,9 +49,10 @@ static void R_LocalFree(void* ptr)
 #define STBI_FREE R_LocalFree
 
 #define STB_IMAGE_IMPLEMENTATION
+#define STBI_NO_GIF
+//#define STBI_TEMP_ON_STACK
+//#define STBI_ONLY_HDR
 
-#define STBI_TEMP_ON_STACK
-#define STBI_ONLY_HDR
 #include <utils/stb_image.h>
 
 #define STB_DXT_IMPLEMENTATION

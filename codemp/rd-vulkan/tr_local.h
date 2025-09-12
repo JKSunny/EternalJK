@@ -398,9 +398,6 @@ typedef struct IBO_s
 	size_t			size;
 	void			*mapped;
 
-	VkBuffer		buffer;
-	VkDeviceMemory	memory;
-
 	struct {
 		VkBuffer		buffer;
 		VkDeviceMemory	memory;
@@ -3327,6 +3324,8 @@ qboolean	vk_imgui_outline_selected( void );
 #endif
 #endif
 
-#define VK_RTX_LINKER
-#include "rtx/vk_rtx.h"
-#undef VK_RTX_LINKER
+#ifndef NO_RTX
+	#define VK_RTX_LINKER
+	#include "rtx/vk_rtx.h"
+	#undef VK_RTX_LINKER
+#endif

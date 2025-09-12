@@ -49,7 +49,7 @@ static void R_LocalFree( void *ptr )
 #define STBI_REALLOC_SIZED	R_LocalReallocSized
 #define STBI_FREE			R_LocalFree
 
-#define STB_IMAGE_IMPLEMENTATION
+//#define STB_IMAGE_IMPLEMENTATION
 #define STBI_NO_GIF
 //#define STBI_TEMP_ON_STACK
 //#define STBI_ONLY_HDR
@@ -821,9 +821,12 @@ void vk_rtx_create_blue_noise( void )
 	for ( i = 0; i < num_blue_noise_images; i++ ) 
 	{
 		char buf[1024];
-		snprintf(buf, sizeof buf, "blue_noise_textures/%d_%d/HDR_RGBA_%04d.png", res, res, i);
+		snprintf(buf, sizeof buf, "blue_noise/%d_%d/HDR_RGBA_%04d.png", res, res, i);
 			
 		R_LoadImage16( buf, &pic, &width, &height );
+
+		if ( pic == NULL )
+			Com_Error(ERR_DROP, "Couln't load blue noise.\n");
 
 		// HDR is RGBA
 		for ( channel = 0; channel < 4; channel++ ) 

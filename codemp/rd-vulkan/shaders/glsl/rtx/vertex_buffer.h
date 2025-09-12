@@ -163,7 +163,7 @@ STRUCT (
     UINT    ( material )
 
 	// using packed qtangent instead, this can be removed or commented for now
-    //VEC4    ( normal )
+    VEC4    ( normal )
     VEC4    ( qtangent )
     UINT    ( color[4] )
 
@@ -264,22 +264,6 @@ layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_DYNAMIC_VERTE
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_LIGHT_BUFFER )				buffer LIGHT_BUFFER { LightBuffer light_buffer; };
 
 #undef BUFFER_T
-
-struct NTB {
-	vec3 normal, tangent, binormal;
-};
-
-vec3 QuatTransVec( in vec4 quat, in vec3 vec ) {
-	vec3 tmp = 2.0 * cross( quat.xyz, vec );
-	return vec + quat.w * tmp + cross( quat.xyz, tmp );
-}
-
-void QTangentToNTB( in vec4 qtangent, out NTB ntb ) {
-	ntb.normal = QuatTransVec( qtangent, vec3( 0.0, 0.0, 1.0 ) );
-	ntb.tangent = QuatTransVec( qtangent, vec3( 1.0, 0.0, 0.0 ) );
-	ntb.tangent *= sign( qtangent.w );
-	//ntb.binormal = QuatTransVec( qtangent, vec3( 0.0, 1.0, 0.0 ) );
-}
 
 #define GET_float_1(buf,name) \
 float \
@@ -698,30 +682,13 @@ Triangle get_bsp_triangle( in uint instance_id, in uint prim_id )
 	t.tex_coords3[1] = triangle[1].uv[3].xy;
 	t.tex_coords3[2] = triangle[2].uv[3].xy;
 
-#if 0
-	// using packed qtangent instead, this can be removed or commented for now
-	t.normals[0] = triangle[0].normal.xyz, 0;
-	t.normals[1] = triangle[1].normal.xyz, 0;
-	t.normals[2] = triangle[2].normal.xyz, 0;
-#else
-	NTB ntb[3];
-
-	QTangentToNTB( triangle[0].qtangent, ntb[0] );
-	QTangentToNTB( triangle[1].qtangent, ntb[1] );
-	QTangentToNTB( triangle[2].qtangent, ntb[2] );
+	t.normals[0] = triangle[0].normal.xyz;
+	t.normals[1] = triangle[1].normal.xyz;
+	t.normals[2] = triangle[2].normal.xyz;
 	
-	t.normals[0] = ntb[0].normal.xyz;
-	t.normals[1] = ntb[1].normal.xyz;
-	t.normals[2] = ntb[2].normal.xyz;
-	
-	t.tangents[0] = ntb[0].tangent.xyz;
-	t.tangents[1] = ntb[1].tangent.xyz;
-	t.tangents[2] = ntb[2].tangent.xyz;
-
-	//t.binormal[0] = ntb[0].binormal.xyz;
-	//t.binormal[1] = ntb[1].binormal.xyz;
-	//t.binormal[2] = ntb[2].binormal.xyz;	
-#endif
+	t.tangents[0] = triangle[0].qtangent.xyz;
+	t.tangents[1] = triangle[1].qtangent.xyz;
+	t.tangents[2] = triangle[2].qtangent.xyz;
 
 	switch( instance_buffer.tlas_instance_type[instance_id] )
 	{

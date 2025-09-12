@@ -450,14 +450,19 @@ void vk_rtx_upload_vertices( vkbuffer_t *buffer, uint32_t offsetXYZ, int cluster
 		vbo[i].cluster = cluster;// c != -1 ? c : cluster;
 
 		memcpy( vbo[i].pos, tess.xyz + i, sizeof(vec3_t) );
-#if 1
+#if 0
 		memcpy( vbo[i].qtangent, tess.qtangent + i, sizeof(vec4_t) );
+		memcpy( vbo[i].normal, tess.normal + i, sizeof(vec4_t) );
 #else
-		// using packed qtangent instead, this can be removed or commented for now
 		vbo[i].normal[0] = tess.normal[i][0];
 		vbo[i].normal[1] = tess.normal[i][1];
 		vbo[i].normal[2] = tess.normal[i][2];
 		vbo[i].normal[3] = 0;
+
+		vbo[i].qtangent[0] = tess.qtangent[i][0];
+		vbo[i].qtangent[1] = tess.qtangent[i][1];
+		vbo[i].qtangent[2] = tess.qtangent[i][2];
+		vbo[i].qtangent[3] = 0;
 #endif
 	}
 
