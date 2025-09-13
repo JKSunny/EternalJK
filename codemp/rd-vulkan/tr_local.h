@@ -1543,6 +1543,12 @@ typedef struct
 } mgrid_t;
 
 #ifdef USE_RTX
+typedef struct entity_hash_s {
+	unsigned int mesh : 8;
+	unsigned int model : 9;
+	unsigned int entity : 15;
+} entity_hash_t;
+
 typedef struct light_poly_s {
 	float	positions[9]; // 3x vec3_t
 	vec3_t	off_center;
@@ -1550,7 +1556,8 @@ typedef struct light_poly_s {
 	void	*material;
 	int		cluster;
 	int		style;
-	float emissive_factor;
+	float	emissive_factor;
+	int		type;
 } light_poly_t;
 #endif
 
@@ -2430,6 +2437,7 @@ extern cvar_t	*com_cl_running;
 #endif
 
 #ifdef USE_RTX
+extern  cvar_t  *pt_restir;
 extern  cvar_t  *pt_caustics;
 extern  cvar_t  *pt_dof;
 extern  cvar_t  *pt_projection;

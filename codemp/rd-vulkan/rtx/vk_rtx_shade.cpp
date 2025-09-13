@@ -25,19 +25,14 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "conversion.h"
 #include "ghoul2/g2_local.h"
 
-typedef struct entity_hash_s {
-	unsigned int mesh : 8;
-	unsigned int model : 9;
-	unsigned int entity : 15;
-} entity_hash_t;
-
 static int entity_frame_num = 0;
 static int model_entity_ids[2][MAX_REFENTITIES];
 static int world_entity_ids[2][MAX_REFENTITIES];
+static int light_entity_ids[2][MAX_MODEL_LIGHTS];
 static int model_entity_id_count[2];
 static int world_entity_id_count[2];
+static int light_entity_id_count[2];
 
-#define MAX_MODEL_LIGHTS 16384
 static int			num_model_lights;
 static light_poly_t model_lights[MAX_MODEL_LIGHTS];
 
@@ -223,47 +218,71 @@ static inline uint32_t fill_model_instance( const trRefEntity_t* entity, const i
 	return material_id;
 }
 
-static void add_dlight_spot(const dlight_t* light, DynLightData* dynlight_data)
+static void add_dlight_spot(const dlight_t* dlight, light_poly_t* light)
 {
 	// Copy spot data
-	VectorCopy(light->spot.direction, dynlight_data->spot_direction);
-	switch(light->spot.emission_profile)
+	VectorCopy(dlight->spot.direction, light->positions + 6);
+	uint32_t spot_type = 0;
+	uint32_t spot_data = 0;
+	switch(dlight->spot.emission_profile)
 	{
 	case DLIGHT_SPOT_EMISSION_PROFILE_FALLOFF:
-		dynlight_data->type |= DYNLIGHT_SPOT_EMISSION_PROFILE_FALLOFF << 16;
-		dynlight_data->spot_data = floatToHalf(light->spot.cos_total_width) | (floatToHalf(light->spot.cos_falloff_start) << 16);
+		spot_type = DYNLIGHT_SPOT_EMISSION_PROFILE_FALLOFF;
+		spot_data = floatToHalf(dlight->spot.cos_total_width) | (floatToHalf(dlight->spot.cos_falloff_start) << 16);
 		break;
 	case DLIGHT_SPOT_EMISSION_PROFILE_AXIS_ANGLE_TEXTURE:
-		dynlight_data->type |= DYNLIGHT_SPOT_EMISSION_PROFILE_AXIS_ANGLE_TEXTURE << 16;
-		dynlight_data->spot_data = floatToHalf(light->spot.total_width) | (light->spot.texture << 16);
+		spot_type = DYNLIGHT_SPOT_EMISSION_PROFILE_AXIS_ANGLE_TEXTURE;
+		spot_data = floatToHalf(dlight->spot.total_width) | (dlight->spot.texture << 16);
 		break;
 	}
+	light->positions[4] = uintBitsToFloat(spot_type);
+	light->positions[5] = uintBitsToFloat(spot_data);
 }
 
-static void add_dlights(const dlight_t* lights, int num_lights, vkUniformRTX_t* ubo)
+static void
+add_dlights(const dlight_t* dlights, int num_dlights, light_poly_t* light_list, int* num_lights, int max_lights, world_t *worldData, int* light_entity_ids)
 {
-	ubo->num_dyn_lights = 0;
-
-	for (int i = 0; i < num_lights; i++)
+	for (int i = 0; i < num_dlights; i++)
 	{
-		const dlight_t* light = lights + i;
+		if (*num_lights >= max_lights)
+			return;
 
-		DynLightData* dynlight_data = ubo->dyn_light_data + ubo->num_dyn_lights;
-		VectorCopy(light->origin, dynlight_data->center);
-		VectorScale(light->color, light->radius / 25.f, dynlight_data->color);
+		const dlight_t* dlight = dlights + i;
+		light_poly_t* light = light_list + *num_lights;
 
-		dynlight_data->radius = light->radius;
-		switch(light->light_type) {
-		case DLIGHT_SPHERE:
-			dynlight_data->type = DYNLIGHT_SPHERE;
-			break;
-		case DLIGHT_SPOT:
-			dynlight_data->type = DYNLIGHT_SPOT;
-			add_dlight_spot(light, dynlight_data);
-			break;
+		light->cluster = BSP_PointLeaf(worldData->nodes, (float*)dlight->origin)->cluster;
+
+		entity_hash_t hash;
+		hash.entity = i + 1; //entity ID
+		hash.mesh = 0xAA;
+
+		if(light->cluster >= 0)
+		{
+			//Super wasteful but we want to have all lights in the same list.
+
+			VectorCopy(dlight->origin, light->positions + 0);
+			VectorScale(dlight->color, dlight->radius / 25.f, light->color);
+			light->positions[3] = dlight->radius;
+			light->material = NULL;
+			light->style = 0;
+
+			switch(dlight->light_type) {
+				case DLIGHT_SPHERE:
+					light->type = LIGHT_SPHERE;
+					hash.model = 0xFE;
+					break;
+				case DLIGHT_SPOT:
+					light->type = LIGHT_SPOT;
+					// Copy spot data
+					add_dlight_spot(dlight, light);
+					hash.model = 0xFD;
+					break;
+			}
+
+			light_entity_ids[(*num_lights)] = *(uint32_t*)&hash;
+			(*num_lights)++;
+
 		}
-
-		ubo->num_dyn_lights++;
 	}
 }
 
@@ -513,6 +532,7 @@ static void prepare_entities( EntityUploadInfo *upload_info, const trRefdef_t *r
 	memset(instance_buffer->world_prev_to_current, ~0u, sizeof(instance_buffer->world_prev_to_current));
 	memset(instance_buffer->model_current_to_prev, ~0u, sizeof(instance_buffer->model_current_to_prev));
 	memset(instance_buffer->model_prev_to_current, ~0u, sizeof(instance_buffer->model_prev_to_current));
+	memset(instance_buffer->mlight_prev_to_current, ~0u, sizeof(instance_buffer->mlight_prev_to_current));
 
 #if 0
 	world_entity_id_count[entity_frame_num] = bsp_mesh_idx;
@@ -909,11 +929,27 @@ static void vk_rtx_prepare_ubo( trRefdef_t *refdef, world_t *world, mnode_t *vie
 	VectorCopy( sky_matrix[1], ubo->environment_rotation_matrix + 4 );
 	VectorCopy( sky_matrix[2], ubo->environment_rotation_matrix + 8 );
 
-	add_dlights( refdef->dlights, refdef->num_dlights, ubo );
+	//add_dlights( refdef->dlights, refdef->num_dlights, ubo );
 	//add_dlights( backEnd.viewParms.dlights, backEnd.viewParms.num_dlights, ubo );
 
 	ubo->pt_cameras = 0;
 	//ubo->num_cameras = 0;
+}
+
+static void
+update_mlight_prev_to_current(void)
+{
+	light_entity_id_count[entity_frame_num] = num_model_lights;
+	for(int i = 0; i < light_entity_id_count[entity_frame_num]; i++) {
+		entity_hash_t hash = *(entity_hash_t*)&light_entity_ids[entity_frame_num][i];
+		if(hash.entity == 0u) continue;
+		for(int j = 0; j < light_entity_id_count[!entity_frame_num]; j++) {
+			if(light_entity_ids[entity_frame_num][i] == light_entity_ids[!entity_frame_num][j]) {
+				vk.uniform_instance_buffer.mlight_prev_to_current[j] = i;
+				break;
+			}
+		}
+	}
 }
 
 static void vk_rtx_setup_rt_pipeline( VkCommandBuffer cmd_buf, VkPipelineBindPoint bind_point, uint32_t index )
@@ -1058,6 +1094,12 @@ static void vk_rxt_trace_lighting( VkCommandBuffer cmd_buf, float num_bounce_ray
 	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_COLOR_LF_COCG] );
 	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_COLOR_HF] );
 	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_COLOR_SPEC] );
+
+	if ( pt_restir->value != 0 ) 
+	{
+		int frame_idx = vk.frame_counter & 1;
+		BARRIER_COMPUTE(cmd_buf, vk.img_rtx[RTX_IMG_PT_RESTIR_A + frame_idx]);
+	}
 
 	BUFFER_BARRIER( cmd_buf,
 		VK_ACCESS_SHADER_WRITE_BIT,
@@ -1497,9 +1539,20 @@ void vk_rtx_begin_scene( trRefdef_t *refdef, drawSurf_t *drawSurfs, int numDrawS
 	EntityUploadInfo upload_info;
 	Com_Memset( &upload_info, 0, sizeof(EntityUploadInfo) );
 	prepare_entities( &upload_info, refdef );
-#if 0
+
 	if ( tr.world )
-		vkpt_build_beam_lights(model_lights, &num_model_lights, MAX_MODEL_LIGHTS, bsp_world_model, fd->entities, fd->num_entities, prev_adapted_luminance);
+	{
+#if 0
+		vkpt_build_beam_lights(model_lights, &num_model_lights, MAX_MODEL_LIGHTS, bsp_world_model, fd->entities, fd->num_entities, prev_adapted_luminance, light_entity_ids[entity_frame_num], &num_model_lights);
+		add_dlights(vkpt_refdef.fd->dlights, vkpt_refdef.fd->num_dlights, model_lights, &num_model_lights, MAX_MODEL_LIGHTS, bsp_world_model, light_entity_ids[entity_frame_num]);
+#endif
+		add_dlights(refdef->dlights, refdef->num_dlights, model_lights, &num_model_lights, MAX_MODEL_LIGHTS, tr.world, light_entity_ids[entity_frame_num]);
+	}
+
+	update_mlight_prev_to_current();
+
+#if 0
+	vkpt_vertex_buffer_ensure_primbuf_size(upload_info.num_prims);
 #endif
 
 	ubo = &vk.uniform_buffer;

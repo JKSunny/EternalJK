@@ -136,8 +136,9 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define ENVIRONMENT_STATIC		1
 #define ENVIRONMENT_DYNAMIC		2
 
-#define MAX_LIGHT_SOURCES        32
-#define MAX_LIGHT_STYLES         64
+#define MAX_LIGHT_SOURCES       32
+#define MAX_LIGHT_STYLES        64
+#define MAX_MODEL_LIGHTS		16384
 
 // Variables that have "_lf", "_hf" or "_spec" suffix apply to the low-frequency, high-frequency or specular lighting channels, respectively.
 
@@ -177,9 +178,10 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define M_PI 3.1415926535897932384626433832795
 #endif
 
-// Dynamic light types
-#define DYNLIGHT_SPHERE         0
-#define DYNLIGHT_SPOT           1
+// Light types
+#define LIGHT_POLYGON        0
+#define LIGHT_SPHERE         1
+#define LIGHT_SPOT           2
 
 //
 // Spotlight styles (emission profiles)

@@ -1075,6 +1075,7 @@ static void collect_one_light_poly_entire_texture(  world_t &worldData, srfSurfa
 
 		light.material = (void*)vk_rtx_get_material( shader->index );
 		light.style = 0;
+		light.type = LIGHT_POLYGON;
 
 		if ( !get_triangle_off_center( light.positions, light.off_center, NULL ) )
 			continue;
