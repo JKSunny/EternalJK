@@ -32,6 +32,28 @@ VkDescriptorSet vk_rtx_get_current_desc_set_textures()
 #endif
 }
 
+byte* BSP_GetPvs( world_t *bsp, int cluster )
+{
+	if (!bsp->vis || !vk.numClusters)
+		return NULL;
+	
+	if (cluster < 0 || cluster >= vk.numClusters)
+		return NULL;
+
+	return (byte*)bsp->vis + bsp->clusterBytes * cluster;
+}
+
+byte* BSP_GetPvs2( world_t *bsp, int cluster )
+{
+	if (!bsp->vis || !vk.numClusters)
+		return NULL;
+
+	if (cluster < 0 || cluster >= vk.numClusters)
+		return NULL;
+
+	return (byte*)bsp->vis2 + bsp->clusterBytes * cluster;
+}
+
 byte *BSP_ClusterVis( world_t *bsp, byte *mask, int cluster, int vis )
 {
 	if ( !bsp || !vk.vis ) {
@@ -53,7 +75,7 @@ byte *BSP_ClusterVis( world_t *bsp, byte *mask, int cluster, int vis )
 	{
 		if ( bsp->vis2 )
 		{
-			char *row = (char*)bsp->vis2 + cluster * bsp->clusterBytes;
+			byte *row = BSP_GetPvs2( bsp, cluster );
 			memcpy( mask, row, bsp->clusterBytes );
 			return mask;
 		}
@@ -64,7 +86,7 @@ byte *BSP_ClusterVis( world_t *bsp, byte *mask, int cluster, int vis )
 
 	if ( vis == DVIS_PVS/* && bsp->pvs_matrix*/ )
 	{
-		char *row = (char*)vk.vis + cluster * vk.clusterBytes;
+		byte *row = BSP_GetPvs( bsp, cluster );
 		memcpy(mask, row, vk.clusterBytes);
 		return mask;
 	}

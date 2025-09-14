@@ -54,163 +54,6 @@ mnode_t *BSP_PointLeaf( mnode_t *node, vec3_t p )
     return node;
 
 }
-qboolean RB_ClusterVisIdent(byte* aVis, byte* bVis) {
-	if (!memcmp(aVis, bVis, vk.clusterBytes * sizeof(byte))) return qtrue;
-	return qfalse;
-}
-int RB_CheckClusterExist(byte* cVis) {
-	for (int i = vk.numFixedCluster; i < vk.numClusters; i++) {
-		byte* allVis = (byte*)(vk.vis + i * vk.clusterBytes); // cast hmm
-		if (RB_ClusterVisIdent(allVis, cVis)) return i;
-	}
-	return -1;
-}
-
-int RB_TryMergeCluster(int cluster[3], int defaultC) {
-	if ((cluster[0] == -1 && cluster[1] == -1) || (cluster[1] == -1 && cluster[2] == -1) || (cluster[2] == -1 && cluster[0] == -1)) return -1;
-	//if ((cluster[0] == -1 && cluster[1] == -1) && cluster[2] == defaultC) return -1;
-	//if ((cluster[1] == -1 && cluster[2] == -1) && cluster[0] == defaultC) return -1;
-	//if ((cluster[2] == -1 && cluster[0] == -1) && cluster[1] == defaultC) return -1;
-	//if ((cluster[0] == -1 && cluster[1] == -1) || (cluster[1] == -1 && cluster[2] == -1) || (cluster[2] == -1 && cluster[0] == -1)) return -1;
-
-	if (cluster[0] != cluster[1] || cluster[1] != cluster[2] || cluster[0] != cluster[2]) {
-		vec3_t mins = { 99999, 99999, 99999 };
-		vec3_t maxs = { -99999, -99999, -99999 };
-		if (cluster[0] != -1) {
-			mins[0] = mins[0] < vk.clusterList[cluster[0]].mins[0] ? mins[0] : vk.clusterList[cluster[0]].mins[0];
-			mins[1] = mins[1] < vk.clusterList[cluster[0]].mins[1] ? mins[1] : vk.clusterList[cluster[0]].mins[1];
-			mins[2] = mins[2] < vk.clusterList[cluster[0]].mins[2] ? mins[2] : vk.clusterList[cluster[0]].mins[2];
-			maxs[0] = maxs[0] > vk.clusterList[cluster[0]].maxs[0] ? maxs[0] : vk.clusterList[cluster[0]].maxs[0];
-			maxs[1] = maxs[1] > vk.clusterList[cluster[0]].maxs[1] ? maxs[1] : vk.clusterList[cluster[0]].maxs[1];
-			maxs[2] = maxs[2] > vk.clusterList[cluster[0]].maxs[2] ? maxs[2] : vk.clusterList[cluster[0]].maxs[2];
-		}
-		if (cluster[1] != -1) {
-			mins[0] = mins[0] < vk.clusterList[cluster[1]].mins[0] ? mins[0] : vk.clusterList[cluster[1]].mins[0];
-			mins[1] = mins[1] < vk.clusterList[cluster[1]].mins[1] ? mins[1] : vk.clusterList[cluster[1]].mins[1];
-			mins[2] = mins[2] < vk.clusterList[cluster[1]].mins[2] ? mins[2] : vk.clusterList[cluster[1]].mins[2];
-			maxs[0] = maxs[0] > vk.clusterList[cluster[1]].maxs[0] ? maxs[0] : vk.clusterList[cluster[1]].maxs[0];
-			maxs[1] = maxs[1] > vk.clusterList[cluster[1]].maxs[1] ? maxs[1] : vk.clusterList[cluster[1]].maxs[1];
-			maxs[2] = maxs[2] > vk.clusterList[cluster[1]].maxs[2] ? maxs[2] : vk.clusterList[cluster[1]].maxs[2];
-		}
-		if (cluster[2] != -1) {
-			mins[0] = mins[0] < vk.clusterList[cluster[2]].mins[0] ? mins[0] : vk.clusterList[cluster[2]].mins[0];
-			mins[1] = mins[1] < vk.clusterList[cluster[2]].mins[1] ? mins[1] : vk.clusterList[cluster[2]].mins[1];
-			mins[2] = mins[2] < vk.clusterList[cluster[2]].mins[2] ? mins[2] : vk.clusterList[cluster[2]].mins[2];
-			maxs[0] = maxs[0] > vk.clusterList[cluster[2]].maxs[0] ? maxs[0] : vk.clusterList[cluster[2]].maxs[0];
-			maxs[1] = maxs[1] > vk.clusterList[cluster[2]].maxs[1] ? maxs[1] : vk.clusterList[cluster[2]].maxs[1];
-			maxs[2] = maxs[2] > vk.clusterList[cluster[2]].maxs[2] ? maxs[2] : vk.clusterList[cluster[2]].maxs[2];
-		}
-		if (defaultC != -1) {
-			mins[0] = mins[0] < vk.clusterList[defaultC].mins[0] ? mins[0] : vk.clusterList[defaultC].mins[0];
-			mins[1] = mins[1] < vk.clusterList[defaultC].mins[1] ? mins[1] : vk.clusterList[defaultC].mins[1];
-			mins[2] = mins[2] < vk.clusterList[defaultC].mins[2] ? mins[2] : vk.clusterList[defaultC].mins[2];
-			maxs[0] = maxs[0] > vk.clusterList[defaultC].maxs[0] ? maxs[0] : vk.clusterList[defaultC].maxs[0];
-			maxs[1] = maxs[1] > vk.clusterList[defaultC].maxs[1] ? maxs[1] : vk.clusterList[defaultC].maxs[1];
-			maxs[2] = maxs[2] > vk.clusterList[defaultC].maxs[2] ? maxs[2] : vk.clusterList[defaultC].maxs[2];
-		}
-
-
-		byte* vis = (byte*)calloc(1, sizeof(byte) * vk.clusterBytes); // cast hmm
-		for (int i = 0; i < vk.numFixedCluster; i++) {
-			if ((vk.clusterList[i].mins[0] >= mins[0] && vk.clusterList[i].mins[1] >= mins[1] && vk.clusterList[i].mins[2] >= mins[2]) &&
-				(vk.clusterList[i].maxs[0] <= maxs[0] && vk.clusterList[i].maxs[1] <= maxs[1] && vk.clusterList[i].maxs[2] <= maxs[2])) {
-
-				byte* allVis = (byte*)(vk.vis + i * vk.clusterBytes);
-				for (int b = 0; b < vk.clusterBytes; b++) {
-
-					vis[b] = vis[b] | allVis[b];
-				}
-				//const byte* clusterVis = vk.vis + cluster * worldData.clusterBytes;
-				int x = 2;
-			}
-		}
-
-		int c = RB_CheckClusterExist(vis);
-		if (c == -1) {
-			byte* allVis = (byte*)(vk.vis + vk.numClusters * vk.clusterBytes);
-			for (int b = 0; b < vk.clusterBytes; b++) {
-				allVis[b] = vis[b];
-			}
-			c = vk.numClusters;
-			vk.numClusters++;
-		}
-		free(vis);
-
-		return c;
-
-		//else c = 0;
-	}
-	return -1;
-}
-
-#if 0
-int RB_GetCluster() {
-	vec3_t mins = { 99999, 99999, 99999 };
-	vec3_t maxs = { -99999, -99999, -99999 };
-
-	for (int i = 0; i < (tess.numVertexes); i++) {
-		int cluster = R_FindClusterForPos3(tess.xyz[i]);
-		if (cluster == -1) cluster = R_FindClusterForPos(tess.xyz[i]);
-		if (cluster == -1) cluster = R_FindClusterForPos2(tess.xyz[i]);
-
-		if (cluster != -1) {
-			mins[0] = mins[0] < vk.clusterList[cluster].mins[0] ? mins[0] : vk.clusterList[cluster].mins[0];
-			mins[1] = mins[1] < vk.clusterList[cluster].mins[1] ? mins[1] : vk.clusterList[cluster].mins[1];
-			mins[2] = mins[2] < vk.clusterList[cluster].mins[2] ? mins[2] : vk.clusterList[cluster].mins[2];
-			maxs[0] = maxs[0] > vk.clusterList[cluster].maxs[0] ? maxs[0] : vk.clusterList[cluster].maxs[0];
-			maxs[1] = maxs[1] > vk.clusterList[cluster].maxs[1] ? maxs[1] : vk.clusterList[cluster].maxs[1];
-			maxs[2] = maxs[2] > vk.clusterList[cluster].maxs[2] ? maxs[2] : vk.clusterList[cluster].maxs[2];
-		}
-	}
-
-	byte* vis = (byte*)calloc(1, sizeof(byte) * vk.clusterBytes);
-	for (int i = 0; i < vk.numFixedCluster; i++) {
-		if ((vk.clusterList[i].mins[0] >= mins[0] && vk.clusterList[i].mins[1] >= mins[1] && vk.clusterList[i].mins[2] >= mins[2]) &&
-			(vk.clusterList[i].maxs[0] <= maxs[0] && vk.clusterList[i].maxs[1] <= maxs[1] && vk.clusterList[i].maxs[2] <= maxs[2])) {
-
-			byte* allVis = (byte*)(vk.vis + i * vk.clusterBytes);
-			for (int b = 0; b < vk.clusterBytes; b++) {
-
-				vis[b] = vis[b] | allVis[b];
-			}
-			//const byte* clusterVis = vk.vis + cluster * worldData.clusterBytes;
-			int x = 2;
-		}
-
-	}
-
-	byte* allVis = (byte*)(vk.vis + vk.numClusters * vk.clusterBytes);
-	for (int b = 0; b < vk.clusterBytes; b++) {
-		allVis[b] = vis[b];
-	}
-
-	free(vis);
-	int c = vk.numClusters;
-	vk.numClusters++;
-	return c;
-}
-#endif
-
-// another try for the pvs
-//int BSP_PointLeaf(vec3_t p)
-//{
-//	mnode_t* node;
-//	float		d;
-//	cplane_t* plane;
-//
-//	node = worldData.nodes;
-//
-//	while (node->plane) {
-//		plane = node->plane;
-//		d = DotProduct(p, plane->normal) - plane->dist;
-//		if (d < 0)
-//			node = node->children[1];
-//		else
-//			node = node->children[0];
-//	}
-//
-//	return node->cluster;
-//}
 
 #define Q_IsBitSet(data, bit)   (((data)[(bit) >> 3] & (1 << ((bit) & 7))) != 0)
 #define Q_SetBit(data, bit)     ((data)[(bit) >> 3] |= (1 << ((bit) & 7)))
@@ -273,113 +116,16 @@ void get_triangle_norm( const float* positions, float* normal )
 
 static void RB_UploadCluster( world_t &worldData, vkbuffer_t *buffer, uint32_t offsetIDX, int defaultC ) 
 {
-	uint32_t* clusterData = (uint32_t*)calloc(tess.numIndexes/3, sizeof(uint32_t));
-
-	for (int i = 0; i < (tess.numIndexes / 3); i++) {
-		int c = -1;
-#if 0
-		vec4_t pos = { 0,0,0,0 };
-		for (int j = 0; j < 3; j++) {
-			VectorAdd(pos, tess.xyz[tess.indexes[(i * 3) + j]], pos);
-			VectorAdd(pos, tess.normal[tess.indexes[(i * 3) + j]], pos);
-		}
-		VectorScale(pos, 1.0f / 3.0f, pos);
-		
-		// the cluster calculation in Quake III is unreliable, therefore we need multiple fallbacks
-		int cluster[3];
-		cluster[0] = R_FindClusterForPos3( worldData, tess.xyz[tess.indexes[(i * 3) + 0]] );
-		cluster[1] = R_FindClusterForPos3( worldData, tess.xyz[tess.indexes[(i * 3) + 1]] );
-		cluster[2] = R_FindClusterForPos3( worldData, tess.xyz[tess.indexes[(i * 3) + 2]] );
-
-		if(cluster[0] == -1) cluster[0] = R_FindClusterForPos( worldData, tess.xyz[tess.indexes[(i * 3) + 0]] );
-		if (cluster[1] == -1) cluster[1] = R_FindClusterForPos( worldData, tess.xyz[tess.indexes[(i * 3) + 1]] );
-		if (cluster[2] == -1) cluster[2] = R_FindClusterForPos( worldData, tess.xyz[tess.indexes[(i * 3) + 2]] );
-
-		if (cluster[0] == -1) cluster[0] = R_FindClusterForPos2( worldData, tess.xyz[tess.indexes[(i * 3) + 0]] );
-		if (cluster[1] == -1) cluster[1] = R_FindClusterForPos2( worldData, tess.xyz[tess.indexes[(i * 3) + 1]] );
-		if (cluster[2] == -1) cluster[2] = R_FindClusterForPos2( worldData, tess.xyz[tess.indexes[(i * 3) + 2]] );
-
-		// if each vertex is in a different cluster merge them to one where the whole triangle is inside
-		c = RB_TryMergeCluster(cluster, defaultC);
-		
-		// if we still got no cluster try the center
-		if (c == -1) c = R_FindClusterForPos2( worldData, pos );
-		if (c == -1) c = R_FindClusterForPos( worldData, pos );
-		if (c == -1) c = R_FindClusterForPos3( worldData, pos );
-		if (c == -1) {
-			// use default cluster as last resort
-			c = defaultC;
-		}
-#else
-		c = defaultC;
-#endif
-		clusterData[i] = c;
-	}
-
-	vk_rtx_upload_buffer_data_offset( buffer, offsetIDX * sizeof(uint32_t), (tess.numIndexes/3) * sizeof(uint32_t), (const byte*)clusterData );
-	free(clusterData);
-}
-
-// multiple different ways to find a cluster
- int R_FindClusterForPos( world_t &worldData, const vec3_t p) {
-	mnode_t* node;
-	float		d;
-	cplane_t* plane;
-
-	node = tr.world->nodes;
-	while (1) {
-		if (node->contents != -1) {
-			break;
-		}
-		plane = node->plane;
-		d = DotProduct(p, plane->normal) - plane->dist;
-		if (d >= 0) {
-			node = node->children[0];
-		}
-		else {
-			node = node->children[1];
-		}
-	}
-
-	return node->cluster;
-}
-
- int R_FindClusterForPos2( world_t &worldData, const vec3_t p) {
-	mnode_t* node;
-	float		d;
-	cplane_t* plane;
-
-	node = worldData.nodes;
-	while (1) {
-		if (node->contents != -1) {
-			break;
-		}
-		plane = node->plane;
-		d = DotProduct(p, plane->normal) - plane->dist;
-		if (d > 0) {
-			node = node->children[0];
-		}
-		else {
-			node = node->children[1];
-		}
-	}
-
-	return node->cluster;
- }
-
-int R_FindClusterForPos3( world_t &worldData, const vec3_t p ) 
-{
 	uint32_t i;
+	uint32_t *clusterData = (uint32_t*)calloc( (tess.numIndexes / 3), sizeof(uint32_t) );
 
-	for ( i = 0; i < worldData.numClusters; i++ ) 
+	for ( i = 0; i < (tess.numIndexes / 3); i++ ) 
 	{
-		if ( vk.clusterList[i].mins[0] <= p[0] && p[0] <= vk.clusterList[i].maxs[0] &&
-			vk.clusterList[i].mins[1] <= p[1] && p[1] <= vk.clusterList[i].maxs[1] &&
-			vk.clusterList[i].mins[2] <= p[2] && p[2] <= vk.clusterList[i].maxs[2] ) {
-			return i;
-		}
+		clusterData[i] = defaultC;
 	}
-	return -1;
+
+	vk_rtx_upload_buffer_data_offset( buffer, offsetIDX * sizeof(uint32_t), (tess.numIndexes / 3) * sizeof(uint32_t), (const byte*)clusterData );
+	free(clusterData);
 }
 
 int R_GetClusterFromSurface( world_t &worldData, surfaceType_t *surf) 
@@ -407,19 +153,19 @@ void R_RecursiveCreateAS( world_t &worldData, mnode_t* node,
 	uint32_t* countIDXdynamicAS, uint32_t* countXYZdynamicAS, 
 	qboolean transparent) 
 {	
-	do 
+	if ( node->contents == -1 ) 
 	{
-		if (node->contents != -1)
-			break;
+		for ( uint32_t i = 0; i < 2; i++ ) 
+		{
+			R_RecursiveCreateAS(worldData, node->children[i], 
+				countIDXstatic, countXYZstatic, 
+				countIDXsky, countXYZsky, 
+				countIDXdynamicData, countXYZdynamicData, 
+				countIDXdynamicAS, countXYZdynamicAS, 
+				transparent);
+		}
+	}
 
-		R_RecursiveCreateAS( worldData, node->children[0], 
-			countIDXstatic, countXYZstatic, 
-			countIDXsky, countXYZsky, 
-			countIDXdynamicData, countXYZdynamicData, 
-			countIDXdynamicAS, countXYZdynamicAS, 
-			transparent);
-		node = node->children[1];
-	} while (1);
 	{
 		// leaf node, so add mark surfaces
 		uint32_t	i,j,c;
@@ -464,8 +210,6 @@ void R_RecursiveCreateAS( world_t &worldData, mnode_t* node,
 				continue;
 
 			if (!surf->added && !surf->skip) {		
-				int clusterIDX = node->cluster;
-
 				uint32_t material = 0;
 				// different buffer and offsets for static, dynamic data and dynamic as
 				uint32_t* countIDX;
@@ -528,7 +272,7 @@ void R_RecursiveCreateAS( world_t &worldData, mnode_t* node,
 					vk.updateDataOffsetXYZ[vk.updateDataOffsetXYZCount].surf = surf;
 					vk.updateDataOffsetXYZ[vk.updateDataOffsetXYZCount].index_offset = *idx_buffer_offset;
 					vk.updateDataOffsetXYZ[vk.updateDataOffsetXYZCount].vertex_offset = *xyz_buffer_offset;
-					vk.updateDataOffsetXYZ[vk.updateDataOffsetXYZCount].cluster = clusterIDX;
+					vk.updateDataOffsetXYZ[vk.updateDataOffsetXYZCount].cluster = node->cluster;
 					vk.updateDataOffsetXYZCount++;
 
 					//if ( RB_IsLight(tess.shader) ) 
@@ -553,7 +297,7 @@ void R_RecursiveCreateAS( world_t &worldData, mnode_t* node,
 					vk.updateASOffsetXYZ[vk.updateASOffsetXYZCount].index_offset = *idx_buffer_offset;
 					vk.updateASOffsetXYZ[vk.updateASOffsetXYZCount].vertex_offset = *xyz_buffer_offset;
 					vk.updateASOffsetXYZ[vk.updateASOffsetXYZCount].countXYZ = *countXYZ;
-					vk.updateASOffsetXYZ[vk.updateASOffsetXYZCount].cluster = clusterIDX;
+					vk.updateASOffsetXYZ[vk.updateASOffsetXYZCount].cluster = node->cluster;
 					vk.updateASOffsetXYZCount++;
 
 					//if ( RB_IsLight(tess.shader) ) 
@@ -574,10 +318,10 @@ void R_RecursiveCreateAS( world_t &worldData, mnode_t* node,
 				}
 
 				// upload vertices
-				vk_rtx_upload_vertices( xyz_buffer, (*xyz_buffer_offset), clusterIDX );
+				vk_rtx_upload_vertices( xyz_buffer, (*xyz_buffer_offset), node->cluster );
 				if ( dynamic ) {
 					for ( i = 1; i < vk.swapchain_image_count; i++ ) {
-						vk_rtx_upload_vertices( &xyz_buffer[i], (*xyz_buffer_offset), clusterIDX );
+						vk_rtx_upload_vertices( &xyz_buffer[i], (*xyz_buffer_offset), node->cluster );
 					}
 				}	
 				surf->added = qtrue;
@@ -596,24 +340,33 @@ void R_RecursiveCreateAS( world_t &worldData, mnode_t* node,
 
 void R_CalcClusterAABB( mnode_t* node, int numClusters ) 
 {
-	do {
+	/*do {
 		if ( node->contents != -1 )
 			break;
 
 		R_CalcClusterAABB( node->children[0], numClusters );
 		node = node->children[1];
-	} while (1);
+	} while (1);*/
+
+	if (node->contents == -1) {
+		R_CalcClusterAABB(node->children[0], numClusters);
+		R_CalcClusterAABB(node->children[1], numClusters);
+		return;
+	}
+
 	{
-		if ( node->cluster < 0 || node->cluster > numClusters )
+		if ( node->cluster < 0 || node->cluster >= numClusters )
 			return;
 
-		vk.clusterList[node->cluster].mins[0] = MIN(vk.clusterList[node->cluster].mins[0], node->mins[0]);
-		vk.clusterList[node->cluster].mins[1] = MIN(vk.clusterList[node->cluster].mins[1], node->mins[1]);
-		vk.clusterList[node->cluster].mins[2] = MIN(vk.clusterList[node->cluster].mins[2], node->mins[2]);
+		aabb_t *aabb = vk.cluster_aabbs + node->cluster;
 
-		vk.clusterList[node->cluster].maxs[0] = MAX(vk.clusterList[node->cluster].maxs[0], node->maxs[0]);
-		vk.clusterList[node->cluster].maxs[1] = MAX(vk.clusterList[node->cluster].maxs[1], node->maxs[1]);
-		vk.clusterList[node->cluster].maxs[2] = MAX(vk.clusterList[node->cluster].maxs[2], node->maxs[2]);
+		aabb->mins[0] = MIN(aabb->mins[0], node->mins[0]);
+		aabb->mins[1] = MIN(aabb->mins[1], node->mins[1]);
+		aabb->mins[2] = MIN(aabb->mins[2], node->mins[2]);
+
+		aabb->maxs[0] = MAX(aabb->maxs[0], node->maxs[0]);
+		aabb->maxs[1] = MAX(aabb->maxs[1], node->maxs[1]);
+		aabb->maxs[2] = MAX(aabb->maxs[2], node->maxs[2]);
 	}
 }
 
@@ -1195,6 +948,55 @@ static void collect_light_polys( world_t &worldData, int model_idx, int* num_lig
 	}
 }
 
+static void
+get_aabb_corner(const aabb_t* aabb, int corner_idx, vec3_t corner)
+{
+	corner[0] = (corner_idx & 1) ? aabb->maxs[0] : aabb->mins[0];
+	corner[1] = (corner_idx & 2) ? aabb->maxs[1] : aabb->mins[1];
+	corner[2] = (corner_idx & 4) ? aabb->maxs[2] : aabb->mins[2];
+}
+
+static bool
+light_affects_cluster(light_poly_t* light, const aabb_t* aabb)
+{
+	// Empty cluster, nothing is visible
+	if (aabb->mins[0] > aabb->maxs[0])
+		return false;
+
+	const float* v0 = light->positions + 0;
+	const float* v1 = light->positions + 3;
+	const float* v2 = light->positions + 6;
+	
+	// Get the light plane equation
+	vec3_t e1, e2, normal;
+	VectorSubtract(v1, v0, e1);
+	VectorSubtract(v2, v0, e2);
+	CrossProduct(e1, e2, normal);
+	VectorNormalize(normal);
+	
+	float plane_distance = -DotProduct(normal, v0);
+
+	bool all_culled = true;
+
+	// If all 8 corners of the cluster's AABB are behind the light, it's definitely invisible
+	for (int corner_idx = 0; corner_idx < 8; corner_idx++)
+	{
+		vec3_t corner;
+		get_aabb_corner(aabb, corner_idx, corner);
+
+		float side = DotProduct(normal, corner) + plane_distance;
+		if (side > 0)
+			all_culled = false;
+	}
+
+	if (all_culled)
+	{
+		return false;
+	}
+
+	return true;
+}
+
 static void collect_cluster_lights( world_t &worldData ) 
 {
 #define MAX_LIGHTS_PER_CLUSTER 1024
@@ -1211,11 +1013,11 @@ static void collect_cluster_lights( world_t &worldData )
 		if ( light->cluster < 0 )
 			continue;
 
-		const byte *pvs = worldData.vis2 + light->cluster * vk.clusterBytes;
+		const byte *pvs = (const byte*)BSP_GetPvs( &worldData, light->cluster);
 
 		FOREACH_BIT_BEGIN( pvs, vk.clusterBytes, other_cluster )
-			byte *cluster_aabb = (byte*)worldData.vis2 + other_cluster * vk.clusterBytes;
-			//if (light_affects_cluster(light, cluster_aabb))
+			aabb_t *cluster_aabb = vk.cluster_aabbs + other_cluster;
+			if (light_affects_cluster(light, cluster_aabb))
 			{
 				int *num_cluster_lights = cluster_light_counts + other_cluster;
 				if ( *num_cluster_lights < MAX_LIGHTS_PER_CLUSTER )
@@ -1275,14 +1077,12 @@ void R_PreparePT( world_t &worldData )
 	
 	vk.vis				= (const byte*)calloc(vk.numMaxClusters, sizeof(byte) * worldData.clusterBytes);
 	memcpy((void*)vk.vis, worldData.vis, worldData.numClusters * sizeof(byte) * worldData.clusterBytes);
-	//memcpy(&vk.vis, worldData.vis, worldData.numClusters * sizeof(byte) * worldData.clusterBytes);
-	//const byte* clusterVis = worldData.vis + cluster * worldData.clusterBytes;
-
-	vk.clusterList		= (cluster_t*)calloc(worldData.numClusters, sizeof(cluster_t));
-	for ( i = 0; i < worldData.numClusters; i++ ) {
-		vk.clusterList[i].idx = i;
-		vk.clusterList[i].mins[0] = vk.clusterList[i].mins[1] = vk.clusterList[i].mins[2] = 99999;
-		vk.clusterList[i].maxs[0] = vk.clusterList[i].maxs[1] = vk.clusterList[i].maxs[2] = -99999;
+	
+	vk.cluster_aabbs		= (aabb_t*)calloc(worldData.numClusters, sizeof(aabb_t));
+	for ( i = 0; i < worldData.numClusters; i++ ) 
+	{
+		VectorSet(vk.cluster_aabbs[i].mins, FLT_MAX, FLT_MAX, FLT_MAX );
+		VectorSet(vk.cluster_aabbs[i].maxs, -FLT_MAX, -FLT_MAX, -FLT_MAX );
 	}
 
 	R_CalcClusterAABB( worldData.nodes, worldData.numClusters );

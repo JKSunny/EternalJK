@@ -23,6 +23,11 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include "tr_local.h"
 
+#define     MAX_MAP_CLUSTERS    65536
+
+static int local_light_counts[MAX_MAP_CLUSTERS];
+static int cluster_light_counts[MAX_MAP_CLUSTERS];
+static int light_list_tails[MAX_MAP_CLUSTERS];
 static int max_model_lights = 0;
 
 void vkpt_light_buffer_reset_counts( void )	// not used yet
@@ -343,6 +348,122 @@ static void copy_bsp_lights( world_t *world, LightBuffer *lbo )
 	buffer_unmap( vk.buf_light_counts_history + history_index );
 }
 
+static void inject_model_lights( world_t* world, int num_model_lights, light_poly_t* transformed_model_lights, int model_light_offset, LightBuffer *lbo)
+{
+	uint32_t *dst_list_offsets = lbo->light_list_offsets;
+	uint32_t *dst_lists = lbo->light_list_lights;
+
+	memset(local_light_counts, 0, world->numClusters * sizeof(int));
+	memset(cluster_light_counts, 0, world->numClusters * sizeof(int));
+
+	// Count the number of model lights per cluster
+
+	for (int nlight = 0; nlight < num_model_lights; nlight++)
+	{
+		local_light_counts[transformed_model_lights[nlight].cluster]++;
+	}
+
+	// Count the number of model lights visible from each cluster, using the PVS
+
+	for (int c = 0; c < world->numClusters; c++)
+	{
+		if (local_light_counts[c])
+		{
+			const byte* mask = BSP_GetPvs(world, c);
+
+			for (int j = 0; j < world->clusterBytes; j++) {
+				if (mask[j]) {
+					for (int k = 0; k < 8; ++k) {
+						if (mask[j] & (1 << k))
+							cluster_light_counts[j * 8 + k] += local_light_counts[c];
+					}
+				}
+			}
+		}
+	}
+
+	// Count the total required list size
+
+	int required_size = world->cluster_light_offsets[world->numClusters];
+	for (int c = 0; c < world->numClusters; c++)
+	{
+		required_size += cluster_light_counts[c];
+	}
+
+	// See if we have enough room in the interaction buffer
+	
+	if (required_size > MAX_LIGHT_LIST_NODES)
+	{
+		Com_Printf("Insufficient light interaction buffer size (%d needed). Increase MAX_LIGHT_LIST_NODES.\n", required_size);
+
+		// Copy the BSP light lists verbatim
+		copy_bsp_lights( world, lbo );
+
+		return;
+	}
+	
+	// Store the light counts in the light counts history entry for the current frame
+	uint32_t history_index = vk.frame_counter % LIGHT_COUNT_HISTORY;
+	uint32_t *sample_light_counts = (uint32_t *)buffer_map(vk.buf_light_counts_history + history_index);
+
+	// Copy the static light lists, and make room in these lists to inject the model lights
+
+	int tail = 0;
+	for (int c = 0; c < world->numClusters; c++)
+	{
+		int original_size = world->cluster_light_offsets[c + 1] - world->cluster_light_offsets[c];
+
+		dst_list_offsets[c] = tail;
+		memcpy(dst_lists + tail, world->cluster_lights + world->cluster_light_offsets[c], sizeof(uint32_t) * original_size);
+		tail += original_size;
+		
+		assert(tail + cluster_light_counts[c] < MAX_LIGHT_LIST_NODES);
+		
+		light_list_tails[c] = tail;
+		tail += cluster_light_counts[c];
+
+		sample_light_counts[c] = original_size + cluster_light_counts[c];
+	}
+	dst_list_offsets[world->numClusters] = tail;
+
+	buffer_unmap(vk.buf_light_counts_history + history_index);
+
+	// Write the model light indices into the light lists
+
+	for (int nlight = 0; nlight < num_model_lights; nlight++)
+	{
+		const byte* mask = BSP_GetPvs(world, transformed_model_lights[nlight].cluster);
+
+		if (!mask) continue;
+
+		for (int j = 0; j < world->clusterBytes; j++) {
+			if (mask[j]) {
+				for (int k = 0; k < 8; ++k) {
+					if (mask[j] & (1 << k))
+					{
+						int other_cluster = j * 8 + k;
+						int list_index = light_list_tails[other_cluster]++;
+						// assert we're not writing into the space reserved for following cluster
+						assert(list_index < dst_list_offsets[other_cluster + 1]);
+						dst_lists[list_index] = model_light_offset + nlight;
+					}
+				}
+			}
+		}
+	}
+
+#if defined(_DEBUG)
+	// Verify tight packing
+	for (int c = 0; c < world->numClusters; c++)
+	{
+		int list_start = dst_list_offsets[c];
+		int list_end = dst_list_offsets[c + 1];
+		int original_size = world->cluster_light_offsets[c + 1] - world->cluster_light_offsets[c];
+		assert(list_end - list_start == original_size + cluster_light_counts[c]);
+	}
+#endif
+}
+
 VkResult vkpt_light_buffer_upload_to_staging( qboolean render_world, 
 	world_t *world, int num_model_lights, light_poly_t *transformed_model_lights, const float* sky_radiance )
 {
@@ -360,12 +481,10 @@ VkResult vkpt_light_buffer_upload_to_staging( qboolean render_world,
 
 		if ( max_model_lights > 0 )
 		{
-#if 0
 			// If any of the BSP models contain lights, inject these lights right into the visibility lists.
 			// The shader doesn't know that these lights are dynamic.
 
-			inject_model_lights(bsp_mesh, bsp, num_model_lights, transformed_model_lights, model_light_offset, lbo);
-#endif
+			inject_model_lights( world, num_model_lights, transformed_model_lights, model_light_offset, lbo );
 		}
 		else
 		{
@@ -376,6 +495,13 @@ VkResult vkpt_light_buffer_upload_to_staging( qboolean render_world,
 		{
 			light_poly_t* light = world->light_polys + nlight;
 			float* vblight = *(lbo->light_polys + nlight * LIGHT_POLY_VEC4S);
+			copy_light(light, vblight, sky_radiance);
+		}
+
+		for (int nlight = 0; nlight < num_model_lights && nlight + model_light_offset < MAX_LIGHT_POLYS; nlight++)
+		{
+			light_poly_t* light = transformed_model_lights + nlight;
+			float* vblight = *(lbo->light_polys + (nlight + model_light_offset) * LIGHT_POLY_VEC4S);
 			copy_light(light, vblight, sky_radiance);
 		}
 	}
@@ -393,6 +519,7 @@ VkResult vkpt_light_buffer_upload_to_staging( qboolean render_world,
 	}
 
 	memcpy( lbo->cluster_debug_mask, vk.cluster_debug_mask, MAX_LIGHT_LISTS / 8 );
+	//memcpy(lbo->sky_visibility, bsp_mesh->sky_visibility, MAX_LIGHT_LISTS / 8);
 
 	buffer_unmap( staging );
 	lbo = NULL;

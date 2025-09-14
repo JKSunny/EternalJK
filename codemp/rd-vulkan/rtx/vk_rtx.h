@@ -205,9 +205,9 @@ typedef struct EntityUploadInfo
 } EntityUploadInfo;
 
 typedef struct {
-	vec3_t		mins, maxs;
-	int			idx;
-} cluster_t;
+	vec3_t mins;
+	vec3_t maxs;
+} aabb_t;
 
 typedef struct {
     VkDeviceSize	size;
@@ -386,6 +386,8 @@ VkDescriptorSet vk_rtx_get_current_desc_set_textures( void);
 
 void		R_PreparePT( world_t &worldData ) ;
 
+void vk_rtx_debug_plane(qboolean debug_plane, world_t& worldData);
+
 // matrix
 void		mult_matrix_matrix( float *p, const float *a, const float *b );
 void		create_entity_matrix( float matrix[16], trRefEntity_t *e, qboolean enable_left_hand );
@@ -469,13 +471,8 @@ void		vk_rtx_destroy_blas( vk_blas_t *blas );
 
 // bsp
 mnode_t		*BSP_PointLeaf( mnode_t *node, vec3_t p );
-int			R_FindClusterForPos( world_t &worldData, const vec3_t p );
-int			R_FindClusterForPos2( world_t &worldData, const vec3_t p );
-int			R_FindClusterForPos3( world_t &worldData, const vec3_t p );
-qboolean	RB_ClusterVisIdent(byte* aVis, byte* bVis);
-int			RB_CheckClusterExist(byte* cVis);
-int			RB_TryMergeCluster(int cluster[3], int defaultC);
-int			RB_GetCluster( void );
+byte		*BSP_GetPvs( world_t *bsp, int cluster );
+byte		*BSP_GetPvs2( world_t *bsp, int cluster );
 void		get_triangle_norm( const float* positions, float* normal );
 qboolean	get_triangle_off_center(const float* positions, float* center, float* anti_center);
 void		build_pvs2( world_t *world );

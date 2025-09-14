@@ -903,7 +903,7 @@ typedef struct {
 	bool			supports_fp16;
 	int				effective_aa_mode;
 
-	cluster_t		*clusterList;
+	aabb_t			*cluster_aabbs;
 	int				numFixedCluster;
 	int				numClusters;
 	int				clusterBytes;

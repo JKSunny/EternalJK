@@ -256,7 +256,7 @@ add_dlights(const dlight_t* dlights, int num_dlights, light_poly_t* light_list, 
 		hash.entity = i + 1; //entity ID
 		hash.mesh = 0xAA;
 
-		if(light->cluster >= 0)
+		//if(light->cluster >= 0)
 		{
 			//Super wasteful but we want to have all lights in the same list.
 
@@ -284,6 +284,14 @@ add_dlights(const dlight_t* dlights, int num_dlights, light_poly_t* light_list, 
 
 		}
 	}
+}
+
+static inline void transform_point(const float* p, const float* matrix, float* result)
+{
+	vec4_t point = { p[0], p[1], p[2], 1.f };
+	vec4_t transformed;
+	mult_matrix_vector(transformed, matrix, point);
+	VectorCopy(transformed, result); // vec4 -> vec3
 }
 
 #define MESH_FILTER_TRANSPARENT 1
@@ -383,7 +391,13 @@ static void process_regular_entity(
 
 		uint32_t cluster_id = ~0u;
 		if ( tr.world )
-			cluster_id = R_FindClusterForPos3( *tr.world, entity->e.origin );
+		{
+			vec3_t origin;
+			transform_point( entity->e.origin, transform, origin );
+			//cluster_id = R_FindClusterForPos3( *tr.world, entity->e.origin );
+			cluster_id = BSP_PointLeaf( tr.world->nodes, entity->e.origin )->cluster;
+		}
+
 		ubo_model_cluster_id[current_model_instance_index] = cluster_id;
 
 		ubo_model_idx_offset[current_model_instance_index] = mesh->indexOffset;
@@ -1492,6 +1506,7 @@ void vk_rtx_begin_scene( trRefdef_t *refdef, drawSurf_t *drawSurfs, int numDrawS
 	if ( tr.world )
 		render_world = qtrue;
 
+	//bool render_world = (fd->rdflags & RDF_NOWORLDMODEL) == 0;
 #if 0
 	if ( !temporal_frame_valid )
 	{
@@ -1540,7 +1555,7 @@ void vk_rtx_begin_scene( trRefdef_t *refdef, drawSurf_t *drawSurfs, int numDrawS
 	Com_Memset( &upload_info, 0, sizeof(EntityUploadInfo) );
 	prepare_entities( &upload_info, refdef );
 
-	if ( tr.world )
+	if ( tr.world && render_world )
 	{
 #if 0
 		vkpt_build_beam_lights(model_lights, &num_model_lights, MAX_MODEL_LIGHTS, bsp_world_model, fd->entities, fd->num_entities, prev_adapted_luminance, light_entity_ids[entity_frame_num], &num_model_lights);
