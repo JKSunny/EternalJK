@@ -641,7 +641,8 @@ get_surf_plane_equation(srfSurfaceFace_t *surf , float* plane )
 
 		vec3_t e0, e1;
 		VectorSubtract(v1, v0, e0);
-		VectorSubtract(v2, v1, e1);
+		//VectorSubtract(v2, v1, e1);
+		VectorSubtract(v2, v0, e1);
 		vec3_t normal;
 		CrossProduct(e0, e1, normal);
 		float len = VectorLength(normal);
@@ -800,61 +801,246 @@ static void collect_one_light_poly_entire_texture(  world_t &worldData, srfSurfa
 													const vec3_t light_color, float emissive_factor, int light_style,
 													int* num_lights, int* allocated_lights, light_poly_t** lights )
 {
-	float positions[3 * /*max_vertices / face->numPoints*/ 32];
+	int *indices = (int *)((byte *)surf + surf->ofsIndices);
+	float *v0, *v1, *v2;
+	int i, i0, i1, i2;
+	vec3_t e0, e1, normal;
 
-	for ( int i = 0; i < surf->numPoints; i++ )
+	for ( i = 0; i < surf->numIndices; i += 3 )
 	{
-		float *p = positions + i * 3;
-		VectorCopy( surf->points[i], p );
-	}
+		i0 = indices[i + 0];
+		i1 = indices[i + 1];
+		i2 = indices[i + 2];
 
-	int num_vertices = surf->numPoints;
-	remove_collinear_edges( positions, NULL, &num_vertices );
-			
-	const int num_triangles = surf->numPoints - 2;
+		if ( i0 >= surf->numPoints || i1 >= surf->numPoints || i2 >= surf->numPoints )
+			continue;
 
-	for (  int i = 0; i < num_triangles; i++ )
-	{
-		const int e = surf->numPoints;
-
-		int i1 = (i + 2) % e;
-		int i2 = (i + 1) % e;
+		v0 = surf->points[i0];
+		v1 = surf->points[i1];
+		v2 = surf->points[i2];
 
 		light_poly_t light;
-		VectorCopy( positions,			light.positions + 0 );
-		VectorCopy( positions + i1 * 3,	light.positions + 3 );
-		VectorCopy( positions + i2 * 3,	light.positions + 6 );
-		VectorScale(light_color, emissive_factor, light.color);
+		VectorCopy( v0, light.positions + 0 );
+		VectorCopy( v2, light.positions + 3 );
+		VectorCopy( v1, light.positions + 6 );
 
-		light.material = (void*)vk_rtx_get_material( shader->index );
-		light.style = 0;
+		// add offset
+		VectorSubtract( v1, v0, e0 );
+		VectorSubtract( v2, v0, e1 );
+		CrossProduct( e0, e1, normal );
+		VectorNormalize( normal );
+		const float offset = -0.05f; 
+		for ( int j = 0; j < 3; j++ ) 
+		{
+			VectorMA(light.positions + j * 3, offset, normal, light.positions + j * 3);
+		}
+
+		VectorScale( light_color, emissive_factor, light.color );
+
+		light.material = (void *)vk_rtx_get_material( shader->index );
+		light.style = light_style;
 		light.type = LIGHT_POLYGON;
+		light.emissive_factor = emissive_factor;
 
 		if ( !get_triangle_off_center( light.positions, light.off_center, NULL ) )
 			continue;
 
-		light.emissive_factor = emissive_factor;
-
-		if (model_idx >= 0)
-			light.cluster = -1; // Cluster will be determined when the model is instanced
+		if ( model_idx >= 0 )
+			light.cluster = -1;
 		else
 			light.cluster = BSP_PointLeaf( worldData.nodes, light.off_center )->cluster;
 
 		if ( model_idx >= 0 || light.cluster >= 0 )
 		{
-			light_poly_t *list_light = append_light_poly(num_lights, allocated_lights, lights);
-			memcpy( list_light, &light, sizeof(light_poly_t) );
+			light_poly_t *list_light = append_light_poly( num_lights, allocated_lights, lights );
+			memcpy(list_light, &light, sizeof(light_poly_t));
 		}
 	}
 }
 
-static void 
-collect_one_light_poly( world_t &worldData, srfSurfaceFace_t *surf, shader_t *shader, int model_idx, const vec4_t plane,
-									const float tex_scale[], const vec2_t min_light_texcoord, const vec2_t max_light_texcoord,
-									const vec3_t light_color, float emissive_factor, int light_style,
-									int* num_lights, int* allocated_lights, light_poly_t** lights )
+static qboolean vk_rtx_compute_bary_weights( const point2_t p, const vec2_t a, const vec2_t b, const vec2_t c, vec3_t weights )
 {
-	// https://github.com/demoth/jake2/blob/main/info/BSP.md#texture-information-lump
+	float v0[2], v1[2], v2[2];
+	float d00, d01, d11, d20, d21;
+	float denom, inv_denom;
+	float u, v, w;
+
+	// edge vectors
+	v0[0] = b[0] - a[0]; v0[1] = b[1] - a[1];
+	v1[0] = c[0] - a[0]; v1[1] = c[1] - a[1];
+	v2[0] = p.x - a[0];  v2[1] = p.y - a[1];
+
+	d00 = v0[0] * v0[0] + v0[1] * v0[1];
+	d01 = v0[0] * v1[0] + v0[1] * v1[1];
+	d11 = v1[0] * v1[0] + v1[1] * v1[1];
+	d20 = v2[0] * v0[0] + v2[1] * v0[1];
+	d21 = v2[0] * v1[0] + v2[1] * v1[1];
+
+	// return false when barycentric coordinates is degnerate (zero area)
+	denom = d00 * d11 - d01 * d01;
+	if ( fabsf( denom ) < 1e-8f )
+		return qfalse;
+
+	inv_denom = 1.0f / denom;
+	v = (d11 * d20 - d01 * d21) * inv_denom;
+	w = (d00 * d21 - d01 * d20) * inv_denom;
+	u = 1.0f - v - w;
+
+	weights[0] = u;
+	weights[1] = v;
+	weights[2] = w;
+
+	return qtrue;
+}
+
+static void collect_one_light_poly(
+	world_t &worldData,
+	srfSurfaceFace_t *surf,
+	shader_t *shader,
+	int model_idx,
+	const vec2_t min_light_texcoord,
+	const vec2_t max_light_texcoord,
+	const vec3_t light_color,
+	float emissive_factor,
+	int light_style,
+	int* num_lights,
+	int* allocated_lights,
+	light_poly_t** lights
+) {
+	float *v0, *v1, *v2;
+	int i, j, k, i0, i1, i2, axis;
+	int tile_u, tile_v, min_tile_u, max_tile_u, min_tile_v, max_tile_v;
+	vec2_t uv0, uv1, uv2, tri_min_uv, tri_max_uv;
+	vec2_t min_tc, max_tc;
+	vec3_t e0, e1, normal, weights;
+	vec3_t tri_positions[3], instance_positions[MAX_POLY_VERTS];
+	rt_poly_t tri_uv_poly, clipper, clipped;
+	
+	int *indices = (int *)((byte *)surf + surf->ofsIndices);
+
+	for ( i = 0; i < surf->numIndices; i += 3 ) 
+	{
+		i0 = indices[i + 0];
+		i1 = indices[i + 1];
+		i2 = indices[i + 2];
+
+		if ( i0 >= surf->numPoints || i1 >= surf->numPoints || i2 >= surf->numPoints )
+			continue;
+
+		v0 = surf->points[i0];
+		v1 = surf->points[i1];
+		v2 = surf->points[i2];
+
+		VectorSet2( uv0, v0[6], v0[7] );
+		VectorSet2( uv1, v1[6], v1[7] );
+		VectorSet2( uv2, v2[6], v2[7] );
+
+		// get UV aabb
+		VectorSet2( tri_min_uv, 
+			fminf( fminf( uv0[0], uv1[0] ), uv2[0] ),
+			fminf( fminf( uv0[1], uv1[1] ), uv2[1] )
+		);
+		VectorSet2( tri_max_uv, 
+			fmaxf( fmaxf( uv0[0], uv1[0] ), uv2[0] ),
+			fmaxf( fmaxf( uv0[1], uv1[1] ), uv2[1] )
+		);
+
+		min_tile_u = (int)floorf( tri_min_uv[0] );
+		max_tile_u = (int)ceilf( tri_max_uv[0] );
+		min_tile_v = (int)floorf( tri_min_uv[1] );
+		max_tile_v = (int)ceilf( tri_max_uv[1] );
+
+		tri_uv_poly.len = 3;
+		tri_uv_poly.v[0] = { uv0[0], uv0[1] };
+		tri_uv_poly.v[1] = { uv1[0], uv1[1] };
+		tri_uv_poly.v[2] = { uv2[0], uv2[1] };
+
+		// world-space positions
+		VectorCopy( v0, tri_positions[0] );
+		VectorCopy( v1, tri_positions[1] );
+		VectorCopy( v2, tri_positions[2] );
+
+		for ( tile_u = min_tile_u; tile_u < max_tile_u; tile_u++ ) 
+		{
+			for ( tile_v = min_tile_v; tile_v < max_tile_v; tile_v++ ) 
+			{
+				// glow bounds for this tile
+				VectorSet2( min_tc, tile_u + min_light_texcoord[0], tile_v + min_light_texcoord[1] );
+				VectorSet2( max_tc, tile_u + max_light_texcoord[0], tile_v + max_light_texcoord[1] );
+
+				clipper.len = 4;
+				clipper.v[0] = { min_tc[0], min_tc[1] };
+				clipper.v[1] = { max_tc[0], min_tc[1] };
+				clipper.v[2] = { max_tc[0], max_tc[1] };
+				clipper.v[3] = { min_tc[0], max_tc[1] };
+
+				clip_polygon( &tri_uv_poly, &clipper, &clipped );
+				if (clipped.len < 3)
+					continue;
+
+				// reproject each clipped vertex from UV to world-space using barycentric interpolation
+				for (  j = 0; j < clipped.len; j++ ) {
+					Com_Memset( instance_positions[j], 0, sizeof(vec3_t) );
+
+					if ( !vk_rtx_compute_bary_weights( clipped.v[j], uv0, uv1, uv2, weights ) )
+						continue;
+
+					for ( k = 0; k < 3; k++ ) 
+					{
+						for ( axis = 0; axis < 3; axis++ ) 
+						{
+							instance_positions[j][axis] += tri_positions[k][axis] * weights[k];
+						}
+					}
+				}
+
+				// triangulate (fan)
+				for ( j = 1; j < clipped.len - 1; j++ ) 
+				{
+					light_poly_t *light = append_light_poly( num_lights, allocated_lights, lights );
+					light->material = (void *)vk_rtx_get_material( shader->index );
+					light->style = light_style;
+					light->type = LIGHT_POLYGON;
+					light->emissive_factor = emissive_factor;
+					VectorCopy( instance_positions[0],		light->positions + 0 );
+					VectorCopy( instance_positions[j + 1],	light->positions + 3 );
+					VectorCopy( instance_positions[j],		light->positions + 6 );
+					VectorScale( light_color, emissive_factor, light->color );
+
+					// add offset
+					VectorSubtract( light->positions + 3, light->positions + 0, e0);
+					VectorSubtract( light->positions + 6, light->positions + 0, e1);
+					CrossProduct( e0, e1, normal );
+					VectorNormalize( normal );
+					const float offset = 0.05f; 
+					for ( k = 0; k < 3; k++ )
+					{
+						VectorMA( light->positions + k * 3, offset, normal, light->positions + k * 3 );
+					}
+
+					get_triangle_off_center( light->positions, light->off_center, NULL );
+	
+					if ( model_idx < 0 )
+					{
+						// Find the cluster for this triangle
+						light->cluster = BSP_PointLeaf(worldData.nodes, light->off_center)->cluster;
+
+						if (light->cluster < 0)
+						{
+							// Cluster not found - which happens sometimes.
+							// The lighting system can't work with lights that have no cluster, so remove the triangle.
+							(*num_lights)--;
+						}
+					}
+					else
+					{
+						// It's a model: cluster will be determined after model instantiation.
+						light->cluster = -1;
+					}
+				}
+			}
+		}
+	}
 }
 
 static bool
@@ -918,10 +1104,9 @@ static void collect_light_polys( world_t &worldData, int model_idx, int* num_lig
 			continue;
 		}
 
-		float emissive_factor = 1.0f;
+		float emissive_factor = 4.0f;
 		int light_style = 0;
 
-		entire_texture_emissive = true;	// force it until collect_one_light_poly is implemented
 		if ( entire_texture_emissive )
 		{
 			collect_one_light_poly_entire_texture(  worldData, surf, sf->shader, model_idx, light_color, emissive_factor, light_style,
@@ -936,13 +1121,8 @@ static void collect_light_polys( world_t &worldData, int model_idx, int* num_lig
 			continue;
 		}
 
-		// jank
-		const int base_image_id = RB_GetNextTexEncoded( sf->shader, 0 );
-		image_t *base_image = tr.images[base_image_id];
-		float tex_scale[2] = { 1.0f / base_image->uploadWidth, 1.0f / base_image->uploadHeight };
-
-		collect_one_light_poly( worldData, surf, sf->shader, model_idx, plane,
-							   tex_scale, min_light_texcoord, max_light_texcoord,
+		collect_one_light_poly( worldData, surf, sf->shader, model_idx,
+							   min_light_texcoord, max_light_texcoord,
 							   light_color, emissive_factor, light_style,
 							   num_lights, allocated_lights, lights );
 	}
@@ -1061,6 +1241,62 @@ static void collect_cluster_lights( world_t &worldData )
 #undef MAX_LIGHTS_PER_CLUSTER
 }
 
+static void vk_rtx_debug_static_poly_lights( world_t& worldData, float offset )
+{
+	tess.numVertexes	= 0;
+	tess.numIndexes		= 0;
+	tess.shader			= tr.whiteShader;
+	tess.shader->sort	= 10;
+
+	vkbuffer_t	*idx_buffer = &vk.geometry.idx_world_static;
+	vkbuffer_t	*xyz_buffer = &vk.geometry.xyz_world_static;
+	uint32_t	*idx_buffer_offset = &vk.geometry.idx_world_static_offset;
+	uint32_t	*xyz_buffer_offset = &vk.geometry.xyz_world_static_offset;
+
+	for ( int nlight = 0; nlight < worldData.num_light_polys; nlight++ )
+	{
+		light_poly_t *light = worldData.light_polys + nlight;
+
+		vec3_t a = { light->positions[0], light->positions[1], light->positions[2] };
+		vec3_t b = { light->positions[3], light->positions[4], light->positions[5] };
+		vec3_t c = { light->positions[6], light->positions[7], light->positions[8] };
+
+		if ( offset > .0f )
+		{
+			// Get the light plane equation
+			vec3_t e0, e1, normal;
+			VectorSubtract(b, a, e0);
+			VectorSubtract(c, a, e1);
+			CrossProduct(e0, e1, normal);
+			VectorNormalize(normal);
+
+			for ( int j = 0; j < 3; j++ ) {
+				VectorMA(a, offset, normal, a);
+				VectorMA(b, offset, normal, b);
+				VectorMA(c, offset, normal, c);
+			}
+		}
+
+		color4ub_t color = { 255, 255, 255, 255 };
+		RB_AddTriangle( a, b, c, color );
+	}
+
+	RB_UploadCluster( worldData, &vk.geometry.cluster_world_static, vk.geometry.cluster_world_static_offset, 0 );
+	vk.geometry.cluster_world_static_offset += (tess.numIndexes / 3);
+
+	vk_rtx_upload_indices( idx_buffer, (*idx_buffer_offset), num_vertices_static );
+	vk_rtx_upload_vertices( xyz_buffer, (*xyz_buffer_offset), 0 );
+
+	(*idx_buffer_offset) += tess.numIndexes;
+	(*xyz_buffer_offset) += tess.numVertexes;
+
+	(num_indices_static) += tess.numIndexes;
+	(num_vertices_static) += tess.numVertexes;
+	
+	tess.numVertexes = 0;
+	tess.numIndexes = 0;
+}
+
 void R_PreparePT( world_t &worldData ) 
 {
 	if ( !vk.rtxActive )
@@ -1109,6 +1345,9 @@ void R_PreparePT( world_t &worldData )
 		qfalse);
 
 	vkpt_light_buffers_create( worldData );
+
+	// debug generated polygon lights
+	//vk_rtx_debug_static_poly_lights( worldData, 8.0f );
 
 	VkCommandBuffer cmd_buf = vkpt_begin_command_buffer(&vk.cmd_buffers_graphics);
 

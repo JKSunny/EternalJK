@@ -213,6 +213,58 @@ void RB_AddQuadStamp( vec3_t origin, vec3_t left, vec3_t up, color4ub_t color ) 
 	RB_AddQuadStampExt( origin, left, up, color, 0, 0, 1, 1 );
 }
 
+#ifdef USE_RTX
+void RB_AddTriangle( vec3_t a, vec3_t b, vec3_t c, color4ub_t color ) 
+{
+	int numIndexes = tess.numIndexes;
+	int numVerts = tess.numVertexes;
+
+	//RB_CHECKOVERFLOW(3, 3);
+
+	tess.numVertexes += 3;
+	tess.numIndexes += 3;
+
+	// Add triangle indices
+	tess.indexes[numIndexes + 0] = numVerts + 0;
+	tess.indexes[numIndexes + 1] = numVerts + 1;
+	tess.indexes[numIndexes + 2] = numVerts + 2;
+
+	// Add triangle vertices
+	VectorCopy(a, tess.xyz[numVerts + 0]);
+	VectorCopy(b, tess.xyz[numVerts + 1]);
+	VectorCopy(c, tess.xyz[numVerts + 2]);
+
+	// Add dummy normals (or compute from cross product if needed)
+	vec3_t normal;
+	VectorSubtract(b, a, normal);
+	vec3_t tmp;
+	VectorSubtract(c, a, tmp);
+	CrossProduct(normal, tmp, normal);
+	VectorNormalize(normal);
+
+	VectorCopy(normal, tess.normal[numVerts + 0]);
+	VectorCopy(normal, tess.normal[numVerts + 1]);
+	VectorCopy(normal, tess.normal[numVerts + 2]);
+
+	// Add texture coords (simple defaults)
+	tess.texCoords[0][numVerts + 0][0] = tess.texCoords[1][numVerts + 0][0] = 0.0f;
+	tess.texCoords[0][numVerts + 0][1] = tess.texCoords[1][numVerts + 0][1] = 0.0f;
+
+	tess.texCoords[0][numVerts + 1][0] = tess.texCoords[1][numVerts + 1][0] = 1.0f;
+	tess.texCoords[0][numVerts + 1][1] = tess.texCoords[1][numVerts + 1][1] = 0.0f;
+
+	tess.texCoords[0][numVerts + 2][0] = tess.texCoords[1][numVerts + 2][0] = 0.5f;
+	tess.texCoords[0][numVerts + 2][1] = tess.texCoords[1][numVerts + 2][1] = 1.0f;
+
+	// Add vertex colors
+	byteAlias_t* baSource = (byteAlias_t*)color;
+	((byteAlias_t*)&tess.vertexColors[numVerts + 0])->ui = baSource->ui;
+	((byteAlias_t*)&tess.vertexColors[numVerts + 1])->ui = baSource->ui;
+	((byteAlias_t*)&tess.vertexColors[numVerts + 2])->ui = baSource->ui;
+}
+
+#endif
+
 /*
 ==============
 RB_SurfaceSprite
