@@ -134,7 +134,8 @@ void vkpt_pt_create_all_dynamic( VkCommandBuffer cmd_buf, int idx, const EntityU
 	const qboolean instanced = qtrue;
 
 	vk_rtx_create_blas( &batch, 
-		&vk.model_instance.buffer_vertex, offset_vertex, NULL, offset_index, 		
+		&vk.model_instance.buffer_vertex, offset_vertex, 
+		NULL, offset_index, 		
 		upload_info->dynamic_vertex_num, 0,
 		&vk.model_instance.blas.dynamic[idx], 
 		qtrue, qtrue, qfalse, instanced );
@@ -145,25 +146,35 @@ void vkpt_pt_create_all_dynamic( VkCommandBuffer cmd_buf, int idx, const EntityU
 	vk.scratch_buf_ptr = 0;
 }
 
-static void vkpt_pt_create_toplevel( VkCommandBuffer cmd_buf, uint32_t idx, drawSurf_t *drawSurfs, int numDrawSurfs ) 
+static void vkpt_pt_create_toplevel( VkCommandBuffer cmd_buf, uint32_t idx, world_t &worldData ) 
 {
 	vk_geometry_instance_t instances[1000];
 	int num_instances = 0;
 
 	//
-	// world instances ( static & dynamic, no model/entity )
+	// static world
 	//
-	append_blas( instances, &num_instances, AS_TYPE_WORLD_STATIC,		&vk.blas_static.world, 0, AS_FLAG_OPAQUE, 0, 0 );
+	append_blas( instances, &num_instances, AS_TYPE_WORLD_STATIC,		&worldData.geometry.world_static.accel[BLAS_TYPE_OPAQUE].blas[0], 0, AS_FLAG_OPAQUE, 0, 0);
 	
+	//
 	// sky
-	append_blas( instances, &num_instances, AS_TYPE_SKY,				&vk.blas_static.sky, 0, AS_FLAG_SKY, 0, 0 );
+	//
+	append_blas( instances, &num_instances, AS_TYPE_SKY,				&worldData.geometry.sky_static.accel[BLAS_TYPE_OPAQUE].blas[0], 0, AS_FLAG_SKY, 0, 0 );
 	
-	append_blas( instances, &num_instances, AS_TYPE_WORLD_DYNAMIC_DATA,	&vk.blas_dynamic.data_world, 0, AS_FLAG_OPAQUE, 0, 0 );
-	//append_blas( instances, &num_instances, AS_TYPE_WORLD_DYNAMIC_DATA,	&vk.blas_dynamic.data_world_transparent, 0, 0, 0, 0 );
-	
-	append_blas( instances, &num_instances, AS_TYPE_WORLD_DYNAMIC_AS,	&vk.blas_dynamic.as_world[idx], 0, AS_FLAG_OPAQUE, 0, 0 );
-	//append_blas( instances, &num_instances, AS_TYPE_WORLD_DYNAMIC_AS,	&vk.blas_dynamic.as_world_transparent[idx], 0, 0, 0, 0 );
-	
+	//
+	// dynamic world (geometry or material)
+	//
+#if 0
+	vk_rtx_update_dynamic_geometry( cmd_buf,  &worldData.geometry.world_dynamic_geometry );
+	vk_rtx_update_dynamic_geometry( cmd_buf, &worldData.geometry.world_dynamic_material );
+	//vk_rtx_debug_geom( &worldData.geometry.world_dynamic_geometry );
+#endif
+
+	append_blas( instances, &num_instances, AS_TYPE_WORLD_DYNAMIC_MATERIAL,	&worldData.geometry.world_dynamic_material.accel[BLAS_TYPE_OPAQUE].blas[idx], 0, AS_FLAG_OPAQUE, 0, 0 );
+	//append_blas( instances, &num_instances, AS_TYPE_WORLD_DYNAMIC_MATERIAL,	&vk.blas_dynamic.data_world_transparent, 0, 0, 0, 0 );
+	append_blas( instances, &num_instances, AS_TYPE_WORLD_DYNAMIC_GEOMETRY,	&worldData.geometry.world_dynamic_geometry.accel[BLAS_TYPE_OPAQUE].blas[idx], 0, AS_FLAG_OPAQUE, 0, 0 );
+	//append_blas( instances, &num_instances, AS_TYPE_WORLD_DYNAMIC_GEOMETRY,	&vk.blas_dynamic.as_world_transparent[idx], 0, 0, 0, 0 );
+
 	//
 	// model/entity instances
 	//
@@ -1292,7 +1303,7 @@ static VkResult vkpt_pt_update_descripter_set_bindings( int idx )
 	return VK_SUCCESS;
 }
 
-static void vk_begin_trace_rays( trRefdef_t *refdef, reference_mode_t *ref_mode, 
+static void vk_begin_trace_rays( world_t &worldData, trRefdef_t *refdef, reference_mode_t *ref_mode, 
 	vkUniformRTX_t *ubo, drawSurf_t *drawSurfs, int numDrawSurfs, 
 	float *shadowmap_view_proj, qboolean god_rays_enabled, qboolean render_world, 
 	const EntityUploadInfo *upload_info ) 
@@ -1358,15 +1369,15 @@ static void vk_begin_trace_rays( trRefdef_t *refdef, reference_mode_t *ref_mode,
 
 		BEGIN_PERF_MARKER( trace_cmd_buf, PROFILER_BVH_UPDATE );
 		vkpt_pt_create_all_dynamic( trace_cmd_buf, vk.current_frame_index, upload_info );
-		vkpt_pt_create_toplevel( trace_cmd_buf, vk.current_frame_index, drawSurfs, numDrawSurfs );
+		vkpt_pt_create_toplevel( trace_cmd_buf, vk.current_frame_index, worldData );
 		vkpt_pt_update_descripter_set_bindings( vk.current_frame_index );
 		END_PERF_MARKER( trace_cmd_buf, PROFILER_BVH_UPDATE );
 
 		BEGIN_PERF_MARKER( trace_cmd_buf, PROFILER_SHADOW_MAP );
 		if ( god_rays_enabled )
 		{
-			vk_rtx_shadow_map_render( trace_cmd_buf, shadowmap_view_proj,
-				vk.geometry.idx_world_static_offset, 0, 0, 0 );
+			const int index_count = (int)(worldData.geometry.world_static.accel[BLAS_TYPE_OPAQUE].idx_count + worldData.geometry.world_static.accel[BLAS_TYPE_TRANSPARENT].idx_count);
+			vk_rtx_shadow_map_render( trace_cmd_buf, worldData, shadowmap_view_proj, index_count, 0, 0, 0 );
 		}
 		END_PERF_MARKER( trace_cmd_buf, PROFILER_SHADOW_MAP );
 
@@ -1619,7 +1630,7 @@ void vk_rtx_begin_scene( trRefdef_t *refdef, drawSurf_t *drawSurfs, int numDrawS
 
 	qboolean god_rays_enabled = ( vk_rtx_god_rays_enabled(&sun_light) && render_world) ? qtrue : qfalse;
 
-	vk_begin_trace_rays( refdef, &ref_mode, ubo, 
+	vk_begin_trace_rays( *tr.world, refdef, &ref_mode, ubo, 
 		drawSurfs, numDrawSurfs, shadowmap_view_proj, 
 		god_rays_enabled, render_world, &upload_info );
 

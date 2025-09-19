@@ -28,21 +28,22 @@ static inline size_t align(size_t x, size_t alignment)
 	return (x + (alignment - 1)) & ~(alignment - 1);
 }
 
-qboolean RB_ASDynamic( shader_t *shader ) 
+qboolean RB_IsDynamicGeometry( shader_t *shader ) 
 {
 	return (qboolean)((shader->numDeforms > 0) || (backEnd.currentEntity->e.frame > 0 || backEnd.currentEntity->e.oldframe > 0));
 }
 
-qboolean RB_ASDataDynamic( shader_t *shader ) {
+qboolean RB_IsDynamicMaterial( shader_t *shader ) {
 	uint32_t i, j;
 	qboolean changes = qfalse;
 
 	for ( i = 0; i < MAX_SHADER_STAGES; i++ ) 
 	{
-		if ( tess.shader->stages[i] != NULL && tess.shader->stages[i]->active ) 
+		if ( shader->stages[i] != NULL && shader->stages[i]->active ) 
 		{
-			for ( j = 0; j < NUM_TEXTURE_BUNDLES; j++ ) 
+			for ( j = 0; j < shader->stages[i]->numTexBundles; j++ ) 
 			{
+
 				if ( shader->stages[i]->bundle[j].numImageAnimations > 0 ) 
 					return qtrue;
 
@@ -57,28 +58,6 @@ qboolean RB_ASDataDynamic( shader_t *shader ) {
 	return changes;
 }
 
-void vk_rtx_reset_accel_offsets( void ) 
-{
-	uint32_t i;
-
-	// world
-	vk.geometry.idx_world_static_offset = 0;
-	vk.geometry.xyz_world_static_offset = 0;
-	vk.geometry.idx_world_dynamic_data_offset = 0;
-	vk.geometry.xyz_world_dynamic_data_offset = 0;
-
-	for ( i = 0; i < vk.swapchain_image_count; i++ ) 
-	{
-		vk.geometry.idx_world_dynamic_as_offset[i] = 0;
-		vk.geometry.xyz_world_dynamic_as_offset[i] = 0;
-	}
-
-	// cluster
-	vk.geometry.cluster_world_static_offset = 0;
-	vk.geometry.cluster_sky_static_offset = 0;
-	vk.geometry.cluster_world_dynamic_data_offset = 0;
-	vk.geometry.cluster_world_dynamic_as_offset = 0;
-}
 
 static inline int accel_matches(vk_blas_match_info_t *match,
 								int fast_build,
@@ -89,6 +68,33 @@ static inline int accel_matches(vk_blas_match_info_t *match,
 		   match->index_count >= index_count;
 }
 
+void vk_rtx_create_blas_bsp( accel_build_batch_t *batch, vk_geometry_data_t *geom )
+{
+	uint32_t i, type;
+
+	for ( type = 0; type < BLAS_TYPE_COUNT; ++type ) 
+	{
+		if ( !(geom->blas_type_flags & (1 << type) ) )
+			continue;
+
+		vk_geometry_data_accel_t *accel = &geom->accel[type];
+
+		uint32_t num_instances = geom->dynamic_flags ? NUM_COMMAND_BUFFERS : 1;
+
+		for ( i = 0; i < num_instances; ++i )
+		{
+			vk_rtx_create_blas(
+				batch,
+				&geom->xyz[i], accel->xyz_offset,
+				&geom->idx[i], accel->idx_offset,
+				accel->xyz_count, accel->idx_count,
+				&accel->blas[i],
+				geom->dynamic_flags ? qtrue : qfalse, geom->fast_build, geom->allow_update, geom->instanced
+			);
+		}
+	}
+}
+
 void vk_rtx_create_blas( accel_build_batch_t *batch,  
 								 vkbuffer_t *vertex_buffer, VkDeviceAddress vertex_offset,
 								 vkbuffer_t *index_buffer, VkDeviceAddress index_offset,
@@ -96,6 +102,13 @@ void vk_rtx_create_blas( accel_build_batch_t *batch,
 								 vk_blas_t *blas, qboolean is_dynamic, qboolean fast_build, 
 								 qboolean allow_update, qboolean instanced ) 
 {	
+#if 0
+	if ( num_vertices <= 0 || num_indices <= 0) {
+        printf("Skipping BLAS: xyz_count=%u, idx_count=%u\n", num_vertices, num_indices);
+        //return;
+    }
+#endif
+
 	assert(batch->numBuilds < MAX_BATCH_ACCEL_BUILDS);
 	uint32_t buildIdx = batch->numBuilds++;
 
@@ -124,13 +137,19 @@ void vk_rtx_create_blas( accel_build_batch_t *batch,
 	// models and bsp vertex data differ in format/stride
 	VkDeviceSize stride = instanced ? sizeof(float) * 3 : sizeof(VertexBuffer);
 
-	triangles.vertexData.deviceAddress = vertex_buffer->address + ( vertex_offset * stride );
+	blas->vertex_address = vertex_buffer->address + ( vertex_offset * stride );
+	blas->index_address = index_buffer ? (index_buffer->address + (index_offset * sizeof(uint32_t))) : 0;
+
+	triangles.vertexData.deviceAddress = blas->vertex_address;
 	triangles.vertexStride = stride;
 
 	triangles.maxVertex = num_vertices - 1;
 	triangles.indexData.hostAddress = VK_NULL_HANDLE;
-	triangles.indexData.deviceAddress = index_buffer ? (index_buffer->address + (index_offset * sizeof(uint32_t))) : 0;
+	triangles.indexData.deviceAddress = blas->index_address;
 	triangles.indexType = index_buffer ? VK_INDEX_TYPE_UINT32 : VK_INDEX_TYPE_NONE_KHR;
+
+
+
 
 	VkAccelerationStructureGeometryDataKHR geometry_data;
 	Com_Memset( &geometry_data, 0, sizeof(VkAccelerationStructureGeometryDataKHR) );
@@ -219,71 +238,68 @@ void vk_rtx_create_blas( accel_build_batch_t *batch,
 	vk.scratch_buf_ptr += sizeInfo.buildScratchSize;
 	vk.scratch_buf_ptr = align(vk.scratch_buf_ptr, vk.minAccelerationStructureScratchOffsetAlignment);
 
-	// build offset
-	VkAccelerationStructureBuildRangeInfoKHR offset;
-	Com_Memset( &offset, 0, sizeof(VkAccelerationStructureBuildRangeInfoKHR) );
-	offset.primitiveCount = MAX(num_vertices, num_indices) / 3;
-	VkAccelerationStructureBuildRangeInfoKHR *offsets = &offset;
+	// build range
+	Com_Memset( &blas->range, 0, sizeof(VkAccelerationStructureBuildRangeInfoKHR) );
+	blas->range.primitiveCount = MAX(num_vertices, num_indices) / 3;
 
-	batch->rangeInfos[buildIdx] = offset;
+	batch->rangeInfos[buildIdx] = blas->range;
 	batch->rangeInfoPtrs[buildIdx] = &batch->rangeInfos[buildIdx];
 }
 
-void vk_rtx_update_blas( VkCommandBuffer cmd_buf, 
-								 vk_blas_t* oldBas, vk_blas_t* newBas, 
-								 VkDeviceSize* offset, VkBuildAccelerationStructureFlagsKHR flag) 
+static inline bool vk_rtx_blas_needs_rebuild( const vk_blas_t* blas, vk_geometry_data_accel_t *accel ) 
 {
-	uint32_t num_vertices = newBas->create_num_vertices;
-	uint32_t num_indices = newBas->create_num_indices;
+	return (accel->xyz_count > blas->create_num_vertices || accel->idx_count > blas->create_num_indices);
+}
 
-	bool fast_build = false;
+void vk_rtx_update_blas( VkCommandBuffer cmd_buf, vk_geometry_data_t *geom, vk_geometry_data_accel_t *accel,
+	vk_blas_t *blas, vk_blas_t *old_blas )
+{
+	const int frame_idx = vk.frame_counter & 1;
 
-	// Prepare build info now, acceleration is filled later
+	const bool needs_rebuild = vk_rtx_blas_needs_rebuild( blas, accel );
+
+	// rebuild blas
+	if ( needs_rebuild ) 
+	{
+		vk_rtx_destroy_blas( blas );
+
+		vk_rtx_create_blas(
+			NULL,
+			&geom->xyz[frame_idx], accel->xyz_offset,
+			&geom->idx[frame_idx], accel->idx_offset,
+			accel->xyz_count, accel->idx_count,
+			blas,
+			qtrue /*geom->dynamic_flags*/, geom->fast_build, geom->allow_update, geom->instanced
+		);
+
+		blas->create_num_vertices = accel->xyz_count;
+		blas->create_num_indices = accel->idx_count;
+
+		MEM_BARRIER_BUILD_ACCEL( cmd_buf );
+		return;
+	}
+
+	// update blas
 	VkAccelerationStructureBuildGeometryInfoKHR buildInfo;
-	Com_Memset( &buildInfo, 0, sizeof(VkAccelerationStructureBuildGeometryInfoKHR) );
+	memset(&buildInfo, 0, sizeof(buildInfo));
 	buildInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
 	buildInfo.pNext = NULL;
 	buildInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
-	buildInfo.flags = fast_build ? VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR : VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
-	
-	buildInfo.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
-	buildInfo.srcAccelerationStructure = VK_NULL_HANDLE;
-	buildInfo.dstAccelerationStructure = VK_NULL_HANDLE;
+	buildInfo.flags = VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR | VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
 	buildInfo.geometryCount = 1;
-	buildInfo.pGeometries = &newBas->geometries;
-	buildInfo.ppGeometries = NULL;
+	buildInfo.pGeometries = &blas->geometries;
+	buildInfo.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR;
+	buildInfo.dstAccelerationStructure = blas->accel;
+	buildInfo.srcAccelerationStructure = old_blas ? old_blas->accel : VK_NULL_HANDLE;
+	buildInfo.scratchData.deviceAddress = vk.buf_accel_scratch.address + vk.scratch_buf_ptr;
 
-	VkAccelerationStructureBuildSizesInfoKHR sizeInfo;
-
-	if (oldBas == newBas) {
-		// Find size to build on the device
-		uint32_t max_primitive_count = MAX(num_vertices, num_indices) / 3; // number of tris
-		Com_Memset( &sizeInfo, 0, sizeof(VkAccelerationStructureBuildSizesInfoKHR) );
-		sizeInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
-		qvkGetAccelerationStructureBuildSizesKHR(vk.device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &buildInfo, &max_primitive_count, &sizeInfo);
-	
-		// do this here for now
-		{
-			// set where the build lands
-			buildInfo.dstAccelerationStructure = newBas->accel;
-			buildInfo.srcAccelerationStructure = oldBas->accel;
-			buildInfo.scratchData.deviceAddress = vk.buf_accel_scratch.address + vk.scratch_buf_ptr;
-
-			vk.scratch_buf_ptr += sizeInfo.buildScratchSize;
-			vk.scratch_buf_ptr = align(vk.scratch_buf_ptr, vk.minAccelerationStructureScratchOffsetAlignment);
-		}
-
-		// build offset
-		VkAccelerationStructureBuildRangeInfoKHR offset;
-		Com_Memset( &offset, 0, sizeof(VkAccelerationStructureBuildRangeInfoKHR) );
-		offset.primitiveCount = MAX(num_vertices, num_indices) / 3;
-		VkAccelerationStructureBuildRangeInfoKHR *offsets = &offset;
-
-		qvkCmdBuildAccelerationStructuresKHR( cmd_buf, 1, &buildInfo, &offsets );
-	}
+	const VkAccelerationStructureBuildRangeInfoKHR* range_ptr = &blas->range;
+	qvkCmdBuildAccelerationStructuresKHR( cmd_buf, 1, &buildInfo, &range_ptr );
 
 	MEM_BARRIER_BUILD_ACCEL( cmd_buf );
 }
+
+
 
 void vk_rtx_create_tlas( accel_build_batch_t *batch, vk_tlas_t *as, VkDeviceAddress instance_data, uint32_t num_instances ) 
 {
@@ -398,12 +414,23 @@ void vk_rtx_destroy_blas( vk_blas_t *blas )
 }
 
 void vk_rtx_destroy_accel_all() {
-	uint32_t idx;
+	uint32_t i, j, idx;
 
-	for ( idx = 0; idx < vk.swapchain_image_count; idx++ ) {
-		vk_rtx_destroy_tlas( &vk.tlas_geometry[idx] );
+	if ( tr.world )
+	{
+		vk_rtx_reset_world_geometries( *tr.world );
 	}
 
-	vk_rtx_destroy_blas( &vk.blas_static.world );
-	// add the rest
+	for ( i = 0; i < vk.swapchain_image_count; i++ ) 
+	{
+		vk_rtx_buffer_destroy( &vk.model_instance.buffer_vertex );
+
+		vk_rtx_destroy_blas( &vk.model_instance.blas.dynamic[i] );
+		vk_rtx_destroy_blas( &vk.model_instance.blas.transparent_models[i] );
+		vk_rtx_destroy_blas( &vk.model_instance.blas.viewer_models[i] );
+		vk_rtx_destroy_blas( &vk.model_instance.blas.viewer_weapon[i] );
+		vk_rtx_destroy_blas( &vk.model_instance.blas.explosions[i] );
+
+		vk_rtx_destroy_tlas( &vk.tlas_geometry[i] );
+	}
 }

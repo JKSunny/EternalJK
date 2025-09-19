@@ -217,10 +217,8 @@ VkResult vk_rtx_buffer_destroy( vkbuffer_t *buf )
 
 void VK_DestroyBuffer( vkbuffer_t *buffer )
 {
-	if ( buffer->p ) {
+	if ( buffer->p )
 		qvkUnmapMemory( vk.device, buffer->memory );
-		buffer->p = NULL;
-	}
 
 	if ( buffer->buffer != NULL )
 		qvkDestroyBuffer( vk.device, buffer->buffer, NULL );
@@ -228,23 +226,7 @@ void VK_DestroyBuffer( vkbuffer_t *buffer )
 	if ( buffer->memory != NULL )
 		qvkFreeMemory( vk.device, buffer->memory, NULL );
 
-	memset(buffer, 0, sizeof(vkbuffer_t));
-}
-
-void vk_rtx_destroy_buffers( void ) 
-{
-	uint32_t i = 0;
-
-	VK_DestroyBuffer( &vk.buf_readback );
-	VK_DestroyBuffer( &vk.buf_tonemap );
-	VK_DestroyBuffer( &vk.buf_light );
-	VK_DestroyBuffer( &vk.buf_sun_color );
-
-	for ( i = 0; i < vk.swapchain_image_count; i++ ) 
-	{
-		VK_DestroyBuffer( vk.buf_readback_staging + i );
-		VK_DestroyBuffer( vk.buf_light_staging + i );
-	}
+	memset( buffer, 0, sizeof(vkbuffer_t) );
 }
 
 void *buffer_map( vkbuffer_t *buf )
@@ -548,15 +530,31 @@ static void vk_rtx_add_stage_tex_coords( const int stage, VertexBuffer *vbo )
 	}	
 }
 
-void vk_rtx_upload_vertices( vkbuffer_t *buffer, uint32_t offsetXYZ, int cluster ) 
+void vk_rtx_bind_indicies( uint32_t* cluster, uint32_t xyz_count )
+{
+	uint32_t i;
+
+	for ( i = 0; i < tess.numIndexes; i++ )
+	{
+		cluster[i] = (uint32_t)(tess.indexes[i] + xyz_count );
+	}
+}
+
+void vk_rtx_bind_cluster( uint32_t *cluster, uint32_t cluster_count, int cluster_id )
+{
+	uint32_t i;
+
+	for ( i = 0; i < cluster_count; i++ )
+	{
+		cluster[i] = cluster_id;
+	}
+}
+
+void vk_rtx_bind_vertices( VertexBuffer *vbo, int cluster ) 
+
 {
 	const shaderStage_t *pStage;
-	VertexBuffer		*vbo;
 	uint32_t			i, material_index, material_flags;
-
-	vbo = (VertexBuffer*)calloc( tess.numVertexes, sizeof(VertexBuffer) );
-	assert(vbo);
-
 	vk_rtx_shader_to_material( tess.shader, material_index, material_flags );
 
 	// encode two tex idx and its needColor and blend flags into one 4 byte uint
@@ -577,10 +575,7 @@ void vk_rtx_upload_vertices( vkbuffer_t *buffer, uint32_t offsetXYZ, int cluster
 		vbo[i].cluster = cluster;// c != -1 ? c : cluster;
 
 		memcpy( vbo[i].pos, tess.xyz + i, sizeof(vec3_t) );
-#if 0
-		memcpy( vbo[i].qtangent, tess.qtangent + i, sizeof(vec4_t) );
-		memcpy( vbo[i].normal, tess.normal + i, sizeof(vec4_t) );
-#else
+
 		vbo[i].normal[0] = tess.normal[i][0];
 		vbo[i].normal[1] = tess.normal[i][1];
 		vbo[i].normal[2] = tess.normal[i][2];
@@ -590,7 +585,6 @@ void vk_rtx_upload_vertices( vkbuffer_t *buffer, uint32_t offsetXYZ, int cluster
 		vbo[i].qtangent[1] = tess.qtangent[i][1];
 		vbo[i].qtangent[2] = tess.qtangent[i][2];
 		vbo[i].qtangent[3] = 0;
-#endif
 	}
 
 	for ( i = 0; i < MAX_RTX_STAGES; i++ ) 
@@ -615,7 +609,6 @@ void vk_rtx_upload_vertices( vkbuffer_t *buffer, uint32_t offsetXYZ, int cluster
 			vk_rtx_add_stage_tex_coords( i, vbo );
 		}
 	}
-
 #if 0
 	// if there are multiple stages we need to upload them all
 	if ( tess.shader->stages[0] != NULL && tess.shader->stages[0]->active ) 
@@ -683,23 +676,6 @@ void vk_rtx_upload_vertices( vkbuffer_t *buffer, uint32_t offsetXYZ, int cluster
 	}
 #endif
 
-	vk_rtx_upload_buffer_data_offset( buffer,
-		offsetXYZ * sizeof(VertexBuffer),
-		tess.numVertexes * sizeof(VertexBuffer), (const byte*)vbo );
-	
-	free( vbo );
-}
-
-void vk_rtx_upload_indices( vkbuffer_t *buffer, uint32_t offsetIDX, uint32_t offsetXYZ ) 
-{
-	uint32_t *indices = (uint32_t*)calloc(tess.numIndexes, sizeof(uint32_t));
-	uint32_t i;
-
-	for ( i = 0; i < tess.numIndexes; i++ )
-		indices[i] = (uint32_t)(tess.indexes[i] + offsetXYZ);
-
-	vk_rtx_upload_buffer_data_offset( buffer, offsetIDX * sizeof(uint32_t), tess.numIndexes * sizeof(uint32_t), (const byte*)indices );
-	free( indices );
 }
 
 VkResult vk_rtx_readback( ReadbackBuffer *dst )
@@ -774,35 +750,6 @@ void vk_rtx_create_buffers( void )
 		vk_rtx_buffer_create(		&vk.buf_instances[i],		VK_MAX_BOTTOM_AS_INSTANCES * sizeof(vk_geometry_instance_t), VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT );	
 	}
 
-	// world static
-	// idx_world_static VK_BUFFER_USAGE_INDEX_BUFFER_BIT is used for shadowmap rendering
-	// using vkCmdDrawIndexed
-	VK_CreateAttributeBuffer( &vk.geometry.idx_world_static, RTX_WORLD_STATIC_IDX_SIZE * sizeof(uint32_t), VkBufferUsageFlagBits( AS_BUFFER_FLAGS | VK_BUFFER_USAGE_INDEX_BUFFER_BIT ) );
-	VK_CreateAttributeBuffer( &vk.geometry.xyz_world_static, RTX_WORLD_STATIC_XYZ_SIZE * sizeof(VertexBuffer), AS_BUFFER_FLAGS );
-	
-	// world dynamic data
-	for ( i = 0; i < vk.swapchain_image_count; i++ ) 
-	{
-		VK_CreateAttributeBuffer( &vk.geometry.idx_world_dynamic_data[i], RTX_WORLD_DYNAMIC_DATA_IDX_SIZE * sizeof(uint32_t), AS_BUFFER_FLAGS );
-		VK_CreateAttributeBuffer( &vk.geometry.xyz_world_dynamic_data[i], RTX_WORLD_DYNAMIC_DATA_XYZ_SIZE * sizeof(VertexBuffer), AS_BUFFER_FLAGS );
-	}
-	
-	// world dynamic as
-	for ( i = 0; i < vk.swapchain_image_count; i++ ) 
-	{
-		VK_CreateAttributeBuffer( &vk.geometry.idx_world_dynamic_as[i], RTX_WORLD_DYNAMIC_AS_IDX_SIZE * sizeof(uint32_t), AS_BUFFER_FLAGS );
-		VK_CreateAttributeBuffer( &vk.geometry.xyz_world_dynamic_as[i], RTX_WORLD_DYNAMIC_AS_XYZ_SIZE * sizeof(VertexBuffer), AS_BUFFER_FLAGS );
-	}
-
-	VK_CreateAttributeBuffer( &vk.geometry.cluster_world_static, RTX_WORLD_STATIC_IDX_SIZE/3 * sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT );
-	VK_CreateAttributeBuffer( &vk.geometry.cluster_world_dynamic_data, RTX_WORLD_DYNAMIC_DATA_IDX_SIZE / 3 * sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT );	
-	VK_CreateAttributeBuffer( &vk.geometry.cluster_world_dynamic_as, RTX_WORLD_DYNAMIC_AS_IDX_SIZE / 3 * sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT );
-
-	VK_CreateAttributeBuffer( &vk.geometry.idx_sky_static, RTX_WORLD_STATIC_IDX_SIZE * sizeof(uint32_t), VkBufferUsageFlagBits( AS_BUFFER_FLAGS | VK_BUFFER_USAGE_INDEX_BUFFER_BIT ) );
-	VK_CreateAttributeBuffer( &vk.geometry.xyz_sky_static, RTX_WORLD_STATIC_XYZ_SIZE * sizeof(VertexBuffer), AS_BUFFER_FLAGS );
-	VK_CreateAttributeBuffer( &vk.geometry.cluster_sky_static, RTX_WORLD_STATIC_IDX_SIZE/3 * sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT );
-
-
 	// readback
 	vk_rtx_buffer_create( &vk.buf_readback, sizeof(ReadbackBuffer),
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
@@ -842,3 +789,24 @@ void vk_rtx_create_buffers( void )
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 }
 
+void vk_rtx_destroy_buffers( void ) 
+{
+	uint32_t i = 0;
+
+	VK_DestroyBuffer( &vk.buf_accel_scratch );
+
+	VK_DestroyBuffer( &vk.buf_readback );
+	VK_DestroyBuffer( &vk.buf_tonemap );
+	VK_DestroyBuffer( &vk.buf_light );
+	VK_DestroyBuffer( &vk.buf_sun_color );
+
+	for ( i = 0; i < vk.swapchain_image_count; i++ ) 
+	{
+		VK_DestroyBuffer( &vk.buf_instances[i] );
+		VK_DestroyBuffer( vk.buf_readback_staging + i );
+		VK_DestroyBuffer( vk.buf_light_staging + i );
+	}
+
+	vk_rtx_destroy_accel_all();
+	vkpt_light_buffers_destroy();
+}

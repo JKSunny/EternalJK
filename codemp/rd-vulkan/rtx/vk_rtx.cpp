@@ -260,7 +260,6 @@ void vk_rtx_initialize( void )
 		vk.taa_samples[i][1] = halton(3, i + 1) - 0.5f;
 	}
 
-	vk_rtx_reset_accel_offsets();
 	vk_rtx_initialize_images();
 	vk_rtx_create_images();
 	vk_rtx_create_buffers();
@@ -282,18 +281,12 @@ void vk_rtx_shutdown( void )
 
 	uint32_t i;
 
-	vk_rtx_destroy_accel_all();
-
-	vk_rtx_destroy_blas( &vk.blas_static.world );
-	vk_rtx_destroy_blas( &vk.blas_static.world_transparent );
-	vk_rtx_destroy_blas( &vk.blas_dynamic.data_world );
-	vk_rtx_destroy_blas( &vk.blas_dynamic.data_world_transparent );
+	free( &vk.numMaxClusters );
+	free( &vk.cluster_aabbs );
+	free( &vk.cluster_aabbs );
 
 	for ( i = 0; i < vk.swapchain_image_count; i++ ) 
 	{
-		vk_rtx_destroy_blas(&vk.blas_dynamic.as_world[i] );
-		vk_rtx_destroy_blas(&vk.blas_dynamic.as_world_transparent[i] );
-
 		vk_rtx_destroy_descriptor( &vk.rt_descriptor_set[i] );
 		vk_rtx_destroy_descriptor( &vk.desc_set_vertex_buffer[i] );
 	}
@@ -313,13 +306,12 @@ void vk_rtx_shutdown( void )
 	vk_rtx_destroy_shaders();
 	vk_rtx_destroy_buffers();
 
-	vk_rtx_reset_accel_offsets();
+	if( tr.world )
+	{ 
+		vk_rtx_reset_world_geometries( *tr.world );
+	}
 
 	vk_rtx_clear_material_list();
 
-	vk.updateDataOffsetXYZCount = 0;
-	vk.updateASOffsetXYZCount = 0;
 	vk.scratch_buf_ptr = 0;
-
-	vk.worldASInit = qfalse;
 }

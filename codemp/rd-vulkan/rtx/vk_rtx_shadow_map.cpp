@@ -378,7 +378,7 @@ VkResult vk_rtx_shadow_map_destroy_pipelines( void )
 	return VK_SUCCESS;
 }
 
-VkResult vk_rtx_shadow_map_render( VkCommandBuffer cmd_buf, float *view_projection_matrix, int num_static_indices, int num_dynamic_verts, int transparent_offset, int num_transparent_verts )
+VkResult vk_rtx_shadow_map_render( VkCommandBuffer cmd_buf, world_t &worldData, float *view_projection_matrix, int num_static_indices, int num_dynamic_verts, int transparent_offset, int num_transparent_verts )
 {
 	VkImageSubresourceRange range;
 	Com_Memset( &range, 0, sizeof(VkImageSubresourceRange) ); 
@@ -433,8 +433,8 @@ VkResult vk_rtx_shadow_map_render( VkCommandBuffer cmd_buf, float *view_projecti
 	qvkCmdPushConstants( cmd_buf, pipeline_layout_smap, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(float) * 16, view_projection_matrix );
 
 	VkDeviceSize vertex_offset[1] = { 0 };
-	qvkCmdBindVertexBuffers( cmd_buf, 0, 1, &vk.geometry.xyz_world_static.buffer, vertex_offset );
-	qvkCmdBindIndexBuffer( cmd_buf, vk.geometry.idx_world_static.buffer, 0, VK_INDEX_TYPE_UINT32 );
+	qvkCmdBindVertexBuffers( cmd_buf, 0, 1, &worldData.geometry.world_static.xyz[0].buffer, vertex_offset);
+	qvkCmdBindIndexBuffer( cmd_buf, worldData.geometry.world_static.idx[0].buffer, 0, VK_INDEX_TYPE_UINT32);
 	qvkCmdDrawIndexed( cmd_buf, num_static_indices, 1, 0, 0, 0 );
 
 	//vertex_offset = offsetof(struct ModelDynamicVertexBuffer, positions_instanced);

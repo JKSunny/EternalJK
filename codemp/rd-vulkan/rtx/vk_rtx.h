@@ -61,26 +61,13 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #define VK_AS_MEMORY_ALLIGNMENT_SIZE		65536
 
-#define VK_MAX_BOTTOM_AS					768
 #define VK_MAX_STATIC_BOTTOM_AS_INSTANCES	16
 #define VK_MAX_DYNAMIC_BOTTOM_AS_INSTANCES	384
 #define VK_MAX_BOTTOM_AS_INSTANCES (VK_MAX_STATIC_BOTTOM_AS_INSTANCES + VK_MAX_DYNAMIC_BOTTOM_AS_INSTANCES)
 
-#define RTX_BOTTOM_AS_FLAG (VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR | VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR)
 #define VK_GLOBAL_IMAGEARRAY_SHADER_STAGE_FLAGS (VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR | VK_SHADER_STAGE_COMPUTE_BIT)
-#define AS_BUFFER_FLAGS (VkBufferUsageFlagBits)(VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT)
 
-#define RTX_WORLD_STATIC_XYZ_SIZE			16384 * 64 
-#define RTX_WORLD_STATIC_IDX_SIZE			16384 * 128
-#define RTX_WORLD_DYNAMIC_DATA_XYZ_SIZE		16384 * 4
-#define RTX_WORLD_DYNAMIC_DATA_IDX_SIZE		16384 * 8
-#define RTX_WORLD_DYNAMIC_AS_XYZ_SIZE		16384 * 8
-#define RTX_WORLD_DYNAMIC_AS_IDX_SIZE		16384 * 16
-#define RTX_ENTITY_STATIC_XYZ_SIZE			16384 * 128
-#define RTX_ENTITY_STATIC_INDEX_SIZE		16384 * 256
-#define RTX_ENTITY_DYNAMIC_XYZ_SIZE			16384 * 16
-#define RTX_ENTITY_DYNAMIC_IDX_SIZE			16384 * 32
-
+// unused
 #define ANIMATE_TEXTURE		( tess.shader->stages[0]->bundle[0].numImageAnimations > 0 )
 #define UV_CHANGES			( tess.shader->stages[0] != NULL ? ((tess.shader->stages[0]->bundle[0].tcGen != TCGEN_BAD)  && tess.shader->stages[0]->bundle[0].numTexMods > 0 /*&& tess.shader->stages[0]->bundle[0].texMods[0].type != TMOD_NONE*/) : qfalse )
 #define UV_CHANGES_S(s)		( tess.shader->stages[s] != NULL ? ((tess.shader->stages[s]->bundle[0].tcGen != TCGEN_BAD)  && tess.shader->stages[s]->bundle[0].numTexMods > 0 /*&& tess.shader->stages[0]->bundle[0].texMods[0].type != TMOD_NONE*/) : qfalse )
@@ -290,36 +277,6 @@ typedef struct {
 	VkDeviceMemory	memory;
 } vkimage_t;
 
-typedef struct {
-	uint32_t	idx_world_static_offset;
-	uint32_t	xyz_world_static_offset;
-	uint32_t	cluster_world_static_offset;
-	vkbuffer_t	idx_world_static;
-	vkbuffer_t	xyz_world_static;
-	vkbuffer_t	cluster_world_static;
-
-	uint32_t	idx_sky_static_offset;
-	uint32_t	xyz_sky_static_offset;
-	uint32_t	cluster_sky_static_offset;
-	vkbuffer_t	idx_sky_static;
-	vkbuffer_t	xyz_sky_static;
-	vkbuffer_t	cluster_sky_static;
-
-	uint32_t	idx_world_dynamic_data_offset;
-	uint32_t	xyz_world_dynamic_data_offset;
-	uint32_t	cluster_world_dynamic_data_offset;
-	vkbuffer_t	idx_world_dynamic_data[VK_MAX_SWAPCHAIN_SIZE];
-	vkbuffer_t	xyz_world_dynamic_data[VK_MAX_SWAPCHAIN_SIZE];
-	vkbuffer_t	cluster_world_dynamic_data;
-
-	uint32_t	idx_world_dynamic_as_offset[VK_MAX_SWAPCHAIN_SIZE];
-	uint32_t	xyz_world_dynamic_as_offset[VK_MAX_SWAPCHAIN_SIZE];
-	uint32_t	cluster_world_dynamic_as_offset;
-	vkbuffer_t	idx_world_dynamic_as[VK_MAX_SWAPCHAIN_SIZE];
-	vkbuffer_t	xyz_world_dynamic_as[VK_MAX_SWAPCHAIN_SIZE];
-	vkbuffer_t	cluster_world_dynamic_as;
-} vkgeometry_t;
-
 #define MAX_BATCH_ACCEL_BUILDS 16
 
 typedef struct {
@@ -337,6 +294,21 @@ typedef struct {
 	vkbuffer_t					mem;
 } vk_tlas_t;
 
+typedef enum {
+	BLAS_TYPE_OPAQUE,
+	BLAS_TYPE_TRANSPARENT,
+	BLAS_TYPE_COUNT
+} vk_blas_type;
+
+#define BLAS_TYPE_FLAG_OPAQUE			(1 << BLAS_TYPE_OPAQUE)
+#define BLAS_TYPE_FLAG_TRANSPARENT		(1 << BLAS_TYPE_TRANSPARENT)
+#define BLAS_TYPE_FLAG_ALL				((1 << BLAS_TYPE_COUNT) - 1)
+
+#define BLAS_DYNAMIC_FLAG_NONE  0
+#define BLAS_DYNAMIC_FLAG_IDX   (1 << 0)
+#define BLAS_DYNAMIC_FLAG_XYZ   (1 << 1)
+#define BLAS_DYNAMIC_FLAG_ALL   (BLAS_DYNAMIC_FLAG_IDX | BLAS_DYNAMIC_FLAG_XYZ)
+
 typedef struct accel_bottom_match_info_s {
 	int fast_build;
 	uint32_t vertex_count;
@@ -344,17 +316,80 @@ typedef struct accel_bottom_match_info_s {
 } vk_blas_match_info_t;
 
 typedef struct {
-	VkAccelerationStructureKHR			accel;
-	uint64_t							handle;
-	VkDeviceSize						offset;			// offset in static or dynamic buffer
-	vkbuffer_t							mem;
-	vk_blas_match_info_t				match;
-	
+	VkAccelerationStructureKHR	accel;
+	uint64_t					handle;
+	VkDeviceSize				offset;			// offset in static or dynamic buffer
+	vkbuffer_t					mem;
+	vk_blas_match_info_t		match;
+	VkDeviceAddress				vertex_address;
+	VkDeviceAddress				index_address;
+
 	// revisit this
-	VkAccelerationStructureGeometryKHR	geometries;
+	VkAccelerationStructureGeometryKHR			geometries;
+	VkAccelerationStructureBuildRangeInfoKHR	range;
 	uint32_t	create_num_vertices;
 	uint32_t	create_num_indices;
 } vk_blas_t;
+
+typedef struct {
+	void	*shader;
+	void	*surf;
+	int		cluster;
+	int		fogIndex;
+} vk_geometry_dynamic_surf_t;
+
+typedef struct {
+	vk_blas_t	blas[VK_MAX_SWAPCHAIN_SIZE];
+	uint32_t	idx_count;
+	uint32_t	xyz_count;
+	uint32_t	surf_count;	
+	uint32_t	cluster_count;	
+
+	uint32_t	idx_offset;
+	uint32_t	xyz_offset;
+	uint32_t	surf_offset;
+	uint32_t	cluster_offset;
+} vk_geometry_data_accel_t;
+
+typedef struct {
+	uint32_t					*idx;
+	VertexBuffer				*xyz;
+	vk_geometry_dynamic_surf_t	*dynamic_surfs;
+	uint32_t					*cluster;
+
+	uint32_t		idx_count;
+	uint32_t		xyz_count;
+	uint32_t		surf_count;
+	uint32_t		cluster_count;
+
+	uint32_t		idx_offset;
+	uint32_t		xyz_offset;
+	uint32_t		surf_offset;
+	uint32_t		cluster_offset;
+} vk_geometry_host_t;
+
+typedef struct {
+	vkbuffer_t	idx[NUM_COMMAND_BUFFERS];	// containing data from all blas types
+	vkbuffer_t	xyz[NUM_COMMAND_BUFFERS];	// containing data from all blas types
+	vkbuffer_t	cluster[NUM_COMMAND_BUFFERS];
+
+	uint32_t	blas_type_flags;
+	uint32_t	dynamic_flags;
+	qboolean	fast_build;
+	qboolean	allow_update;
+	qboolean	instanced;
+
+	vk_geometry_host_t		 host;
+	vk_geometry_data_accel_t accel[BLAS_TYPE_COUNT];
+} vk_geometry_data_t;
+
+typedef struct {
+	vk_geometry_data_t sky_static;	
+	vk_geometry_data_t world_static;
+	vk_geometry_data_t world_dynamic_material;
+	vk_geometry_data_t world_dynamic_geometry;
+} vkgeometry_t;
+
 
 typedef struct {
 	uint32_t	index;
@@ -384,9 +419,8 @@ void		vk_rtx_show_pvs_f( void );
 
 VkDescriptorSet vk_rtx_get_current_desc_set_textures( void);
 
-void		R_PreparePT( world_t &worldData ) ;
-
-void vk_rtx_debug_plane(qboolean debug_plane, world_t& worldData);
+void		R_PreparePT( world_t &worldData );
+void		vk_rtx_debug_geom( vk_geometry_data_t *geom );
 
 // matrix
 void		mult_matrix_matrix( float *p, const float *a, const float *b );
@@ -446,23 +480,22 @@ VkResult	vkpt_light_buffers_destroy( void );
 void		VK_DestroyBuffer( vkbuffer_t *buffer );
 void		vk_rtx_create_buffers( void );
 void		vk_rtx_destroy_buffers( void );
-void		vk_rtx_upload_indices( vkbuffer_t *buffer, uint32_t offsetIDX, uint32_t offsetXYZ );
-void		vk_rtx_upload_vertices( vkbuffer_t *buffer, uint32_t offsetXYZ, int cluster );
+void		vk_rtx_bind_vertices( VertexBuffer *vbo, int cluster );
+void		vk_rtx_bind_indicies( uint32_t* ibo, uint32_t xyz_count );
+void		vk_rtx_bind_cluster( uint32_t *cluster, uint32_t cluster_count, int cluster_id );
 
 // acceleration structure
-qboolean	RB_ASDataDynamic( shader_t *shader );
-qboolean	RB_ASDynamic( shader_t *shader );
-void		vk_rtx_reset_accel_offsets( void );
+void		vk_rtx_reset_world_geometries( world_t &worldData );
 //void		vk_rtx_append_blas( vk_blas_t *blas, int instance_id, uint32_t type, uint32_t offset, uint32_t flags );
+void		vk_rtx_create_blas_bsp( accel_build_batch_t *batch, vk_geometry_data_t *geom );
 void		vk_rtx_create_blas( accel_build_batch_t *batch,  
 								 vkbuffer_t *vertex_buffer, VkDeviceAddress vertex_offset,
 								 vkbuffer_t *index_buffer, VkDeviceAddress index_offset,
 								 uint32_t num_vertices, uint32_t num_indices,
 								 vk_blas_t *blas, qboolean is_dynamic, qboolean fast_build, 
 								 qboolean allow_update, qboolean instanced );
-void		vk_rtx_update_blas( VkCommandBuffer cmd_buf, 
-								vk_blas_t* oldBas, vk_blas_t* newBas, 
-								VkDeviceSize* offset, VkBuildAccelerationStructureFlagsKHR flag);
+void		vk_rtx_update_blas( VkCommandBuffer cmd_buf, vk_geometry_data_t *geom, vk_geometry_data_accel_t *accel,
+								vk_blas_t *blas, vk_blas_t *old_blas );
 void		vk_rtx_create_tlas( accel_build_batch_t *batch, vk_tlas_t *as, VkDeviceAddress instance_data, uint32_t num_instances );
 void		vk_rtx_destroy_accel_all( void );
 void		vk_rtx_destroy_tlas( vk_tlas_t *as );
@@ -470,13 +503,15 @@ void		vk_rtx_destroy_blas( vk_blas_t *blas );
 
 
 // bsp
+qboolean	RB_IsDynamicMaterial( shader_t *shader );
+qboolean	RB_IsDynamicGeometry( shader_t *shader );
+void		vk_rtx_update_dynamic_geometry( VkCommandBuffer cmd_buf, vk_geometry_data_t *geom );
 mnode_t		*BSP_PointLeaf( mnode_t *node, vec3_t p );
 byte		*BSP_GetPvs( world_t *bsp, int cluster );
 byte		*BSP_GetPvs2( world_t *bsp, int cluster );
 void		get_triangle_norm( const float* positions, float* normal );
 qboolean	get_triangle_off_center(const float* positions, float* center, float* anti_center);
-void		build_pvs2( world_t *world );
-int			R_GetClusterFromSurface( world_t &worldData, surfaceType_t *surf );
+int			vk_get_surface_cluster( world_t &worldData, surfaceType_t *surf );
 
 // material
 void			vk_rtx_clear_material_list( void ) ;
@@ -527,7 +562,7 @@ VkResult	vk_rtx_shadow_map_initialize( void );
 VkResult	vk_rtx_shadow_map_destroy( void );
 VkResult	vk_rtx_shadow_map_create_pipelines( void );
 VkResult	vk_rtx_shadow_map_destroy_pipelines( void );
-VkResult	vk_rtx_shadow_map_render( VkCommandBuffer cmd_buf, float *view_projection_matrix, int num_static_indices, int num_dynamic_verts, int transparent_offset, int num_transparent_verts );
+VkResult	vk_rtx_shadow_map_render( VkCommandBuffer cmd_buf, world_t &worldData, float *view_projection_matrix, int num_static_indices, int num_dynamic_verts, int transparent_offset, int num_transparent_verts );
 VkImageView	vk_rtx_shadow_map_get_view( void );
 void		vk_rtx_shadow_map_setup( const sun_light_t *light, const float *bbox_min, const float *bbox_max, float *VP, float *depth_scale, qboolean random_sampling );
 

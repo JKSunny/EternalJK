@@ -1608,6 +1608,8 @@ typedef struct world_s {
 	int			clusterBytes;
 	const byte	*vis;					// may be passed in by CM_LoadMap to save space	
 #ifdef USE_RTX
+	vkgeometry_t	geometry;
+
 	const byte		*vis2;
 	int				numvisibility;
 

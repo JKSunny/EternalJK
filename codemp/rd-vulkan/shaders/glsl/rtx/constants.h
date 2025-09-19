@@ -63,8 +63,8 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 // blas instance type/id
 #define AS_TYPE_DEFAULT                                 (0)
 #define AS_TYPE_WORLD_STATIC                            (1)
-#define AS_TYPE_WORLD_DYNAMIC_DATA                      (2)
-#define AS_TYPE_WORLD_DYNAMIC_AS                        (3)
+#define AS_TYPE_WORLD_DYNAMIC_MATERIAL                      (2)
+#define AS_TYPE_WORLD_DYNAMIC_GEOMETRY                        (3)
 #define AS_TYPE_ENTITY_STATIC                           (4)
 #define AS_TYPE_ENTITY_DYNAMIC                          (5)
 #define AS_TYPE_SKY                                     (6)
