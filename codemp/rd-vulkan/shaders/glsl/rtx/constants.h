@@ -68,6 +68,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define AS_TYPE_ENTITY_STATIC                           (4)
 #define AS_TYPE_ENTITY_DYNAMIC                          (5)
 #define AS_TYPE_SKY                                     (6)
+#define AS_TYPE_WORLD_SUBMODEL                          (7)
 
 #define AS_INSTANCE_FLAG_DYNAMIC					(1 << 23)
 #define AS_INSTANCE_FLAG_SKY						(1 << 22)

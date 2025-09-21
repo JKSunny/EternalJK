@@ -1532,6 +1532,16 @@ typedef struct bmodel_s {
 	vec3_t		bounds[2];			// for culling
 	msurface_t	*firstSurface;
 	int			numSurfaces;
+#ifdef USE_RTX
+	vec3_t		center;
+	vec3_t		aabb_min;
+	vec3_t		aabb_max;
+
+	uint32_t	idx_offset;
+	uint32_t	xyz_offset;
+	uint32_t	idx_count;
+	uint32_t	xyz_count;
+#endif
 } bmodel_t;
 
 typedef struct
@@ -1608,6 +1618,8 @@ typedef struct world_s {
 	int			clusterBytes;
 	const byte	*vis;					// may be passed in by CM_LoadMap to save space	
 #ifdef USE_RTX
+	aabb_t			*cluster_aabbs;
+
 	vkgeometry_t	geometry;
 
 	const byte		*vis2;
@@ -1620,6 +1632,8 @@ typedef struct world_s {
 	int				num_light_polys;
 	int				allocated_light_polys;
 	light_poly_t	*light_polys;
+
+	int				num_bmodels;
 #endif
 
 	byte		*novis;					// clusterBytes of 0xff

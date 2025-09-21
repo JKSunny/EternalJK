@@ -157,7 +157,7 @@ Triangle get_hit_triangle(RayPayloadGeometry rp)
 
 	return is_dynamic_instance(rp)
 		?  get_instanced_triangle(prim)
-		:  get_bsp_triangle( rp.instanceID, prim);
+		:  get_bsp_triangle( instance_buffer.tlas_instance_type[rp.instanceID], prim);
 }
 
 vec3

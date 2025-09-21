@@ -233,8 +233,11 @@ void vk_imgui_draw_rtx_feedback( void )
 	ImGui::Begin( "RTX Feedback##Window" );
 
 	{
-		ImGui::Text( va("View cluster: %d / %d", backEnd.refdef.feedback.viewcluster, vk.numClusters) );
-		ImGui::Text( va("Look at cluster: %d / %d", backEnd.refdef.feedback.lookatcluster, vk.numClusters) );
+		if ( tr.world )
+		{
+			ImGui::Text( va("View cluster: %d / %d", backEnd.refdef.feedback.viewcluster, tr.world->numClusters) );
+			ImGui::Text( va("Look at cluster: %d / %d", backEnd.refdef.feedback.lookatcluster, tr.world->numClusters) );
+		}
 
 		ImGui::Separator();
 

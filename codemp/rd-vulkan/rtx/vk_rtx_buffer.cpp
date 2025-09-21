@@ -315,14 +315,14 @@ void vk_rtx_upload_buffer_data( vkbuffer_t *buffer, const byte *data )
 
 static void copy_bsp_lights( world_t *world, LightBuffer *lbo )
 {
-	memcpy( lbo->light_list_lights, world->cluster_lights, world->cluster_light_offsets[vk.numClusters] * sizeof(uint32_t) );
-	memcpy( lbo->light_list_offsets, world->cluster_light_offsets, (vk.numClusters + 1) * sizeof(uint32_t)  );
+	memcpy( lbo->light_list_lights, world->cluster_lights, world->cluster_light_offsets[world->numClusters] * sizeof(uint32_t) );
+	memcpy( lbo->light_list_offsets, world->cluster_light_offsets, (world->numClusters + 1) * sizeof(uint32_t)  );
 		
 	// Store the light counts in the light counts history entry for the current frame
 	uint32_t history_index = vk.frame_counter % LIGHT_COUNT_HISTORY;
 	uint32_t *sample_light_counts = (uint32_t *)buffer_map( vk.buf_light_counts_history + history_index );
 		
-	for ( int c = 0; c < vk.numClusters; c++ )
+	for ( int c = 0; c < world->numClusters; c++ )
 	{
 		sample_light_counts[c] = world->cluster_light_offsets[c + 1] - world->cluster_light_offsets[c];
 	}
@@ -530,13 +530,15 @@ static void vk_rtx_add_stage_tex_coords( const int stage, VertexBuffer *vbo )
 	}	
 }
 
-void vk_rtx_bind_indicies( uint32_t* cluster, uint32_t xyz_count )
+void vk_rtx_bind_indicies( uint32_t* cluster, uint32_t base_vertex )
 {
 	uint32_t i;
 
+	// ~sunny, rename xyz_count in geom strucs to base_vertex, base_index?
+
 	for ( i = 0; i < tess.numIndexes; i++ )
 	{
-		cluster[i] = (uint32_t)(tess.indexes[i] + xyz_count );
+		cluster[i] = (uint32_t)(tess.indexes[i] + base_vertex );
 	}
 }
 
@@ -698,7 +700,7 @@ VkResult vkpt_light_buffers_create( world_t &worldData )
 	vkpt_light_buffers_destroy();
 
 	// Light statistics: 2 uints (shadowed, unshadowed) per light per surface orientation (6) per cluster.
-	uint32_t num_stats = vk.numClusters * worldData.num_light_polys * 6 * 2;
+	uint32_t num_stats = worldData.numClusters * worldData.num_light_polys * 6 * 2;
 
     // Handle rare cases when the map has zero lights
     if ( num_stats == 0 )
@@ -713,7 +715,7 @@ VkResult vkpt_light_buffers_create( world_t &worldData )
 
 	for ( int h = 0; h < LIGHT_COUNT_HISTORY; h++ )
 	{
-		vk_rtx_buffer_create( vk.buf_light_counts_history + h, sizeof(uint32_t) * vk.numClusters,
+		vk_rtx_buffer_create( vk.buf_light_counts_history + h, sizeof(uint32_t) * worldData.numClusters,
 			VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT );
 	}

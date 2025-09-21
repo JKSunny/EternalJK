@@ -902,13 +902,6 @@ typedef struct {
 	bool			supports_fp16;
 	int				effective_aa_mode;
 
-	aabb_t			*cluster_aabbs;
-	int				numFixedCluster;
-	int				numClusters;
-	int				clusterBytes;
-	int				numMaxClusters;
-	const byte		*vis;
-
 	char			cluster_debug_mask[VIS_MAX_BYTES];
 	int				cluster_debug_index;
 

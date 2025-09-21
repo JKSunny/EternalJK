@@ -131,14 +131,14 @@ void vkpt_pt_create_all_dynamic( VkCommandBuffer cmd_buf, int idx, const EntityU
 	accel_build_batch_t batch;
 	Com_Memset( &batch, 0, sizeof(accel_build_batch_t) );
 
-	const qboolean instanced = qtrue;
+	const qboolean is_world = qfalse;
 
 	vk_rtx_create_blas( &batch, 
 		&vk.model_instance.buffer_vertex, offset_vertex, 
 		NULL, offset_index, 		
 		upload_info->dynamic_vertex_num, 0,
 		&vk.model_instance.blas.dynamic[idx], 
-		qtrue, qtrue, qfalse, instanced );
+		qtrue, qtrue, qfalse, is_world );
 
 	qvkCmdBuildAccelerationStructuresKHR( cmd_buf, batch.numBuilds, batch.buildInfos, batch.rangeInfoPtrs );
 
@@ -335,6 +335,79 @@ static qboolean vk_rtx_find_entity_vbo_meshes( const model_t* model, const uint3
 	return enitity_num_meshes > 0 ? qtrue : qfalse;
 }
 
+static void process_bsp_entity(
+	const uint32_t entityNum,
+	const trRefdef_t *refdef,
+	trRefEntity_t *entity, 
+	const model_t *model,
+	int* bsp_mesh_idx, 
+	int* instance_idx, 
+	int* num_instanced_vert)
+{
+	bmodel_t* bmodel = model->data.bmodel;
+
+	InstanceBuffer* uniform_instance_buffer = &vk.uniform_instance_buffer;
+	uint32_t	*ubo_bsp_cluster_id			= (uint32_t*)uniform_instance_buffer->bsp_cluster_id;
+	uint32_t	*ubo_bsp_prim_offset		= (uint32_t*)uniform_instance_buffer->bsp_prim_offset;
+	uint32_t	*ubo_instance_buf_offset	= (uint32_t*)uniform_instance_buffer->bsp_instance_buf_offset;
+	uint32_t	*ubo_instance_buf_size		= (uint32_t*)uniform_instance_buffer->bsp_instance_buf_size;
+
+	const int current_bsp_mesh_index = *bsp_mesh_idx;
+
+	world_entity_ids[entity_frame_num][current_bsp_mesh_index] = entity->e.id;
+
+	float transform[16];
+	create_entity_matrix( transform, (trRefEntity_t*)entity, qfalse );
+	BspMeshInstance* ubo_instance_info = uniform_instance_buffer->bsp_mesh_instances + current_bsp_mesh_index;
+	memcpy(&ubo_instance_info->M, transform, sizeof(transform));
+	ubo_instance_info->frame = entity->e.frame;
+	memset(ubo_instance_info->padding, 0, sizeof(ubo_instance_info->padding));
+
+	vec3_t origin;
+	transform_point(bmodel->center, transform, origin);
+	int cluster = BSP_PointLeaf( tr.world->nodes, origin)->cluster;
+
+	if (cluster < 0)
+	{
+		// In some cases, a model slides into a wall, like a push button, so that its center 
+		// is no longer in any BSP node. We still need to assign a cluster to the model,
+		// so try the corners of the model instead, see if any of them has a valid cluster.
+
+		for (int corner = 0; corner < 8; corner++)
+		{
+			vec3_t corner_pt = {
+				(corner & 1) ? bmodel->aabb_max[0] : bmodel->aabb_min[0],
+				(corner & 2) ? bmodel->aabb_max[1] : bmodel->aabb_min[1],
+				(corner & 4) ? bmodel->aabb_max[2] : bmodel->aabb_min[2]
+			};
+
+			vec3_t corner_pt_world;
+			transform_point(corner_pt, transform, corner_pt_world);
+
+			cluster = BSP_PointLeaf( tr.world->nodes, corner_pt_world)->cluster;
+
+			if(cluster >= 0)
+				break;
+		}
+	}
+
+	ubo_bsp_cluster_id[current_bsp_mesh_index] = cluster;
+
+	ubo_bsp_prim_offset[current_bsp_mesh_index] = bmodel->idx_offset / 3;
+
+	const int mesh_vertex_num = bmodel->idx_count;
+
+	ubo_instance_buf_offset[current_bsp_mesh_index] = *num_instanced_vert / 3;
+	ubo_instance_buf_size[current_bsp_mesh_index] = mesh_vertex_num / 3;
+
+	((int*)uniform_instance_buffer->model_indices)[*instance_idx] = ~current_bsp_mesh_index;
+
+	*num_instanced_vert += mesh_vertex_num;
+
+	(*bsp_mesh_idx)++;
+	(*instance_idx)++;
+}
+
 static void process_regular_entity( 
 	const uint32_t entityNum,
 	const trRefdef_t *refdef,
@@ -357,10 +430,10 @@ static void process_regular_entity(
 		return;
 
 	InstanceBuffer *uniform_instance_buffer = &vk.uniform_instance_buffer;
-	uint32_t *ubo_instance_buf_offset	= (uint32_t*)uniform_instance_buffer->model_instance_buf_offset;
-	uint32_t *ubo_instance_buf_size		= (uint32_t*)uniform_instance_buffer->model_instance_buf_size;
-	uint32_t *ubo_model_idx_offset		= (uint32_t*)uniform_instance_buffer->model_idx_offset;
-	uint32_t *ubo_model_cluster_id		= (uint32_t*)uniform_instance_buffer->model_cluster_id;
+	uint32_t *ubo_instance_buf_offset		= (uint32_t*)uniform_instance_buffer->model_instance_buf_offset;
+	uint32_t *ubo_instance_buf_size			= (uint32_t*)uniform_instance_buffer->model_instance_buf_size;
+	uint32_t *ubo_model_idx_offset			= (uint32_t*)uniform_instance_buffer->model_idx_offset;
+	uint32_t *ubo_model_cluster_id			= (uint32_t*)uniform_instance_buffer->model_cluster_id;
 	uint32_t i;
 
 	float transform[16];
@@ -498,34 +571,29 @@ static void prepare_entities( EntityUploadInfo *upload_info, const trRefdef_t *r
 
 					if ( !model )
 						continue;
+					
+					qboolean contains_transparent = qfalse;
 
-					// sunny, revisit these duplications
 					switch ( model->type )
 					{
-						case MOD_MESH:
+						case MOD_BRUSH:
 							{
-								qboolean contains_transparent = qfalse;
-								process_regular_entity( i, refdef, entity, model, qfalse, qfalse, &model_instance_idx, &instance_idx, &num_instanced_vert, 2, &contains_transparent );
-					
-								if ( contains_transparent )
-									transparent_model_indices[transparent_model_num++] = i;
+								process_bsp_entity( i, refdef, entity, model, &bsp_mesh_idx, &instance_idx, &num_instanced_vert );
 							}
 							break;
-						case MOD_BRUSH:
-							break;
+						case MOD_MESH:
 						case MOD_MDXM:
 						case MOD_BAD:
 							{
-								qboolean contains_transparent = qfalse;
 								process_regular_entity( i, refdef, entity, model, qfalse, qfalse, &model_instance_idx, &instance_idx, &num_instanced_vert, 2, &contains_transparent );
-					
-								if ( contains_transparent )
-									transparent_model_indices[transparent_model_num++] = i;
 							}
 							break;
 						default:
 							break;
 					}
+
+					if ( contains_transparent )
+						transparent_model_indices[transparent_model_num++] = i;
 
 					break;
 				}
@@ -559,7 +627,7 @@ static void prepare_entities( EntityUploadInfo *upload_info, const trRefdef_t *r
 	memset(instance_buffer->model_prev_to_current, ~0u, sizeof(instance_buffer->model_prev_to_current));
 	memset(instance_buffer->mlight_prev_to_current, ~0u, sizeof(instance_buffer->mlight_prev_to_current));
 
-#if 0
+#if 1
 	world_entity_id_count[entity_frame_num] = bsp_mesh_idx;
 	for(int i = 0; i < world_entity_id_count[entity_frame_num]; i++) {
 		for(int j = 0; j < world_entity_id_count[!entity_frame_num]; j++) {
@@ -624,7 +692,7 @@ static void vk_rtx_process_render_feedback( ref_feedback_t *feedback, mnode_t *v
 		feedback->lookatcluster = readback.cluster;
 		feedback->num_light_polys = 0;
 
-		if ( tr.world && feedback->lookatcluster >= 0 && feedback->lookatcluster < vk.numClusters )
+		if ( tr.world && feedback->lookatcluster >= 0 && feedback->lookatcluster < tr.world->numClusters )
 		{
 			int* light_offsets = tr.world->cluster_light_offsets + feedback->lookatcluster;
 			feedback->num_light_polys = light_offsets[1] - light_offsets[0];

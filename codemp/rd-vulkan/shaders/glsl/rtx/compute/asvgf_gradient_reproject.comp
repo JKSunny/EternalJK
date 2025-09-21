@@ -76,7 +76,7 @@ void patch_position(ivec2 ipos, ivec2 found_pos_prev)
 		uint instance_id_prev = visbuf_get_static_instance_id(vis_buf.x);
 		uint primitive_id = vis_buf.y;
 
-		triangle = get_bsp_triangle(instance_id_prev, primitive_id);
+		triangle = get_bsp_triangle( instance_buffer.tlas_instance_type[instance_id_prev], primitive_id);
 	}
 	else
 	{

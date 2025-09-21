@@ -34,10 +34,10 @@ VkDescriptorSet vk_rtx_get_current_desc_set_textures()
 
 byte* BSP_GetPvs( world_t *bsp, int cluster )
 {
-	if (!bsp->vis || !vk.numClusters)
+	if (!bsp->vis || !bsp->numClusters)
 		return NULL;
 	
-	if (cluster < 0 || cluster >= vk.numClusters)
+	if (cluster < 0 || cluster >= bsp->numClusters)
 		return NULL;
 
 	return (byte*)bsp->vis + bsp->clusterBytes * cluster;
@@ -45,10 +45,10 @@ byte* BSP_GetPvs( world_t *bsp, int cluster )
 
 byte* BSP_GetPvs2( world_t *bsp, int cluster )
 {
-	if (!bsp->vis || !vk.numClusters)
+	if (!bsp->vis || !bsp->numClusters)
 		return NULL;
 
-	if (cluster < 0 || cluster >= vk.numClusters)
+	if (cluster < 0 || cluster >= bsp->numClusters)
 		return NULL;
 
 	return (byte*)bsp->vis2 + bsp->clusterBytes * cluster;
@@ -56,7 +56,7 @@ byte* BSP_GetPvs2( world_t *bsp, int cluster )
 
 byte *BSP_ClusterVis( world_t *bsp, byte *mask, int cluster, int vis )
 {
-	if ( !bsp || !vk.vis ) {
+	if ( !bsp || !bsp->vis ) {
 		memset( mask, 0xff, VIS_MAX_BYTES );
 		return mask;
 	}
@@ -67,7 +67,7 @@ byte *BSP_ClusterVis( world_t *bsp, byte *mask, int cluster, int vis )
     }
 
     //if ( cluster < 0 || cluster >= bsp->numClusters ) {
-    if ( cluster < 0 || cluster >= vk.numClusters ) {
+    if ( cluster < 0 || cluster >= bsp->numClusters ) {
         Com_Error( ERR_DROP, "%s: bad cluster", __func__ );
     }
 
@@ -87,7 +87,7 @@ byte *BSP_ClusterVis( world_t *bsp, byte *mask, int cluster, int vis )
 	if ( vis == DVIS_PVS/* && bsp->pvs_matrix*/ )
 	{
 		byte *row = BSP_GetPvs( bsp, cluster );
-		memcpy(mask, row, vk.clusterBytes);
+		memcpy(mask, row, bsp->clusterBytes);
 		return mask;
 	}
 
@@ -280,10 +280,6 @@ void vk_rtx_shutdown( void )
 		return;
 
 	uint32_t i;
-
-	free( &vk.numMaxClusters );
-	free( &vk.cluster_aabbs );
-	free( &vk.cluster_aabbs );
 
 	for ( i = 0; i < vk.swapchain_image_count; i++ ) 
 	{

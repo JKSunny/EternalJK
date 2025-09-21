@@ -377,7 +377,7 @@ typedef struct {
 	uint32_t	dynamic_flags;
 	qboolean	fast_build;
 	qboolean	allow_update;
-	qboolean	instanced;
+	qboolean	is_world;
 
 	vk_geometry_host_t		 host;
 	vk_geometry_data_accel_t accel[BLAS_TYPE_COUNT];
@@ -388,6 +388,7 @@ typedef struct {
 	vk_geometry_data_t world_static;
 	vk_geometry_data_t world_dynamic_material;
 	vk_geometry_data_t world_dynamic_geometry;
+	vk_geometry_data_t world_models;
 } vkgeometry_t;
 
 
@@ -481,7 +482,7 @@ void		VK_DestroyBuffer( vkbuffer_t *buffer );
 void		vk_rtx_create_buffers( void );
 void		vk_rtx_destroy_buffers( void );
 void		vk_rtx_bind_vertices( VertexBuffer *vbo, int cluster );
-void		vk_rtx_bind_indicies( uint32_t* ibo, uint32_t xyz_count );
+void		vk_rtx_bind_indicies( uint32_t* ibo, uint32_t base_vertex );
 void		vk_rtx_bind_cluster( uint32_t *cluster, uint32_t cluster_count, int cluster_id );
 
 // acceleration structure

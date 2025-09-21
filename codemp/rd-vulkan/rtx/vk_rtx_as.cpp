@@ -89,7 +89,7 @@ void vk_rtx_create_blas_bsp( accel_build_batch_t *batch, vk_geometry_data_t *geo
 				&geom->idx[i], accel->idx_offset,
 				accel->xyz_count, accel->idx_count,
 				&accel->blas[i],
-				geom->dynamic_flags ? qtrue : qfalse, geom->fast_build, geom->allow_update, geom->instanced
+				geom->dynamic_flags ? qtrue : qfalse, geom->fast_build, geom->allow_update, geom->is_world
 			);
 		}
 	}
@@ -100,7 +100,7 @@ void vk_rtx_create_blas( accel_build_batch_t *batch,
 								 vkbuffer_t *index_buffer, VkDeviceAddress index_offset,
 								 uint32_t num_vertices, uint32_t num_indices,
 								 vk_blas_t *blas, qboolean is_dynamic, qboolean fast_build, 
-								 qboolean allow_update, qboolean instanced ) 
+								 qboolean allow_update, qboolean is_world ) 
 {	
 #if 0
 	if ( num_vertices <= 0 || num_indices <= 0) {
@@ -135,7 +135,7 @@ void vk_rtx_create_blas( accel_build_batch_t *batch,
 	triangles.vertexData.hostAddress = VK_NULL_HANDLE;
 
 	// models and bsp vertex data differ in format/stride
-	VkDeviceSize stride = instanced ? sizeof(float) * 3 : sizeof(VertexBuffer);
+	VkDeviceSize stride = is_world ? sizeof(VertexBuffer) : sizeof(float) * 3;
 
 	blas->vertex_address = vertex_buffer->address + ( vertex_offset * stride );
 	blas->index_address = index_buffer ? (index_buffer->address + (index_offset * sizeof(uint32_t))) : 0;
@@ -269,7 +269,7 @@ void vk_rtx_update_blas( VkCommandBuffer cmd_buf, vk_geometry_data_t *geom, vk_g
 			&geom->idx[frame_idx], accel->idx_offset,
 			accel->xyz_count, accel->idx_count,
 			blas,
-			qtrue /*geom->dynamic_flags*/, geom->fast_build, geom->allow_update, geom->instanced
+			qtrue /*geom->dynamic_flags*/, geom->fast_build, geom->allow_update, geom->is_world
 		);
 
 		blas->create_num_vertices = accel->xyz_count;

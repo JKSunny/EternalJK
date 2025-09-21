@@ -86,6 +86,10 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define BINDING_OFFSET_IDX_SKY								22
 #define BINDING_OFFSET_CLUSTER_SKY                			23
 
+// world submodels
+#define BINDING_OFFSET_XYZ_WORLD_SUBMODEL                   24
+#define BINDING_OFFSET_IDX_WORLD_SUBMODEL                   25
+
 #define SUN_COLOR_ACCUMULATOR_FIXED_POINT_SCALE 0x100000
 #define SKY_COLOR_ACCUMULATOR_FIXED_POINT_SCALE 0x100
 
@@ -236,25 +240,30 @@ struct TextureData {
 
 
 // Buffer with indices and vertices
+layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_IDX_SKY )					BUFFER_T Indices_Sky_static { uint i[]; } indices_sky_static;
+layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_XYZ_SKY )					BUFFER_T Vertices_Sky_static { VertexBuffer v[]; } vertices_sky_static;
+
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_IDX_WORLD_STATIC )			BUFFER_T Indices_World_static { uint i[]; } indices_world_static;
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_XYZ_WORLD_STATIC )			BUFFER_T Vertices_World_static { VertexBuffer v[]; } vertices_world_static;
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_IDX_WORLD_DYNAMIC_DATA )		BUFFER_T Indices_dynamic_data { uint i[]; } indices_dynamic_data;
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_XYZ_WORLD_DYNAMIC_DATA )		BUFFER_T Vertices_dynamic_data { VertexBuffer v[]; } vertices_dynamic_data;
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_IDX_WORLD_DYNAMIC_AS )		BUFFER_T Indices_dynamic_as { uint i[]; } indices_dynamic_as;
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_XYZ_WORLD_DYNAMIC_AS )		BUFFER_T Vertices_dynamic_as { VertexBuffer v[]; } vertices_dynamic_as;
+
+layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_CLUSTER_SKY )				BUFFER_T Cluster_Sky_static { uint c[]; } cluster_sky_static;
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_CLUSTER_WORLD_STATIC )		BUFFER_T Cluster_World_static { uint c[]; } cluster_world_static;
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_CLUSTER_WORLD_DYNAMIC_DATA )	BUFFER_T Cluster_World_dynamic_data { uint c[]; } cluster_world_dynamic_data;
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_CLUSTER_WORLD_DYNAMIC_AS )	BUFFER_T Cluster_World_dynamic_as { uint c[]; } cluster_world_dynamic_as;
-
-layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_CLUSTER_SKY )				BUFFER_T Cluster_Sky_static { uint c[]; } cluster_sky_static;
-layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_IDX_SKY )					BUFFER_T Indices_Sky_static { uint i[]; } indices_sky_static;
-layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_XYZ_SKY )					BUFFER_T Vertices_Sky_static { VertexBuffer v[]; } vertices_sky_static;
 
 //prev
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_IDX_WORLD_DYNAMIC_DATA_PREV ) BUFFER_T Indices_dynamic_data_prev { uint i[]; } indices_dynamic_data_prev;
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_XYZ_WORLD_DYNAMIC_DATA_PREV ) BUFFER_T Vertices_dynamic_data_prev { VertexBuffer v[]; } vertices_dynamic_data_prev;
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_IDX_WORLD_DYNAMIC_AS_PREV )	BUFFER_T Indices_dynamic_as_prev { uint i[]; } indices_dynamic_as_prev;
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_XYZ_WORLD_DYNAMIC_AS_PREV )	BUFFER_T Vertices_dynamic_as_prev { VertexBuffer v[]; } vertices_dynamic_as_prev;
+
+// world submodels
+layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_IDX_WORLD_SUBMODEL )			BUFFER_T Indices_World_submodel { uint i[]; } indices_world_submodel;
+layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_XYZ_WORLD_SUBMODEL )			BUFFER_T Vertices_World_submodel { VertexBuffer v[]; } vertices_world_submodel;
 
 /* History of light count in cluster, used for sampling.
  * This is used to make gradient estimation work correctly:
@@ -580,12 +589,12 @@ vec4 unpackColor(in uint color) {
 	);
 }
 
-ivec3 get_bsp_triangle_indices_and_data( in uint instance_id, in uint prim_id, out VertexBuffer triangle[3] )
+ivec3 get_bsp_triangle_indices_and_data( in uint instance_type, in uint prim_id, out VertexBuffer triangle[3] )
 {
 	uint prim = prim_id * 3;
 	ivec3 indices;
 
-	if ( instance_buffer.tlas_instance_type[instance_id] == AS_TYPE_WORLD_STATIC )
+	if ( instance_type == AS_TYPE_WORLD_STATIC )
 	{
 		indices = ivec3(	
 			indices_world_static.i[prim + 0], 
@@ -597,7 +606,7 @@ ivec3 get_bsp_triangle_indices_and_data( in uint instance_id, in uint prim_id, o
 		triangle[2] = vertices_world_static.v[indices.z];
 	}
 	
-	else if ( instance_buffer.tlas_instance_type[instance_id] == AS_TYPE_SKY )
+	else if ( instance_type == AS_TYPE_SKY )
 	{
 		indices = ivec3(	
 			indices_sky_static.i[prim + 0], 
@@ -609,7 +618,7 @@ ivec3 get_bsp_triangle_indices_and_data( in uint instance_id, in uint prim_id, o
 		triangle[2] = vertices_sky_static.v[indices.z];
 	}
 	
-	else if ( instance_buffer.tlas_instance_type[instance_id] == AS_TYPE_WORLD_DYNAMIC_MATERIAL )
+	else if ( instance_type == AS_TYPE_WORLD_DYNAMIC_MATERIAL )
 	{
 		indices = ivec3(	
 			indices_dynamic_data.i[prim + 0], 
@@ -621,7 +630,7 @@ ivec3 get_bsp_triangle_indices_and_data( in uint instance_id, in uint prim_id, o
 		triangle[2] = vertices_dynamic_data.v[indices.z];
 	}
 	
-	else if ( instance_buffer.tlas_instance_type[instance_id] == AS_TYPE_WORLD_DYNAMIC_GEOMETRY )
+	else if ( instance_type == AS_TYPE_WORLD_DYNAMIC_GEOMETRY )
 	{
 		indices = ivec3(	
 			indices_dynamic_as.i[prim + 0], 
@@ -633,15 +642,28 @@ ivec3 get_bsp_triangle_indices_and_data( in uint instance_id, in uint prim_id, o
 		triangle[2] = vertices_dynamic_as.v[indices.z];
 	}
 	
+	else if ( instance_type == AS_TYPE_WORLD_SUBMODEL )
+	{
+		indices = ivec3(	
+			indices_world_submodel.i[prim + 0], 
+			indices_world_submodel.i[prim + 1], 
+			indices_world_submodel.i[prim + 2] );
+
+		triangle[0] = vertices_world_submodel.v[indices.x];
+		triangle[1] = vertices_world_submodel.v[indices.y];
+		triangle[2] = vertices_world_submodel.v[indices.z];
+	}
+	
+	
 	return indices;
 }
 
-mat3x3 get_dynamic_bsp_positions_prev( in uint instance_id, in uint prim_id  )
+mat3x3 get_dynamic_bsp_positions_prev( in uint instance_type, in uint prim_id  )
 {
 	uint prim = prim_id * 3;
 	mat3x3 position;
 
-	if ( instance_buffer.tlas_instance_type[instance_id] == AS_TYPE_WORLD_DYNAMIC_MATERIAL )
+	if ( instance_type == AS_TYPE_WORLD_DYNAMIC_MATERIAL )
 	{
 		ivec3 indices = ivec3( 
 			indices_dynamic_data_prev.i[prim + 0], 
@@ -653,7 +675,7 @@ mat3x3 get_dynamic_bsp_positions_prev( in uint instance_id, in uint prim_id  )
 		position[2] = vertices_dynamic_data_prev.v[indices.z].pos.xyz;
 	}
 	
-	else if ( instance_buffer.tlas_instance_type[instance_id] == AS_TYPE_WORLD_DYNAMIC_GEOMETRY )
+	else if ( instance_type == AS_TYPE_WORLD_DYNAMIC_GEOMETRY )
 	{
 		ivec3 indices = ivec3(
 			indices_dynamic_as_prev.i[prim + 0], 
@@ -668,10 +690,10 @@ mat3x3 get_dynamic_bsp_positions_prev( in uint instance_id, in uint prim_id  )
 	return position;
 }
 
-Triangle get_bsp_triangle( in uint instance_id, in uint prim_id )
+Triangle get_bsp_triangle( in uint instance_type, in uint prim_id )
 {
 	VertexBuffer triangle[3];
-	ivec3 indices = get_bsp_triangle_indices_and_data( instance_id, prim_id, triangle );
+	ivec3 indices = get_bsp_triangle_indices_and_data( instance_type, prim_id, triangle );
 
 	Triangle t;
 
@@ -679,10 +701,11 @@ Triangle get_bsp_triangle( in uint instance_id, in uint prim_id )
 	t.positions[1] = triangle[1].pos.xyz;
 	t.positions[2] = triangle[2].pos.xyz;
 	
-	if ( instance_buffer.tlas_instance_type[instance_id] == AS_TYPE_WORLD_STATIC )
+
+	if ( instance_type == AS_TYPE_WORLD_STATIC || instance_type == AS_TYPE_WORLD_SUBMODEL )
 		t.positions_prev = t.positions;
 	else 
-		t.positions_prev = get_dynamic_bsp_positions_prev( instance_id, prim_id ); 
+		t.positions_prev = get_dynamic_bsp_positions_prev( instance_type, prim_id ); 
 
 	t.color0[0] = unpackColor(triangle[0].color[0]);
 	t.color0[1] = unpackColor(triangle[1].color[0]);
@@ -724,7 +747,7 @@ Triangle get_bsp_triangle( in uint instance_id, in uint prim_id )
 	t.tangents[1] = triangle[1].qtangent.xyz;
 	t.tangents[2] = triangle[2].qtangent.xyz;
 
-	switch( instance_buffer.tlas_instance_type[instance_id] )
+	switch( instance_type )
 	{
 		case AS_TYPE_WORLD_STATIC:
 			t.tex0 = vertices_world_static.v[indices.x].texIdx0;
@@ -753,6 +776,13 @@ Triangle get_bsp_triangle( in uint instance_id, in uint prim_id )
 
 			t.cluster = cluster_world_dynamic_as.c[prim_id];
 			t.material_id = vertices_dynamic_as.v[indices.x].material;
+			break;
+		case AS_TYPE_WORLD_SUBMODEL:
+			t.tex0 = vertices_world_submodel.v[indices.x].texIdx0;
+			t.tex1 = vertices_world_submodel.v[indices.x].texIdx1;
+
+			t.cluster = -1;
+			t.material_id = vertices_world_submodel.v[indices.x].material;
 			break;
 		default:
 			t.tex0 = 0;
