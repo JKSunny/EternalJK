@@ -150,6 +150,23 @@ typedef struct
 	int modelIndex;
 } maliasmesh_t;
 
+typedef struct entity_hash_s {
+	unsigned int mesh : 8;
+	unsigned int model : 9;
+	unsigned int entity : 15;
+} entity_hash_t;
+
+typedef struct light_poly_s {
+	float	positions[9]; // 3x vec3_t
+	vec3_t	off_center;
+	vec3_t	color;
+	void	*material;
+	int		cluster;
+	int		style;
+	float	emissive_factor;
+	int		type;
+} light_poly_t;
+
 // passes information back from the RTX renderer to the engine for various development maros
 typedef struct ref_feedback_s {
 	int         viewcluster;
@@ -437,6 +454,7 @@ void		mult_matrix_vector( float *p, const float *a, const float *b );
 void		temporal_cvar_changed( void );
 void		VK_BeginRenderClear( void );
 
+vkdescriptor_t *vk_rtx_init_descriptor( vkdescriptor_t *descriptor );
 void		vk_rtx_update_descriptor( vkdescriptor_t *descriptor );
 void		vk_rtx_add_descriptor_sampler( vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage, uint32_t count, VkImageLayout layout );
 void		vk_rtx_add_descriptor_image( vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage );
@@ -448,13 +466,16 @@ void		vk_rtx_bind_descriptor_image_sampler( vkdescriptor_t *descriptor, uint32_t
 void		vk_rtx_create_descriptor( vkdescriptor_t *descriptor );
 void		vk_rtx_set_descriptor_update_size( vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage, uint32_t size );
 void		vk_rtx_destroy_descriptor( vkdescriptor_t *descriptor );
+void		vk_rtx_destroy_rt_descriptors( void );
 
 // pipeline
 void		vk_rtx_bind_pipeline_shader( vkpipeline_t *pipeline, vkshader_t *shader );
 void		vk_rtx_bind_pipeline_desc_set_layouts( vkpipeline_t *pipeline, VkDescriptorSetLayout *set_layouts, uint32_t count );
 void		vk_rtx_create_compute_pipeline( vkpipeline_t *pipeline, VkSpecializationInfo *spec, uint32_t push_size );
 void		vk_rtx_create_rt_pipelines( void );
+void		vk_rtx_destroy_rt_pipelines( void );
 void		vk_rtx_create_compute_pipelines( void );
+void		vk_rtx_destroy_compute_pipelines( void );
 void		vk_rtx_destroy_pipeline( vkpipeline_t *pipeline );
 
 // uniform
@@ -486,7 +507,7 @@ void		vk_rtx_bind_indicies( uint32_t* ibo, uint32_t base_vertex );
 void		vk_rtx_bind_cluster( uint32_t *cluster, uint32_t cluster_count, int cluster_id );
 
 // acceleration structure
-void		vk_rtx_reset_world_geometries( world_t &worldData );
+void		vk_rtx_reset_world_geometries( world_t *world );
 //void		vk_rtx_append_blas( vk_blas_t *blas, int instance_id, uint32_t type, uint32_t offset, uint32_t flags );
 void		vk_rtx_create_blas_bsp( accel_build_batch_t *batch, vk_geometry_data_t *geom );
 void		vk_rtx_create_blas( accel_build_batch_t *batch,  
@@ -504,6 +525,7 @@ void		vk_rtx_destroy_blas( vk_blas_t *blas );
 
 
 // bsp
+qboolean	RB_IsSky( shader_t *shader );
 qboolean	RB_IsDynamicMaterial( shader_t *shader );
 qboolean	RB_IsDynamicGeometry( shader_t *shader );
 void		vk_rtx_update_dynamic_geometry( VkCommandBuffer cmd_buf, vk_geometry_data_t *geom );
@@ -585,6 +607,7 @@ void		vk_rtx_get_god_rays_shadowmap( VkImageView &view, VkSampler &sampler );
 void		vk_rtx_write_model_descriptor( int index, VkDescriptorSet descriptor, VkBuffer buffer, VkDeviceSize size );
 void		vk_rtx_create_model_vbo_ibo_descriptor( void );
 VkResult	vk_rtx_model_vbo_create_pipelines( void );
+VkResult	vk_rtx_model_vbo_destroy_pipelines( void );
 void		vkpt_instance_geometry( VkCommandBuffer cmd_buf, uint32_t num_instances, qboolean update_world_animations );
 #ifdef USE_RTX_GLOBAL_MODEL_VBO
 void		vk_rtx_bind_model( int index );

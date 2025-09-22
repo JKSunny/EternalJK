@@ -23,7 +23,119 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include "tr_local.h"
 
+// uncomment the define to visualize polygonal lights by rednering debug triangles 
+// the value represents the offset along the light’s normal direction
+// #define DEBUG_POLY_LIGHTS 3.0f
+
 #define PlaneDiff(v,p)   (DotProduct(v,(p)->normal)-(p)->dist)
+
+typedef struct {
+    vec3_t position;  // 3 floats: x, y, z
+    vec2_t st;        // 2 floats: texture coords u, v
+} tri_vertex_t;
+
+typedef struct {
+	float x, y;
+
+} point2_t;
+#define MAX_POLY_VERTS 32
+typedef struct {
+	point2_t v[MAX_POLY_VERTS];
+	int len;
+} rt_poly_t;
+
+static inline float
+dot2(point2_t* a, point2_t* b)
+{
+	return a->x * b->x + a->y * b->y;
+}
+
+static inline float
+cross2(point2_t* a, point2_t* b)
+{
+	return a->x * b->y - a->y * b->x;
+}
+
+static inline point2_t
+vsub(point2_t* a, point2_t* b)
+{
+	point2_t res;
+	res.x = a->x - b->x;
+	res.y = a->y - b->y;
+	return res;
+}
+
+/* tells if vec c lies on the left side of directed edge a->b
+ * 1 if left, -1 if right, 0 if colinear
+ */
+static int
+left_of(point2_t* a, point2_t* b, point2_t* c)
+{
+	float x;
+	point2_t tmp1 = vsub(b, a);
+	point2_t tmp2 = vsub(c, b);
+	x = cross2(&tmp1, &tmp2);
+	return x < 0 ? -1 : x > 0;
+}
+
+static int
+line_sect(point2_t* x0, point2_t* x1, point2_t* y0, point2_t* y1, point2_t* res)
+{
+	point2_t dx, dy, d;
+	dx = vsub(x1, x0);
+	dy = vsub(y1, y0);
+	d = vsub(x0, y0);
+	/* x0 + a dx = y0 + b dy ->
+	   x0 X dx = y0 X dx + b dy X dx ->
+	   b = (x0 - y0) X dx / (dy X dx) */
+	float dyx = cross2(&dy, &dx);
+	if (!dyx) return 0;
+	dyx = cross2(&d, &dx) / dyx;
+	if (dyx <= 0 || dyx >= 1) return 0;
+
+	res->x = y0->x + dyx * dy.x;
+	res->y = y0->y + dyx * dy.y;
+	return 1;
+}
+
+static void
+poly_append(rt_poly_t* p, point2_t* v)
+{
+	assert(p->len < MAX_POLY_VERTS - 1);
+	p->v[p->len++] = *v;
+}
+
+static int
+poly_winding(rt_poly_t* p)
+{
+	return left_of(p->v, p->v + 1, p->v + 2);
+}
+
+static void
+poly_edge_clip(rt_poly_t* sub, point2_t* x0, point2_t* x1, int left, rt_poly_t* res)
+{
+	int i, side0, side1;
+	point2_t tmp;
+	point2_t* v0 = sub->v + sub->len - 1;
+	point2_t* v1;
+	res->len = 0;
+
+	side0 = left_of(x0, x1, v0);
+	if (side0 != -left) poly_append(res, v0);
+
+	for (i = 0; i < sub->len; i++) {
+		v1 = sub->v + i;
+		side1 = left_of(x0, x1, v1);
+		if (side0 + side1 == 0 && side0)
+			/* last point and current straddle the edge */
+			if (line_sect(x0, x1, v0, v1, &tmp))
+				poly_append(res, &tmp);
+		if (i == sub->len - 1) break;
+		if (side1 != -left) poly_append(res, v1);
+		v0 = v1;
+		side0 = side1;
+	}
+}
 
 static inline vec_t PlaneDiffFast( vec3_t v, cplane_t *p )
 {
@@ -54,10 +166,6 @@ mnode_t *BSP_PointLeaf( mnode_t *node, vec3_t p )
     return node;
 
 }
-
-#define Q_IsBitSet(data, bit)   (((data)[(bit) >> 3] & (1 << ((bit) & 7))) != 0)
-#define Q_SetBit(data, bit)     ((data)[(bit) >> 3] |= (1 << ((bit) & 7)))
-#define Q_ClearBit(data, bit)   ((data)[(bit) >> 3] &= ~(1 << ((bit) & 7)))
 
 static void merge_pvs_rows( world_t* world, char* src, char* dst )
 {
@@ -178,22 +286,6 @@ void compute_aabb( VertexBuffer* xyz, int numvert, float* aabb_min, float* aabb_
 	}
 }
 
-static void RB_UploadCluster( vkbuffer_t *buffer, uint32_t offset, int cluster ) 
-{
-	uint32_t i;
-	const int num_clusters = tess.numIndexes / 3;
-
-	uint32_t *clusterData = (uint32_t*)calloc( num_clusters, sizeof(uint32_t) );
-
-	for ( i = 0; i < num_clusters; i++ ) 
-	{
-		clusterData[i] = cluster;
-	}
-
-	vk_rtx_upload_buffer_data_offset( buffer, offset * sizeof(uint32_t), num_clusters * sizeof(uint32_t), (const byte*)clusterData );
-	free(clusterData);
-}
-
 static void vk_bind_storage_buffer( vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage, VkBuffer buffer )
 {
 	const uint32_t count = 1;
@@ -233,7 +325,7 @@ static void vk_bind_sampler( vkdescriptor_t *descriptor, uint32_t binding, VkSha
 
 static void vk_create_rt_descriptor( uint32_t index, uint32_t prev_index ) 
 {
-	vkdescriptor_t *descriptor = &vk.rt_descriptor_set[index];
+	vkdescriptor_t *descriptor = vk_rtx_init_descriptor( &vk.rt_descriptor_set[index] );
 
 	vk_rtx_add_descriptor_as( descriptor, RAY_GEN_DESCRIPTOR_SET_IDX, VK_SHADER_STAGE_RAYGEN_BIT_KHR );
 	vk_rtx_bind_descriptor_as( descriptor, RAY_GEN_DESCRIPTOR_SET_IDX, VK_SHADER_STAGE_RAYGEN_BIT_KHR, &vk.tlas_geometry[index].accel );
@@ -244,7 +336,7 @@ static void vk_create_rt_descriptor( uint32_t index, uint32_t prev_index )
 
 static void vk_create_vertex_buffer_descriptor( world_t& worldData, uint32_t index, uint32_t prev_index ) 
 {	
-	vkdescriptor_t *descriptor = &vk.desc_set_vertex_buffer[index] ;
+	vkdescriptor_t *descriptor = vk_rtx_init_descriptor( & vk.desc_set_vertex_buffer[index] );
 
 	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_XYZ_SKY,						VK_SHADER_STAGE_ALL, worldData.geometry.sky_static.xyz[0].buffer );
 	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_IDX_SKY,						VK_SHADER_STAGE_ALL, worldData.geometry.sky_static.idx[0].buffer );
@@ -315,7 +407,7 @@ static void vk_create_vertex_buffer_descriptor( world_t& worldData, uint32_t ind
 	vk_rtx_update_descriptor( descriptor );
 }
 
-static void vk_create_primary_rays_pipelines( world_t& worldData ) 
+void vk_rtx_create_rt_descriptors( world_t& worldData )
 {
 	uint32_t i, prev_index;
 
@@ -326,9 +418,29 @@ static void vk_create_primary_rays_pipelines( world_t& worldData )
 		vk_create_rt_descriptor( i, prev_index );
 		vk_create_vertex_buffer_descriptor( worldData, i, prev_index );
 	}
+}
+
+void vk_rtx_destroy_rt_descriptors( void )
+{
+	uint32_t i;
+
+	for ( i = 0; i < vk.swapchain_image_count; i++ ) 
+	{
+		vk_rtx_destroy_descriptor( &vk.rt_descriptor_set[i] );
+		vk_rtx_destroy_descriptor( &vk.desc_set_vertex_buffer[i] );
+	}
+}
+
+static void vk_create_primary_rays_pipelines( world_t& worldData ) 
+{
+	vk_rtx_create_rt_descriptors( worldData);
 
 	vk_rtx_create_shader_modules();
 	vk_rtx_create_rt_pipelines();
+
+	vk_load_final_blit_shader();
+	vk_rtx_create_final_blit_pipeline();
+
 	vk_rtx_create_compute_pipelines();
 }
 
@@ -391,6 +503,20 @@ remove_collinear_edges(float* positions, float* tex_coords, int* num_vertices)
 }
 #endif
 
+static int belongs_to_model( world_t &worldData, msurface_t *surf )
+{
+	for (int i = 0; i < worldData.num_bmodels; i++) 
+	{
+		if ( i == 0 )
+			continue;	// 0 = world ?
+
+		if (surf >= worldData.bmodels[i].firstSurface
+		&& surf < worldData.bmodels[i].firstSurface + worldData.bmodels[i].numSurfaces)
+			return 1;
+	}
+	return 0;
+}
+
 // Computes a point at a small distance above the center of the triangle.
 // Returns qfalse if the triangle is degenerate, qtrue otherwise.
 qboolean 
@@ -429,7 +555,7 @@ get_triangle_off_center(const float* positions, float* center, float* anti_cente
 }
 
 static bool
-get_surf_plane_equation(srfSurfaceFace_t *surf , float* plane )
+get_surf_plane_equation( float* plane, tri_vertex_t *vertices, int *indices, int numIndices, int numVertices )
 {
 	// Go over multiple planes defined by different edge pairs of the surface.
 	// Some of the edges may be collinear or almost-collinear to each other,
@@ -439,22 +565,26 @@ get_surf_plane_equation(srfSurfaceFace_t *surf , float* plane )
 	// So this function finds the plane equation from the triangle with the
 	// largest area, i.e. the longest cross product.
 	int i0, i1, i2;
-	int *indices = ( (int*)( (byte*)surf + surf->ofsIndices ) );
+	float *v0, *v1, *v2;
 
 	float maxlen = 0.f;
-	for ( int  i = 0; i < surf->numIndices; i += 3 )
+	for ( int  i = 0; i < numIndices; i += 3 )
 	{
 		// mostly likely incorrect,dot it later
 		i0 = indices[i + 0];
 		i1 = indices[i + 1];
 		i2 = indices[i + 2];
 
-		if ( i0 >= surf->numPoints || i1 >= surf->numPoints || i2 >= surf->numPoints )
+		if ( i0 >= numVertices || i1 >= numVertices || i2 >= numVertices )
 			continue;
 
-		float* v0 = surf->points[i0];
-		float* v1 = surf->points[i1];
-		float* v2 = surf->points[i2];
+		//float* v0 = surf->points[i0];
+		//float* v1 = surf->points[i1];
+		//float* v2 = surf->points[i2];
+		v0 = vertices[i0].position;
+		v1 = vertices[i1].position;
+		v2 = vertices[i2].position;
+
 
 		vec3_t e0, e1;
 		VectorSubtract(v1, v0, e0);
@@ -471,109 +601,6 @@ get_surf_plane_equation(srfSurfaceFace_t *surf , float* plane )
 		}
 	}
 	return (maxlen > 0.f);
-}
-
-typedef struct {
-	float x, y;
-
-} point2_t;
-#define MAX_POLY_VERTS 32
-typedef struct {
-	point2_t v[MAX_POLY_VERTS];
-	int len;
-} rt_poly_t;
-
-static inline float
-dot2(point2_t* a, point2_t* b)
-{
-	return a->x * b->x + a->y * b->y;
-}
-
-static inline float
-cross2(point2_t* a, point2_t* b)
-{
-	return a->x * b->y - a->y * b->x;
-}
-
-static inline point2_t
-vsub(point2_t* a, point2_t* b)
-{
-	point2_t res;
-	res.x = a->x - b->x;
-	res.y = a->y - b->y;
-	return res;
-}
-
-/* tells if vec c lies on the left side of directed edge a->b
- * 1 if left, -1 if right, 0 if colinear
- */
-static int
-left_of(point2_t* a, point2_t* b, point2_t* c)
-{
-	float x;
-	point2_t tmp1 = vsub(b, a);
-	point2_t tmp2 = vsub(c, b);
-	x = cross2(&tmp1, &tmp2);
-	return x < 0 ? -1 : x > 0;
-}
-
-static int
-line_sect(point2_t* x0, point2_t* x1, point2_t* y0, point2_t* y1, point2_t* res)
-{
-	point2_t dx, dy, d;
-	dx = vsub(x1, x0);
-	dy = vsub(y1, y0);
-	d = vsub(x0, y0);
-	/* x0 + a dx = y0 + b dy ->
-	   x0 X dx = y0 X dx + b dy X dx ->
-	   b = (x0 - y0) X dx / (dy X dx) */
-	float dyx = cross2(&dy, &dx);
-	if (!dyx) return 0;
-	dyx = cross2(&d, &dx) / dyx;
-	if (dyx <= 0 || dyx >= 1) return 0;
-
-	res->x = y0->x + dyx * dy.x;
-	res->y = y0->y + dyx * dy.y;
-	return 1;
-}
-
-static void
-poly_append(rt_poly_t* p, point2_t* v)
-{
-	assert(p->len < MAX_POLY_VERTS - 1);
-	p->v[p->len++] = *v;
-}
-
-static int
-poly_winding(rt_poly_t* p)
-{
-	return left_of(p->v, p->v + 1, p->v + 2);
-}
-
-static void
-poly_edge_clip(rt_poly_t* sub, point2_t* x0, point2_t* x1, int left, rt_poly_t* res)
-{
-	int i, side0, side1;
-	point2_t tmp;
-	point2_t* v0 = sub->v + sub->len - 1;
-	point2_t* v1;
-	res->len = 0;
-
-	side0 = left_of(x0, x1, v0);
-	if (side0 != -left) poly_append(res, v0);
-
-	for (i = 0; i < sub->len; i++) {
-		v1 = sub->v + i;
-		side1 = left_of(x0, x1, v1);
-		if (side0 + side1 == 0 && side0)
-			/* last point and current straddle the edge */
-			if (line_sect(x0, x1, v0, v1, &tmp))
-				poly_append(res, &tmp);
-		if (i == sub->len - 1) break;
-		if (side1 != -left) poly_append(res, v1);
-		v0 = v1;
-		side0 = side1;
-	}
 }
 
 static void
@@ -614,27 +641,27 @@ append_light_poly( int *num_lights, int *allocated, light_poly_t **lights )
 	return *lights + (*num_lights)++;
 }
 
-static void collect_one_light_poly_entire_texture(  world_t &worldData, srfSurfaceFace_t *surf, shader_t *shader, int model_idx, 
+static void collect_one_light_poly_entire_texture(  world_t &worldData, shader_t *shader, int model_idx, 
 													const vec3_t light_color, float emissive_factor, int light_style,
-													int* num_lights, int* allocated_lights, light_poly_t** lights )
+													int* num_lights, int* allocated_lights, light_poly_t** lights,
+													tri_vertex_t *vertices, int *indices, int numIndices, int numVertices )
 {
-	int *indices = (int *)((byte *)surf + surf->ofsIndices);
 	float *v0, *v1, *v2;
 	int i, i0, i1, i2;
 	vec3_t e0, e1, normal;
 
-	for ( i = 0; i < surf->numIndices; i += 3 )
+	for ( i = 0; i < numIndices; i += 3 )
 	{
 		i0 = indices[i + 0];
 		i1 = indices[i + 1];
 		i2 = indices[i + 2];
 
-		if ( i0 >= surf->numPoints || i1 >= surf->numPoints || i2 >= surf->numPoints )
+		if ( i0 >= numVertices || i1 >= numVertices || i2 >= numVertices )
 			continue;
 
-		v0 = surf->points[i0];
-		v1 = surf->points[i1];
-		v2 = surf->points[i2];
+		v0 = vertices[i0].position;
+		v1 = vertices[i1].position;
+		v2 = vertices[i2].position;
 
 		light_poly_t light;
 		VectorCopy( v0, light.positions + 0 );
@@ -710,20 +737,12 @@ static qboolean vk_rtx_compute_bary_weights( const point2_t p, const vec2_t a, c
 	return qtrue;
 }
 
-static void collect_one_light_poly(
-	world_t &worldData,
-	srfSurfaceFace_t *surf,
-	shader_t *shader,
-	int model_idx,
-	const vec2_t min_light_texcoord,
-	const vec2_t max_light_texcoord,
-	const vec3_t light_color,
-	float emissive_factor,
-	int light_style,
-	int* num_lights,
-	int* allocated_lights,
-	light_poly_t** lights
-) {
+static void collect_one_light_poly( world_t &worldData, shader_t *shader, int model_idx,
+									const vec2_t min_light_texcoord, const vec2_t max_light_texcoord,
+									const vec3_t light_color, float emissive_factor, int light_style,
+									int *num_lights, int *allocated_lights, light_poly_t **lights,
+									tri_vertex_t *vertices, int *indices, int numIndices, int numVertices )
+{
 	float *v0, *v1, *v2;
 	int i, j, k, i0, i1, i2, axis;
 	int tile_u, tile_v, min_tile_u, max_tile_u, min_tile_v, max_tile_v;
@@ -733,24 +752,22 @@ static void collect_one_light_poly(
 	vec3_t tri_positions[3], instance_positions[MAX_POLY_VERTS];
 	rt_poly_t tri_uv_poly, clipper, clipped;
 	
-	int *indices = (int *)((byte *)surf + surf->ofsIndices);
-
-	for ( i = 0; i < surf->numIndices; i += 3 ) 
+	for ( i = 0; i < numIndices; i += 3 ) 
 	{
 		i0 = indices[i + 0];
 		i1 = indices[i + 1];
 		i2 = indices[i + 2];
 
-		if ( i0 >= surf->numPoints || i1 >= surf->numPoints || i2 >= surf->numPoints )
+		if ( i0 >= numVertices || i1 >= numVertices || i2 >= numVertices )
 			continue;
 
-		v0 = surf->points[i0];
-		v1 = surf->points[i1];
-		v2 = surf->points[i2];
+		v0 = vertices[i0].position;
+		v1 = vertices[i1].position;
+		v2 = vertices[i2].position;
 
-		VectorSet2( uv0, v0[6], v0[7] );
-		VectorSet2( uv1, v1[6], v1[7] );
-		VectorSet2( uv2, v2[6], v2[7] );
+		VectorSet2( uv0, vertices[i0].st[0], vertices[i0].st[1] );
+		VectorSet2( uv1, vertices[i1].st[0], vertices[i1].st[1] );
+		VectorSet2( uv2, vertices[i2].st[0], vertices[i2].st[1] );
 
 		// get UV aabb
 		VectorSet2( tri_min_uv, 
@@ -896,52 +913,215 @@ collect_frames_emissive_info( shader_t *shader, bool* entire_texture_emissive, v
 	return any_emissive_valid;
 }
 
-static void collect_light_polys( world_t &worldData, int model_idx, int* num_lights, int* allocated_lights, light_poly_t** lights )
+static void collect_light_polys_from_triangles( 
+	world_t &worldData, int model_idx, int* num_lights, int* allocated_lights, light_poly_t** lights,  shader_t *shader,
+	tri_vertex_t *vertices, int *indices, int numIndices, int numVertices
+	)
 {
-	srfSurfaceFace_t *surf;
-	msurface_t *sf;
-	uint32_t i;
-
-	for ( i = 0, sf = &worldData.surfaces[0]; i < worldData.numsurfaces; i++, sf++ ) 
-	{
-		surf = (srfSurfaceFace_t *)sf->data;
-		if ( surf->surfaceType != SF_FACE )
-			continue;
-
 		bool entire_texture_emissive;
 		vec2_t min_light_texcoord;
 		vec2_t max_light_texcoord;
 		vec3_t light_color;
 
-		if ( !collect_frames_emissive_info( sf->shader, &entire_texture_emissive, min_light_texcoord, max_light_texcoord, light_color ) )
+
+		int light_ctr = *num_lights;
+		
+
+
+		if ( !collect_frames_emissive_info( shader, &entire_texture_emissive, min_light_texcoord, max_light_texcoord, light_color ) )
 		{
 			// This algorithm relies on information from the emissive texture,
 			// specifically the extents of the emissive pixels in that texture.
 			// Ignore surfaces that don't have an emissive texture attached.
-			continue;
+			return;
 		}
 
-		float emissive_factor = 4.0f;
+		float emissive_factor = 1.0f;
 		int light_style = 0;
 
 		if ( entire_texture_emissive )
 		{
-			collect_one_light_poly_entire_texture(  worldData, surf, sf->shader, model_idx, light_color, emissive_factor, light_style,
-													num_lights, allocated_lights, lights );
-			continue;
+			collect_one_light_poly_entire_texture(  worldData, shader, model_idx, light_color, emissive_factor, light_style,
+													num_lights, allocated_lights, lights, 
+													vertices, indices, numIndices, numVertices );
+			int num_light_polys = (*num_lights - light_ctr);
+			if ( num_light_polys > 128 )
+				Com_Printf( "verts: %d - light-polys: %d ", numVertices, num_light_polys);
+			return;
 		}
 
 		vec4_t plane;
-		if ( !get_surf_plane_equation( surf, plane ) )
+		if ( !get_surf_plane_equation( plane, vertices, indices, numIndices, numVertices ) )
 		{
 			// It's possible that some polygons in the game are degenerate, ignore these.
+			return;
+		}
+
+		collect_one_light_poly( worldData, shader, model_idx,
+							   min_light_texcoord, max_light_texcoord,
+							   light_color, emissive_factor, light_style,
+							   num_lights, allocated_lights, lights,
+							   vertices, indices, numIndices, numVertices );
+
+		int num_light_polys = (*num_lights - light_ctr);
+		if ( num_light_polys > 128 )
+			Com_Printf( "verts: %d - light-polys: %d ", numVertices, num_light_polys);
+}
+
+static void collect_face_light_polys( srfSurfaceFace_t *surf, shader_t *shader,
+	world_t &worldData, int model_idx, int* num_lights, int* allocated_lights, light_poly_t** lights )
+{
+	int *indices = (int *)((byte *)surf + surf->ofsIndices);
+
+	tri_vertex_t *vertices = (tri_vertex_t*)malloc(surf->numPoints * sizeof(tri_vertex_t));
+	for (int i = 0; i < surf->numPoints; i++) {
+		VectorCopy( surf->points[i] + 0, vertices[i].position); // copy vec3 position
+		VectorCopy2( surf->points[i] + 6, vertices[i].st);      // copy vec2 tex coords
+	}
+
+	collect_light_polys_from_triangles( 
+		worldData, model_idx, num_lights, allocated_lights, lights, 
+		shader, vertices, indices, surf->numIndices, surf->numPoints 
+	);
+}
+
+static void collect_tri_light_polys( srfTriangles_t *tri, shader_t *shader,
+	world_t &worldData, int model_idx, int* num_lights, int* allocated_lights, light_poly_t** lights )
+{
+	int *indices = tri->indexes;
+
+	tri_vertex_t *vertices = (tri_vertex_t*)malloc(tri->numVerts  * sizeof(tri_vertex_t));
+	for (int i = 0; i < tri->numVerts; i++) {
+		VectorCopy( tri->verts[i].xyz, vertices[i].position); // copy vec3 position
+		VectorCopy2( tri->verts[i].st + 6, vertices[i].st);      // copy vec2 tex coords
+	}
+
+	collect_light_polys_from_triangles( 
+		worldData, model_idx, num_lights, allocated_lights, lights, 
+		shader, vertices, indices, tri->numIndexes, tri->numVerts 
+	);
+}
+
+static void collect_grid_light_polys( srfGridMesh_t *cv, shader_t *shader,
+    world_t &worldData, int model_idx, int* num_lights, int* allocated_lights, light_poly_t** lights )
+{
+    int widthTable[MAX_GRID_SIZE];
+    int heightTable[MAX_GRID_SIZE];
+    float lodError;
+    int lodWidth = 0, lodHeight = 0;
+
+#if 0
+	// determine the allowable discrepance
+    lodError = LodErrorForVolume(cv->lodOrigin, cv->lodRadius);
+#else
+	lodError = r_lodCurveError->value;
+#endif
+
+	// determine which rows and columns of the subdivision
+	// we are actually going to use
+    widthTable[0] = 0;
+    lodWidth = 1;
+    for (int i = 1; i < cv->width - 1; i++) {
+        if (cv->widthLodError[i] <= lodError) {
+            widthTable[lodWidth++] = i;
+        }
+    }
+    widthTable[lodWidth++] = cv->width - 1;
+
+    heightTable[0] = 0;
+    lodHeight = 1;
+    for (int i = 1; i < cv->height - 1; i++) {
+        if (cv->heightLodError[i] <= lodError) {
+            heightTable[lodHeight++] = i;
+        }
+    }
+    heightTable[lodHeight++] = cv->height - 1;
+
+    const int numVerts = lodWidth * lodHeight;
+    const int numIndices = (lodWidth - 1) * (lodHeight - 1) * 6;
+
+    // fill vertices 
+    tri_vertex_t *vertices = (tri_vertex_t*)malloc(numVerts * sizeof(tri_vertex_t));
+    int vertIndex = 0;
+
+    for (int h = 0; h < lodHeight; ++h) {
+        for (int w = 0; w < lodWidth; ++w) {
+            int gridIndex = heightTable[h] * cv->width + widthTable[w];
+            srfVert_t *dv = &cv->verts[gridIndex];
+
+            VectorCopy(dv->xyz, vertices[vertIndex].position);
+            VectorCopy2(dv->st, vertices[vertIndex].st); 
+            vertIndex++;
+        }
+    }
+
+    // fill indices
+    int *indices = (int *)malloc(numIndices * sizeof(int));
+    int idx = 0;
+    for (int h = 0; h < lodHeight - 1; ++h) {
+        for (int w = 0; w < lodWidth - 1; ++w) {
+            int v0 = (h + 0) * lodWidth + (w + 0);
+            int v1 = (h + 0) * lodWidth + (w + 1);
+            int v2 = (h + 1) * lodWidth + (w + 0);
+            int v3 = (h + 1) * lodWidth + (w + 1);
+
+            indices[idx++] = v0;
+            indices[idx++] = v2;
+            indices[idx++] = v1;
+
+            indices[idx++] = v1;
+            indices[idx++] = v2;
+            indices[idx++] = v3;
+        }
+    }
+
+    collect_light_polys_from_triangles(
+        worldData, model_idx, num_lights, allocated_lights, lights,
+        shader, vertices, indices, numIndices, numVerts
+    );
+}
+
+static void collect_light_polys( world_t &worldData, int model_idx, int* num_lights, int* allocated_lights, light_poly_t** lights )
+{
+	msurface_t *surf, *surfaces;
+	uint32_t i, num_surfaces;
+	srfSurfaceFace_t *face;
+	srfTriangles_t *tris;
+	srfGridMesh_t *grid;
+
+	surfaces		= model_idx < 0 ? worldData.surfaces : worldData.bmodels[model_idx].firstSurface;
+	num_surfaces	= model_idx < 0 ? worldData.numsurfaces : worldData.bmodels[model_idx].numSurfaces;
+
+	for ( i = 0; i < num_surfaces; i++ ) 
+	{
+		surf = surfaces + i;
+
+		// Don't create light polys from SKY surfaces, those are handled separately.
+		// Sometimes, textures with a light fixture are used on sky polys (like in rlava1),
+		// and that leads to subdivision of those sky polys into a large number of lights.
+		if ( RB_IsSky(surf->shader) )
+			continue;
+
+		if ( model_idx < 0 && belongs_to_model( worldData, surf ) )
+			continue;
+
+		face = (srfSurfaceFace_t *)surf->data;
+		if ( face->surfaceType == SF_FACE ) {
+			collect_face_light_polys(  face, surf->shader, worldData, model_idx, num_lights, allocated_lights, lights );
 			continue;
 		}
 
-		collect_one_light_poly( worldData, surf, sf->shader, model_idx,
-							   min_light_texcoord, max_light_texcoord,
-							   light_color, emissive_factor, light_style,
-							   num_lights, allocated_lights, lights );
+		tris = (srfTriangles_t *)surf->data;
+		if ( tris->surfaceType == SF_TRIANGLES) {
+			collect_tri_light_polys( tris, surf->shader , worldData, model_idx, num_lights, allocated_lights, lights );
+			continue;
+		}
+
+		grid = (srfGridMesh_t *)surf->data;
+		if ( grid->surfaceType == SF_GRID ) { 
+			collect_grid_light_polys(  grid, surf->shader, worldData, model_idx, num_lights, allocated_lights, lights );
+			continue;
+		}
 	}
 }
 
@@ -1078,7 +1258,7 @@ static int filter_static( shader_t *shader )
 {
 	qboolean as_dynamic = RB_IsDynamicGeometry( shader );
 	qboolean as_dynamic_data = RB_IsDynamicMaterial( shader );
-	qboolean is_sky = (shader->isSky || (shader->surfaceFlags & SURF_SKY) ) ? qtrue : qfalse;
+	qboolean is_sky = RB_IsSky(shader);
 
 	if ( !as_dynamic && !as_dynamic_data && !is_sky )
 		return 1;
@@ -1090,7 +1270,7 @@ static int filter_dynamic_geometry(shader_t *shader)
 {
     qboolean is_geom_dynamic = RB_IsDynamicGeometry(shader);
     qboolean is_mat_dynamic = RB_IsDynamicMaterial(shader);
-    qboolean is_sky = (shader->isSky || (shader->surfaceFlags & SURF_SKY)) ? qtrue : qfalse;
+    qboolean is_sky = RB_IsSky(shader);
 
     if (is_geom_dynamic && !is_mat_dynamic)
         return 1;
@@ -1102,7 +1282,7 @@ static int filter_dynamic_material( shader_t *shader )
 {
     qboolean is_geom_dynamic = RB_IsDynamicGeometry(shader);
     qboolean is_mat_dynamic = RB_IsDynamicMaterial(shader);
-    qboolean is_sky = (shader->isSky || (shader->surfaceFlags & SURF_SKY)) ? qtrue : qfalse;
+    qboolean is_sky = RB_IsSky(shader);
 
     if (!is_geom_dynamic && is_mat_dynamic)
         return 1;
@@ -1112,7 +1292,7 @@ static int filter_dynamic_material( shader_t *shader )
 
 static int filter_sky( shader_t *shader )
 {
-	qboolean is_sky = (shader->isSky || (shader->surfaceFlags & SURF_SKY) ) ? qtrue : qfalse;
+	qboolean is_sky = RB_IsSky(shader);
 
 	if ( !is_sky )
 		return 0;
@@ -1122,7 +1302,9 @@ static int filter_sky( shader_t *shader )
 
 static int skip_invalid_surface( shader_t *shader )
 {
-	if (shader->isSky || (shader->surfaceFlags & SURF_SKY) )
+	qboolean is_sky = RB_IsSky(shader);
+
+	if ( is_sky )
 		return 0;
 
 	if ( shader->surfaceFlags == SURF_NODRAW /*|| shader->surfaceFlags == SURF_NONE*///SURF_SKIP
@@ -1186,6 +1368,15 @@ static void vk_rtx_estimate_geometry( world_t &worldData, mnode_t *node, vk_geom
 
 	vk_rtx_estimate_geometry_recursive( worldData, node, geom, filter );
 
+#ifdef DEBUG_POLY_LIGHTS
+	if ( geom == &worldData.geometry.world_static )
+	{
+		geom->host.idx_count		+= worldData.num_light_polys * 3;
+		geom->host.xyz_count		+= worldData.num_light_polys * 3;
+		geom->host.cluster_count	+= worldData.num_light_polys;
+	}
+#endif
+
 	geom->host.idx		= (uint32_t*)calloc( geom->host.idx_count,  sizeof(uint32_t) );
 	geom->host.xyz		= (VertexBuffer*)calloc( geom->host.xyz_count, sizeof(VertexBuffer) );
 	geom->host.cluster	= (uint32_t*)calloc( MAX( 1, (geom->host.idx_count / 3)),  sizeof(uint32_t) );
@@ -1241,7 +1432,7 @@ static void vk_rtx_estimate_bmodels( vk_geometry_data_t *geom, world_t& worldDat
 	}*/
 }
 
-static void vk_rtx_collect_surfaces( vk_geometry_data_t *geom, int type, world_t &worldData, mnode_t *node, 
+static void vk_rtx_collect_surfaces( vk_geometry_data_t *geom, int type, world_t &worldData, mnode_t *node, int model_idx,
 	int (*filter)(shader_t*), int (*filter_visibiliy)(shader_t*) )
 {
 	uint32_t	i, j;
@@ -1251,7 +1442,7 @@ static void vk_rtx_collect_surfaces( vk_geometry_data_t *geom, int type, world_t
 	{
 		for ( i = 0; i < 2; i++ ) 
 		{
-			vk_rtx_collect_surfaces( geom, type, worldData, node->children[i], filter, filter_visibiliy );
+			vk_rtx_collect_surfaces( geom, type, worldData, node->children[i], model_idx, filter, filter_visibiliy );
 		}
 	}
 
@@ -1263,6 +1454,9 @@ static void vk_rtx_collect_surfaces( vk_geometry_data_t *geom, int type, world_t
 	{
 		surf = mark[j];
 		surf->notBrush = qtrue;
+
+		if ( model_idx < 0 && belongs_to_model( worldData, surf ) )
+			continue;
 
 		shader_t* shader = tr.shaders[surf->shader->index];
 
@@ -1304,6 +1498,7 @@ static void vk_rtx_collect_surfaces( vk_geometry_data_t *geom, int type, world_t
 		}
 
 		// add surface to host buffer
+		int cluster = (model_idx < 0) ? node->cluster : -1;
 		const uint32_t num_clusters = (tess.numIndexes / 3);
 
 		assert( geom->host.xyz_offset + tess.numVertexes <= geom->host.xyz_count );
@@ -1311,10 +1506,9 @@ static void vk_rtx_collect_surfaces( vk_geometry_data_t *geom, int type, world_t
 		assert( geom->host.cluster_offset + num_clusters <= geom->host.cluster_count );
 		
 		vk_rtx_bind_indicies( geom->host.idx + geom->host.idx_offset, accel->xyz_count );
-		vk_rtx_bind_vertices( geom->host.xyz + geom->host.xyz_offset, node->cluster );
-		vk_rtx_bind_cluster( geom->host.cluster + geom->host.cluster_offset, num_clusters, node->cluster );
+		vk_rtx_bind_vertices( geom->host.xyz + geom->host.xyz_offset, cluster );
+		vk_rtx_bind_cluster( geom->host.cluster + geom->host.cluster_offset, num_clusters, cluster );
 
-		//RB_UploadCluster( &geom->cluster, geom->cluster_offset, node->cluster );
 		geom->host.idx_offset += tess.numIndexes;
 		geom->host.xyz_offset += tess.numVertexes;
 		geom->host.cluster_offset += num_clusters;
@@ -1491,6 +1685,9 @@ static void vk_rtx_reset_world_geometry( vk_geometry_data_t *geom )
 {
 	uint32_t i, j;
 
+	if ( geom == NULL )
+		return;
+
 	// host
 	if ( geom->host.idx )
 		free( geom->host.idx );
@@ -1521,19 +1718,22 @@ static void vk_rtx_reset_world_geometry( vk_geometry_data_t *geom )
 
 		Com_Memset( &geom->accel[i], 0, sizeof(vk_geometry_data_accel_t) );
 	}
+
+	Com_Memset( geom, 0, sizeof(geom) );
 }
 
-void vk_rtx_reset_world_geometries( world_t &worldData ) 
+void vk_rtx_reset_world_geometries( world_t *world ) 
 {
-	vkgeometry_t *geometry = &worldData.geometry;
+	free( world->cluster_aabbs );
+	world->cluster_aabbs = NULL;
 
-	free( worldData.cluster_aabbs );
+	vk_rtx_reset_world_geometry( &world->geometry.sky_static );
+	vk_rtx_reset_world_geometry( &world->geometry.world_static );
+	vk_rtx_reset_world_geometry( &world->geometry.world_dynamic_material );
+	vk_rtx_reset_world_geometry( &world->geometry.world_dynamic_geometry );
+	vk_rtx_reset_world_geometry( &world->geometry.world_models );
 
-	vk_rtx_reset_world_geometry( &geometry->sky_static );
-	vk_rtx_reset_world_geometry( &geometry->world_static );
-	vk_rtx_reset_world_geometry( &geometry->world_dynamic_material );
-	vk_rtx_reset_world_geometry( &geometry->world_dynamic_geometry );
-	vk_rtx_reset_world_geometry( &geometry->world_models );
+	Com_Memset( &world->geometry, 0, sizeof(vkgeometry_t) );
 }
 
 void vk_rtx_init_geometry( vk_geometry_data_t *geom, uint32_t blas_type_flags, uint32_t dynamic_flags, qboolean fast_build, qboolean allow_update, qboolean is_world )
@@ -1637,12 +1837,13 @@ void vk_rtx_debug_geom( vk_geometry_data_t *geom )
 
 static void vk_rtx_inject_light_poly_debug( vk_geometry_data_t *geom, world_t& worldData, float offset )
 {
-	tess.shader			= tr.whiteShader;
-	tess.shader->sort	= 10;
+	vk_geometry_data_accel_t *accel = &geom->accel[BLAS_TYPE_OPAQUE];
 
-	tess.numVertexes = tess.numIndexes = 0;
 	for ( int nlight = 0; nlight < worldData.num_light_polys; nlight++ )
 	{
+		tess.numVertexes = tess.numIndexes = 0;
+		tess.shader->sort	= 10;
+
 		light_poly_t *light = worldData.light_polys + nlight;
 
 		vec3_t a = { light->positions[0], light->positions[1], light->positions[2] };
@@ -1665,33 +1866,40 @@ static void vk_rtx_inject_light_poly_debug( vk_geometry_data_t *geom, world_t& w
 			}
 		}
 
-		color4ub_t color = { 255, 255, 255, 255 };
+		int cluster = BSP_PointLeaf( worldData.nodes, a)->cluster;
+
+		if ( cluster > 0 )
+		{
+			tess.shader = tr.redShader;
+		}
+		else {
+			tess.shader	= tr.whiteShader;
+		}
+
+		color4ub_t color = { 255, 255, 0, 255 };
 		RB_AddTriangle( a, b, c, color );
+
+		const uint32_t num_clusters = (tess.numIndexes / 3);
+
+		assert( geom->host.xyz_offset + tess.numVertexes <= geom->host.xyz_count );
+		assert( geom->host.idx_offset + tess.numIndexes <= geom->host.idx_count );
+		assert( geom->host.cluster_offset + num_clusters <= geom->host.cluster_count );
+
+		vk_rtx_bind_indicies( geom->host.idx + geom->host.idx_offset, accel->xyz_count );
+		vk_rtx_bind_vertices( geom->host.xyz + geom->host.xyz_offset, cluster );
+		vk_rtx_bind_cluster( geom->host.cluster + geom->host.cluster_offset, num_clusters, cluster );
+
+		geom->host.cluster_offset += num_clusters;
+		geom->host.idx_offset += tess.numIndexes;
+		geom->host.xyz_offset += tess.numVertexes;
+
+		accel->idx_count += tess.numIndexes;
+		accel->xyz_count += tess.numVertexes;
+
+		accel->cluster_count += num_clusters;
 	}
-
-	vk_geometry_data_accel_t *accel = &geom->accel[BLAS_TYPE_OPAQUE];
-	const uint32_t num_clusters = (tess.numIndexes / 3);
-
-	assert( geom->host.xyz_offset + tess.numVertexes <= geom->host.xyz_count );
-	assert( geom->host.idx_offset + tess.numIndexes <= geom->host.idx_count );
-	assert( geom->host.cluster_offset + num_clusters <= geom->host.cluster_count );
-
-	vk_rtx_bind_indicies( geom->host.idx + geom->host.idx_offset, accel->xyz_count );
-	vk_rtx_bind_vertices( geom->host.xyz + geom->host.xyz_offset, 0 );
-	vk_rtx_bind_cluster( geom->host.cluster + geom->host.cluster_offset, num_clusters, 0 );
-
-	//RB_UploadCluster( &geom->cluster, geom->cluster_offset, 0 );
-	geom->host.cluster_offset += num_clusters;
-	geom->host.idx_offset += tess.numIndexes;
-	geom->host.xyz_offset += tess.numVertexes;
-
-	accel->idx_count += tess.numIndexes;
-	accel->xyz_count += tess.numVertexes;
-	accel->xyz_count += tess.numVertexes;
-	accel->cluster_count += num_clusters;
-	
-	tess.numVertexes = tess.numIndexes = 0;
 }
+
 
 void R_PreparePT( world_t &worldData ) 
 {
@@ -1700,29 +1908,17 @@ void R_PreparePT( world_t &worldData )
 
 	uint32_t i;
 
-	build_pvs2( &worldData );
-
-	worldData.cluster_aabbs		= (aabb_t*)calloc(worldData.numClusters, sizeof(aabb_t));
-	for ( i = 0; i < worldData.numClusters; i++ ) 
-	{
-		VectorSet(worldData.cluster_aabbs[i].mins, FLT_MAX, FLT_MAX, FLT_MAX );
-		VectorSet(worldData.cluster_aabbs[i].maxs, -FLT_MAX, -FLT_MAX, -FLT_MAX );
-	}
-
-	vk_compute_cluster_aabbs( worldData, worldData.nodes, worldData.numClusters );
-
+#ifdef DEBUG_POLY_LIGHTS
 	// polygonal lights
 	worldData.num_light_polys = 0;
 	worldData.allocated_light_polys = 0;
 	worldData.light_polys = NULL;
 
 	collect_light_polys( worldData, -1, &worldData.num_light_polys, &worldData.allocated_light_polys, &worldData.light_polys );
-
-	collect_cluster_lights( worldData );
-	vkpt_light_buffers_create( worldData  );
+#endif
 
 	// reset acceleration structures, redundant
-	vk_rtx_reset_world_geometries( worldData );
+	vk_rtx_reset_world_geometries( tr.world );
 
 	vk_geometry_data_t *sky_static				= &worldData.geometry.sky_static;
 	vk_geometry_data_t *world_static			= &worldData.geometry.world_static;
@@ -1743,39 +1939,32 @@ void R_PreparePT( world_t &worldData )
 	vk_rtx_estimate_geometry( worldData, worldData.nodes, world_dynamic_material,	filter_dynamic_material );
 	vk_rtx_estimate_geometry( worldData, worldData.nodes, world_dynamic_geometry,	filter_dynamic_geometry );
 
-
 	// sky
-	vk_rtx_collect_surfaces( sky_static, BLAS_TYPE_OPAQUE, worldData, worldData.nodes, filter_sky, filter_opaque );
+	vk_rtx_collect_surfaces( sky_static, BLAS_TYPE_OPAQUE, worldData, worldData.nodes, -1, filter_sky, filter_opaque );
 	vk_rtx_build_geometry_buffer( sky_static );
 
 	// opaque
-	// add debug vertices and indicies count
-	{
-		//world_static->host.idx_count += worldData.num_light_polys * 3;
-		//world_static->host.xyz_count += worldData.num_light_polys * 3;
-	}
-
-	vk_rtx_collect_surfaces( world_static, BLAS_TYPE_OPAQUE, worldData, worldData.nodes, filter_static, filter_opaque );
-	{
-		//vk_rtx_inject_light_poly_debug( world_static, worldData, 3.0f );
-	}
+	vk_rtx_collect_surfaces( world_static, BLAS_TYPE_OPAQUE, worldData, worldData.nodes, -1, filter_static, filter_opaque );
+#ifdef DEBUG_POLY_LIGHTS
+	vk_rtx_inject_light_poly_debug( world_static, worldData, DEBUG_POLY_LIGHTS );
+#endif
 	vk_rtx_set_geomertry_accel_offsets( world_static, BLAS_TYPE_TRANSPARENT );
-	vk_rtx_collect_surfaces( world_static, BLAS_TYPE_TRANSPARENT, worldData, worldData.nodes, filter_static, filter_transparent );
+	vk_rtx_collect_surfaces( world_static, BLAS_TYPE_TRANSPARENT, worldData, worldData.nodes, -1, filter_static, filter_transparent );
 	vk_rtx_build_geometry_buffer( world_static );
 
-	// dynamic  material
-	vk_rtx_collect_surfaces( world_dynamic_material, BLAS_TYPE_OPAQUE, worldData, worldData.nodes, filter_dynamic_material, filter_opaque );
+	// dynamic material
+	vk_rtx_collect_surfaces( world_dynamic_material, BLAS_TYPE_OPAQUE, worldData, worldData.nodes, -1, filter_dynamic_material, filter_opaque );
 	vk_rtx_set_geomertry_accel_offsets( world_dynamic_material, BLAS_TYPE_TRANSPARENT );
-	vk_rtx_collect_surfaces( world_dynamic_material, BLAS_TYPE_TRANSPARENT, worldData, worldData.nodes, filter_dynamic_material, filter_transparent );
+	vk_rtx_collect_surfaces( world_dynamic_material, BLAS_TYPE_TRANSPARENT, worldData, worldData.nodes, -1, filter_dynamic_material, filter_transparent );
 	vk_rtx_build_geometry_buffer( world_dynamic_material );
 
 	// dynamic geometry
-	vk_rtx_collect_surfaces( world_dynamic_geometry, BLAS_TYPE_OPAQUE, worldData, worldData.nodes, filter_dynamic_geometry, filter_opaque );
+	vk_rtx_collect_surfaces( world_dynamic_geometry, BLAS_TYPE_OPAQUE, worldData, worldData.nodes, -1, filter_dynamic_geometry, filter_opaque );
 	vk_rtx_set_geomertry_accel_offsets( world_dynamic_geometry, BLAS_TYPE_TRANSPARENT );
-	vk_rtx_collect_surfaces( world_dynamic_geometry, BLAS_TYPE_TRANSPARENT, worldData, worldData.nodes, filter_dynamic_geometry, filter_transparent );
+	vk_rtx_collect_surfaces( world_dynamic_geometry, BLAS_TYPE_TRANSPARENT, worldData, worldData.nodes, -1, filter_dynamic_geometry, filter_transparent );
 	vk_rtx_build_geometry_buffer( world_dynamic_geometry );
 
-	// sub brush models
+	// sub brush models (instanced, no blas)
 	vk_rtx_estimate_bmodels( world_models, worldData );
 	for ( i = 0; i < worldData.num_bmodels; i++ ) 
 	{
@@ -1797,8 +1986,43 @@ void R_PreparePT( world_t &worldData )
 		VectorAdd( bmodel->aabb_min, bmodel->aabb_max, bmodel->center );
 		VectorScale( bmodel->center, 0.5f, bmodel->center );
 	}
-	//vk_rtx_debug_geom( world_models );
+
+	build_pvs2( &worldData );
+
+	worldData.cluster_aabbs		= (aabb_t*)calloc(worldData.numClusters, sizeof(aabb_t));
+	for ( i = 0; i < worldData.numClusters; i++ ) 
+	{
+		VectorSet(worldData.cluster_aabbs[i].mins, FLT_MAX, FLT_MAX, FLT_MAX );
+		VectorSet(worldData.cluster_aabbs[i].maxs, -FLT_MAX, -FLT_MAX, -FLT_MAX );
+	}
+
+	vk_compute_cluster_aabbs( worldData, worldData.nodes, worldData.numClusters );
+#ifndef DEBUG_POLY_LIGHTS
+	// polygonal lights
+	worldData.num_light_polys = 0;
+	worldData.allocated_light_polys = 0;
+	worldData.light_polys = NULL;
+
+	collect_light_polys( worldData, -1, &worldData.num_light_polys, &worldData.allocated_light_polys, &worldData.light_polys );
+#endif
 #if 1
+	for ( i = 0; i < worldData.num_bmodels; i++ ) 
+	{
+		bmodel_t *bmodel = &worldData.bmodels[i];
+
+		bmodel->num_light_polys = 0;
+		bmodel->allocated_light_polys = 0;
+		bmodel->light_polys = NULL;
+
+		collect_light_polys( worldData, i, &bmodel->num_light_polys, &bmodel->allocated_light_polys, &bmodel->light_polys );
+	
+		Com_Printf("num light polys : %d", bmodel->num_light_polys );
+	}
+#endif
+	collect_cluster_lights( worldData );
+	vkpt_light_buffers_create( worldData  );
+
+	// build to bottom acceleration structures (wolrd only, not bmodels)
 	{	
 		accel_build_batch_t batch;
 		Com_Memset( &batch, 0, sizeof(accel_build_batch_t) );
@@ -1820,8 +2044,8 @@ void R_PreparePT( world_t &worldData )
 	
 		vkpt_submit_command_buffer(cmd_buf, vk.queue_graphics, (1 << vk.device_count) - 1, 0, NULL, NULL, NULL, 0, NULL, NULL, NULL);
 	}
-#endif
 
+	// ~sunny, rework this ..
 	vk_rtx_reset_envmap();
 	vk_rtx_prepare_envmap( worldData );
 
@@ -1839,46 +2063,6 @@ void R_PreparePT( world_t &worldData )
 
 		if (tess.shader->stages[0] == NULL) 
 			continue;
-
-		// add brush models
-#if 0
-		if (worldData.surfaces[i].blas == NULL && !worldData.surfaces[i].notBrush && !worldData.surfaces[i].added && !worldData.surfaces[i].skip) {
-			vk.scratch_buf_ptr = 0;
-			tess.numVertexes = 0;
-			tess.numIndexes = 0;
-			float originalTime = backEnd.refdef.floatTime;
-			RB_BeginSurface(worldData.surfaces[i].shader, 0, 0);
-			backEnd.refdef.floatTime = originalTime;
-			tess.shaderTime = backEnd.refdef.floatTime - tess.shader->timeOffset;
-
-			// create bas
-			tess.allowVBO = qfalse;
-			rb_surfaceTable[*((surfaceType_t*)worldData.surfaces[i].data)]((surfaceType_t*)worldData.surfaces[i].data);
-			vk_rtx_create_entity_blas( NULL, &worldData.surfaces[i].blas, qfalse );
-			worldData.surfaces[i].blas->isWorldSurface = qtrue;
-			//worldData.surfaces[i].blas->data.isBrushModel = qtrue;
-			worldData.surfaces[i].added = qtrue;
-
-			int clu[3] = { -1, -1, -1 };
-			vec4_t pos = { 0,0,0,0 };
-			for ( j = 0; j < tess.numVertexes; j++) {
-				VectorAdd(pos, tess.xyz[j], pos);
-
-				worldData.surfaces[i].blas->c = R_FindClusterForPos3( worldData, tess.xyz[j] );
-				if (worldData.surfaces[i].blas->c != -1) 
-					break;
-			}
-
-			RB_UploadCluster( worldData, 
-				&worldData.geometry.cluster_entity_static, worldData.surfaces[i].blas->data.offsetIDX, 
-				vk_get_surface_cluster( worldData, worldData.surfaces[i].data) );
-
-			backEnd.refdef.floatTime = originalTime;
-			tess.numVertexes = 0;
-			tess.numIndexes = 0;
-			vk.scratch_buf_ptr = 0;
-		}
-#endif
 	}
 
 	vk.scratch_buf_ptr = 0;

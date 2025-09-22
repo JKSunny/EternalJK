@@ -28,6 +28,11 @@ static inline size_t align(size_t x, size_t alignment)
 	return (x + (alignment - 1)) & ~(alignment - 1);
 }
 
+qboolean RB_IsSky(shader_t* shader)
+{
+	return (qboolean)(shader->isSky || shader->sun || (shader->surfaceFlags & SURF_SKY));
+}
+
 qboolean RB_IsDynamicGeometry( shader_t *shader ) 
 {
 	return (qboolean)((shader->numDeforms > 0) || (backEnd.currentEntity->e.frame > 0 || backEnd.currentEntity->e.oldframe > 0));
@@ -418,13 +423,11 @@ void vk_rtx_destroy_accel_all() {
 
 	if ( tr.world )
 	{
-		vk_rtx_reset_world_geometries( *tr.world );
+		vk_rtx_reset_world_geometries( tr.world );
 	}
 
 	for ( i = 0; i < vk.swapchain_image_count; i++ ) 
 	{
-		vk_rtx_buffer_destroy( &vk.model_instance.buffer_vertex );
-
 		vk_rtx_destroy_blas( &vk.model_instance.blas.dynamic[i] );
 		vk_rtx_destroy_blas( &vk.model_instance.blas.transparent_models[i] );
 		vk_rtx_destroy_blas( &vk.model_instance.blas.viewer_models[i] );

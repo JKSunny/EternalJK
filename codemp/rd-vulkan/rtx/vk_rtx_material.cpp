@@ -78,7 +78,7 @@ qboolean RB_SkipObject(shader_t* shader) {
 	if ( strstr( shader->name, "glass" ) )
 		return qfalse;
 
-	if (shader->isSky || (shader->surfaceFlags & SURF_SKY) )
+	if ( RB_IsSky(shader) )
 		return qfalse;
 
 	if ( strstr( shader->name, "Shadow" )
@@ -110,21 +110,50 @@ uint32_t vk_rtx_find_emissive_texture( const shader_t *shader )
 {
 	uint32_t i, j;
 
+	uint32_t lastValidStage = 0;
+	uint32_t numStages = 0;
+	shaderStage_t *pStage;
+
 	for ( i = 0; i < MAX_RTX_STAGES; i++ ) 
 	{
-		shaderStage_t *pStage = shader->stages[i];
+		pStage = shader->stages[i];
 
-		if ( !pStage || !pStage->active || !pStage->glow )
+		if ( !pStage || !pStage->active )
 			continue;
 
-		for ( j = 0; j < NUM_TEXTURE_BUNDLES; j++ ) 
+		lastValidStage = i;
+		numStages++;
+
+		if ( !pStage->glow )
+			continue;
+
+		for ( j = 0; j < pStage->numTexBundles; ++j ) 
 		{
-			if ( pStage->bundle[j].glow ) {
+			if ( pStage->bundle[j].glow && pStage->bundle[j].image[0] ) 
+			{
 				//Com_Printf("found glow texture: %d = %s", pStage->bundle[j].image[0]->index, pStage->bundle[j].image[0]->imgName );
 				return pStage->bundle[j].image[0]->index;
 			}
 		}
+
 	}
+
+	// no glow texture found, try surfacelight fallback type
+	if ( !shader->surfacelight )
+		return 0;
+
+	// masked light texture is usualy in the last stage. 
+	uint32_t stage = (numStages == 0) ? 0 : lastValidStage;
+	pStage = shader->stages[stage];
+
+	if ( !pStage ) // check if stage 0 exists
+		return 0;
+
+	const int bundle = (pStage->numTexBundles == 0) ? 0 : pStage->numTexBundles-1;
+	image_t *fallback = pStage->bundle[bundle].image[0];
+
+	if ( fallback )
+		return fallback->index;
 
 	return 0;
 }
@@ -146,7 +175,7 @@ uint32_t RB_GetMaterial( shader_t *shader )
 	if ( ( backEnd.currentEntity->e.renderfx & RF_FIRST_PERSON ) )
 		material |= MATERIAL_FLAG_WEAPON;
 
-	if (shader->isSky || (shader->surfaceFlags & SURF_SKY))
+	if ( RB_IsSky(shader) )
 		material |= MATERIAL_KIND_SKY;
 
 	// sunny

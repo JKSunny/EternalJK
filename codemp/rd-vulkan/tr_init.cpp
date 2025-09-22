@@ -1306,6 +1306,14 @@ void RE_Shutdown( qboolean destroyWindow, qboolean restarting ) {
 
 		vk_delete_textures();
 		vk_release_resources();
+#ifdef USE_RTX
+		//vk_rtx_shutdown();
+		vk_rtx_destroy_compute_pipelines();
+		vk_rtx_destroy_rt_descriptors();
+		vk_rtx_destroy_rt_pipelines();
+
+		vk_rtx_destroy_accel_all();
+#endif
 	//}
 
 	//vk_release_resources(); not merged yet (https://github.com/ec-/Quake3e/commit/d31b84ebf2ab702686e98dff40b7673473026b30)

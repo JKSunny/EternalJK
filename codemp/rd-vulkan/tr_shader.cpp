@@ -2857,6 +2857,9 @@ static qboolean ParseShader( const char **text )
 		{
 			token = COM_ParseExt(text, qfalse);
 			tr.sunSurfaceLight = atoi(token);
+#ifdef USE_RTX
+			shader.surfacelight = atoi(token);;
+#endif
 		}
 		else if (!Q_stricmp(token, "lightColor"))
 		{
@@ -5496,6 +5499,18 @@ static void CreateInternalShaders( void )
 	stages[0].active = qtrue;
 	stages[0].stateBits = GLS_DEFAULT;
 	tr.outlineShader = FinishShader();
+#endif
+
+#ifdef USE_RTX
+	InitShader("<red>", lightmapsNone, stylesDefault);
+	stages[0].bundle[0].image[0] = tr.whiteImage;
+	stages[0].active = qtrue;
+	stages[0].bundle[0].rgbGen = CGEN_CONST;
+	stages[0].bundle[0].constantColor[0] = 100;
+	stages[0].bundle[0].constantColor[1] = 0;
+	stages[0].bundle[0].constantColor[2] = 0;
+	stages[0].stateBits = GLS_DEPTHTEST_DISABLE | GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA;
+	tr.redShader = FinishShader();
 #endif
 }
 

@@ -102,13 +102,26 @@ void vk_rtx_destroy_descriptor( vkdescriptor_t *descriptor )
     
 	for ( i = 0; i < descriptor->size; ++i ) {
 		if ( descriptor->bindings[i].descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ) 
-			free( descriptor->data[i].image );
+		{
+			if ( descriptor->data[i].image != NULL )
+			{
+				free( descriptor->data[i].image );
+				descriptor->data[i].image = NULL;
+			}
+		}
 	}
 
-    Z_Free( descriptor->data );
-    Z_Free( descriptor->bindings );
-    
-	memset( descriptor, 0, sizeof(vkdescriptor_t) );
+	if ( descriptor->data )
+		free( descriptor->data );
+
+	if ( descriptor->bindings )
+		free( descriptor->bindings );
+
+	Com_Memset( descriptor, 0, sizeof(vkdescriptor_t) );
+
+	descriptor->data = NULL;
+	descriptor->bindings = NULL;
+	descriptor->size = 0;
 }
 
 static void vk_rtx_create_descriptor_layout( vkdescriptor_t *descriptor ) 
@@ -191,6 +204,18 @@ static void vk_rtx_finish_descriptor( vkdescriptor_t *descriptor )
     desc.pSetLayouts = &descriptor->layout;
         
     VK_CHECK( qvkAllocateDescriptorSets( vk.device, &desc, &descriptor->set ) );
+}
+
+vkdescriptor_t *vk_rtx_init_descriptor( vkdescriptor_t *descriptor )
+{
+	Com_Memset( descriptor, 0, sizeof(vkdescriptor_t) );
+
+	// ~sunny, just cus im scared
+	descriptor->data = NULL;
+	descriptor->bindings = NULL;
+	descriptor->size = 0;
+
+	return descriptor;
 }
 
 void vk_rtx_create_descriptor( vkdescriptor_t *descriptor ) 

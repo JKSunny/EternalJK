@@ -281,30 +281,18 @@ void vk_rtx_shutdown( void )
 
 	uint32_t i;
 
-	for ( i = 0; i < vk.swapchain_image_count; i++ ) 
-	{
-		vk_rtx_destroy_descriptor( &vk.rt_descriptor_set[i] );
-		vk_rtx_destroy_descriptor( &vk.desc_set_vertex_buffer[i] );
-	}
-
-	for ( i = 0; i < PIPELINE_COUNT; i++ )
-	{
-		qvkDestroyPipeline( vk.device, vk.rt_pipelines[i], NULL);
-		vk.rt_pipelines[i] = VK_NULL_HANDLE;
-	}
-	qvkDestroyPipelineLayout( vk.device, vk.rt_pipeline_layout, NULL);
-
 	VK_DestroyBuffer( &vk.buf_shader_binding_table );
 
-	vk_destroy_asvgf_pipelines();
-	vk_destroy_tonemap_pipelines();
-	vk_destroy_physical_sky_pipelines();
 	vk_rtx_destroy_shaders();
 	vk_rtx_destroy_buffers();
 
 	if( tr.world )
 	{ 
-		vk_rtx_reset_world_geometries( *tr.world );
+		vk_rtx_destroy_compute_pipelines();
+		vk_rtx_destroy_rt_descriptors();
+		vk_rtx_destroy_rt_pipelines();
+
+		vk_rtx_destroy_accel_all();
 	}
 
 	vk_rtx_clear_material_list();

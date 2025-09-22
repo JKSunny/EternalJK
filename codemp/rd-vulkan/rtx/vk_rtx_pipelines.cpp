@@ -36,7 +36,7 @@ void vk_rtx_bind_pipeline_desc_set_layouts( vkpipeline_t *pipeline, VkDescriptor
 {
 	const size_t size = ( sizeof(VkDescriptorSetLayout) * count );
 
-	pipeline->set_layouts = (VkDescriptorSetLayout*)Hunk_Alloc( size, h_low );
+	pipeline->set_layouts = (VkDescriptorSetLayout*)Z_Malloc( size, TAG_ALL, qtrue );
 	pipeline->set_layouts_count = count;
 
 	Com_Memcpy( pipeline->set_layouts + 0, set_layouts, size );
@@ -157,6 +157,19 @@ void vk_rtx_create_compute_pipelines( void )
 	vk_rtx_model_vbo_create_pipelines();
 }
 
+void vk_rtx_destroy_compute_pipelines( void )
+{
+	vk_destroy_asvgf_pipelines();
+	vk_destroy_tonemap_pipelines();
+	vk_destroy_physical_sky_pipelines();
+
+	vk_rtx_shadow_map_destroy_pipelines();
+
+	vk_rtx_god_rays_destroy_pipelines();
+
+	vk_rtx_model_vbo_destroy_pipelines();
+}
+
 //
 // raytracing
 //
@@ -192,7 +205,16 @@ void vk_rtx_create_rt_pipelines( void )
 {
 	vk_rtx_create_rt_pipeline_layout();
 	vk_rtx_create_pipelines(); 
+}
 
-	vk_load_final_blit_shader();
-	vk_rtx_create_final_blit_pipeline();
+void vk_rtx_destroy_rt_pipelines( void ) 
+{
+	uint32_t i;
+
+	for ( i = 0; i < PIPELINE_COUNT; i++ )
+	{
+		qvkDestroyPipeline( vk.device, vk.rt_pipelines[i], NULL);
+		vk.rt_pipelines[i] = VK_NULL_HANDLE;
+	}
+	qvkDestroyPipelineLayout( vk.device, vk.rt_pipeline_layout, NULL);
 }

@@ -63,6 +63,9 @@ static void vk_rtx_destroy_shader( vkshader_t *shader )
 {
 	uint32_t i;
 
+	if ( shader == NULL)
+		return;
+
 	for ( i = 0; i < shader->size; i++ ) 
 		qvkDestroyShaderModule( vk.device, shader->modules[i], NULL );
 

@@ -1025,6 +1025,9 @@ typedef struct shader_s {
 	char		*shaderText;
 	qboolean	sun;
 	vec3_t		sunColor;
+#ifdef USE_RTX
+	int			surfacelight;
+#endif
 } shader_t;
 
 /*
@@ -1541,6 +1544,10 @@ typedef struct bmodel_s {
 	uint32_t	xyz_offset;
 	uint32_t	idx_count;
 	uint32_t	xyz_count;
+
+	int				num_light_polys;
+	int				allocated_light_polys;
+	light_poly_t	*light_polys;
 #endif
 } bmodel_t;
 
@@ -1551,25 +1558,6 @@ typedef struct
 	byte		styles[MAXLIGHTMAPS];
 	byte		latLong[2];
 } mgrid_t;
-
-#ifdef USE_RTX
-typedef struct entity_hash_s {
-	unsigned int mesh : 8;
-	unsigned int model : 9;
-	unsigned int entity : 15;
-} entity_hash_t;
-
-typedef struct light_poly_s {
-	float	positions[9]; // 3x vec3_t
-	vec3_t	off_center;
-	vec3_t	color;
-	void	*material;
-	int		cluster;
-	int		style;
-	float	emissive_factor;
-	int		type;
-} light_poly_t;
-#endif
 
 typedef struct world_s {
 	char		name[MAX_QPATH];		// ie: maps/tim_dm2.bsp
@@ -2088,6 +2076,9 @@ typedef struct trGlobals_s {
 
 	shader_t				*defaultShader;
 	shader_t				*whiteShader;
+#ifdef USE_RTX
+	shader_t				*redShader;
+#endif
 	shader_t				*cinematicShader;
 	shader_t				*shadowShader;
 	shader_t				*distortionShader;

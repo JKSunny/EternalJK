@@ -185,6 +185,29 @@ VkResult vk_rtx_model_vbo_create_pipelines( void )
 	return VK_SUCCESS;
 }
 
+VkResult vk_rtx_model_vbo_destroy_pipelines(void)
+{
+	if (pipeline_instance_geometry != VK_NULL_HANDLE)
+	{
+		qvkDestroyPipeline(vk.device, pipeline_instance_geometry, NULL);
+		pipeline_instance_geometry = VK_NULL_HANDLE;
+	}
+
+	if (pipeline_animate_materials != VK_NULL_HANDLE)
+	{
+		qvkDestroyPipeline(vk.device, pipeline_animate_materials, NULL);
+		pipeline_animate_materials = VK_NULL_HANDLE;
+	}
+
+	if (pipeline_layout_instance_geometry != VK_NULL_HANDLE)
+	{
+		qvkDestroyPipelineLayout(vk.device, pipeline_layout_instance_geometry, NULL);
+		pipeline_layout_instance_geometry = VK_NULL_HANDLE;
+	}
+
+	return VK_SUCCESS;
+}
+
 void vkpt_instance_geometry( VkCommandBuffer cmd_buf, uint32_t num_instances, qboolean update_world_animations ) 
 {
 	VkDescriptorSet desc_sets[] = {

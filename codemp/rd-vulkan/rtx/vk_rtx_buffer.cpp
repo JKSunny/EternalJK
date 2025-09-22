@@ -796,6 +796,7 @@ void vk_rtx_destroy_buffers( void )
 	uint32_t i = 0;
 
 	VK_DestroyBuffer( &vk.buf_accel_scratch );
+	VK_DestroyBuffer( &vk.model_instance.buffer_vertex );
 
 	VK_DestroyBuffer( &vk.buf_readback );
 	VK_DestroyBuffer( &vk.buf_tonemap );
@@ -808,6 +809,7 @@ void vk_rtx_destroy_buffers( void )
 		VK_DestroyBuffer( vk.buf_readback_staging + i );
 		VK_DestroyBuffer( vk.buf_light_staging + i );
 	}
+
 
 	vk_rtx_destroy_accel_all();
 	vkpt_light_buffers_destroy();
