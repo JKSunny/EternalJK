@@ -215,18 +215,23 @@ VkResult vk_rtx_buffer_destroy( vkbuffer_t *buf )
 	return VK_SUCCESS;
 }
 
-void VK_DestroyBuffer( vkbuffer_t *buffer )
+void VK_DestroyBuffer( vkbuffer_t *buf )
 {
-	if ( buffer->p )
-		qvkUnmapMemory( vk.device, buffer->memory );
+	if ( buf->is_mapped )
+		qvkUnmapMemory( vk.device, buf->memory );
 
-	if ( buffer->buffer != NULL )
-		qvkDestroyBuffer( vk.device, buffer->buffer, NULL );
+	if ( buf->buffer != NULL )
+		qvkDestroyBuffer( vk.device, buf->buffer, NULL );
 
-	if ( buffer->memory != NULL )
-		qvkFreeMemory( vk.device, buffer->memory, NULL );
+	if ( buf->memory != NULL )
+		qvkFreeMemory( vk.device, buf->memory, NULL );
 
-	memset( buffer, 0, sizeof(vkbuffer_t) );
+	memset( buf, 0, sizeof(vkbuffer_t) );
+
+	buf->buffer = VK_NULL_HANDLE;
+	buf->memory = VK_NULL_HANDLE;
+	buf->size   = 0;
+	buf->address = 0;
 }
 
 void *buffer_map( vkbuffer_t *buf )
@@ -287,12 +292,21 @@ void VK_CreateImageMemory(VkMemoryPropertyFlags properties, VkImage *image, VkDe
 	VK_CHECK(qvkBindImageMemory(vk.device, *image, *bufferMemory, 0));
 }
 
-void VK_CreateAttributeBuffer(vkbuffer_t* buffer, VkDeviceSize size, VkBufferUsageFlagBits usage) {
+void VK_CreateAttributeBuffer(vkbuffer_t* buffer, VkDeviceSize size, VkBufferUsageFlagBits usage, qboolean is_host_visible ) {
 	VkDeviceSize nCAS = vk.props.limits.nonCoherentAtomSize;
 	buffer->size = ((size + (nCAS - 1)) / nCAS) * nCAS;
 
-	vk_rtx_buffer_create( buffer, buffer->size, usage, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT );
-	VK_CHECK(qvkMapMemory(vk.device, buffer->memory, 0, buffer->size, 0, (void**)&buffer->p));
+	VkMemoryPropertyFlags mem_flags = is_host_visible
+		? (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
+		: VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+	vk_rtx_buffer_create( buffer, buffer->size, usage, mem_flags );
+
+	if ( is_host_visible )
+	{
+		VK_CHECK(qvkMapMemory(vk.device, buffer->memory, 0, buffer->size, 0, (void**)&buffer->p));
+		buffer->is_mapped = 1;
+	}
 }
 
 void vk_rtx_upload_buffer_data_offset( vkbuffer_t *buffer, VkDeviceSize offset, VkDeviceSize size, const byte *data ) 

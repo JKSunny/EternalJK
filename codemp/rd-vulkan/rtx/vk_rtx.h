@@ -404,6 +404,10 @@ typedef struct {
 	vkbuffer_t	xyz[NUM_COMMAND_BUFFERS];	// containing data from all blas types
 	vkbuffer_t	cluster[NUM_COMMAND_BUFFERS];
 
+	vkbuffer_t	staging_idx; // containing data from all blas types
+	vkbuffer_t	staging_xyz; // containing data from all blas types
+	vkbuffer_t	staging_cluster;
+
 	uint32_t	blas_type_flags;
 	uint32_t	dynamic_flags;
 	qboolean	fast_build;
@@ -419,7 +423,7 @@ typedef struct {
 	vk_geometry_data_t world_static;
 	vk_geometry_data_t world_dynamic_material;
 	vk_geometry_data_t world_dynamic_geometry;
-	vk_geometry_data_t world_models;
+	vk_geometry_data_t world_submodels;
 } vkgeometry_t;
 
 
@@ -493,7 +497,7 @@ void		*buffer_map( vkbuffer_t *buf );
 void		buffer_unmap( vkbuffer_t *buf );
 
 void		VK_CreateImageMemory( VkMemoryPropertyFlags properties, VkImage *image, VkDeviceMemory *bufferMemory );
-void		VK_CreateAttributeBuffer( vkbuffer_t *buffer, VkDeviceSize size, VkBufferUsageFlagBits usage );
+void		VK_CreateAttributeBuffer( vkbuffer_t *buffer, VkDeviceSize size, VkBufferUsageFlagBits usage, qboolean is_host_visible );
 void		vk_rtx_upload_buffer_data_offset( vkbuffer_t *buffer, VkDeviceSize offset, VkDeviceSize size, const byte *data );
 void		vk_rtx_upload_buffer_data( vkbuffer_t *buffer, const byte *data );
 VkResult	vkpt_light_buffer_upload_to_staging( qboolean render_world, 
