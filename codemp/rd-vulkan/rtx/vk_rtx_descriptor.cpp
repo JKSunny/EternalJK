@@ -118,10 +118,6 @@ void vk_rtx_destroy_descriptor( vkdescriptor_t *descriptor )
 		free( descriptor->bindings );
 
 	Com_Memset( descriptor, 0, sizeof(vkdescriptor_t) );
-
-	descriptor->data = NULL;
-	descriptor->bindings = NULL;
-	descriptor->size = 0;
 }
 
 static void vk_rtx_create_descriptor_layout( vkdescriptor_t *descriptor ) 

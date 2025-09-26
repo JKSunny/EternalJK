@@ -156,15 +156,29 @@ typedef struct entity_hash_s {
 	unsigned int entity : 15;
 } entity_hash_t;
 
+typedef struct {
+	uint32_t	index;
+	uint32_t	remappedIndex;
+	qboolean	active;
+	qboolean	uploaded[VK_MAX_SWAPCHAIN_SIZE];
+	uint32_t	albedo;
+	uint32_t	emissive;	// glow
+	uint32_t	normals;
+	uint32_t	phyiscal;
+	vec4_t		specular_scale;
+	uint32_t	emissive_factor;
+	int			surface_light;	// q3map_surfacelight fallback
+} rtx_material_t;
+
 typedef struct light_poly_s {
-	float	positions[9]; // 3x vec3_t
-	vec3_t	off_center;
-	vec3_t	color;
-	void	*material;
-	int		cluster;
-	int		style;
-	float	emissive_factor;
-	int		type;
+	float			positions[9]; // 3x vec3_t
+	vec3_t			off_center;
+	vec3_t			color;
+	rtx_material_t	*material;
+	int				cluster;
+	int				style;
+	float			emissive_factor;
+	int				type;
 } light_poly_t;
 
 // passes information back from the RTX renderer to the engine for various development maros
@@ -410,18 +424,6 @@ typedef struct {
 
 
 typedef struct {
-	uint32_t	index;
-	uint32_t	remappedIndex;
-	qboolean	active;
-	qboolean	uploaded[VK_MAX_SWAPCHAIN_SIZE];
-	uint32_t	albedo;
-	uint32_t	emissive;	// glow
-	uint32_t	normals;
-	uint32_t	phyiscal;
-	vec4_t		specular_scale;
-} rtx_material_t;
-
-typedef struct {
 	int gpu_index;
 	int bounce;
 } pt_push_constants_t;
@@ -467,7 +469,7 @@ void		vk_rtx_create_descriptor( vkdescriptor_t *descriptor );
 void		vk_rtx_set_descriptor_update_size( vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage, uint32_t size );
 void		vk_rtx_destroy_descriptor( vkdescriptor_t *descriptor );
 void		vk_rtx_destroy_rt_descriptors( void );
-
+void		vk_rtx_destroy_primary_rays_resources( void );
 // pipeline
 void		vk_rtx_bind_pipeline_shader( vkpipeline_t *pipeline, vkshader_t *shader );
 void		vk_rtx_bind_pipeline_desc_set_layouts( vkpipeline_t *pipeline, VkDescriptorSetLayout *set_layouts, uint32_t count );
@@ -533,7 +535,7 @@ mnode_t		*BSP_PointLeaf( mnode_t *node, vec3_t p );
 byte		*BSP_GetPvs( world_t *bsp, int cluster );
 byte		*BSP_GetPvs2( world_t *bsp, int cluster );
 void		get_triangle_norm( const float* positions, float* normal );
-qboolean	get_triangle_off_center(const float* positions, float* center, float* anti_center);
+qboolean	get_triangle_off_center(const float* positions, float* center, float* anti_center, float offset );
 int			vk_get_surface_cluster( world_t &worldData, surfaceType_t *surf );
 
 // material
@@ -541,7 +543,7 @@ void			vk_rtx_clear_material_list( void ) ;
 void			vk_rtx_clear_material( uint32_t index );
 rtx_material_t	*vk_rtx_get_material( uint32_t index );
 
-uint32_t	vk_rtx_find_emissive_texture( const shader_t *shader );
+uint32_t	vk_rtx_find_emissive_texture( const shader_t *shader, rtx_material_t *material );
 qboolean	RB_StageNeedsColor( int stage );
 uint32_t	RB_GetMaterial( shader_t *shader );
 uint32_t	RB_GetNextTex( shader_t *shader, int stage );
@@ -559,9 +561,8 @@ void		vk_rtx_create_cubemap( vkimage_t *image, uint32_t width, uint32_t height, 
 void		vk_rtx_upload_image_data( vkimage_t *image, uint32_t width, uint32_t height, const uint8_t *pixels, uint32_t bytes_per_pixel, uint32_t mipLevel, uint32_t arrayLayer );
 void		vk_rtx_extract_emissive_texture_info( image_t *image );
 void		vk_rtx_create_images( void );
-void		vk_rtx_initialize_images( void );
+VkResult	vk_rtx_initialize_images( void );
 void		vk_rtx_destroy_image( vkimage_t *image );
-void		vk_rtx_create_blue_noise( void );
 
 // shader
 void		vk_load_final_blit_shader( void );
@@ -574,8 +575,8 @@ void		vk_rtx_begin_blit( void );
 
 // phyiscal sky
 void		vk_rtx_init_sky_scatter( void );
-void		vk_rtx_prepare_envmap( world_t &worldData );
-void		vk_rtx_set_envmap_descriptor_binding( void );
+VkResult	vk_rtx_prepare_envmap( world_t &worldData );
+VkResult	vk_rtx_set_envmap_descriptor_binding( void );
 void		prepare_sky_matrix( float time, vec3_t sky_matrix[3] );
 void		vk_rtx_evaluate_sun_light( sun_light_t *light, const vec3_t sky_matrix[3], float time );
 VkResult	vk_rtx_physical_sky_update_ubo( vkUniformRTX_t *ubo, const sun_light_t *light, qboolean render_world );
@@ -604,6 +605,8 @@ void		vk_rtx_record_god_rays_filter_command_buffer( VkCommandBuffer command_buff
 void		vk_rtx_get_god_rays_shadowmap( VkImageView &view, VkSampler &sampler );
 
 // models
+void		vk_rtx_extract_model_lights_mdxm( model_t *model );
+void		vk_rtx_extract_model_lights_mdv( model_t *model, mdvModel_t *mdvModel );
 void		vk_rtx_write_model_descriptor( int index, VkDescriptorSet descriptor, VkBuffer buffer, VkDeviceSize size );
 void		vk_rtx_create_model_vbo_ibo_descriptor( void );
 VkResult	vk_rtx_model_vbo_create_pipelines( void );

@@ -1307,12 +1307,12 @@ void RE_Shutdown( qboolean destroyWindow, qboolean restarting ) {
 		vk_delete_textures();
 		vk_release_resources();
 #ifdef USE_RTX
-		//vk_rtx_shutdown();
-		vk_rtx_destroy_compute_pipelines();
-		vk_rtx_destroy_rt_descriptors();
-		vk_rtx_destroy_rt_pipelines();
+		if ( vk.rtxActive && tr.world )
+		{
+			vk_rtx_destroy_primary_rays_resources();
 
-		vk_rtx_destroy_accel_all();
+			vk_rtx_clear_material_list();
+		}
 #endif
 	//}
 

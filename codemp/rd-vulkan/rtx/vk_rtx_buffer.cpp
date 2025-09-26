@@ -501,7 +501,7 @@ VkResult vkpt_light_buffer_upload_to_staging( qboolean render_world,
 	}
 
 	memcpy( lbo->cluster_debug_mask, vk.cluster_debug_mask, MAX_LIGHT_LISTS / 8 );
-	//memcpy(lbo->sky_visibility, bsp_mesh->sky_visibility, MAX_LIGHT_LISTS / 8);
+	memcpy( lbo->sky_visibility, tr.world->sky_visibility, MAX_LIGHT_LISTS / 8);
 
 	buffer_unmap( staging );
 	lbo = NULL;

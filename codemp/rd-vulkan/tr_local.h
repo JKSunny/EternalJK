@@ -1622,6 +1622,7 @@ typedef struct world_s {
 	light_poly_t	*light_polys;
 
 	int				num_bmodels;
+	byte			sky_visibility[VIS_MAX_BYTES];
 #endif
 
 	byte		*novis;					// clusterBytes of 0xff
@@ -1803,6 +1804,10 @@ typedef struct model_s {
 	} data;
 
 	int	numLods;
+#ifdef USE_RTX
+	int				num_light_polys;
+	light_poly_t	*light_polys;
+#endif
 } model_t;
 
 #define	MAX_MOD_KNOWN	1024
@@ -2076,9 +2081,6 @@ typedef struct trGlobals_s {
 
 	shader_t				*defaultShader;
 	shader_t				*whiteShader;
-#ifdef USE_RTX
-	shader_t				*redShader;
-#endif
 	shader_t				*cinematicShader;
 	shader_t				*shadowShader;
 	shader_t				*distortionShader;

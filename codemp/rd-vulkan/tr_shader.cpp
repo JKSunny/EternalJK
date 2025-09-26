@@ -2858,6 +2858,7 @@ static qboolean ParseShader( const char **text )
 			token = COM_ParseExt(text, qfalse);
 			tr.sunSurfaceLight = atoi(token);
 #ifdef USE_RTX
+			// https://q3map2.robotrenegade.com/docs/shader_manual/q3map-global-directives.html#q3map_surfaceLight
 			shader.surfacelight = atoi(token);;
 #endif
 		}
@@ -5326,7 +5327,7 @@ shader_t *GeneratePermanentShader( )
 #ifdef USE_RTX
 	if ( vk.rtxActive )
 	{
-		uint32_t emissive = vk_rtx_find_emissive_texture( newShader );
+		uint32_t emissive = vk_rtx_find_emissive_texture( newShader, NULL );
 
 		if ( emissive && !tr.images[emissive]->processing_complete )
 			vk_rtx_extract_emissive_texture_info( tr.images[emissive] );
@@ -5499,18 +5500,6 @@ static void CreateInternalShaders( void )
 	stages[0].active = qtrue;
 	stages[0].stateBits = GLS_DEFAULT;
 	tr.outlineShader = FinishShader();
-#endif
-
-#ifdef USE_RTX
-	InitShader("<red>", lightmapsNone, stylesDefault);
-	stages[0].bundle[0].image[0] = tr.whiteImage;
-	stages[0].active = qtrue;
-	stages[0].bundle[0].rgbGen = CGEN_CONST;
-	stages[0].bundle[0].constantColor[0] = 100;
-	stages[0].bundle[0].constantColor[1] = 0;
-	stages[0].bundle[0].constantColor[2] = 0;
-	stages[0].stateBits = GLS_DEPTHTEST_DISABLE | GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA;
-	tr.redShader = FinishShader();
 #endif
 }
 

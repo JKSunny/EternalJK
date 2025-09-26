@@ -121,6 +121,7 @@ STRUCT (
 	UINT	( light_list_lights[MAX_LIGHT_LIST_NODES] )
 	FLOAT	( light_styles[MAX_LIGHT_STYLES] )
 	UINT	( cluster_debug_mask[MAX_LIGHT_LISTS / 32] )
+	UINT	( sky_visibility[MAX_LIGHT_LISTS / 32] )
 , LightBuffer )
 // UINT	( sky_visibility[MAX_LIGHT_LISTS / 32] )
 

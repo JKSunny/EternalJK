@@ -335,6 +335,41 @@ static qboolean vk_rtx_find_entity_vbo_meshes( const model_t* model, const uint3
 	return enitity_num_meshes > 0 ? qtrue : qfalse;
 }
 
+static void instance_model_lights(int num_light_polys, const light_poly_t* light_polys, const float* transform)
+{
+	for (int nlight = 0; nlight < num_light_polys; nlight++)
+	{
+		if (num_model_lights >= MAX_MODEL_LIGHTS)
+		{
+			assert(!"Model light count overflow");
+			break;
+		}
+
+		const light_poly_t* src_light = light_polys + nlight;
+		light_poly_t* dst_light = model_lights + num_model_lights;
+
+		// Transform the light's positions and center
+		transform_point(src_light->positions + 0, transform, dst_light->positions + 0);
+		transform_point(src_light->positions + 3, transform, dst_light->positions + 3);
+		transform_point(src_light->positions + 6, transform, dst_light->positions + 6);
+		transform_point(src_light->off_center, transform, dst_light->off_center);
+
+		// Find the cluster based on the center. Maybe it's OK to use the model's cluster, need to test.
+		dst_light->cluster = BSP_PointLeaf(tr.world->nodes, dst_light->off_center)->cluster;
+
+		// We really need to map these lights to a cluster
+		if (dst_light->cluster < 0)
+			continue;
+
+		// Copy the other light properties
+		VectorCopy(src_light->color, dst_light->color);
+		dst_light->material = src_light->material;
+		dst_light->style = src_light->style;
+
+		num_model_lights++;
+	}
+}
+
 static void process_bsp_entity(
 	const uint32_t entityNum,
 	const trRefdef_t *refdef,
@@ -356,8 +391,8 @@ static void process_bsp_entity(
 
 	world_entity_ids[entity_frame_num][current_bsp_mesh_index] = entity->e.id;
 
-	float transform[16];
-	create_entity_matrix( transform, (trRefEntity_t*)entity, qfalse );
+	mat4_t transform;
+	create_entity_matrix( transform, entity, qfalse );
 	BspMeshInstance* ubo_instance_info = uniform_instance_buffer->bsp_mesh_instances + current_bsp_mesh_index;
 	memcpy(&ubo_instance_info->M, transform, sizeof(transform));
 	ubo_instance_info->frame = entity->e.frame;
@@ -404,36 +439,7 @@ static void process_bsp_entity(
 
 	*num_instanced_vert += mesh_vertex_num;
 #if 1
-	for (int nlight = 0; nlight < bmodel->num_light_polys; nlight++)
-	{
-		if (num_model_lights >= MAX_MODEL_LIGHTS)
-		{
-			assert(!"Model light count overflow");
-			break;
-		}
-		
-		const light_poly_t* src_light = bmodel->light_polys + nlight;
-		light_poly_t* dst_light = model_lights + num_model_lights;
-
-		// Transform the light's positions and center
-		transform_point(src_light->positions + 0, transform, dst_light->positions + 0);
-		transform_point(src_light->positions + 3, transform, dst_light->positions + 3);
-		transform_point(src_light->positions + 6, transform, dst_light->positions + 6);
-		transform_point(src_light->off_center, transform, dst_light->off_center);
-
-		// Find the cluster based on the center. Maybe it's OK to use the model's cluster, need to test.
-		dst_light->cluster = BSP_PointLeaf(tr.world->nodes, dst_light->off_center)->cluster;
-
-		// We really need to map these lights to a cluster
-		if(dst_light->cluster < 0)
-			continue;
-
-		// Copy the other light properties
-		VectorCopy(src_light->color, dst_light->color);
-		dst_light->material = src_light->material;
-
-		num_model_lights++;
-	}
+	instance_model_lights( bmodel->num_light_polys, bmodel->light_polys, transform );
 #endif
 
 	(*bsp_mesh_idx)++;
@@ -468,7 +474,7 @@ static void process_regular_entity(
 	uint32_t *ubo_model_cluster_id			= (uint32_t*)uniform_instance_buffer->model_cluster_id;
 	uint32_t i;
 
-	float transform[16];
+	mat4_t transform;
 	create_entity_matrix( transform, (trRefEntity_t*)entity, qfalse );
 
 	int current_model_instance_index = *model_instance_idx;
@@ -618,6 +624,15 @@ static void prepare_entities( EntityUploadInfo *upload_info, const trRefdef_t *r
 						case MOD_BAD:
 							{
 								process_regular_entity( i, refdef, entity, model, qfalse, qfalse, &model_instance_idx, &instance_idx, &num_instanced_vert, 2, &contains_transparent );
+							
+								if (model->num_light_polys > 0)
+								{
+									mat4_t transform;
+									//const bool is_viewer_weapon = (entity->e.renderfx & RF_FIRST_PERSON) != 0;
+									create_entity_matrix( transform, entity, qfalse );
+
+									instance_model_lights( model->num_light_polys, model->light_polys, transform );
+								}
 							}
 							break;
 						default:

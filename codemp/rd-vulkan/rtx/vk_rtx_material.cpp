@@ -59,17 +59,18 @@ static qboolean RB_NeedsColor() {
 	return qfalse;
 }
 
-qboolean RB_StageNeedsColor(int stage) {
-
+qboolean RB_StageNeedsColor( shaderStage_t *stage ) 
+{
 	//if ( strstr( tess.shader->name, "fog" ) )
 		//return qtrue;
 
-	if ( tess.shader->stages[stage] != NULL && tess.shader->stages[stage]->active ) 
-	{
-		if ( tess.shader->stages[stage]->bundle[0].rgbGen == CGEN_WAVEFORM || tess.shader->stages[stage]->bundle[0].rgbGen == CGEN_CONST ) {
-			return qtrue;
-		}
+	if ( stage == NULL || !stage->active ) 
+		return qfalse;
+
+	if ( stage->bundle[0].rgbGen == CGEN_WAVEFORM || stage->bundle[0].rgbGen == CGEN_CONST ) {
+		return qtrue;
 	}
+
 	return qfalse;
 }
 
@@ -106,7 +107,7 @@ qboolean RB_IsTransparent( shader_t *shader )
 }
 
 // refactor me
-uint32_t vk_rtx_find_emissive_texture( const shader_t *shader )
+uint32_t vk_rtx_find_emissive_texture( const shader_t *shader, rtx_material_t *material )
 {
 	uint32_t i, j;
 
@@ -132,6 +133,7 @@ uint32_t vk_rtx_find_emissive_texture( const shader_t *shader )
 			if ( pStage->bundle[j].glow && pStage->bundle[j].image[0] ) 
 			{
 				//Com_Printf("found glow texture: %d = %s", pStage->bundle[j].image[0]->index, pStage->bundle[j].image[0]->imgName );
+				
 				return pStage->bundle[j].image[0]->index;
 			}
 		}
@@ -152,9 +154,13 @@ uint32_t vk_rtx_find_emissive_texture( const shader_t *shader )
 	const int bundle = (pStage->numTexBundles == 0) ? 0 : pStage->numTexBundles-1;
 	image_t *fallback = pStage->bundle[bundle].image[0];
 
-	if ( fallback )
-		return fallback->index;
+	if ( fallback ) 
+	{
+		if ( material != NULL )
+			material->surface_light = shader->surfacelight;
 
+		return fallback->index;
+	}
 	return 0;
 }
 
@@ -163,7 +169,7 @@ uint32_t RB_GetMaterial( shader_t *shader )
 	uint32_t material = 0;
 	material = MATERIAL_KIND_REGULAR;
 
-	if ( vk_rtx_find_emissive_texture( shader ) )
+	if ( vk_rtx_find_emissive_texture( shader, NULL ) )
 		material |= MATERIAL_FLAG_LIGHT;
 	
 	if ( strstr( shader->name, "glass" ) )
@@ -172,7 +178,7 @@ uint32_t RB_GetMaterial( shader_t *shader )
 	if ( shader->sort == SS_PORTAL && strstr( shader->name, "mirror" ) != NULL ) 
 		material |= MATERIAL_FLAG_MIRROR;
 
-	if ( ( backEnd.currentEntity->e.renderfx & RF_FIRST_PERSON ) )
+	if ( ( backEnd.currentEntity && backEnd.currentEntity->e.renderfx & RF_FIRST_PERSON ) )
 		material |= MATERIAL_FLAG_WEAPON;
 
 	if ( RB_IsSky(shader) )
@@ -225,7 +231,7 @@ uint32_t RB_GetNextTexEncoded( shader_t *shader, int stage )
 		if (stateBits == 101) 
 			blend = TEX0_NORMAL_BLEND_MASK;
 
-		qboolean color = RB_StageNeedsColor(stage);
+		qboolean color = RB_StageNeedsColor( shader->stages[stage] );
 
 		uint32_t nextidx = (uint32_t)indexAnim;
 		uint32_t idx = shader->stages[stage]->bundle[0].image[nextidx]->index;
@@ -280,13 +286,16 @@ VkResult vk_rtx_shader_to_material( shader_t *shader, uint32_t &index, uint32_t 
 		return VK_SUCCESS;
 
 	index	= (uint32_t)shader->index;
-	flags	= RB_GetMaterial( shader );
+	flags	= RB_GetMaterial( shader );	// ~sunny, this should be shader or remapped no?
 
 	mat->index			= index;
 	mat->remappedIndex	= (state) ? (uint32_t)state->index : 0U;
 	mat->active			= qtrue;
 	mat->albedo			= RB_GetNextTexEncoded( shader, 0 );
-	mat->emissive		= vk_rtx_find_emissive_texture( shader );
+	mat->emissive		= vk_rtx_find_emissive_texture( shader, mat );
+
+	if ( mat->emissive )
+		mat->emissive_factor = 1.0f;
 
 	if ( mat->index >= (int)MATERIAL_INDEX_MASK || mat->remappedIndex >= (int)MATERIAL_INDEX_MASK  )
 		ri.Error( ERR_DROP, "%s() - MATERIAL_INDEX_MASK(4095) hit. Need to finaly seperate material_index from material_flags", __func__ );

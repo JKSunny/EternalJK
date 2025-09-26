@@ -1239,6 +1239,9 @@ void R_BuildMDXM( model_t *mod, mdxmHeader_t *mdxm )
 		ri.Hunk_FreeTempMemory ( baseVertexes );
 
 #if defined(USE_RTX) && defined(USE_RTX_GLOBAL_MODEL_VBO)
+
+
+		vk_rtx_extract_model_lights_mdxm( mod );
 		vk_rtx_bind_model( vbo->index );
 #endif
 
@@ -1402,6 +1405,7 @@ void R_BuildMD3( model_t *mod, mdvModel_t *mdvModel )
 	}
 
 #if defined(USE_RTX) && defined(USE_RTX_GLOBAL_MODEL_VBO)
+	vk_rtx_extract_model_lights_mdv( mod, mdvModel );
 	vk_rtx_bind_model( vbo->index );
 #endif
 

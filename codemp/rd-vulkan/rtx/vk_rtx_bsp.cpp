@@ -27,6 +27,184 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 // the value represents the offset along the light’s normal direction
 // #define DEBUG_POLY_LIGHTS 3.0f
 
+static void vk_bind_storage_buffer( vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage, VkBuffer buffer )
+{
+	const uint32_t count = 1;
+
+	assert( buffer != NULL );
+
+	vk_rtx_add_descriptor_buffer( descriptor, count, binding, stage, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER );
+	vk_rtx_set_descriptor_update_size( descriptor, binding, stage, count );
+	vk_rtx_bind_descriptor_buffer( descriptor, binding, stage, buffer );
+}
+
+static void vk_bind_uniform_buffer( vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage, VkBuffer buffer )
+{
+	const uint32_t count = 1;
+
+	assert( buffer != NULL );
+
+	vk_rtx_add_descriptor_buffer( descriptor, count, binding, stage, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER );
+	vk_rtx_set_descriptor_update_size( descriptor, binding, stage, count );
+	vk_rtx_bind_descriptor_buffer( descriptor, binding, stage, buffer );
+}
+
+static void vk_bind_storage_image( vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage, VkImageView view )
+{
+	vk_rtx_add_descriptor_image( descriptor, binding, stage );
+	vk_rtx_bind_descriptor_image_sampler( descriptor, binding, stage, VK_NULL_HANDLE, view, 0 );
+}
+
+static void vk_bind_sampler( vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage, VkSampler sampler, VkImageView view, VkImageLayout layout )
+{
+	const uint32_t count = 1;
+
+	vk_rtx_add_descriptor_sampler( descriptor, binding, stage, count, layout ); 
+	vk_rtx_set_descriptor_update_size( descriptor, binding, stage, count );
+	vk_rtx_bind_descriptor_image_sampler( descriptor, binding, stage, sampler, view, 0 );
+}
+
+static void vk_create_vertex_buffer_descriptor( world_t& worldData, uint32_t index, uint32_t prev_index ) 
+{	
+	vkdescriptor_t *descriptor = vk_rtx_init_descriptor( & vk.desc_set_vertex_buffer[index] );
+
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_XYZ_SKY,						VK_SHADER_STAGE_ALL, worldData.geometry.sky_static.xyz[0].buffer );
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_IDX_SKY,						VK_SHADER_STAGE_ALL, worldData.geometry.sky_static.idx[0].buffer );
+
+
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_XYZ_WORLD_STATIC,			VK_SHADER_STAGE_ALL, worldData.geometry.world_static.xyz[0].buffer );
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_IDX_WORLD_STATIC,			VK_SHADER_STAGE_ALL, worldData.geometry.world_static.idx[0].buffer );
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_XYZ_WORLD_DYNAMIC_DATA,		VK_SHADER_STAGE_ALL, worldData.geometry.world_dynamic_material.xyz[index].buffer );	// index
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_IDX_WORLD_DYNAMIC_DATA,		VK_SHADER_STAGE_ALL, worldData.geometry.world_dynamic_material.idx[index].buffer );	// index
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_XYZ_WORLD_DYNAMIC_AS,		VK_SHADER_STAGE_ALL, worldData.geometry.world_dynamic_geometry.xyz[index].buffer );	// index
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_IDX_WORLD_DYNAMIC_AS,		VK_SHADER_STAGE_ALL, worldData.geometry.world_dynamic_geometry.idx[index].buffer );	// index
+
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_CLUSTER_SKY,					VK_SHADER_STAGE_ALL, worldData.geometry.sky_static.cluster[0].buffer );
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_CLUSTER_WORLD_STATIC,		VK_SHADER_STAGE_ALL, worldData.geometry.world_static.cluster[0].buffer );
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_CLUSTER_WORLD_DYNAMIC_DATA,	VK_SHADER_STAGE_ALL, worldData.geometry.world_dynamic_material.cluster[index].buffer );
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_CLUSTER_WORLD_DYNAMIC_AS,	VK_SHADER_STAGE_ALL, worldData.geometry.world_dynamic_geometry.cluster[index].buffer );
+
+
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_XYZ_WORLD_SUBMODEL,			VK_SHADER_STAGE_ALL, worldData.geometry.world_models.xyz[0].buffer );
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_IDX_WORLD_SUBMODEL,			VK_SHADER_STAGE_ALL, worldData.geometry.world_models.idx[0].buffer );
+
+	// previous
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_XYZ_WORLD_DYNAMIC_DATA_PREV, VK_SHADER_STAGE_ALL, worldData.geometry.world_dynamic_material.xyz[prev_index].buffer ); // prev_index
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_IDX_WORLD_DYNAMIC_DATA_PREV, VK_SHADER_STAGE_ALL, worldData.geometry.world_dynamic_material.idx[prev_index].buffer ); // prev_index
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_XYZ_WORLD_DYNAMIC_AS_PREV,	VK_SHADER_STAGE_ALL, worldData.geometry.world_dynamic_geometry.xyz[prev_index].buffer ); // prev_index
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_IDX_WORLD_DYNAMIC_AS_PREV,	VK_SHADER_STAGE_ALL, worldData.geometry.world_dynamic_geometry.idx[prev_index].buffer ); // prev_index
+
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_READBACK_BUFFER,				VK_SHADER_STAGE_ALL, vk.buf_readback.buffer );
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_DYNAMIC_VERTEX,				VK_SHADER_STAGE_ALL, vk.model_instance.buffer_vertex.buffer );
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_LIGHT_BUFFER,				VK_SHADER_STAGE_ALL, vk.buf_light.buffer );
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_TONEMAP_BUFFER,				VK_SHADER_STAGE_ALL, vk.buf_tonemap.buffer );
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_SUN_COLOR_BUFFER,			VK_SHADER_STAGE_ALL, vk.buf_sun_color.buffer );
+	vk_bind_uniform_buffer( descriptor, BINDING_OFFSET_SUN_COLOR_UBO,				VK_SHADER_STAGE_ALL, vk.buf_sun_color.buffer );
+
+	// light stats
+	{
+		uint32_t i, light_stats_index;
+		light_stats_index = vk_rtx_add_descriptor_buffer( descriptor, NUM_LIGHT_STATS_BUFFERS, BINDING_OFFSET_LIGHT_STATS_BUFFER, VK_SHADER_STAGE_ALL, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER );
+		vk_rtx_set_descriptor_update_size( descriptor, BINDING_OFFSET_LIGHT_STATS_BUFFER, VK_SHADER_STAGE_ALL, NUM_LIGHT_STATS_BUFFERS );
+
+		for (i = 0; i < NUM_LIGHT_STATS_BUFFERS; i++)
+		{
+			assert( vk.buf_light_stats[i].buffer != NULL );
+
+			descriptor->data[light_stats_index].buffer[i] = { vk.buf_light_stats[i].buffer, 0, vk.buf_light_stats[i].size };
+		}
+	}
+
+	// light count history
+	{
+		uint32_t i, light_count_history_index;
+		light_count_history_index = vk_rtx_add_descriptor_buffer( descriptor, LIGHT_COUNT_HISTORY, BINDING_LIGHT_COUNTS_HISTORY_BUFFER, VK_SHADER_STAGE_ALL, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER );
+		vk_rtx_set_descriptor_update_size( descriptor, BINDING_LIGHT_COUNTS_HISTORY_BUFFER, VK_SHADER_STAGE_ALL, LIGHT_COUNT_HISTORY );
+
+		for ( i = 0; i < LIGHT_COUNT_HISTORY; i++ ) 
+		{
+			assert( vk.buf_light_counts_history[i].buffer != NULL );
+
+			descriptor->data[light_count_history_index].buffer[i] = { 
+				vk.buf_light_counts_history[i].buffer, 
+				0, 
+				vk.buf_light_counts_history[i].size 
+			};
+		}
+	}
+
+	vk_rtx_create_descriptor( descriptor );
+	vk_rtx_update_descriptor( descriptor );
+}
+
+static void vk_create_rt_descriptor( uint32_t index, uint32_t prev_index ) 
+{
+	vkdescriptor_t *descriptor = vk_rtx_init_descriptor( &vk.rt_descriptor_set[index] );
+
+	vk_rtx_add_descriptor_as( descriptor, RAY_GEN_DESCRIPTOR_SET_IDX, VK_SHADER_STAGE_RAYGEN_BIT_KHR );
+	vk_rtx_bind_descriptor_as( descriptor, RAY_GEN_DESCRIPTOR_SET_IDX, VK_SHADER_STAGE_RAYGEN_BIT_KHR, &vk.tlas_geometry[index].accel );
+
+	vk_rtx_create_descriptor( descriptor );
+	vk_rtx_update_descriptor( descriptor );
+}
+
+void vk_rtx_create_rt_descriptors( world_t& worldData )
+{
+	uint32_t i, prev_index;
+
+	for ( i = 0; i < vk.swapchain_image_count; i++ ) 
+	{
+		prev_index = (i + (vk.swapchain_image_count - 1)) % vk.swapchain_image_count;
+
+		vk_create_rt_descriptor( i, prev_index );
+		vk_create_vertex_buffer_descriptor( worldData, i, prev_index );
+	}
+}
+
+void vk_rtx_destroy_rt_descriptors( void )
+{
+	uint32_t i;
+
+	for ( i = 0; i < vk.swapchain_image_count; i++ ) 
+	{
+		vk_rtx_destroy_descriptor( &vk.rt_descriptor_set[i] );
+		vk_rtx_destroy_descriptor( &vk.desc_set_vertex_buffer[i] );
+	}
+}
+
+static void vk_rtx_create_primary_rays_resources( world_t& worldData ) 
+{
+	//vkpt_physical_sky_initialize();
+
+	vk_rtx_create_rt_descriptors( worldData);
+
+	vk_rtx_create_shader_modules();
+	vk_rtx_create_rt_pipelines();
+
+	vk_load_final_blit_shader();
+	vk_rtx_create_final_blit_pipeline();
+
+	vk_rtx_create_compute_pipelines();
+}
+
+void vk_rtx_destroy_primary_rays_resources( void ) 
+{
+	//vkpt_physical_sky_destroy();
+
+	vk_rtx_destroy_compute_pipelines();
+	vk_rtx_destroy_rt_pipelines();
+
+	vk_rtx_destroy_rt_descriptors();
+
+	vk_rtx_destroy_accel_all();
+
+	vk_rtx_clear_material_list();
+}
+
+//
+// bsp loading
+//
+
 #define PlaneDiff(v,p)   (DotProduct(v,(p)->normal)-(p)->dist)
 
 typedef struct {
@@ -221,29 +399,6 @@ void get_triangle_norm( const float* positions, float* normal )
 	VectorNormalize(normal);
 }
 
-int vk_get_surface_cluster( world_t &worldData, surfaceType_t *surf ) 
-{
-	int i, j;
-
-	for ( i = 0; i < worldData.numnodes; i++) 
-	{
-		mnode_t* node = &worldData.nodes[i];
-
-		if ( node->contents == -1 ) 
-			continue;
-
-		msurface_t** mark = node->firstmarksurface;
-
-		for ( j = 0; j < node->nummarksurfaces; j++ )
-		{
-			if ( mark[j]->data == surf ) 
-				return node->cluster;
-		}
-	}
-
-	return -1;
-}
-
 void vk_compute_cluster_aabbs( world_t &worldData, mnode_t* node, int numClusters ) 
 {
 	if (node->contents == -1) {
@@ -286,162 +441,27 @@ void compute_aabb( VertexBuffer* xyz, int numvert, float* aabb_min, float* aabb_
 	}
 }
 
-static void vk_bind_storage_buffer( vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage, VkBuffer buffer )
+int vk_get_surface_cluster( world_t &worldData, surfaceType_t *surf ) 
 {
-	const uint32_t count = 1;
+	int i, j;
 
-	assert( buffer != NULL );
-
-	vk_rtx_add_descriptor_buffer( descriptor, count, binding, stage, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER );
-	vk_rtx_set_descriptor_update_size( descriptor, binding, stage, count );
-	vk_rtx_bind_descriptor_buffer( descriptor, binding, stage, buffer );
-}
-
-static void vk_bind_uniform_buffer( vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage, VkBuffer buffer )
-{
-	const uint32_t count = 1;
-
-	assert( buffer != NULL );
-
-	vk_rtx_add_descriptor_buffer( descriptor, count, binding, stage, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER );
-	vk_rtx_set_descriptor_update_size( descriptor, binding, stage, count );
-	vk_rtx_bind_descriptor_buffer( descriptor, binding, stage, buffer );
-}
-
-static void vk_bind_storage_image( vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage, VkImageView view )
-{
-	vk_rtx_add_descriptor_image( descriptor, binding, stage );
-	vk_rtx_bind_descriptor_image_sampler( descriptor, binding, stage, VK_NULL_HANDLE, view, 0 );
-}
-
-static void vk_bind_sampler( vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage, VkSampler sampler, VkImageView view, VkImageLayout layout )
-{
-	const uint32_t count = 1;
-
-	vk_rtx_add_descriptor_sampler( descriptor, binding, stage, count, layout ); 
-	vk_rtx_set_descriptor_update_size( descriptor, binding, stage, count );
-	vk_rtx_bind_descriptor_image_sampler( descriptor, binding, stage, sampler, view, 0 );
-}
-
-static void vk_create_rt_descriptor( uint32_t index, uint32_t prev_index ) 
-{
-	vkdescriptor_t *descriptor = vk_rtx_init_descriptor( &vk.rt_descriptor_set[index] );
-
-	vk_rtx_add_descriptor_as( descriptor, RAY_GEN_DESCRIPTOR_SET_IDX, VK_SHADER_STAGE_RAYGEN_BIT_KHR );
-	vk_rtx_bind_descriptor_as( descriptor, RAY_GEN_DESCRIPTOR_SET_IDX, VK_SHADER_STAGE_RAYGEN_BIT_KHR, &vk.tlas_geometry[index].accel );
-
-	vk_rtx_create_descriptor( descriptor );
-	vk_rtx_update_descriptor( descriptor );
-}
-
-static void vk_create_vertex_buffer_descriptor( world_t& worldData, uint32_t index, uint32_t prev_index ) 
-{	
-	vkdescriptor_t *descriptor = vk_rtx_init_descriptor( & vk.desc_set_vertex_buffer[index] );
-
-	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_XYZ_SKY,						VK_SHADER_STAGE_ALL, worldData.geometry.sky_static.xyz[0].buffer );
-	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_IDX_SKY,						VK_SHADER_STAGE_ALL, worldData.geometry.sky_static.idx[0].buffer );
-
-
-	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_XYZ_WORLD_STATIC,			VK_SHADER_STAGE_ALL, worldData.geometry.world_static.xyz[0].buffer );
-	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_IDX_WORLD_STATIC,			VK_SHADER_STAGE_ALL, worldData.geometry.world_static.idx[0].buffer );
-	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_XYZ_WORLD_DYNAMIC_DATA,		VK_SHADER_STAGE_ALL, worldData.geometry.world_dynamic_material.xyz[index].buffer );	// index
-	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_IDX_WORLD_DYNAMIC_DATA,		VK_SHADER_STAGE_ALL, worldData.geometry.world_dynamic_material.idx[index].buffer );	// index
-	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_XYZ_WORLD_DYNAMIC_AS,		VK_SHADER_STAGE_ALL, worldData.geometry.world_dynamic_geometry.xyz[index].buffer );	// index
-	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_IDX_WORLD_DYNAMIC_AS,		VK_SHADER_STAGE_ALL, worldData.geometry.world_dynamic_geometry.idx[index].buffer );	// index
-
-	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_CLUSTER_SKY,					VK_SHADER_STAGE_ALL, worldData.geometry.sky_static.cluster[0].buffer );
-	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_CLUSTER_WORLD_STATIC,		VK_SHADER_STAGE_ALL, worldData.geometry.world_static.cluster[0].buffer );
-	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_CLUSTER_WORLD_DYNAMIC_DATA,	VK_SHADER_STAGE_ALL, worldData.geometry.world_dynamic_material.cluster[index].buffer );
-	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_CLUSTER_WORLD_DYNAMIC_AS,	VK_SHADER_STAGE_ALL, worldData.geometry.world_dynamic_geometry.cluster[index].buffer );
-
-
-	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_XYZ_WORLD_SUBMODEL,			VK_SHADER_STAGE_ALL, worldData.geometry.world_models.xyz[0].buffer );
-	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_IDX_WORLD_SUBMODEL,			VK_SHADER_STAGE_ALL, worldData.geometry.world_models.idx[0].buffer );
-
-	// previous
-	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_XYZ_WORLD_DYNAMIC_DATA_PREV, VK_SHADER_STAGE_ALL, worldData.geometry.world_dynamic_material.xyz[prev_index].buffer ); // prev_index
-	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_IDX_WORLD_DYNAMIC_DATA_PREV, VK_SHADER_STAGE_ALL, worldData.geometry.world_dynamic_material.idx[prev_index].buffer ); // prev_index
-	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_XYZ_WORLD_DYNAMIC_AS_PREV,	VK_SHADER_STAGE_ALL, worldData.geometry.world_dynamic_geometry.xyz[prev_index].buffer ); // prev_index
-	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_IDX_WORLD_DYNAMIC_AS_PREV,	VK_SHADER_STAGE_ALL, worldData.geometry.world_dynamic_geometry.idx[prev_index].buffer ); // prev_index
-
-	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_READBACK_BUFFER,				VK_SHADER_STAGE_ALL, vk.buf_readback.buffer );
-	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_DYNAMIC_VERTEX,				VK_SHADER_STAGE_ALL, vk.model_instance.buffer_vertex.buffer );
-	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_LIGHT_BUFFER,				VK_SHADER_STAGE_ALL, vk.buf_light.buffer );
-	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_TONEMAP_BUFFER,				VK_SHADER_STAGE_ALL, vk.buf_tonemap.buffer );
-	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_SUN_COLOR_BUFFER,			VK_SHADER_STAGE_ALL, vk.buf_sun_color.buffer );
-	vk_bind_uniform_buffer( descriptor, BINDING_OFFSET_SUN_COLOR_UBO,				VK_SHADER_STAGE_ALL, vk.buf_sun_color.buffer );
-
-	// light stats
+	for ( i = 0; i < worldData.numnodes; i++) 
 	{
-		uint32_t i, light_stats_index;
-		light_stats_index = vk_rtx_add_descriptor_buffer( descriptor, NUM_LIGHT_STATS_BUFFERS, BINDING_OFFSET_LIGHT_STATS_BUFFER, VK_SHADER_STAGE_ALL, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER );
-		vk_rtx_set_descriptor_update_size( descriptor, BINDING_OFFSET_LIGHT_STATS_BUFFER, VK_SHADER_STAGE_ALL, NUM_LIGHT_STATS_BUFFERS );
+		mnode_t* node = &worldData.nodes[i];
 
-		for (i = 0; i < NUM_LIGHT_STATS_BUFFERS; i++)
+		if ( node->contents == -1 ) 
+			continue;
+
+		msurface_t** mark = node->firstmarksurface;
+
+		for ( j = 0; j < node->nummarksurfaces; j++ )
 		{
-			assert( vk.buf_light_stats[i].buffer != NULL );
-
-			descriptor->data[light_stats_index].buffer[i] = { vk.buf_light_stats[i].buffer, 0, vk.buf_light_stats[i].size };
+			if ( mark[j]->data == surf ) 
+				return node->cluster;
 		}
 	}
 
-	// light count history
-	{
-		uint32_t i, light_count_history_index;
-		light_count_history_index = vk_rtx_add_descriptor_buffer( descriptor, LIGHT_COUNT_HISTORY, BINDING_LIGHT_COUNTS_HISTORY_BUFFER, VK_SHADER_STAGE_ALL, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER );
-		vk_rtx_set_descriptor_update_size( descriptor, BINDING_LIGHT_COUNTS_HISTORY_BUFFER, VK_SHADER_STAGE_ALL, LIGHT_COUNT_HISTORY );
-
-		for ( i = 0; i < LIGHT_COUNT_HISTORY; i++ ) 
-		{
-			assert( vk.buf_light_counts_history[i].buffer != NULL );
-
-			descriptor->data[light_count_history_index].buffer[i] = { 
-				vk.buf_light_counts_history[i].buffer, 
-				0, 
-				vk.buf_light_counts_history[i].size 
-			};
-		}
-	}
-
-	vk_rtx_create_descriptor( descriptor );
-	vk_rtx_update_descriptor( descriptor );
-}
-
-void vk_rtx_create_rt_descriptors( world_t& worldData )
-{
-	uint32_t i, prev_index;
-
-	for ( i = 0; i < vk.swapchain_image_count; i++ ) 
-	{
-		prev_index = (i + (vk.swapchain_image_count - 1)) % vk.swapchain_image_count;
-
-		vk_create_rt_descriptor( i, prev_index );
-		vk_create_vertex_buffer_descriptor( worldData, i, prev_index );
-	}
-}
-
-void vk_rtx_destroy_rt_descriptors( void )
-{
-	uint32_t i;
-
-	for ( i = 0; i < vk.swapchain_image_count; i++ ) 
-	{
-		vk_rtx_destroy_descriptor( &vk.rt_descriptor_set[i] );
-		vk_rtx_destroy_descriptor( &vk.desc_set_vertex_buffer[i] );
-	}
-}
-
-static void vk_create_primary_rays_pipelines( world_t& worldData ) 
-{
-	vk_rtx_create_rt_descriptors( worldData);
-
-	vk_rtx_create_shader_modules();
-	vk_rtx_create_rt_pipelines();
-
-	vk_load_final_blit_shader();
-	vk_rtx_create_final_blit_pipeline();
-
-	vk_rtx_create_compute_pipelines();
+	return -1;
 }
 
 #if 0
@@ -520,7 +540,7 @@ static int belongs_to_model( world_t &worldData, msurface_t *surf )
 // Computes a point at a small distance above the center of the triangle.
 // Returns qfalse if the triangle is degenerate, qtrue otherwise.
 qboolean 
-get_triangle_off_center(const float* positions, float* center, float* anti_center)
+get_triangle_off_center(const float* positions, float* center, float* anti_center, float offset )
 {
 	const float* v0 = positions + 0;
 	const float* v1 = positions + 3;
@@ -543,7 +563,7 @@ get_triangle_off_center(const float* positions, float* center, float* anti_cente
 
 	// Offset the center by one normal to make sure that the point is
 	// inside a BSP leaf and not on a boundary plane.
-
+	VectorScale(normal, offset, normal);
 	VectorAdd(center, normal, center);
 
 	if (anti_center)
@@ -641,7 +661,37 @@ append_light_poly( int *num_lights, int *allocated, light_poly_t **lights )
 	return *lights + (*num_lights)++;
 }
 
-static void collect_one_light_poly_entire_texture(  world_t &worldData, shader_t *shader, int model_idx, 
+static void get_surface_light_contribution( int surfaceLight, light_poly_t *light )
+{
+	if ( surfaceLight <= 0 || !light )
+		return;
+
+	vec3_t v0, v1, v2;
+	VectorCopy( light->positions + 0, v0 );
+	VectorCopy( light->positions + 3, v1 );
+	VectorCopy( light->positions + 6, v2 );
+
+	float scale = 1.5f;
+
+	vec3_t e0, e1, cross;
+	VectorSubtract( v1, v0, e0 );
+	VectorSubtract( v2, v0, e1 );
+	CrossProduct( e0, e1, cross );
+
+	float area = 0.5f * VectorLength( cross );
+
+	// optional: normalize area to avoid huge surfaces dominating
+	const float max_expected_area = 2048.0f;
+	float normalized_area = fminf( area / max_expected_area, 1.0f );
+
+	// compress surfacelight values using logarithmic scale
+	float surfacelight_scale = log2f((float)surfaceLight + 1.0f); // log2(1 + x) to avoid log(0)
+
+	light->emissive_factor += surfacelight_scale * normalized_area * scale;
+	light->emissive_factor = MIN( light->emissive_factor, 4.0f );
+}
+
+static void collect_one_light_poly_entire_texture(  world_t &worldData, rtx_material_t *material, int model_idx, 
 													const vec3_t light_color, float emissive_factor, int light_style,
 													int* num_lights, int* allocated_lights, light_poly_t** lights,
 													tri_vertex_t *vertices, int *indices, int numIndices, int numVertices )
@@ -681,12 +731,15 @@ static void collect_one_light_poly_entire_texture(  world_t &worldData, shader_t
 
 		VectorScale( light_color, emissive_factor, light.color );
 
-		light.material = (void *)vk_rtx_get_material( shader->index );
+		light.material = material;
 		light.style = light_style;
 		light.type = LIGHT_POLYGON;
 		light.emissive_factor = emissive_factor;
 
-		if ( !get_triangle_off_center( light.positions, light.off_center, NULL ) )
+		if ( material->surface_light > 0 )
+			get_surface_light_contribution( material->surface_light, &light );
+
+		if ( !get_triangle_off_center( light.positions, light.off_center, NULL, 1.f ) )
 			continue;
 
 		if ( model_idx >= 0 )
@@ -737,7 +790,7 @@ static qboolean vk_rtx_compute_bary_weights( const point2_t p, const vec2_t a, c
 	return qtrue;
 }
 
-static void collect_one_light_poly( world_t &worldData, shader_t *shader, int model_idx,
+static void collect_one_light_poly( world_t &worldData, rtx_material_t *material, int model_idx,
 									const vec2_t min_light_texcoord, const vec2_t max_light_texcoord,
 									const vec3_t light_color, float emissive_factor, int light_style,
 									int *num_lights, int *allocated_lights, light_poly_t **lights,
@@ -832,10 +885,12 @@ static void collect_one_light_poly( world_t &worldData, shader_t *shader, int mo
 				for ( j = 1; j < clipped.len - 1; j++ ) 
 				{
 					light_poly_t *light = append_light_poly( num_lights, allocated_lights, lights );
-					light->material = (void *)vk_rtx_get_material( shader->index );
+					light->material = material;
 					light->style = light_style;
 					light->type = LIGHT_POLYGON;
 					light->emissive_factor = emissive_factor;
+
+
 					VectorCopy( instance_positions[0],		light->positions + 0 );
 					VectorCopy( instance_positions[j + 1],	light->positions + 3 );
 					VectorCopy( instance_positions[j],		light->positions + 6 );
@@ -852,7 +907,10 @@ static void collect_one_light_poly( world_t &worldData, shader_t *shader, int mo
 						VectorMA( light->positions + k * 3, offset, normal, light->positions + k * 3 );
 					}
 
-					get_triangle_off_center( light->positions, light->off_center, NULL );
+					if ( material->surface_light > 0 )
+						get_surface_light_contribution( material->surface_light, light );
+
+					get_triangle_off_center( light->positions, light->off_center, NULL, 1.f  );
 	
 					if ( model_idx < 0 )
 					{
@@ -878,29 +936,34 @@ static void collect_one_light_poly( world_t &worldData, shader_t *shader, int mo
 }
 
 static bool
-collect_frames_emissive_info( shader_t *shader, bool* entire_texture_emissive, vec2_t min_light_texcoord, vec2_t max_light_texcoord, vec3_t light_color )
+collect_frames_emissive_info( shader_t *shader, rtx_material_t *material, bool *entire_texture_emissive, vec2_t min_light_texcoord, vec2_t max_light_texcoord, vec3_t light_color )
 {
 	*entire_texture_emissive = false;
 	min_light_texcoord[0] = min_light_texcoord[1] = 1.0f;
 	max_light_texcoord[0] = max_light_texcoord[1] = 0.0f;
 
 	bool any_emissive_valid = false;
+#if 0
+	uint32_t emissive_image_index = vk_rtx_find_emissive_texture( shader, NULL );
+#else
+	if ( material == NULL )
+		return false;
 
-	uint32_t emissive_image_index = vk_rtx_find_emissive_texture( shader );
+	uint32_t emissive_image_index = material->emissive;
+#endif
 
 	if ( !emissive_image_index )
 		return false;
 
-	image_t *image = tr.images[emissive_image_index];
+	const image_t *image = tr.images[emissive_image_index];
 
 	if ( !image )
 		return false;
 
-	if(!any_emissive_valid)
+	if ( !any_emissive_valid )
 	{
 		// emissive light color of first frame
 		memcpy(light_color, image->light_color, sizeof(vec3_t));
-		//VectorSet( light_color, 255.0, 255.0, 255.0 );
 	}
 	any_emissive_valid = true;
 
@@ -913,22 +976,30 @@ collect_frames_emissive_info( shader_t *shader, bool* entire_texture_emissive, v
 	return any_emissive_valid;
 }
 
+static float compute_emissive( rtx_material_t *material )
+{
+	if ( material == NULL )
+		return 1.f;
+
+	return (float)material->emissive_factor;
+}
+
 static void collect_light_polys_from_triangles( 
 	world_t &worldData, int model_idx, int* num_lights, int* allocated_lights, light_poly_t** lights,  shader_t *shader,
 	tri_vertex_t *vertices, int *indices, int numIndices, int numVertices
 	)
 {
+		rtx_material_t *material = vk_rtx_get_material( shader->index );
+
+		if ( material == NULL )
+			return;
+
 		bool entire_texture_emissive;
 		vec2_t min_light_texcoord;
 		vec2_t max_light_texcoord;
 		vec3_t light_color;
 
-
-		int light_ctr = *num_lights;
-		
-
-
-		if ( !collect_frames_emissive_info( shader, &entire_texture_emissive, min_light_texcoord, max_light_texcoord, light_color ) )
+		if ( !collect_frames_emissive_info( shader, material, &entire_texture_emissive, min_light_texcoord, max_light_texcoord, light_color ) )
 		{
 			// This algorithm relies on information from the emissive texture,
 			// specifically the extents of the emissive pixels in that texture.
@@ -936,14 +1007,20 @@ static void collect_light_polys_from_triangles(
 			return;
 		}
 
-		float emissive_factor = 1.0f;
+		float emissive_factor = compute_emissive( material );
+		if ( emissive_factor == 0 )
+			return;
+
 		int light_style = 0;
+		
+		int light_ctr = *num_lights;	// debug
 
 		if ( entire_texture_emissive )
 		{
-			collect_one_light_poly_entire_texture(  worldData, shader, model_idx, light_color, emissive_factor, light_style,
+			collect_one_light_poly_entire_texture(  worldData, material, model_idx, light_color, emissive_factor, light_style,
 													num_lights, allocated_lights, lights, 
 													vertices, indices, numIndices, numVertices );
+
 			int num_light_polys = (*num_lights - light_ctr);
 			if ( num_light_polys > 128 )
 				Com_Printf( "verts: %d - light-polys: %d ", numVertices, num_light_polys);
@@ -957,7 +1034,7 @@ static void collect_light_polys_from_triangles(
 			return;
 		}
 
-		collect_one_light_poly( worldData, shader, model_idx,
+		collect_one_light_poly( worldData, material, model_idx,
 							   min_light_texcoord, max_light_texcoord,
 							   light_color, emissive_factor, light_style,
 							   num_lights, allocated_lights, lights,
@@ -1870,7 +1947,7 @@ static void vk_rtx_inject_light_poly_debug( vk_geometry_data_t *geom, world_t& w
 
 		if ( cluster > 0 )
 		{
-			tess.shader = tr.redShader;
+			tess.shader = tr.whiteShader;
 		}
 		else {
 			tess.shader	= tr.whiteShader;
@@ -1900,6 +1977,46 @@ static void vk_rtx_inject_light_poly_debug( vk_geometry_data_t *geom, world_t& w
 	}
 }
 
+static void
+mark_clusters_with_sky( const vk_geometry_data_t* geom, uint8_t* clusters_with_sky)
+{
+	uint32_t i;
+
+	for ( i = 0; i < geom->host.cluster_offset; i++ )
+	{
+		uint32_t cluster = geom->host.cluster[i];
+		if ( cluster < VIS_MAX_BYTES )
+			clusters_with_sky[cluster >> 3] |= (1 << (cluster & 7));
+	}
+}
+
+static void
+compute_sky_visibility( world_t &worldData )
+{
+	memset(worldData.sky_visibility, 0, VIS_MAX_BYTES);
+
+	vk_geometry_data_t *sky_static = &worldData.geometry.sky_static;
+
+	if ( sky_static->host.idx_count == 0 )
+		return; 
+
+	uint32_t numclusters = worldData.numClusters;
+
+	uint8_t clusters_with_sky[VIS_MAX_BYTES] = { 0 };
+
+	mark_clusters_with_sky( sky_static, clusters_with_sky );
+
+	for (uint32_t cluster = 0; cluster < numclusters; cluster++)
+	{
+		if (clusters_with_sky[cluster >> 3] & (1 << (cluster & 7)))
+		{
+			byte* mask = BSP_GetPvs( &worldData, (int)cluster);
+
+			for ( int i = 0; i < worldData.clusterBytes; i++ )
+				worldData.sky_visibility[i] |= mask[i];
+		}
+	}
+}
 
 void R_PreparePT( world_t &worldData ) 
 {
@@ -1908,12 +2025,12 @@ void R_PreparePT( world_t &worldData )
 
 	uint32_t i;
 
-#ifdef DEBUG_POLY_LIGHTS
 	// polygonal lights
 	worldData.num_light_polys = 0;
 	worldData.allocated_light_polys = 0;
 	worldData.light_polys = NULL;
 
+#ifdef DEBUG_POLY_LIGHTS
 	collect_light_polys( worldData, -1, &worldData.num_light_polys, &worldData.allocated_light_polys, &worldData.light_polys );
 #endif
 
@@ -1941,7 +2058,7 @@ void R_PreparePT( world_t &worldData )
 
 	// sky
 	vk_rtx_collect_surfaces( sky_static, BLAS_TYPE_OPAQUE, worldData, worldData.nodes, -1, filter_sky, filter_opaque );
-	vk_rtx_build_geometry_buffer( sky_static );
+	
 
 	// opaque
 	vk_rtx_collect_surfaces( world_static, BLAS_TYPE_OPAQUE, worldData, worldData.nodes, -1, filter_static, filter_opaque );
@@ -1950,19 +2067,16 @@ void R_PreparePT( world_t &worldData )
 #endif
 	vk_rtx_set_geomertry_accel_offsets( world_static, BLAS_TYPE_TRANSPARENT );
 	vk_rtx_collect_surfaces( world_static, BLAS_TYPE_TRANSPARENT, worldData, worldData.nodes, -1, filter_static, filter_transparent );
-	vk_rtx_build_geometry_buffer( world_static );
-
+	
 	// dynamic material
 	vk_rtx_collect_surfaces( world_dynamic_material, BLAS_TYPE_OPAQUE, worldData, worldData.nodes, -1, filter_dynamic_material, filter_opaque );
 	vk_rtx_set_geomertry_accel_offsets( world_dynamic_material, BLAS_TYPE_TRANSPARENT );
 	vk_rtx_collect_surfaces( world_dynamic_material, BLAS_TYPE_TRANSPARENT, worldData, worldData.nodes, -1, filter_dynamic_material, filter_transparent );
-	vk_rtx_build_geometry_buffer( world_dynamic_material );
-
+	
 	// dynamic geometry
 	vk_rtx_collect_surfaces( world_dynamic_geometry, BLAS_TYPE_OPAQUE, worldData, worldData.nodes, -1, filter_dynamic_geometry, filter_opaque );
 	vk_rtx_set_geomertry_accel_offsets( world_dynamic_geometry, BLAS_TYPE_TRANSPARENT );
 	vk_rtx_collect_surfaces( world_dynamic_geometry, BLAS_TYPE_TRANSPARENT, worldData, worldData.nodes, -1, filter_dynamic_geometry, filter_transparent );
-	vk_rtx_build_geometry_buffer( world_dynamic_geometry );
 
 	// sub brush models (instanced, no blas)
 	vk_rtx_estimate_bmodels( world_models, worldData );
@@ -1976,8 +2090,7 @@ void R_PreparePT( world_t &worldData )
 		bmodel->idx_count = world_models->host.idx_offset - bmodel->idx_offset;
 		bmodel->xyz_count = world_models->host.xyz_offset - bmodel->xyz_offset;
 	}
-	vk_rtx_build_geometry_buffer( world_models );
-
+	
 	for ( i = 0; i < worldData.num_bmodels; i++ ) 
 	{
 		bmodel_t *bmodel = &worldData.bmodels[i];
@@ -1998,11 +2111,6 @@ void R_PreparePT( world_t &worldData )
 
 	vk_compute_cluster_aabbs( worldData, worldData.nodes, worldData.numClusters );
 #ifndef DEBUG_POLY_LIGHTS
-	// polygonal lights
-	worldData.num_light_polys = 0;
-	worldData.allocated_light_polys = 0;
-	worldData.light_polys = NULL;
-
 	collect_light_polys( worldData, -1, &worldData.num_light_polys, &worldData.allocated_light_polys, &worldData.light_polys );
 #endif
 #if 1
@@ -2020,7 +2128,17 @@ void R_PreparePT( world_t &worldData )
 	}
 #endif
 	collect_cluster_lights( worldData );
+
+	compute_sky_visibility( worldData );
+
 	vkpt_light_buffers_create( worldData  );
+
+
+	vk_rtx_build_geometry_buffer( sky_static );
+	vk_rtx_build_geometry_buffer( world_static );
+	vk_rtx_build_geometry_buffer( world_dynamic_material );
+	vk_rtx_build_geometry_buffer( world_dynamic_geometry );
+	vk_rtx_build_geometry_buffer( world_models );
 
 	// build to bottom acceleration structures (wolrd only, not bmodels)
 	{	
@@ -2043,45 +2161,14 @@ void R_PreparePT( world_t &worldData )
 			qvkCmdFillBuffer( cmd_buf, vk.buf_light_stats[i].buffer, 0, vk.buf_light_stats[i].size, 0 );
 	
 		vkpt_submit_command_buffer(cmd_buf, vk.queue_graphics, (1 << vk.device_count) - 1, 0, NULL, NULL, NULL, 0, NULL, NULL, NULL);
+
+		vk.scratch_buf_ptr = 0;
 	}
 
 	// ~sunny, rework this ..
-	vk_rtx_reset_envmap();
 	vk_rtx_prepare_envmap( worldData );
-
-	qboolean cmInit = qfalse;
-
-	for ( i = 0; i < worldData.numsurfaces; i++ ) { 
-		shader_t *shader = tr.shaders[ worldData.surfaces[i].shader->index ];
-
-		tess.shader = shader;
-
-		if (shader->isSky && !cmInit) {	
-			cmInit = qtrue;
-			continue;
-		}
-
-		if (tess.shader->stages[0] == NULL) 
-			continue;
-	}
-
-	vk.scratch_buf_ptr = 0;
-
-	if (!cmInit) {
-		byte black[4] = { 0,0,0,0 };
-
-		vk_rtx_create_cubemap( &vk.img_envmap, 1, 1,
-			VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 1 );
-
-		for ( int skyIndex = 0; skyIndex < 5; skyIndex++ )
-			vk_rtx_upload_image_data(&vk.img_envmap, 1, 1, black, 4, 0, skyIndex);
-
-		vk_rtx_set_envmap_descriptor_binding();
-	}
-
-	vk.scratch_buf_ptr = 0;
 
 	vkpt_physical_sky_initialize();
 
-	vk_create_primary_rays_pipelines( worldData );
+	vk_rtx_create_primary_rays_resources( worldData );
 }
