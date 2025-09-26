@@ -279,13 +279,8 @@ void vk_rtx_shutdown( void )
 	if ( !vk.rtxActive ) 
 		return;
 
-	uint32_t i;
-
-	VK_DestroyBuffer( &vk.buf_shader_binding_table );
-
 	vk_rtx_destroy_shaders();
 	vk_rtx_destroy_buffers();
-
 	vk_rtx_destroy_primary_rays_resources();
 
 	vk.scratch_buf_ptr = 0;

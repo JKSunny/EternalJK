@@ -217,4 +217,7 @@ void vk_rtx_destroy_rt_pipelines( void )
 		vk.rt_pipelines[i] = VK_NULL_HANDLE;
 	}
 	qvkDestroyPipelineLayout( vk.device, vk.rt_pipeline_layout, NULL);
+
+	// destroy SBT
+	vk_rtx_buffer_destroy( &vk.buf_shader_binding_table );
 }

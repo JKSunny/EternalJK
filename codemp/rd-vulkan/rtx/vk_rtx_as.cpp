@@ -393,7 +393,7 @@ void vk_rtx_create_tlas( accel_build_batch_t *batch, vk_tlas_t *as, VkDeviceAddr
 
 void vk_rtx_destroy_tlas( vk_tlas_t *as ) 
 {
-	VK_DestroyBuffer( &as->mem );
+	vk_rtx_buffer_destroy( &as->mem );
 
 	if ( as->accel != VK_NULL_HANDLE ) 
 	{
@@ -407,7 +407,7 @@ void vk_rtx_destroy_tlas( vk_tlas_t *as )
 
 void vk_rtx_destroy_blas( vk_blas_t *blas ) 
 {
-	VK_DestroyBuffer( &blas->mem );
+	vk_rtx_buffer_destroy( &blas->mem );
 
 	if ( blas->accel != VK_NULL_HANDLE ) 
 	{

@@ -199,7 +199,12 @@ fail_buffer:
 
 VkResult vk_rtx_buffer_destroy( vkbuffer_t *buf )
 {
+#if 1
 	assert(!buf->is_mapped);
+#else
+	if ( buf->is_mapped )
+		qvkUnmapMemory( vk.device, buf->memory );
+#endif
 
 	if ( buf->memory != VK_NULL_HANDLE )
 		qvkFreeMemory( vk.device, buf->memory, NULL );
@@ -213,25 +218,6 @@ VkResult vk_rtx_buffer_destroy( vkbuffer_t *buf )
 	buf->address = 0;
 
 	return VK_SUCCESS;
-}
-
-void VK_DestroyBuffer( vkbuffer_t *buf )
-{
-	if ( buf->is_mapped )
-		qvkUnmapMemory( vk.device, buf->memory );
-
-	if ( buf->buffer != NULL )
-		qvkDestroyBuffer( vk.device, buf->buffer, NULL );
-
-	if ( buf->memory != NULL )
-		qvkFreeMemory( vk.device, buf->memory, NULL );
-
-	memset( buf, 0, sizeof(vkbuffer_t) );
-
-	buf->buffer = VK_NULL_HANDLE;
-	buf->memory = VK_NULL_HANDLE;
-	buf->size   = 0;
-	buf->address = 0;
 }
 
 void *buffer_map( vkbuffer_t *buf )
@@ -301,12 +287,6 @@ void VK_CreateAttributeBuffer(vkbuffer_t* buffer, VkDeviceSize size, VkBufferUsa
 		: VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
 	vk_rtx_buffer_create( buffer, buffer->size, usage, mem_flags );
-
-	if ( is_host_visible )
-	{
-		VK_CHECK(qvkMapMemory(vk.device, buffer->memory, 0, buffer->size, 0, (void**)&buffer->p));
-		buffer->is_mapped = 1;
-	}
 }
 
 void vk_rtx_upload_buffer_data_offset( vkbuffer_t *buffer, VkDeviceSize offset, VkDeviceSize size, const byte *data ) 
@@ -314,12 +294,10 @@ void vk_rtx_upload_buffer_data_offset( vkbuffer_t *buffer, VkDeviceSize offset, 
     if (offset + size > buffer->size) {
         ri.Error(ERR_FATAL, "Vulkan: Buffer to small!");
     }
-	if (buffer->p == NULL) {
-		ri.Error(ERR_FATAL, "Vulkan: Buffer not mapped!");
-	}
 
-    byte*p = buffer->p + offset;
-    Com_Memcpy(p, data, (size_t)(size));
+    byte *p = (byte *)buffer_map(buffer);
+    Com_Memcpy(p + offset, data, (size_t)(size));
+    buffer_unmap(buffer);
 }
 
 void vk_rtx_upload_buffer_data( vkbuffer_t *buffer, const byte *data ) 
@@ -742,10 +720,10 @@ VkResult vkpt_light_buffers_create( world_t &worldData )
 VkResult vkpt_light_buffers_destroy( void )
 {
 	for ( int frame = 0; frame < NUM_LIGHT_STATS_BUFFERS; frame++ )
-		VK_DestroyBuffer( vk.buf_light_stats + frame );
+		vk_rtx_buffer_destroy( vk.buf_light_stats + frame );
 
 	for ( int h = 0; h < LIGHT_COUNT_HISTORY; h++ )
-		VK_DestroyBuffer( vk.buf_light_counts_history + h );
+		vk_rtx_buffer_destroy( vk.buf_light_counts_history + h );
 
 	return VK_SUCCESS;
 }
@@ -809,19 +787,19 @@ void vk_rtx_destroy_buffers( void )
 {
 	uint32_t i = 0;
 
-	VK_DestroyBuffer( &vk.buf_accel_scratch );
-	VK_DestroyBuffer( &vk.model_instance.buffer_vertex );
+	vk_rtx_buffer_destroy( &vk.buf_accel_scratch );
+	vk_rtx_buffer_destroy( &vk.model_instance.buffer_vertex );
 
-	VK_DestroyBuffer( &vk.buf_readback );
-	VK_DestroyBuffer( &vk.buf_tonemap );
-	VK_DestroyBuffer( &vk.buf_light );
-	VK_DestroyBuffer( &vk.buf_sun_color );
+	vk_rtx_buffer_destroy( &vk.buf_readback );
+	vk_rtx_buffer_destroy( &vk.buf_tonemap );
+	vk_rtx_buffer_destroy( &vk.buf_light );
+	vk_rtx_buffer_destroy( &vk.buf_sun_color );
 
 	for ( i = 0; i < vk.swapchain_image_count; i++ ) 
 	{
-		VK_DestroyBuffer( &vk.buf_instances[i] );
-		VK_DestroyBuffer( vk.buf_readback_staging + i );
-		VK_DestroyBuffer( vk.buf_light_staging + i );
+		vk_rtx_buffer_destroy( &vk.buf_instances[i] );
+		vk_rtx_buffer_destroy( vk.buf_readback_staging + i );
+		vk_rtx_buffer_destroy( vk.buf_light_staging + i );
 	}
 
 

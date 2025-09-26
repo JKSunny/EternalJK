@@ -1782,25 +1782,15 @@ static void vk_rtx_reset_world_geometry( vk_geometry_data_t *geom )
 	
 	if ( geom->dynamic_flags == BLAS_DYNAMIC_FLAG_NONE )
 	{
-		if ( geom->staging_idx.is_mapped ) buffer_unmap( &geom->staging_idx );
-		if ( geom->staging_xyz.is_mapped ) buffer_unmap( &geom->staging_xyz );
-		if ( geom->staging_cluster.is_mapped ) buffer_unmap( &geom->staging_cluster );
-		VK_DestroyBuffer( &geom->staging_idx );
-		VK_DestroyBuffer( &geom->staging_xyz );
-		VK_DestroyBuffer( &geom->staging_cluster );
+		vk_rtx_buffer_destroy( &geom->staging_idx );
+		vk_rtx_buffer_destroy( &geom->staging_xyz );
+		vk_rtx_buffer_destroy( &geom->staging_cluster );
 	}
 
 	uint32_t num_instances = geom->dynamic_flags ? NUM_COMMAND_BUFFERS : 1;
 
 	for ( i = 0; i < num_instances; i++ )
 	{
-		if ( geom->dynamic_flags != BLAS_DYNAMIC_FLAG_NONE )
-		{
-			if ( geom->idx[i].is_mapped ) buffer_unmap( &geom->idx[i] );
-			if ( geom->xyz[i].is_mapped ) buffer_unmap( &geom->xyz[i] );
-			if ( geom->cluster[i].is_mapped  ) buffer_unmap( &geom->cluster[i] );
-		}
-
 		vk_rtx_buffer_destroy( &geom->idx[i] );
 		vk_rtx_buffer_destroy( &geom->xyz[i] );
 		vk_rtx_buffer_destroy( &geom->cluster[i] );
@@ -1933,9 +1923,9 @@ static void vk_rtx_build_geometry_buffer( VkCommandBuffer cmd_buf, vk_geometry_d
 		vk_rtx_upload_world_staging( cmd_buf, &geom->staging_xyz,		&geom->xyz[0] );
 		vk_rtx_upload_world_staging( cmd_buf, &geom->staging_cluster,	&geom->cluster[0] );
 
-		/*VK_DestroyBuffer( &geom->staging_idx );
-		VK_DestroyBuffer( &geom->staging_xyz );
-		VK_DestroyBuffer( &geom->staging_cluster );*/
+		/*vk_rtx_buffer_destroy( &geom->staging_idx );
+		vk_rtx_buffer_destroy( &geom->staging_xyz );
+		vk_rtx_buffer_destroy( &geom->staging_cluster );*/
 
 		return;
 	}

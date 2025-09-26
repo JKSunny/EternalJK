@@ -499,7 +499,7 @@ void vk_rtx_build_mdxm_vbo( model_t *mod, mdxmHeader_t *mdxm )
 
 		if (vbo->staging_buffer.buffer)
 		{
-			VK_DestroyBuffer( &vbo->staging_buffer );
+			vk_rtx_buffer_destroy( &vbo->staging_buffer );
 
 			vk_rtx_write_model_descriptor( vboModel->model_index, vk.model_instance.descriptor.vbos, vbo->buffer.buffer, vbo->buffer.size );
 		}

@@ -229,7 +229,7 @@ typedef struct {
 
 typedef struct {
     VkDeviceSize	size;
-    byte			*p;
+    //byte			*p;
     VkBuffer		buffer;
     VkDeviceMemory	memory;
     VkDeviceAddress address;
@@ -505,7 +505,6 @@ VkResult	vkpt_light_buffer_upload_to_staging( qboolean render_world,
 VkResult	vk_rtx_readback( ReadbackBuffer *dst );
 VkResult	vkpt_light_buffers_create( world_t &world );
 VkResult	vkpt_light_buffers_destroy( void );
-void		VK_DestroyBuffer( vkbuffer_t *buffer );
 void		vk_rtx_create_buffers( void );
 void		vk_rtx_destroy_buffers( void );
 void		vk_rtx_bind_vertices( VertexBuffer *vbo, int cluster );

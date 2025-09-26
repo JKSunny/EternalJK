@@ -141,9 +141,9 @@ VkResult vkpt_uniform_buffer_destroy( void )
 	vk.desc_set_layout_ubo = VK_NULL_HANDLE;
 
 	for ( int i = 0; i < VK_MAX_SWAPCHAIN_SIZE; i++ )
-		VK_DestroyBuffer( host_uniform_buffers + i );
+		vk_rtx_buffer_destroy( host_uniform_buffers + i );
 
-	VK_DestroyBuffer( &device_uniform_buffer );
+	vk_rtx_buffer_destroy( &device_uniform_buffer );
 
 	return VK_SUCCESS;
 }
