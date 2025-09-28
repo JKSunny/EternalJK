@@ -28,7 +28,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 #define UBO_CVAR_DO( name, default_value ) GLOBAL_UBO_VAR_LIST_DO( FLOAT, name )
 
-#define UBO_CVAR_LIST \
+#define UBO_CVAR_LIST_FLT \
 	UBO_CVAR_DO( flt_antilag_hf,					1		)	/* A-SVGF anti-lag filter strength, [0..inf) */ \
 	UBO_CVAR_DO( flt_antilag_lf,					0.2		) \
 	UBO_CVAR_DO( flt_antilag_spec,					2		) \
@@ -61,6 +61,8 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 	UBO_CVAR_DO( flt_temporal_hf,					1		)	/* temporal filter strength, [0..1] */ \
 	UBO_CVAR_DO( flt_temporal_lf,					1		) \
 	UBO_CVAR_DO( flt_temporal_spec,					1		) \
+	
+#define UBO_CVAR_LIST_PT \
 	UBO_CVAR_DO( pt_aperture,						2.0		)	/* aperture size for the Depth of Field effect, in world units */ \
 	UBO_CVAR_DO( pt_aperture_angle,					0		)	/* rotation of the polygonal aperture, [0..1] */ \
 	UBO_CVAR_DO( pt_aperture_type,					0		)	/* number of aperture polygon edges, circular if less than 3 */ \
@@ -97,6 +99,8 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 	UBO_CVAR_DO( pt_toksvig,						1		)	/* intensity of Toksvig roughness correction, [0..inf) */ \
 	UBO_CVAR_DO( pt_thick_glass,					0		)	/* switch for thick glass refraction: 0 (disabled), 1 (reference mode only), 2 (real-time mode) */ \
 	UBO_CVAR_DO( pt_water_density,					0.5		)	/* scale for light extinction in water and other media, [0..inf) */ \
+	
+#define UBO_CVAR_LIST_TM \
 	UBO_CVAR_DO( tm_debug,							0		)	/* switch to show the histogram (1) or tonemapping curve (2) */ \
 	UBO_CVAR_DO( tm_dyn_range_stops,				7.0		)	/* Effective display dynamic range in linear stops = log2((max+refl)/(darkest+refl)) (eqn. 6), (-inf..0) */ \
 	UBO_CVAR_DO( tm_enable,							1		)	/* switch for tone mapping, 0 or 1 */ \
@@ -121,6 +125,11 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 	UBO_CVAR_DO( tm_hdr_peak_nits,					800.0	)	/* Exposure value 0 is mapped to this display brightness (post tonemapping) */ \
 	UBO_CVAR_DO( tm_hdr_saturation_scale,			100		)	/* HDR mode saturation adjustment, percentage [0..200], with 0% -> desaturated, 100% -> normal, 200% -> oversaturated */ \
 	UBO_CVAR_DO( ui_hdr_nits,						300		)	/* HDR mode UI (stretch pic) brightness in nits */ \
+
+#define UBO_CVAR_LIST \
+	UBO_CVAR_LIST_FLT \
+	UBO_CVAR_LIST_PT \
+	UBO_CVAR_LIST_TM \
 
 #define GLOBAL_UBO_VAR_LIST \
 	GLOBAL_UBO_VAR_LIST_DO( MAT4,	 V								) \

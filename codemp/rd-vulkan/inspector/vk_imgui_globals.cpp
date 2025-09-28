@@ -214,7 +214,7 @@ qboolean imgui_draw_colorpicker3( const char *label, vec3_t values ){
 
 	ImGui::PushID( label );
 
-	if( ImGui::ColorPicker3("##picker", (float*)temp  ) ){
+	if( ImGui::ColorPicker3("##picker", (float*)temp, ImGuiColorEditFlags_PickerHueWheel ) ){
 		for( i = 0; i < 3; i++ )
 			temp[i] *= 255;
 

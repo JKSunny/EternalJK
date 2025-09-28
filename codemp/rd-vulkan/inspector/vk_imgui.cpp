@@ -508,8 +508,7 @@ void vk_imgui_create_gui( void )
 	vk_imgui_draw_profiler();
 	vk_imgui_draw_viewport();
 #ifdef USE_RTX
-	vk_imgui_draw_rtx_settings();
-	vk_imgui_draw_rtx_feedback();
+	vk_imgui_draw_rtx();
 #endif
 
 	ImGui::End();
