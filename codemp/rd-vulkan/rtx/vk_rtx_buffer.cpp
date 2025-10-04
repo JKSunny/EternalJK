@@ -30,6 +30,14 @@ static int cluster_light_counts[MAX_MAP_CLUSTERS];
 static int light_list_tails[MAX_MAP_CLUSTERS];
 static int max_model_lights = 0;
 
+static cvar_t* cvar_pt_primbuf = NULL;
+static uint32_t current_primbuf_size = 0;
+
+// Clamps and default setting for the animated primitive buffer size
+#define PRIMBUF_SIZE_MIN (1 << 16)
+#define PRIMBUF_SIZE_MAX (1 << 26)
+
+#define PRIMBUF_SIZE_DEFAULT (1 << 20)
 void vkpt_light_buffer_reset_counts( void )	// not used yet
 {
 	max_model_lights = 0;
@@ -240,6 +248,12 @@ void buffer_unmap( vkbuffer_t *buf )
 
 	buf->is_mapped = 0;
 	qvkUnmapMemory( vk.device, buf->memory );
+}
+
+void vk_rtx_buffer_attach_name( const vkbuffer_t *buf, const char *name )
+{
+	VK_SET_OBJECT_NAME( buf->buffer, name, VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT );
+	VK_SET_OBJECT_NAME( buf->memory, name, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT );
 }
 
 static uint32_t VK_DeviceLocalMemoryIndex()	// hmm
@@ -728,6 +742,96 @@ VkResult vkpt_light_buffers_destroy( void )
 	return VK_SUCCESS;
 }
 
+static size_t Q_snprintf(char *dest, size_t size, const char *fmt, ...)
+{
+    va_list argptr;
+    size_t  ret;
+
+    va_start(argptr, fmt);
+    ret = Q_vsnprintf(dest, size, fmt, argptr);
+    va_end(argptr);
+
+    return ret;
+}
+
+static int Cvar_ClampInteger(cvar_t *var, int min, int max)
+{
+    if (var->integer < min) {
+        ri.Cvar_SetValue(var->name, min);
+        return min;
+    }
+    if (var->integer > max) {
+        ri.Cvar_SetValue(var->name, max);
+        return max;
+    }
+    return var->integer;
+}
+
+void create_primbuf( void )
+{
+	int primbuf_size = Cvar_ClampInteger(cvar_pt_primbuf, PRIMBUF_SIZE_MIN, PRIMBUF_SIZE_MAX);
+
+	vk_rtx_buffer_create(&vk.buf_primitive_instanced, sizeof(VboPrimitive) * primbuf_size,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+	vk_rtx_buffer_create(&vk.buf_positions_instanced, sizeof(prim_positions_t) * primbuf_size,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+	current_primbuf_size = primbuf_size;
+}
+
+void destroy_primbuf(void)
+{
+	vk_rtx_buffer_destroy( &vk.buf_primitive_instanced );
+	vk_rtx_buffer_destroy( &vk.buf_positions_instanced );
+}
+
+static inline size_t align(size_t x, size_t alignment)
+{
+	return (x + (alignment - 1)) & ~(alignment - 1);
+}
+
+void vkpt_vertex_buffer_ensure_primbuf_size(uint32_t prim_count)
+{
+	if (prim_count <= current_primbuf_size)
+		return;
+	
+	qvkDeviceWaitIdle(vk.device);
+
+	destroy_primbuf();
+
+	prim_count = (uint32_t)align(prim_count, PRIMBUF_SIZE_MIN);
+	ri.Cvar_SetValue(cvar_pt_primbuf->name, (int)prim_count);
+
+	Com_Printf("Resizing the animation buffers to fit all meshes. Set pt_primbuf to at least %d to avoid this.\n", prim_count);
+
+	create_primbuf();
+
+	VkDescriptorBufferInfo buf_info = { 0 };
+
+	VkWriteDescriptorSet output_buf_write;
+	Com_Memset(&output_buf_write, 0, sizeof(VkWriteDescriptorSet));
+	output_buf_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	output_buf_write.dstSet = vk.desc_set_vertex_buffer->set;
+	output_buf_write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	output_buf_write.descriptorCount = 1;
+	output_buf_write.pBufferInfo = &buf_info;
+
+	output_buf_write.dstBinding = PRIMITIVE_BUFFER_BINDING_IDX;
+	output_buf_write.dstArrayElement = VERTEX_BUFFER_INSTANCED;
+	buf_info.buffer = vk.buf_primitive_instanced.buffer;
+	buf_info.range = vk.buf_primitive_instanced.size;
+	qvkUpdateDescriptorSets(vk.device, 1, &output_buf_write, 0, NULL);
+
+	output_buf_write.dstBinding = POSITION_BUFFER_BINDING_IDX;
+	output_buf_write.dstArrayElement = 0;
+	buf_info.buffer = vk.buf_positions_instanced.buffer;
+	buf_info.range = vk.buf_positions_instanced.size;
+	qvkUpdateDescriptorSets(vk.device, 1, &output_buf_write, 0, NULL);
+}
+
 void vk_rtx_create_buffers( void ) 
 {
 	uint32_t i;
@@ -756,10 +860,6 @@ void vk_rtx_create_buffers( void )
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT );	
 	}
 
-	vk_rtx_buffer_create( &vk.model_instance.buffer_vertex, sizeof(ModelDynamicVertexBuffer),
-		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
 	// light & material buffer
 	vk_rtx_buffer_create( &vk.buf_light, sizeof(LightBuffer),
 		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
@@ -781,6 +881,13 @@ void vk_rtx_create_buffers( void )
 	vk_rtx_buffer_create( &vk.buf_sun_color, sizeof(SunColorBuffer),
 		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+	// primbuf
+	char primbuf_initial_value[16];
+	Q_snprintf(primbuf_initial_value, sizeof(primbuf_initial_value), "%d", PRIMBUF_SIZE_DEFAULT);
+	cvar_pt_primbuf = ri.Cvar_Get("pt_primbuf", primbuf_initial_value, CVAR_ARCHIVE, "");
+
+	create_primbuf();
 }
 
 void vk_rtx_destroy_buffers( void ) 
@@ -788,7 +895,8 @@ void vk_rtx_destroy_buffers( void )
 	uint32_t i = 0;
 
 	vk_rtx_buffer_destroy( &vk.buf_accel_scratch );
-	vk_rtx_buffer_destroy( &vk.model_instance.buffer_vertex );
+	
+	destroy_primbuf();
 
 	vk_rtx_buffer_destroy( &vk.buf_readback );
 	vk_rtx_buffer_destroy( &vk.buf_tonemap );

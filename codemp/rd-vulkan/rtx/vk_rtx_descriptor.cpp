@@ -37,6 +37,7 @@ void vk_rtx_update_descriptor( vkdescriptor_t *descriptor )
 		desc[i].pNext = NULL;
 		desc[i].dstSet = descriptor->set;
 		desc[i].dstBinding = descriptor->bindings[i].binding;
+		desc[i].dstArrayElement	= 0;
 
 		switch ( descriptor->bindings[i].descriptorType ) 
 		{
@@ -359,8 +360,22 @@ void vk_rtx_bind_descriptor_buffer( vkdescriptor_t *descriptor, uint32_t binding
 	}
 }
 
-void vk_rtx_set_descriptor_update_size(  vkdescriptor_t *descriptor, uint32_t binding, 
-										 VkShaderStageFlagBits stage, uint32_t size ) 
+void vk_rtx_bind_descriptor_buffer_element(vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage, uint32_t element, VkBuffer buffer)
+{
+	uint32_t i;
+
+    for (uint32_t i = 0; i < descriptor->size; ++i) {
+        if (descriptor->bindings[i].binding != binding || descriptor->bindings[i].stageFlags != stage)
+            continue;
+
+        descriptor->data[i].buffer[element].buffer = buffer;
+        descriptor->data[i].buffer[element].offset = 0;
+        descriptor->data[i].buffer[element].range = VK_WHOLE_SIZE;
+        return;
+    }
+}
+
+void vk_rtx_set_descriptor_update_size(  vkdescriptor_t *descriptor, uint32_t binding,  VkShaderStageFlagBits stage, uint32_t size ) 
 {
 	uint32_t i;
 

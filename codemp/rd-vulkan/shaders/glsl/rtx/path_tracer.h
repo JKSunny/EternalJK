@@ -142,11 +142,13 @@ layout (push_constant) uniform push_constant_block {
 } push_constants;
 
 struct RayPayloadGeometry {
-	vec2 barycentric;
-	uint instanceID;
-	uint instance_prim;
-	float hit_distance;
-	vec4 transparency;
+   vec2 barycentric;
+   /* two packed 16 bit integers, buffer index in low 16 bits and
+    * instance index in high 16 bits */
+   int buffer_and_instance_idx;
+   uint primitive_id;
+   float hit_distance;
+   uint type; /* deprecated soon */
 };
 
 // for shaderSort_t

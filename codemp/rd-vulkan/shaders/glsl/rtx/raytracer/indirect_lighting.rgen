@@ -243,7 +243,8 @@ indirect_lighting(
 		#if 0
 		vec4 transparency = unpackHalf4x16( ray_payload_geometry.transparency );
 		#else
-		vec4 transparency = ray_payload_geometry.transparency;
+		//vec4 transparency = ray_payload_geometry.transparency;
+		vec4 transparency = trace_effects_ray(bounce_ray, /* skip_procedural = */ true);
 		#endif
 		bounce_contrib += transparency.rgb * transparency.a * bounce_throughput * (1.0 - direct_specular_weight);
 	}

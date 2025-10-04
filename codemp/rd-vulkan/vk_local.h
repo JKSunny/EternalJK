@@ -485,6 +485,9 @@ extern PFN_vkCmdFillBuffer									qvkCmdFillBuffer;
 
 extern PFN_vkCmdBeginDebugUtilsLabelEXT						qvkCmdBeginDebugUtilsLabelEXT;
 extern PFN_vkCmdEndDebugUtilsLabelEXT						qvkCmdEndDebugUtilsLabelEXT;
+
+typedef float mat3[3][3];
+typedef mat3 prim_positions_t;
 #endif
 
 typedef float mat4_t[16];
@@ -978,6 +981,9 @@ typedef struct {
 	
 	vkbuffer_t		buf_readback;
 	vkbuffer_t		buf_readback_staging[VK_MAX_SWAPCHAIN_SIZE];
+
+	vkbuffer_t      buf_primitive_instanced;
+	vkbuffer_t      buf_positions_instanced;
 
 	vkbuffer_t		buf_light;
 	vkbuffer_t		buf_light_staging[VK_MAX_SWAPCHAIN_SIZE];

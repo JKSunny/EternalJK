@@ -380,8 +380,8 @@ void vkpt_instance_geometry( VkCommandBuffer cmd_buf, uint32_t num_instances, qb
 	barrier.pNext               = NULL;
 	barrier.srcAccessMask       = VK_ACCESS_SHADER_WRITE_BIT;
 	barrier.dstAccessMask       = VK_ACCESS_SHADER_READ_BIT;
-	barrier.buffer              = vk.model_instance.buffer_vertex.buffer;
-	barrier.size                = vk.model_instance.buffer_vertex.size;
+	barrier.buffer              = vk.buf_primitive_instanced.buffer;
+	barrier.size                = vk.buf_primitive_instanced.size,
 	barrier.srcQueueFamilyIndex = vk.queue_family_index;
 	barrier.dstQueueFamilyIndex = vk.queue_family_index;
 

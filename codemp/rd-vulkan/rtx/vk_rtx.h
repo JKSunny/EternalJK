@@ -153,7 +153,8 @@ typedef struct
 typedef struct entity_hash_s {
 	unsigned int mesh : 8;
 	unsigned int model : 9;
-	unsigned int entity : 15;
+	unsigned int entity : 14;
+	unsigned int bsp : 1;
 } entity_hash_t;
 
 typedef struct {
@@ -209,8 +210,8 @@ typedef struct sun_light_s {
 typedef struct EntityUploadInfo
 {
 	uint32_t num_instances;
-	uint32_t num_vertices;
-	uint32_t dynamic_vertex_num;
+	uint32_t num_prims;
+	uint32_t opaque_prim_count;
 	uint32_t transparent_model_vertex_offset;
 	uint32_t transparent_model_vertex_num;
 	uint32_t viewer_model_vertex_offset;
@@ -221,6 +222,7 @@ typedef struct EntityUploadInfo
 	uint32_t explosions_vertex_num;
 	qboolean weapon_left_handed;
 } EntityUploadInfo;
+
 
 typedef struct {
 	vec3_t mins;
@@ -236,6 +238,24 @@ typedef struct {
 	int				is_mapped;
 } vkbuffer_t;
 
+typedef struct
+{
+	uint8_t* geometry_storage;
+	VkAccelerationStructureGeometryKHR* geometries;
+	VkAccelerationStructureBuildRangeInfoKHR* build_ranges;
+	uint32_t* prim_counts;
+	uint32_t* prim_offsets;
+	uint32_t num_geometries;
+	uint32_t max_geometries;
+	VkAccelerationStructureBuildSizesInfoKHR build_sizes;
+	VkDeviceSize blas_data_offset;
+	VkAccelerationStructureKHR accel;
+	VkDeviceAddress blas_device_address;
+	VkGeometryInstanceFlagsKHR instance_flags;
+	uint32_t instance_mask;
+	uint32_t sbt_offset;
+} model_geometry_t;
+
 typedef struct {
 	vkbuffer_t buffer;
 	vkbuffer_t staging_buffer;
@@ -244,7 +264,7 @@ typedef struct {
 
 typedef struct {
 	float			transform[12];
-	uint32_t		instance_id			: 24;
+	uint32_t		instance_id			: 24;	// instanceCustomIndex
 	uint32_t		mask				: 8;
 	uint32_t		instance_offset		: 24;
 	uint32_t		flags				: 8;
@@ -257,7 +277,7 @@ typedef struct {
 		VkDescriptorBufferInfo							*buffer;
 		VkWriteDescriptorSetAccelerationStructureKHR	as;
 	};
-
+	uint32_t dstArrayElement;
 	uint32_t updateSize;
 } vkdescriptorData_t;
 
@@ -375,11 +395,14 @@ typedef struct {
 	uint32_t	xyz_count;
 	uint32_t	surf_count;	
 	uint32_t	cluster_count;	
+	uint32_t	num_primitives;
+
 
 	uint32_t	idx_offset;
 	uint32_t	xyz_offset;
 	uint32_t	surf_offset;
 	uint32_t	cluster_offset;
+	uint32_t	offset_primitives;
 } vk_geometry_data_accel_t;
 
 typedef struct {
@@ -387,6 +410,7 @@ typedef struct {
 	VertexBuffer				*xyz;
 	vk_geometry_dynamic_surf_t	*dynamic_surfs;
 	uint32_t					*cluster;
+	VboPrimitive				*primitives;
 
 	uint32_t		idx_count;
 	uint32_t		xyz_count;
@@ -397,16 +421,24 @@ typedef struct {
 	uint32_t		xyz_offset;
 	uint32_t		surf_offset;
 	uint32_t		cluster_offset;
+
+	uint32_t		num_primitives;
+	uint32_t		offset_primitives;
 } vk_geometry_host_t;
 
 typedef struct {
 	vkbuffer_t	idx[NUM_COMMAND_BUFFERS];	// containing data from all blas types
 	vkbuffer_t	xyz[NUM_COMMAND_BUFFERS];	// containing data from all blas types
 	vkbuffer_t	cluster[NUM_COMMAND_BUFFERS];
+	vkbuffer_t	primitives[NUM_COMMAND_BUFFERS];
 
 	vkbuffer_t	staging_idx; // containing data from all blas types
 	vkbuffer_t	staging_xyz; // containing data from all blas types
 	vkbuffer_t	staging_cluster;
+	vkbuffer_t	staging_primitives;
+
+	size_t		vertex_data_offset;
+
 
 	uint32_t	blas_type_flags;
 	uint32_t	dynamic_flags;
@@ -471,6 +503,7 @@ void		vk_rtx_bind_descriptor_buffer( vkdescriptor_t *descriptor, uint32_t bindin
 void		vk_rtx_bind_descriptor_image_sampler( vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage, VkSampler sampler, VkImageView view, uint32_t index );
 void		vk_rtx_create_descriptor( vkdescriptor_t *descriptor );
 void		vk_rtx_set_descriptor_update_size( vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage, uint32_t size );
+void		vk_rtx_bind_descriptor_buffer_element(vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage, uint32_t element, VkBuffer buffer);
 void		vk_rtx_destroy_descriptor( vkdescriptor_t *descriptor );
 void		vk_rtx_destroy_rt_descriptors( void );
 void		vk_rtx_destroy_primary_rays_resources( void );
@@ -487,7 +520,8 @@ void		vk_rtx_destroy_pipeline( vkpipeline_t *pipeline );
 // uniform
 VkResult	vkpt_uniform_buffer_create( void );
 VkResult	vkpt_uniform_buffer_destroy( void );
-VkResult	vkpt_uniform_buffer_update( VkCommandBuffer command_buffer);
+VkResult	vkpt_uniform_buffer_upload_to_staging( void );
+VkResult	vkpt_uniform_buffer_copy_from_staging( VkCommandBuffer command_buffer );
 
 // buffer
 VkResult	allocate_gpu_memory( VkMemoryRequirements mem_req, VkDeviceMemory *pMemory );
@@ -495,6 +529,7 @@ VkResult	vk_rtx_buffer_create( vkbuffer_t *buf, VkDeviceSize size, VkBufferUsage
 VkResult	vk_rtx_buffer_destroy( vkbuffer_t *buf );
 void		*buffer_map( vkbuffer_t *buf );
 void		buffer_unmap( vkbuffer_t *buf );
+void		vk_rtx_buffer_attach_name( const vkbuffer_t *buf, const char *name );
 
 void		VK_CreateImageMemory( VkMemoryPropertyFlags properties, VkImage *image, VkDeviceMemory *bufferMemory );
 void		VK_CreateAttributeBuffer( vkbuffer_t *buffer, VkDeviceSize size, VkBufferUsageFlagBits usage, qboolean is_host_visible );
@@ -510,6 +545,7 @@ void		vk_rtx_destroy_buffers( void );
 void		vk_rtx_bind_vertices( VertexBuffer *vbo, int cluster );
 void		vk_rtx_bind_indicies( uint32_t* ibo, uint32_t base_vertex );
 void		vk_rtx_bind_cluster( uint32_t *cluster, uint32_t cluster_count, int cluster_id );
+void		vkpt_vertex_buffer_ensure_primbuf_size(uint32_t prim_count);
 
 // acceleration structure
 void		vk_rtx_reset_world_geometries( world_t *world );
@@ -520,7 +556,8 @@ void		vk_rtx_create_blas( accel_build_batch_t *batch,
 								 vkbuffer_t *index_buffer, VkDeviceAddress index_offset,
 								 uint32_t num_vertices, uint32_t num_indices,
 								 vk_blas_t *blas, qboolean is_dynamic, qboolean fast_build, 
-								 qboolean allow_update, qboolean instanced );
+								 qboolean allow_update, qboolean is_world, size_t first_vertex_offset,
+								 const char* debug_label );
 void		vk_rtx_update_blas( VkCommandBuffer cmd_buf, vk_geometry_data_t *geom, vk_geometry_data_accel_t *accel,
 								vk_blas_t *blas, vk_blas_t *old_blas );
 void		vk_rtx_create_tlas( accel_build_batch_t *batch, vk_tlas_t *as, VkDeviceAddress instance_data, uint32_t num_instances );
@@ -528,6 +565,12 @@ void		vk_rtx_destroy_accel_all( void );
 void		vk_rtx_destroy_tlas( vk_tlas_t *as );
 void		vk_rtx_destroy_blas( vk_blas_t *blas );
 
+void		vkpt_init_model_geometry(model_geometry_t* info, uint32_t max_geometries);
+void		vkpt_append_model_geometry(model_geometry_t* info, uint32_t num_prims, uint32_t prim_offset, const char* model_name);
+void		suballocate_model_blas_memory(model_geometry_t* info, size_t* vbo_size, const char* model_name);
+void		create_model_blas(model_geometry_t* info, VkBuffer buffer, const char* name);
+void		build_model_blas(VkCommandBuffer cmd_buf, model_geometry_t* info, size_t first_vertex_offset, const vkbuffer_t* buffer);
+void		vkpt_vertex_buffer_upload_bsp_mesh( world_t &worldData );
 
 // bsp
 qboolean	RB_IsSky( shader_t *shader );

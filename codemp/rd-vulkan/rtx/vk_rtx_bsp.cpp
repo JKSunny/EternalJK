@@ -22,6 +22,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "tr_local.h"
+#include "conversion.h"
 
 // uncomment the define to visualize polygonal lights by rednering debug triangles 
 // the value represents the offset along the light’s normal direction
@@ -36,6 +37,32 @@ static void vk_bind_storage_buffer( vkdescriptor_t *descriptor, uint32_t binding
 	vk_rtx_add_descriptor_buffer( descriptor, count, binding, stage, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER );
 	vk_rtx_set_descriptor_update_size( descriptor, binding, stage, count );
 	vk_rtx_bind_descriptor_buffer( descriptor, binding, stage, buffer );
+}
+
+static void vk_bind_primitive_buffer( vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage )
+{
+	//const uint32_t count = VERTEX_BUFFER_FIRST_MODEL + MAX_VBOS;
+	const uint32_t count = 6;
+
+	//#define VERTEX_BUFFER_WORLD 0
+	//#define VERTEX_BUFFER_WORLD_D_MATERIAL 1
+	//#define VERTEX_BUFFER_WORLD_D_GEOMETRY 2
+	//#define VERTEX_BUFFER_SKY 3
+	//#define VERTEX_BUFFER_INSTANCED 4
+	//#define VERTEX_BUFFER_FIRST_MODEL 5
+
+	vk_rtx_add_descriptor_buffer( descriptor, count, binding, stage, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER );
+	vk_rtx_set_descriptor_update_size( descriptor, binding, stage, count );
+
+	// world
+	vk_rtx_bind_descriptor_buffer_element(descriptor, binding, stage, VERTEX_BUFFER_WORLD,				tr.world->geometry.world_static.primitives[0].buffer);
+	vk_rtx_bind_descriptor_buffer_element(descriptor, binding, stage, VERTEX_BUFFER_SKY,				tr.world->geometry.sky_static.primitives[0].buffer);
+	vk_rtx_bind_descriptor_buffer_element(descriptor, binding, stage, VERTEX_BUFFER_WORLD_D_MATERIAL,	tr.world->geometry.world_dynamic_material.primitives[0].buffer);
+	vk_rtx_bind_descriptor_buffer_element(descriptor, binding, stage, VERTEX_BUFFER_WORLD_D_GEOMETRY,	tr.world->geometry.world_dynamic_geometry.primitives[0].buffer);
+	vk_rtx_bind_descriptor_buffer_element(descriptor, binding, stage, VERTEX_BUFFER_SUB_MODELS,			tr.world->geometry.world_submodels.primitives[0].buffer);
+	
+	// instanced
+	vk_rtx_bind_descriptor_buffer_element(descriptor, binding, stage, VERTEX_BUFFER_INSTANCED,			vk.buf_primitive_instanced.buffer );
 }
 
 static void vk_bind_uniform_buffer( vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage, VkBuffer buffer )
@@ -73,6 +100,7 @@ static void vk_create_vertex_buffer_descriptor( world_t& worldData, uint32_t ind
 
 
 	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_XYZ_WORLD_STATIC,			VK_SHADER_STAGE_ALL, worldData.geometry.world_static.xyz[0].buffer );
+
 	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_IDX_WORLD_STATIC,			VK_SHADER_STAGE_ALL, worldData.geometry.world_static.idx[0].buffer );
 	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_XYZ_WORLD_DYNAMIC_DATA,		VK_SHADER_STAGE_ALL, worldData.geometry.world_dynamic_material.xyz[index].buffer );	// index
 	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_IDX_WORLD_DYNAMIC_DATA,		VK_SHADER_STAGE_ALL, worldData.geometry.world_dynamic_material.idx[index].buffer );	// index
@@ -95,11 +123,14 @@ static void vk_create_vertex_buffer_descriptor( world_t& worldData, uint32_t ind
 	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_IDX_WORLD_DYNAMIC_AS_PREV,	VK_SHADER_STAGE_ALL, worldData.geometry.world_dynamic_geometry.idx[prev_index].buffer ); // prev_index
 
 	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_READBACK_BUFFER,				VK_SHADER_STAGE_ALL, vk.buf_readback.buffer );
-	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_DYNAMIC_VERTEX,				VK_SHADER_STAGE_ALL, vk.model_instance.buffer_vertex.buffer );
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_DYNAMIC_VERTEX,				VK_SHADER_STAGE_ALL, vk.buf_readback.buffer );	// can be reomved
 	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_LIGHT_BUFFER,				VK_SHADER_STAGE_ALL, vk.buf_light.buffer );
 	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_TONEMAP_BUFFER,				VK_SHADER_STAGE_ALL, vk.buf_tonemap.buffer );
 	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_SUN_COLOR_BUFFER,			VK_SHADER_STAGE_ALL, vk.buf_sun_color.buffer );
 	vk_bind_uniform_buffer( descriptor, BINDING_OFFSET_SUN_COLOR_UBO,				VK_SHADER_STAGE_ALL, vk.buf_sun_color.buffer );
+
+	vk_bind_primitive_buffer( descriptor, PRIMITIVE_BUFFER_BINDING_IDX,	VK_SHADER_STAGE_ALL );
+	vk_bind_storage_buffer( descriptor, POSITION_BUFFER_BINDING_IDX,	VK_SHADER_STAGE_ALL, vk.buf_positions_instanced.buffer );
 
 	// light stats
 	{
@@ -1430,6 +1461,8 @@ static void vk_rtx_estimate_geometry_recursive( world_t &worldData, mnode_t *nod
 		geom->host.xyz_count += tess.numVertexes;
 		geom->host.cluster_count += num_clusters;
 		geom->host.surf_count++;
+
+		geom->host.num_primitives += tess.numIndexes / 3;
 	}
 }
 
@@ -1443,6 +1476,9 @@ static void vk_rtx_estimate_geometry( world_t &worldData, mnode_t *node, vk_geom
 	geom->host.xyz_offset = 0;
 	geom->host.cluster_offset = 0;
 
+	geom->host.num_primitives = 0;
+	geom->host.offset_primitives = 0;
+
 	vk_rtx_estimate_geometry_recursive( worldData, node, geom, filter );
 
 #ifdef DEBUG_POLY_LIGHTS
@@ -1454,9 +1490,12 @@ static void vk_rtx_estimate_geometry( world_t &worldData, mnode_t *node, vk_geom
 	}
 #endif
 
-	geom->host.idx		= (uint32_t*)calloc( geom->host.idx_count,  sizeof(uint32_t) );
-	geom->host.xyz		= (VertexBuffer*)calloc( geom->host.xyz_count, sizeof(VertexBuffer) );
-	geom->host.cluster	= (uint32_t*)calloc( MAX( 1, (geom->host.idx_count / 3)),  sizeof(uint32_t) );
+	geom->host.idx			= (uint32_t*)calloc( geom->host.idx_count,  sizeof(uint32_t) );
+	geom->host.xyz			= (VertexBuffer*)calloc( geom->host.xyz_count, sizeof(VertexBuffer) );
+	geom->host.cluster		= (uint32_t*)calloc( MAX( 1, (geom->host.idx_count / 3)),  sizeof(uint32_t) );
+
+	geom->host.primitives	= (VboPrimitive*)calloc( MAX( 1, (geom->host.num_primitives )),  sizeof(VboPrimitive) );
+	Com_Memset( geom->host.primitives, 0, MAX( 1, (geom->host.num_primitives )) * sizeof(VboPrimitive) );
 
 	if ( geom->dynamic_flags )
 	{
@@ -1464,7 +1503,7 @@ static void vk_rtx_estimate_geometry( world_t &worldData, mnode_t *node, vk_geom
 	}
 }
 
-static void vk_rtx_estimate_bmodels( vk_geometry_data_t *geom, world_t& worldData )
+static void vk_rtx_estimate_bmodels( world_t& worldData, vk_geometry_data_t *geom )
 {
 	geom->host.idx_count = 0;
 	geom->host.xyz_count = 0;
@@ -1472,6 +1511,9 @@ static void vk_rtx_estimate_bmodels( vk_geometry_data_t *geom, world_t& worldDat
 	geom->host.xyz_offset = 0;
 	geom->host.xyz_offset = 0;
 	geom->host.cluster_offset = 0;
+
+	geom->host.num_primitives = 0;
+	geom->host.offset_primitives = 0;
 
 	for ( int model = 0; model < worldData.num_bmodels; model++ ) 
 	{
@@ -1495,18 +1537,137 @@ static void vk_rtx_estimate_bmodels( vk_geometry_data_t *geom, world_t& worldDat
 			geom->host.xyz_count += tess.numVertexes;
 			//geom->host.cluster_count += num_clusters;
 
+			geom->host.num_primitives += tess.numIndexes / 3;
+
 			tess.numVertexes = tess.numIndexes = 0;
 		}
 	}
 
 	geom->host.idx		= (uint32_t*)calloc( geom->host.idx_count,  sizeof(uint32_t) );
 	geom->host.xyz		= (VertexBuffer*)calloc( geom->host.xyz_count, sizeof(VertexBuffer) );
+
+	geom->host.primitives	= (VboPrimitive*)calloc( MAX( 1, (geom->host.num_primitives )),  sizeof(VboPrimitive) );
+
 	//geom->host.cluster	= (uint32_t*)calloc( MAX( 1, (geom->host.idx_count / 3)),  sizeof(uint32_t) );
 
 	/*if ( geom->dynamic_flags )
 	{
 		geom->host.dynamic_surfs = (vk_geometry_dynamic_surf_t*)calloc( geom->host.surf_count, sizeof(vk_geometry_dynamic_surf_t) );
 	}*/
+}
+
+#define clamp(a,b,c)    ((a)<(b)?(a)=(b):(a)>(c)?(a)=(c):(a))
+
+uint32_t
+encode_normal(const vec3_t normal)
+{
+	float invL1Norm = 1.0f / (fabsf(normal[0]) + fabsf(normal[1]) + fabsf(normal[2]));
+
+	vec2_t p = { normal[0] * invL1Norm, normal[1] * invL1Norm };
+	vec2_t pp = { p[0], p[1] };
+
+	if (normal[2] < 0.f)
+	{
+		pp[0] = (1.f - fabsf(p[1])) * ((p[0] >= 0.f) ? 1.f : -1.f);
+		pp[1] = (1.f - fabsf(p[0])) * ((p[1] >= 0.f) ? 1.f : -1.f);
+	}
+
+	pp[0] = pp[0] * 0.5f + 0.5f;
+	pp[1] = pp[1] * 0.5f + 0.5f;
+
+	clamp(pp[0], 0.f, 1.f);
+	clamp(pp[1], 0.f, 1.f);
+
+	uint32_t ux = (uint32_t)(pp[0] * 0xffffu);
+	uint32_t uy = (uint32_t)(pp[1] * 0xffffu);
+
+	return ux | (uy << 16);
+}
+
+// create_poly(worldData, surf, material_id, geom, surface_prims);
+static uint32_t create_poly( vk_geometry_data_t *geom, vk_geometry_data_accel_t *accel, VboPrimitive* primitives_out, uint32_t base_vertex )
+{
+	int i0, i1, i2;
+	const shaderStage_t *pStage;
+
+	for ( uint32_t i = 0; i < MAX_RTX_STAGES; i++ ) 
+	{
+		pStage = tess.shader->stages[i];
+
+		if ( !pStage || !pStage->active )
+			break;
+
+		//
+		// only compute bundle 0 for now
+		//
+		if ( pStage->tessFlags & TESS_RGBA0 )
+		{
+			ComputeColors( 0, tess.svars.colors[0], pStage, 0 );
+		}
+
+		if ( pStage->tessFlags & TESS_ST0 )
+		{
+			ComputeTexCoords( 0, &pStage->bundle[0] );
+		}
+	}
+
+	uint32_t material_index, material_flags;
+	vk_rtx_shader_to_material( tess.shader, material_index, material_flags );
+
+	rtx_material_t *material = vk_rtx_get_material( tess.shader->index );
+	const float emissive_factor = compute_emissive(material);
+
+	float alpha = 1.f;
+	//if (MAT_IsKind(material_id, MATERIAL_KIND_TRANSPARENT))
+	//	alpha = (texinfo->c.flags & SURF_TRANS33) ? 0.33f : (texinfo->c.flags & SURF_TRANS66) ? 0.66f : 1.0f;
+
+	const uint32_t emissive_and_alpha = floatToHalf(emissive_factor) | (floatToHalf(alpha) << 16);
+
+	int numTris = tess.numIndexes / 3;
+
+	for ( uint32_t i = 0; i < numTris; ++i ) 
+	{
+		memset(primitives_out, 0, sizeof(VboPrimitive));
+
+		uint32_t idx_base = i * 3;
+
+		i0 = tess.indexes[idx_base + 0];// + base_vertex;
+		i1 = tess.indexes[idx_base + 1];// + base_vertex;
+		i2 = tess.indexes[idx_base + 2];// + base_vertex;
+
+		VectorCopy( tess.xyz[i0], primitives_out->pos0 );
+		VectorCopy( tess.xyz[i1], primitives_out->pos1 );
+		VectorCopy( tess.xyz[i2], primitives_out->pos2 );
+
+		primitives_out->normals[0] = encode_normal( tess.normal[i0] );
+		primitives_out->normals[1] = encode_normal( tess.normal[i1] );
+		primitives_out->normals[2] = encode_normal( tess.normal[i2] );
+
+		primitives_out->tangents[0] = encode_normal( tess.qtangent[i0] );
+		primitives_out->tangents[1] = encode_normal( tess.qtangent[i1] );
+		primitives_out->tangents[2] = encode_normal( tess.qtangent[i2] );
+
+		primitives_out->uv0[0] = tess.svars.texcoordPtr[0][i0][0];
+		primitives_out->uv0[1] = tess.svars.texcoordPtr[0][i0][1];
+
+		primitives_out->uv1[0] = tess.svars.texcoordPtr[0][i1][0];
+		primitives_out->uv1[1] = tess.svars.texcoordPtr[0][i1][1];
+
+		primitives_out->uv2[0] = tess.svars.texcoordPtr[0][i2][0];
+		primitives_out->uv2[1] = tess.svars.texcoordPtr[0][i2][1];
+
+		primitives_out->color0[0] = tess.svars.colors[0][i0][0] | tess.svars.colors[0][i0][1] << 8 | tess.svars.colors[0][i0][2] << 16 | tess.svars.colors[0][i0][3] << 24;
+		primitives_out->color1[0] = tess.svars.colors[0][i1][0] | tess.svars.colors[0][i1][1] << 8 | tess.svars.colors[0][i1][2] << 16 | tess.svars.colors[0][i1][3] << 24;
+		primitives_out->color2[0] = tess.svars.colors[0][i2][0] | tess.svars.colors[0][i2][1] << 8 | tess.svars.colors[0][i2][2] << 16 | tess.svars.colors[0][i2][3] << 24;
+
+		primitives_out->material_id = (material_flags & ~MATERIAL_INDEX_MASK) | (material_index & MATERIAL_INDEX_MASK);
+		primitives_out->emissive_and_alpha = emissive_and_alpha;
+		primitives_out->instance = 0;
+
+		++primitives_out;
+	}
+
+	return numTris;
 }
 
 static void vk_rtx_collect_surfaces( vk_geometry_data_t *geom, int type, world_t &worldData, mnode_t *node, int model_idx,
@@ -1574,6 +1735,39 @@ static void vk_rtx_collect_surfaces( vk_geometry_data_t *geom, int type, world_t
 			accel->surf_count++;
 		}
 
+		VboPrimitive* surface_prims = geom->host.primitives + geom->host.offset_primitives;
+		uint32_t prims_in_surface = create_poly( geom, accel, surface_prims, accel->xyz_count);
+
+		geom->host.offset_primitives += prims_in_surface;
+		accel->num_primitives += prims_in_surface;
+
+		for (uint32_t k = 0; k < prims_in_surface; ++k) {
+			//if (model_idx < 0) world, sub bmodels have sep collector
+			{
+				float positions[9];
+				VectorCopy(surface_prims[k].pos0, positions + 0);
+				VectorCopy(surface_prims[k].pos1, positions + 3);
+				VectorCopy(surface_prims[k].pos2, positions + 6);
+
+				vec3_t center, anti_center;
+				get_triangle_off_center(positions, center, anti_center, 0.01f);
+
+				//int cluster = BSP_PointLeaf(worldData.nodes, center)->cluster;
+				int cluster = (model_idx < 0) ? node->cluster : -1;
+
+				if (cluster < 0) {
+					get_triangle_off_center(positions, center, anti_center, 1.f);
+					cluster = BSP_PointLeaf(worldData.nodes, center)->cluster;
+				}
+
+				surface_prims[k].cluster = cluster;
+			}
+
+			//else{ // sub bmodels
+			//	surface_prims[k].cluster = -1;
+			//}
+		}
+
 		// add surface to host buffer
 		int cluster = (model_idx < 0) ? node->cluster : -1;
 		const uint32_t num_clusters = (tess.numIndexes / 3);
@@ -1600,7 +1794,7 @@ static void vk_rtx_collect_surfaces( vk_geometry_data_t *geom, int type, world_t
 	}	
 }
 
-static void vk_rtx_collect_bmodel_surfaces( vk_geometry_data_t *geom, int type, bmodel_t *bmodel )
+static void vk_rtx_collect_bmodel_surfaces( world_t &worldData, vk_geometry_data_t *geom, int type, bmodel_t *bmodel )
 {
 	vk_geometry_data_accel_t *accel = &geom->accel[type];
 	msurface_t	*surf;
@@ -1625,8 +1819,41 @@ static void vk_rtx_collect_bmodel_surfaces( vk_geometry_data_t *geom, int type, 
 		tess.allowVBO = qfalse;
 		rb_surfaceTable[*surf->data](surf->data);
 
-		//const uint32_t num_clusters = (tess.numIndexes / 3);
+		VboPrimitive* surface_prims = geom->host.primitives + geom->host.offset_primitives;
+		uint32_t prims_in_surface = create_poly( geom, accel, surface_prims, accel->xyz_count);
 
+		geom->host.offset_primitives += prims_in_surface;
+		accel->num_primitives += prims_in_surface;
+
+		for (uint32_t k = 0; k < prims_in_surface; ++k) {
+			//if (model_idx < 0) world, sub bmodels have sep collector
+			{
+				float positions[9];
+				VectorCopy(surface_prims[k].pos0, positions + 0);
+				VectorCopy(surface_prims[k].pos1, positions + 3);
+				VectorCopy(surface_prims[k].pos2, positions + 6);
+
+				vec3_t center, anti_center;
+				get_triangle_off_center(positions, center, anti_center, 0.01f);
+
+				int cluster = BSP_PointLeaf(worldData.nodes, center)->cluster;
+				//int cluster = (model_idx < 0) ? node->cluster : -1;
+
+				if (cluster < 0) {
+					get_triangle_off_center(positions, center, anti_center, 1.f);
+					cluster = BSP_PointLeaf(worldData.nodes, center)->cluster;
+				}
+
+				surface_prims[k].cluster = cluster;
+			}
+
+			//else{ // sub bmodels
+			//	surface_prims[k].cluster = -1;
+			//}
+		}
+
+
+		// add surface to host buffer
 		assert( geom->host.xyz_offset + tess.numVertexes <= geom->host.xyz_count );
 		assert( geom->host.idx_offset + tess.numIndexes <= geom->host.idx_count );
 		//assert( geom->host.cluster_offset + num_clusters <= geom->host.cluster_count );
@@ -1778,6 +2005,9 @@ static void vk_rtx_reset_world_geometry( vk_geometry_data_t *geom )
 	if ( geom->host.dynamic_surfs )
 		free( geom->host.cluster );
 
+	if ( geom->host.primitives )
+		free( geom->host.primitives );
+
 	Com_Memset( &geom->host, 0, sizeof(vk_geometry_host_t) );
 	
 	if ( geom->dynamic_flags == BLAS_DYNAMIC_FLAG_NONE )
@@ -1834,115 +2064,11 @@ static void vk_rtx_set_geomertry_accel_offsets( vk_geometry_data_t *geom, int ty
 {
 	vk_geometry_data_accel_t *accel = &geom->accel[type];
 
-	accel->idx_offset		= geom->host.idx_offset;
-	accel->xyz_offset		= geom->host.xyz_offset;
-	accel->surf_offset		= geom->host.surf_offset;
-	accel->cluster_offset	= geom->host.cluster_offset;
-}
-
-//#define AS_BUFFER_FLAGS (VkBufferUsageFlagBits)(VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT)
-
-#define AS_VERTEX_BUFFER_FLAGS ( \
-    VK_BUFFER_USAGE_TRANSFER_DST_BIT | \
-    VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | \
-    VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | \
-    VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR )
-
-#define AS_INDEX_BUFFER_FLAGS ( \
-    VK_BUFFER_USAGE_TRANSFER_DST_BIT | \
-    VK_BUFFER_USAGE_INDEX_BUFFER_BIT | \
-    VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | \
-    VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR )
-
-#define AS_CLUSTER_BUFFER_FLAGS ( \
-    VK_BUFFER_USAGE_TRANSFER_DST_BIT | \
-    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT )
-
-static void vk_rtx_upload_world_staging( VkCommandBuffer cmd_buf, vkbuffer_t *staging, vkbuffer_t *device )
-{
-	if ( !staging || !device ) {
-		Com_Error(ERR_DROP, "Incorrect BSP buffers\n");
-		return;
-	}
-
-	VkBufferCopy copyRegion;
-	Com_Memset( &copyRegion, 0, sizeof(VkBufferCopy) );
-	copyRegion.size = staging->size;
-
-	qvkCmdCopyBuffer(cmd_buf, staging->buffer, device->buffer, 1, &copyRegion);
-}
-
-static void vk_rtx_build_geometry_buffer( VkCommandBuffer cmd_buf, vk_geometry_data_t *geom ) 
-{
-	uint32_t i, type;
-	uint32_t idx_count = 0;
-	uint32_t xyz_count = 0;
-	uint32_t cluster_count = 0;
-	const uint32_t offset = 0 ;
-
-	for ( type = 0; type < BLAS_TYPE_COUNT; ++type ) 
-	{
-		idx_count		+= geom->accel[type].idx_count;
-		xyz_count		+= geom->accel[type].xyz_count;
-		cluster_count	+= geom->accel[type].cluster_count;
-	}
-
-	// dynamic geometries overallocation
-	uint32_t alloc_idx_count		= idx_count;
-	uint32_t alloc_xyz_count		= xyz_count;
-	uint32_t alloc_cluster_count	= cluster_count;
-	if ( geom->dynamic_flags & BLAS_DYNAMIC_FLAG_ALL )
-	{
-		alloc_idx_count *= 2;
-		alloc_xyz_count *= 2;
-		alloc_cluster_count *= 2;
-	}
-
-
-	qboolean is_host_visible = qfalse;
-
-	if ( geom->dynamic_flags == BLAS_DYNAMIC_FLAG_NONE )
-	{
-		VK_CreateAttributeBuffer( &geom->idx[0],			MAX( 1, alloc_idx_count ) * sizeof(uint32_t), (VkBufferUsageFlagBits) AS_INDEX_BUFFER_FLAGS,		is_host_visible );
-		VK_CreateAttributeBuffer( &geom->xyz[0],			MAX( 1, alloc_xyz_count ) * sizeof(VertexBuffer), (VkBufferUsageFlagBits)AS_VERTEX_BUFFER_FLAGS,	is_host_visible );
-		VK_CreateAttributeBuffer( &geom->cluster[0],		MAX( 1, alloc_cluster_count ) * sizeof(uint32_t), (VkBufferUsageFlagBits)AS_CLUSTER_BUFFER_FLAGS,	is_host_visible );
-
-		if ( idx_count <= 0 || xyz_count <= 0 )
-			return;
-
-		is_host_visible = qtrue;
-		VK_CreateAttributeBuffer( &geom->staging_idx,		MAX( 1, alloc_idx_count ) * sizeof(uint32_t),		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,	is_host_visible );
-		VK_CreateAttributeBuffer( &geom->staging_xyz,		MAX( 1, alloc_xyz_count ) * sizeof(VertexBuffer),	VK_BUFFER_USAGE_TRANSFER_SRC_BIT,	is_host_visible );
-		VK_CreateAttributeBuffer( &geom->staging_cluster,	MAX( 1, alloc_cluster_count ) * sizeof(uint32_t),	VK_BUFFER_USAGE_TRANSFER_SRC_BIT,	is_host_visible );
-		
-		vk_rtx_upload_buffer_data_offset( &geom->staging_idx,		0, idx_count * sizeof(uint32_t),		(const byte*)geom->host.idx + offset * sizeof(uint32_t) );
-		vk_rtx_upload_buffer_data_offset( &geom->staging_xyz,		0, xyz_count * sizeof(VertexBuffer),	(const byte*)geom->host.xyz + offset * sizeof(VertexBuffer) );
-		vk_rtx_upload_buffer_data_offset( &geom->staging_cluster,	0, cluster_count * sizeof(uint32_t),	(const byte*)geom->host.cluster + offset * sizeof(uint32_t) );
-	
-		vk_rtx_upload_world_staging( cmd_buf, &geom->staging_idx,		&geom->idx[0] );
-		vk_rtx_upload_world_staging( cmd_buf, &geom->staging_xyz,		&geom->xyz[0] );
-		vk_rtx_upload_world_staging( cmd_buf, &geom->staging_cluster,	&geom->cluster[0] );
-
-		/*vk_rtx_buffer_destroy( &geom->staging_idx );
-		vk_rtx_buffer_destroy( &geom->staging_xyz );
-		vk_rtx_buffer_destroy( &geom->staging_cluster );*/
-
-		return;
-	}
-	
-	uint32_t num_instances = geom->dynamic_flags ? NUM_COMMAND_BUFFERS : 1;
-	is_host_visible = qtrue;
-
-	for ( i = 0; i < num_instances; ++i )
-	{
-		VK_CreateAttributeBuffer( &geom->idx[i], MAX( 1, alloc_idx_count ) * sizeof(uint32_t), (VkBufferUsageFlagBits) AS_INDEX_BUFFER_FLAGS,			is_host_visible );
-		VK_CreateAttributeBuffer( &geom->xyz[i], MAX( 1, alloc_xyz_count ) * sizeof(VertexBuffer), (VkBufferUsageFlagBits)AS_VERTEX_BUFFER_FLAGS,		is_host_visible );
-		VK_CreateAttributeBuffer( &geom->cluster[i], MAX( 1, alloc_cluster_count ) * sizeof(uint32_t), (VkBufferUsageFlagBits)AS_CLUSTER_BUFFER_FLAGS,	is_host_visible );
-
-		vk_rtx_upload_buffer_data_offset( &geom->idx[i], 0, idx_count * sizeof(uint32_t), (const byte*)geom->host.idx + offset * sizeof(uint32_t) );
-		vk_rtx_upload_buffer_data_offset( &geom->xyz[i], 0, xyz_count * sizeof(VertexBuffer), (const byte*)geom->host.xyz + offset * sizeof(VertexBuffer) );
-		vk_rtx_upload_buffer_data_offset( &geom->cluster[i], 0, cluster_count * sizeof(uint32_t), (const byte*)geom->host.cluster + offset * sizeof(uint32_t) );
-	}
+	accel->idx_offset			= geom->host.idx_offset;
+	accel->xyz_offset			= geom->host.xyz_offset;
+	accel->surf_offset			= geom->host.surf_offset;
+	accel->cluster_offset		= geom->host.cluster_offset;
+	accel->offset_primitives	= geom->host.offset_primitives;
 }
 
 void vk_rtx_debug_geom( vk_geometry_data_t *geom )
@@ -2111,11 +2237,11 @@ void R_PreparePT( world_t &worldData )
 	vk_rtx_estimate_geometry( worldData, worldData.nodes, world_static,				filter_static );
 	vk_rtx_estimate_geometry( worldData, worldData.nodes, world_dynamic_material,	filter_dynamic_material );
 	vk_rtx_estimate_geometry( worldData, worldData.nodes, world_dynamic_geometry,	filter_dynamic_geometry );
+	vk_rtx_estimate_bmodels( worldData, world_submodels );
 
 	// sky
 	vk_rtx_collect_surfaces( sky_static, BLAS_TYPE_OPAQUE, worldData, worldData.nodes, -1, filter_sky, filter_opaque );
 	
-
 	// opaque
 	vk_rtx_collect_surfaces( world_static, BLAS_TYPE_OPAQUE, worldData, worldData.nodes, -1, filter_static, filter_opaque );
 #ifdef DEBUG_POLY_LIGHTS
@@ -2134,17 +2260,21 @@ void R_PreparePT( world_t &worldData )
 	vk_rtx_set_geomertry_accel_offsets( world_dynamic_geometry, BLAS_TYPE_TRANSPARENT );
 	vk_rtx_collect_surfaces( world_dynamic_geometry, BLAS_TYPE_TRANSPARENT, worldData, worldData.nodes, -1, filter_dynamic_geometry, filter_transparent );
 
-	// sub brush models (instanced, no blas)
-	vk_rtx_estimate_bmodels( world_submodels, worldData );
+	// sub brush models
 	for ( i = 0; i < worldData.num_bmodels; i++ ) 
 	{
 		bmodel_t *bmodel = &worldData.bmodels[i];
 		
 		bmodel->idx_offset = world_submodels->host.idx_offset;
 		bmodel->xyz_offset = world_submodels->host.xyz_offset;
-		vk_rtx_collect_bmodel_surfaces( world_submodels, BLAS_TYPE_OPAQUE, bmodel );
+		bmodel->offset_primitives = world_submodels->host.offset_primitives;
+		vk_rtx_collect_bmodel_surfaces( worldData, world_submodels, BLAS_TYPE_OPAQUE, bmodel );
 		bmodel->idx_count = world_submodels->host.idx_offset - bmodel->idx_offset;
 		bmodel->xyz_count = world_submodels->host.xyz_offset - bmodel->xyz_offset;
+		bmodel->num_primitives = world_submodels->host.offset_primitives - bmodel->offset_primitives;
+		
+		vkpt_init_model_geometry(&bmodel->geometry, 1);
+		vkpt_append_model_geometry( &bmodel->geometry, bmodel->num_primitives, bmodel->offset_primitives, "bsp_model");
 	}
 	
 	for ( i = 0; i < worldData.num_bmodels; i++ ) 
@@ -2169,7 +2299,7 @@ void R_PreparePT( world_t &worldData )
 #ifndef DEBUG_POLY_LIGHTS
 	collect_light_polys( worldData, -1, &worldData.num_light_polys, &worldData.allocated_light_polys, &worldData.light_polys );
 #endif
-#if 1
+
 	for ( i = 0; i < worldData.num_bmodels; i++ ) 
 	{
 		bmodel_t *bmodel = &worldData.bmodels[i];
@@ -2182,42 +2312,15 @@ void R_PreparePT( world_t &worldData )
 	
 		Com_Printf("num light polys : %d", bmodel->num_light_polys );
 	}
-#endif
+
 	collect_cluster_lights( worldData );
 
 	compute_sky_visibility( worldData );
 
 	vkpt_light_buffers_create( worldData  );
 
-	{	
-		VkCommandBuffer cmd_buf = vkpt_begin_command_buffer(&vk.cmd_buffers_graphics);
-
-		vk_rtx_build_geometry_buffer( cmd_buf, sky_static );
-		vk_rtx_build_geometry_buffer( cmd_buf, world_static );
-		vk_rtx_build_geometry_buffer( cmd_buf, world_dynamic_material );
-		vk_rtx_build_geometry_buffer( cmd_buf, world_dynamic_geometry );
-		vk_rtx_build_geometry_buffer( cmd_buf, world_submodels );
-
-		accel_build_batch_t batch;
-		Com_Memset( &batch, 0, sizeof(accel_build_batch_t) );
-
-		vk_rtx_create_blas_bsp( &batch, sky_static				);
-		vk_rtx_create_blas_bsp( &batch, world_static			);
-		vk_rtx_create_blas_bsp( &batch, world_dynamic_material	);
-		vk_rtx_create_blas_bsp( &batch, world_dynamic_geometry	);
-
-		qvkCmdBuildAccelerationStructuresKHR( cmd_buf, batch.numBuilds, batch.buildInfos, batch.rangeInfoPtrs );
-		MEM_BARRIER_BUILD_ACCEL(cmd_buf); /* probably not needed here but doesn't matter */
-
-		assert( vk.buf_light_stats[0].buffer != NULL );
-
-		for ( i = 0; i < NUM_LIGHT_STATS_BUFFERS; i++ )
-			qvkCmdFillBuffer( cmd_buf, vk.buf_light_stats[i].buffer, 0, vk.buf_light_stats[i].size, 0 );
-	
-		vkpt_submit_command_buffer(cmd_buf, vk.queue_graphics, (1 << vk.device_count) - 1, 0, NULL, NULL, NULL, 0, NULL, NULL, NULL);
-
-		vk.scratch_buf_ptr = 0;
-	}
+	// create buffers and upload and create blas
+	vkpt_vertex_buffer_upload_bsp_mesh( worldData );
 
 	// ~sunny, rework this ..
 	vk_rtx_prepare_envmap( worldData );

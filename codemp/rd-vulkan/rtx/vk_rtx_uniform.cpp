@@ -148,7 +148,7 @@ VkResult vkpt_uniform_buffer_destroy( void )
 	return VK_SUCCESS;
 }
 
-VkResult vkpt_uniform_buffer_update( VkCommandBuffer command_buffer )
+VkResult vkpt_uniform_buffer_upload_to_staging( void )
 {
 	vkbuffer_t *ubo = host_uniform_buffers + vk.current_frame_index;
 
@@ -165,7 +165,13 @@ VkResult vkpt_uniform_buffer_update( VkCommandBuffer command_buffer )
 	memcpy((uint8_t*)mapped_ubo + offset, &vk.uniform_instance_buffer, sizeof(InstanceBuffer));
 
 	buffer_unmap( ubo );
-	mapped_ubo = NULL;
+
+	return VK_SUCCESS;
+}
+
+VkResult vkpt_uniform_buffer_copy_from_staging( VkCommandBuffer command_buffer )
+{
+	vkbuffer_t *ubo = host_uniform_buffers + vk.current_frame_index;
 
 	VkBufferCopy copy = { 0 };
 	copy.size = align(sizeof(vkUniformRTX_t), ubo_alignment) + sizeof(InstanceBuffer);

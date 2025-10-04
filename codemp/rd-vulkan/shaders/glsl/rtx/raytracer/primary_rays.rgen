@@ -167,6 +167,8 @@ main()
 	 	triangle = get_hit_triangle(ray_payload_geometry);
 	}
 
+	vec4 effects = trace_effects_ray(ray, /* skip_procedural = */ false);
+
 	direction = ray.direction;
 
 	// If the primary ray didn't hit anything, or it hit a sky polygon and pt_show_sky is disabled, 
@@ -179,7 +181,8 @@ main()
 #if 0
 		vec4 transparent = alpha_blend( unpackHalf4x16( ray_payload_geometry.transparency ), vec4( env, 1 ) );
 #else
-		vec4 transparent = alpha_blend( ray_payload_geometry.transparency, vec4( env, 1 ) );
+		//vec4 transparent = alpha_blend( ray_payload_geometry.transparency, vec4( env, 1 ) );
+		vec4 transparent = alpha_blend(effects, vec4(env, 1));
 #endif
 
 		if(is_readback_pixel)
@@ -214,15 +217,11 @@ main()
 	}
 
 	vec3 bary = get_hit_barycentric(ray_payload_geometry);
-	uint primitive_id = get_primitive(ray_payload_geometry);
-	bool is_dynamic_primitive = is_dynamic_instance(ray_payload_geometry);
 
 	{
 		uvec2 vis_buf;
-		vis_buf.x = is_dynamic_primitive ? 
-			get_instance_id_instanced( primitive_id ) : 
-			visbuf_pack_static_instance( ray_payload_geometry.instanceID );
-		vis_buf.y = primitive_id;
+		vis_buf.x = triangle.instance_index;
+		vis_buf.y = triangle.instance_prim;
 		imageStore(IMG_PT_VISBUF_PRIM_A, ipos, uvec4(vis_buf, 0, 0));
 		imageStore(IMG_PT_VISBUF_BARY_A, ipos, vec4(bary.yz, 0, 0));
 	}

@@ -90,29 +90,24 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define BINDING_OFFSET_XYZ_WORLD_SUBMODEL                   24
 #define BINDING_OFFSET_IDX_WORLD_SUBMODEL                   25
 
+#define PRIMITIVE_BUFFER_BINDING_IDX						26
+#define POSITION_BUFFER_BINDING_IDX							27
+
+#define VERTEX_BUFFER_WORLD 0
+#define VERTEX_BUFFER_SKY 1
+#define VERTEX_BUFFER_WORLD_D_MATERIAL 2
+#define VERTEX_BUFFER_WORLD_D_GEOMETRY 3
+#define VERTEX_BUFFER_INSTANCED 4
+#define VERTEX_BUFFER_SUB_MODELS 5
+#define VERTEX_BUFFER_FIRST_MODEL 6
+
 #define SUN_COLOR_ACCUMULATOR_FIXED_POINT_SCALE 0x100000
 #define SKY_COLOR_ACCUMULATOR_FIXED_POINT_SCALE 0x100
-
-#define MODEL_DYNAMIC_VERTEX_BUFFER_LIST \
-	VERTEX_BUFFER_LIST_DO( float,	 3,					positions_instanced,		(MAX_VERT_MODEL) ) \
-	VERTEX_BUFFER_LIST_DO( float,    3,					pos_prev_instanced,			(MAX_VERT_MODEL) ) \
-	VERTEX_BUFFER_LIST_DO( uint32_t, 1,					normals_instanced,			(MAX_VERT_MODEL) ) \
-	VERTEX_BUFFER_LIST_DO( uint32_t, 1,					tangents_instanced,			(MAX_VERT_MODEL) ) \
-	VERTEX_BUFFER_LIST_DO( float,    2,					tex_coords_instanced,		(MAX_VERT_MODEL) ) \
-	VERTEX_BUFFER_LIST_DO( float,    1,					alpha_instanced,			(MAX_PRIM_MODEL) ) \
-	VERTEX_BUFFER_LIST_DO( uint32_t, 1,					clusters_instanced,			(MAX_PRIM_MODEL) ) \
-	VERTEX_BUFFER_LIST_DO( uint32_t, 1,					materials_instanced,		(MAX_PRIM_MODEL) ) \
-	VERTEX_BUFFER_LIST_DO( uint32_t, 1,					instance_id_instanced,		(MAX_PRIM_MODEL) ) \
 
 // sample_light_counts: light count in cluster used for sampling (may differ from actual light count!)
 
 #define VERTEX_BUFFER_LIST_DO( type, dim, name, size ) \
 type name[ ALIGN_SIZE_4( size, dim ) ];
-
-struct ModelDynamicVertexBuffer
-{
-	MODEL_DYNAMIC_VERTEX_BUFFER_LIST
-};
 
 STRUCT ( 
 	UINT	( material_table[MAX_PBR_MATERIALS * MATERIAL_UINTS] )
@@ -181,6 +176,36 @@ STRUCT (
     UINT    ( buff2 )
 ,VertexBuffer )
 
+STRUCT (
+	VEC3    ( pos0 )
+	UINT    ( material_id )
+
+	VEC3    ( pos1 )
+	INT     ( cluster )
+
+	VEC3    ( pos2 )
+	UINT    ( shell )
+
+	UVEC3	( normals )
+	UINT    ( instance )
+
+	UVEC3   ( tangents )
+	/* packed half2x16, with emissive in x component/low 16 bits and
+	 * alpha in y component/high 16 bits */
+	UINT    ( emissive_and_alpha )
+
+	VEC2    ( uv0 )
+	VEC2    ( uv1 )
+	VEC2    ( uv2 )
+
+	UVEC2	( custom0 )  // The custom fields store motion for instanced meshes in the animated buffer,
+	UVEC2	( custom1 )  // or blend indices and weights for skinned meshes before they're animated.
+	UVEC2	( custom2 )
+
+	UINT    ( color0[4] )
+	UINT    ( color1[4] )
+	UINT    ( color2[4] )
+, VboPrimitive )
 
 #ifdef GLSL
 
@@ -262,6 +287,15 @@ layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_XYZ_WORLD_DYN
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_IDX_WORLD_DYNAMIC_AS_PREV )	BUFFER_T Indices_dynamic_as_prev { uint i[]; } indices_dynamic_as_prev;
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_XYZ_WORLD_DYNAMIC_AS_PREV )	BUFFER_T Vertices_dynamic_as_prev { VertexBuffer v[]; } vertices_dynamic_as_prev;
 
+layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = PRIMITIVE_BUFFER_BINDING_IDX )		buffer PRIMITIVE_BUFFER {
+	VboPrimitive primitives[];
+} primitive_buffers[];
+
+// The buffer with just the position data for animated models.
+layout(set = VERTEX_BUFFER_DESC_SET_IDX, binding = POSITION_BUFFER_BINDING_IDX) buffer POSITION_BUFFER {
+	float positions[];
+} instanced_position_buffer;
+
 // world submodels
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_IDX_WORLD_SUBMODEL )			BUFFER_T Indices_World_submodel { uint i[]; } indices_world_submodel;
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_XYZ_WORLD_SUBMODEL )			BUFFER_T Vertices_World_submodel { VertexBuffer v[]; } vertices_world_submodel;
@@ -285,124 +319,9 @@ layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_SUN_COLOR_BUF
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_SUN_COLOR_UBO, std140 )		uniform SUN_COLOR_UBO { SunColorBuffer sun_color_ubo; };
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_LIGHT_STATS_BUFFER )			buffer LIGHT_STATS_BUFFERS { uint stats[]; } light_stats_bufers[3];
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_READBACK_BUFFER )			buffer READBACK_BUFFER { ReadbackBuffer readback; };
-layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_DYNAMIC_VERTEX )				buffer MODEL_DYNAMIC_VERTEX_BUFFER { ModelDynamicVertexBuffer vbo_model_dynamic; };
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_LIGHT_BUFFER )				buffer LIGHT_BUFFER { LightBuffer light_buffer; };
 
 #undef BUFFER_T
-
-#define GET_float_1(buf,name) \
-float \
-get_##name(uint idx) \
-{ \
-	return buf.name[idx]; \
-}
-
-#define GET_float_2(buf,name) \
-vec2 \
-get_##name(uint idx) \
-{ \
-	return vec2(buf.name[idx * 2 + 0], buf.name[idx * 2 + 1]); \
-}
-
-#define GET_float_3(buf,name) \
-vec3 \
-get_##name(uint idx) \
-{ \
-	return vec3(buf.name[idx * 3 + 0], buf.name[idx * 3 + 1], buf.name[idx * 3 + 2]); \
-}
-
-#define GET_float_4(buf,name) \
-vec4 \
-get_##name(uint idx) \
-{ \
-	return vec4(buf.name[idx * 4 + 0], buf.name[idx * 4 + 1], buf.name[idx * 4 + 2], buf.name[idx * 4 + 3]); \
-}
-
-#define GET_uint32_t_1(buf,name) \
-uint \
-get_##name(uint idx) \
-{ \
-	return buf.name[idx]; \
-}
-
-#define GET_uint32_t_3(buf,name) \
-uvec3 \
-get_##name(uint idx) \
-{ \
-	return uvec3(buf.name[idx * 3 + 0], buf.name[idx * 3 + 1], buf.name[idx * 3 + 2]); \
-}
-
-#define GET_uint32_t_4(buf,name) \
-uvec4 \
-get_##name(uint idx) \
-{ \
-	return uvec4(buf.name[idx * 4 + 0], buf.name[idx * 4 + 1], buf.name[idx * 4 + 2], buf.name[idx * 4 + 3]); \
-}
-
-#ifndef VERTEX_READONLY
-#define SET_float_1(buf,name) \
-void \
-set_##name(uint idx, float v) \
-{ \
-	buf.name[idx] = v; \
-}
-
-#define SET_float_2(buf,name) \
-void \
-set_##name(uint idx, vec2 v) \
-{ \
-	buf.name[idx * 2 + 0] = v[0]; \
-	buf.name[idx * 2 + 1] = v[1]; \
-}
-
-#define SET_float_3(buf,name) \
-void \
-set_##name(uint idx, vec3 v) \
-{ \
-	buf.name[idx * 3 + 0] = v[0]; \
-	buf.name[idx * 3 + 1] = v[1]; \
-	buf.name[idx * 3 + 2] = v[2]; \
-}
-
-#define SET_float_4(buf,name) \
-void \
-set_##name(uint idx, vec4 v) \
-{ \
-	buf.name[idx * 4 + 0] = v[0]; \
-	buf.name[idx * 4 + 1] = v[1]; \
-	buf.name[idx * 4 + 2] = v[2]; \
-	buf.name[idx * 4 + 3] = v[3]; \
-}
-
-#define SET_uint32_t_1(buf,name) \
-void \
-set_##name(uint idx, uint u) \
-{ \
-	buf.name[idx] = u; \
-}
-
-#define SET_uint32_t_3(buf,name) \
-void \
-set_##name(uint idx, uvec3 v) \
-{ \
-	buf.name[idx * 3 + 0] = v[0]; \
-	buf.name[idx * 3 + 1] = v[1]; \
-	buf.name[idx * 3 + 2] = v[2]; \
-}
-#endif
-
-#ifdef VERTEX_READONLY
-	#define VERTEX_BUFFER_LIST_DO(type, dim, name, size) \
-		GET_##type##_##dim(vbo_model_dynamic,name)
-	MODEL_DYNAMIC_VERTEX_BUFFER_LIST
-	#undef VERTEX_BUFFER_LIST_DO
-#else
-	#define VERTEX_BUFFER_LIST_DO(type, dim, name, size) \
-		GET_##type##_##dim(vbo_model_dynamic,name) \
-		SET_##type##_##dim(vbo_model_dynamic,name)
-	MODEL_DYNAMIC_VERTEX_BUFFER_LIST
-	#undef VERTEX_BUFFER_LIST_DO
-#endif
 
 struct Triangle {
 	mat3 positions;		// mat3x3
@@ -420,79 +339,165 @@ struct Triangle {
 	mat3x4 color3;
 	uint tex0;
 	uint tex1;
-	uint cluster;
+	uint   shell;
+	int cluster;
 	uint material_id;
+	uint   instance_index;
+	uint   instance_prim;
 	float  emissive_factor;
 	float  alpha;
 	//float  alpha;
 };
 
 Triangle
-get_instanced_triangle( uint prim_id )
+load_triangle(uint buffer_idx, uint prim_id)
 {
-	Triangle t;
-	t.positions[0] = get_positions_instanced(prim_id * 3 + 0);
-	t.positions[1] = get_positions_instanced(prim_id * 3 + 1);
-	t.positions[2] = get_positions_instanced(prim_id * 3 + 2);
-
-	t.positions_prev[0] = get_pos_prev_instanced(prim_id * 3 + 0);
-	t.positions_prev[1] = get_pos_prev_instanced(prim_id * 3 + 1);
-	t.positions_prev[2] = get_pos_prev_instanced(prim_id * 3 + 2);
-
-	t.normals[0] = decode_normal(get_normals_instanced(prim_id * 3 + 0));
-	t.normals[1] = decode_normal(get_normals_instanced(prim_id * 3 + 1));
-	t.normals[2] = decode_normal(get_normals_instanced(prim_id * 3 + 2));
-
-	t.tangents[0] = decode_normal(get_tangents_instanced(prim_id * 3 + 0));
-	t.tangents[1] = decode_normal(get_tangents_instanced(prim_id * 3 + 1));
-	t.tangents[2] = decode_normal(get_tangents_instanced(prim_id * 3 + 2));
-
-	t.tex_coords0[0] = get_tex_coords_instanced(prim_id * 3 + 0);
-	t.tex_coords0[1] = get_tex_coords_instanced(prim_id * 3 + 1);
-	t.tex_coords0[2] = get_tex_coords_instanced(prim_id * 3 + 2);
-
-	t.material_id = get_materials_instanced(prim_id);
-
-	t.cluster = get_clusters_instanced(prim_id);
-		
-	t.alpha = get_alpha_instanced(prim_id);
+	// info
+	// buffer_idx = gl_InstanceCustomIndexEXT = instance.instance_id = vbo_index
 	
-	t.emissive_factor = 1.0;
+	VboPrimitive prim = primitive_buffers[nonuniformEXT(buffer_idx)].primitives[prim_id];
+
+	Triangle t;
+	t.positions[0] = prim.pos0;
+	t.positions[1] = prim.pos1;
+	t.positions[2] = prim.pos2;
+
+	t.positions_prev[0] = t.positions[0] + unpackHalf4x16(prim.custom0).xyz;
+	t.positions_prev[1] = t.positions[1] + unpackHalf4x16(prim.custom1).xyz;
+	t.positions_prev[2] = t.positions[2] + unpackHalf4x16(prim.custom2).xyz;
+
+	t.normals[0] = decode_normal(prim.normals.x);
+	t.normals[1] = decode_normal(prim.normals.y);
+	t.normals[2] = decode_normal(prim.normals.z);
+
+	t.tangents[0] = decode_normal(prim.tangents.x);
+	t.tangents[1] = decode_normal(prim.tangents.y);
+	t.tangents[2] = decode_normal(prim.tangents.z);
+
+	t.tex_coords0[0] = prim.uv0;
+	t.tex_coords0[1] = prim.uv1;
+	t.tex_coords0[2] = prim.uv2;
+
+	t.material_id = prim.material_id;
+	t.shell = prim.shell;
+	t.cluster = prim.cluster;
+	t.instance_index = prim.instance;
+	t.instance_prim = 0;
+	
+	vec2 emissive_and_alpha = unpackHalf2x16(prim.emissive_and_alpha);
+	t.emissive_factor = emissive_and_alpha.x;
+	t.alpha = emissive_and_alpha.y;
 
 	return t;
 }
 
+Triangle
+load_and_transform_triangle(int instance_idx, uint buffer_idx, uint prim_id)
+{
+	Triangle t = load_triangle(buffer_idx, prim_id);
+
+	if (instance_idx >= 0)
+	{
+		// Instance of a static mesh: transform the vertices.
+
+		ModelInstance mi = instance_buffer.model_instances[instance_idx];
+		
+		t.positions[0] = vec3(mi.transform * vec4(t.positions[0], 1.0));
+		t.positions[1] = vec3(mi.transform * vec4(t.positions[1], 1.0));
+		t.positions[2] = vec3(mi.transform * vec4(t.positions[2], 1.0));
+
+		t.positions_prev[0] = vec3(mi.transform_prev * vec4(t.positions_prev[0], 1.0));
+		t.positions_prev[1] = vec3(mi.transform_prev * vec4(t.positions_prev[1], 1.0));
+		t.positions_prev[2] = vec3(mi.transform_prev * vec4(t.positions_prev[2], 1.0));
+
+		t.normals[0] = normalize(vec3(mi.transform * vec4(t.normals[0], 0.0)));
+		t.normals[1] = normalize(vec3(mi.transform * vec4(t.normals[1], 0.0)));
+		t.normals[2] = normalize(vec3(mi.transform * vec4(t.normals[2], 0.0)));
+
+		t.tangents[0] = normalize(vec3(mi.transform * vec4(t.tangents[0], 0.0)));
+		t.tangents[1] = normalize(vec3(mi.transform * vec4(t.tangents[1], 0.0)));
+		t.tangents[2] = normalize(vec3(mi.transform * vec4(t.tangents[2], 0.0)));
+
+		if (mi.material != 0) {
+			t.material_id = mi.material;
+			//t.shell = mi.shell;
+		}
+		int frame = int(mi.alpha_and_frame >> 16);
+		//t.material_id = animate_material(t.material_id, frame);
+		t.cluster = mi.cluster;
+		t.emissive_factor = 1.0;
+		t.alpha *= unpackHalf2x16(mi.alpha_and_frame).x;
+
+		// Store the index of that instance and the prim offset relative to the instance.
+		t.instance_index = uint(instance_idx);
+		t.instance_prim = prim_id - mi.render_prim_offset;
+	}
+	else if (buffer_idx == VERTEX_BUFFER_INSTANCED)
+	{
+		// Instance of an animated or skinned mesh, coming from the primbuf.
+		// In this case, `instance_idx` is -1 because it's not a static mesh, 
+		// so load the original animated instance to find out its prim offset.
+
+		ModelInstance mi = instance_buffer.model_instances[t.instance_index];
+		t.instance_prim = prim_id - mi.render_prim_offset;
+	}
+	else if (buffer_idx == VERTEX_BUFFER_WORLD)
+	{
+		// Static BSP primitive.
+		
+		t.instance_index = ~0u;
+		t.instance_prim = prim_id;
+	}
+
+	return t;
+}
+
+
 #ifndef VERTEX_READONLY
 void
-store_instanced_triangle(Triangle t, uint instance_id, uint prim_id)
+store_triangle(Triangle t, uint buffer_idx, uint prim_id)
 {
-	set_positions_instanced(prim_id * 3 + 0, t.positions[0]);
-	set_positions_instanced(prim_id * 3 + 1, t.positions[1]);
-	set_positions_instanced(prim_id * 3 + 2, t.positions[2]);
+	VboPrimitive prim;
 
-	set_pos_prev_instanced(prim_id * 3 + 0, t.positions_prev[0]);
-	set_pos_prev_instanced(prim_id * 3 + 1, t.positions_prev[1]);
-	set_pos_prev_instanced(prim_id * 3 + 2, t.positions_prev[2]);
+	prim.pos0 = t.positions[0];
+	prim.pos1 = t.positions[1];
+	prim.pos2 = t.positions[2];
 
-	set_normals_instanced(prim_id * 3 + 0, encode_normal(t.normals[0]));
-	set_normals_instanced(prim_id * 3 + 1, encode_normal(t.normals[1]));
-	set_normals_instanced(prim_id * 3 + 2, encode_normal(t.normals[2]));
+	prim.custom0 = packHalf4x16(vec4(t.positions_prev[0] - t.positions[0], 0));
+	prim.custom1 = packHalf4x16(vec4(t.positions_prev[1] - t.positions[1], 0));
+	prim.custom2 = packHalf4x16(vec4(t.positions_prev[2] - t.positions[2], 0));
 
-	set_tangents_instanced(prim_id * 3 + 0, encode_normal(t.tangents[0]));
-	set_tangents_instanced(prim_id * 3 + 1, encode_normal(t.tangents[1]));
-	set_tangents_instanced(prim_id * 3 + 2, encode_normal(t.tangents[2]));
+	prim.normals.x = encode_normal(t.normals[0]);
+	prim.normals.y = encode_normal(t.normals[1]);
+	prim.normals.z = encode_normal(t.normals[2]);
 
-	set_tex_coords_instanced(prim_id * 3 + 0, t.tex_coords0[0]);
-	set_tex_coords_instanced(prim_id * 3 + 1, t.tex_coords0[1]);
-	set_tex_coords_instanced(prim_id * 3 + 2, t.tex_coords0[2]);
+	prim.tangents.x = encode_normal(t.tangents[0]);
+	prim.tangents.y = encode_normal(t.tangents[1]);
+	prim.tangents.z = encode_normal(t.tangents[2]);
 
-	set_materials_instanced(prim_id, t.material_id);
+	prim.uv0 = t.tex_coords0[0];
+	prim.uv1 = t.tex_coords0[1];
+	prim.uv2 = t.tex_coords0[2];
 
-	set_instance_id_instanced(prim_id, instance_id);
+	prim.material_id = t.material_id;
+	prim.shell = t.shell;
+	prim.cluster = t.cluster;
+	prim.instance = t.instance_index;
+	prim.emissive_and_alpha = packHalf2x16(vec2(t.emissive_factor, t.alpha));
+	
+	primitive_buffers[nonuniformEXT(buffer_idx)].primitives[prim_id] = prim;
 
-	set_clusters_instanced(prim_id, t.cluster);
-
-	set_alpha_instanced(prim_id, t.alpha);
+	if (buffer_idx == VERTEX_BUFFER_INSTANCED)
+	{
+		for (int vert = 0; vert < 3; vert++)
+		{
+			for (int axis = 0; axis < 3; axis++)
+			{
+				instanced_position_buffer.positions[prim_id * 9 + vert * 3 + axis] 
+					= t.positions[vert][axis];
+			}
+		}
+	}
 }
 #endif
 
@@ -588,214 +593,6 @@ vec4 unpackColor(in uint color) {
 		(color & (0xff << 16)) >> 16,
 		(color & (0xff << 24)) >> 24
 	);
-}
-
-ivec3 get_bsp_triangle_indices_and_data( in uint instance_type, in uint prim_id, out VertexBuffer triangle[3] )
-{
-	uint prim = prim_id * 3;
-	ivec3 indices;
-
-	if ( instance_type == AS_TYPE_WORLD_STATIC )
-	{
-		indices = ivec3(	
-			indices_world_static.i[prim + 0], 
-			indices_world_static.i[prim + 1], 
-			indices_world_static.i[prim + 2] );
-
-		triangle[0] = vertices_world_static.v[indices.x];
-		triangle[1] = vertices_world_static.v[indices.y];
-		triangle[2] = vertices_world_static.v[indices.z];
-	}
-	
-	else if ( instance_type == AS_TYPE_SKY )
-	{
-		indices = ivec3(	
-			indices_sky_static.i[prim + 0], 
-			indices_sky_static.i[prim + 1], 
-			indices_sky_static.i[prim + 2] );
-
-		triangle[0] = vertices_sky_static.v[indices.x];
-		triangle[1] = vertices_sky_static.v[indices.y];
-		triangle[2] = vertices_sky_static.v[indices.z];
-	}
-	
-	else if ( instance_type == AS_TYPE_WORLD_DYNAMIC_MATERIAL )
-	{
-		indices = ivec3(	
-			indices_dynamic_data.i[prim + 0], 
-			indices_dynamic_data.i[prim + 1], 
-			indices_dynamic_data.i[prim + 2] );
-		
-		triangle[0] = vertices_dynamic_data.v[indices.x];
-		triangle[1] = vertices_dynamic_data.v[indices.y];
-		triangle[2] = vertices_dynamic_data.v[indices.z];
-	}
-	
-	else if ( instance_type == AS_TYPE_WORLD_DYNAMIC_GEOMETRY )
-	{
-		indices = ivec3(	
-			indices_dynamic_as.i[prim + 0], 
-			indices_dynamic_as.i[prim + 1], 
-			indices_dynamic_as.i[prim + 2] );
-
-		triangle[0] = vertices_dynamic_as.v[indices.x];
-		triangle[1] = vertices_dynamic_as.v[indices.y];
-		triangle[2] = vertices_dynamic_as.v[indices.z];
-	}
-	
-	else if ( instance_type == AS_TYPE_WORLD_SUBMODEL )
-	{
-		indices = ivec3(	
-			indices_world_submodel.i[prim + 0], 
-			indices_world_submodel.i[prim + 1], 
-			indices_world_submodel.i[prim + 2] );
-
-		triangle[0] = vertices_world_submodel.v[indices.x];
-		triangle[1] = vertices_world_submodel.v[indices.y];
-		triangle[2] = vertices_world_submodel.v[indices.z];
-	}
-	
-	
-	return indices;
-}
-
-mat3x3 get_dynamic_bsp_positions_prev( in uint instance_type, in uint prim_id  )
-{
-	uint prim = prim_id * 3;
-	mat3x3 position;
-
-	if ( instance_type == AS_TYPE_WORLD_DYNAMIC_MATERIAL )
-	{
-		ivec3 indices = ivec3( 
-			indices_dynamic_data_prev.i[prim + 0], 
-			indices_dynamic_data_prev.i[prim + 1], 
-			indices_dynamic_data_prev.i[prim + 2] );
-		
-		position[0] = vertices_dynamic_data_prev.v[indices.x].pos.xyz;
-		position[1] = vertices_dynamic_data_prev.v[indices.y].pos.xyz;
-		position[2] = vertices_dynamic_data_prev.v[indices.z].pos.xyz;
-	}
-	
-	else if ( instance_type == AS_TYPE_WORLD_DYNAMIC_GEOMETRY )
-	{
-		ivec3 indices = ivec3(
-			indices_dynamic_as_prev.i[prim + 0], 
-			indices_dynamic_as_prev.i[prim + 1], 
-			indices_dynamic_as_prev.i[prim + 2]);
-		
-		position[0] = vertices_dynamic_as_prev.v[indices.x].pos.xyz;
-		position[1] = vertices_dynamic_as_prev.v[indices.y].pos.xyz;
-		position[2] = vertices_dynamic_as_prev.v[indices.z].pos.xyz;
-	}
-
-	return position;
-}
-
-Triangle get_bsp_triangle( in uint instance_type, in uint prim_id )
-{
-	VertexBuffer triangle[3];
-	ivec3 indices = get_bsp_triangle_indices_and_data( instance_type, prim_id, triangle );
-
-	Triangle t;
-
-	t.positions[0] = triangle[0].pos.xyz;
-	t.positions[1] = triangle[1].pos.xyz;
-	t.positions[2] = triangle[2].pos.xyz;
-	
-
-	if ( instance_type == AS_TYPE_WORLD_STATIC || instance_type == AS_TYPE_WORLD_SUBMODEL )
-		t.positions_prev = t.positions;
-	else 
-		t.positions_prev = get_dynamic_bsp_positions_prev( instance_type, prim_id ); 
-
-	t.color0[0] = unpackColor(triangle[0].color[0]);
-	t.color0[1] = unpackColor(triangle[1].color[0]);
-	t.color0[2] = unpackColor(triangle[2].color[0]);
-
-	t.color1[0] = unpackColor(triangle[0].color[1]);
-	t.color1[1] = unpackColor(triangle[1].color[1]);
-	t.color1[2] = unpackColor(triangle[2].color[1]);
-
-	t.color2[0] = unpackColor(triangle[0].color[2]);
-	t.color2[1] = unpackColor(triangle[1].color[2]);
-	t.color2[2] = unpackColor(triangle[2].color[2]);
-	
-	t.color3[0] = unpackColor(triangle[0].color[3]);
-	t.color3[1] = unpackColor(triangle[1].color[3]);
-	t.color3[2] = unpackColor(triangle[2].color[3]);
-
-	t.tex_coords0[0] = triangle[0].uv[0].xy;
-	t.tex_coords0[1] = triangle[1].uv[0].xy;
-	t.tex_coords0[2] = triangle[2].uv[0].xy;
-
-	t.tex_coords1[0] = triangle[0].uv[1].xy;
-	t.tex_coords1[1] = triangle[1].uv[1].xy;
-	t.tex_coords1[2] = triangle[2].uv[1].xy;
-
-	t.tex_coords2[0] = triangle[0].uv[2].xy;
-	t.tex_coords2[1] = triangle[1].uv[2].xy;
-	t.tex_coords2[2] = triangle[2].uv[2].xy;
-
-	t.tex_coords3[0] = triangle[0].uv[3].xy;
-	t.tex_coords3[1] = triangle[1].uv[3].xy;
-	t.tex_coords3[2] = triangle[2].uv[3].xy;
-
-	t.normals[0] = triangle[0].normal.xyz;
-	t.normals[1] = triangle[1].normal.xyz;
-	t.normals[2] = triangle[2].normal.xyz;
-	
-	t.tangents[0] = triangle[0].qtangent.xyz;
-	t.tangents[1] = triangle[1].qtangent.xyz;
-	t.tangents[2] = triangle[2].qtangent.xyz;
-
-	switch( instance_type )
-	{
-		case AS_TYPE_WORLD_STATIC:
-			t.tex0 = vertices_world_static.v[indices.x].texIdx0;
-			t.tex1 = vertices_world_static.v[indices.x].texIdx1;
-
-			t.cluster = cluster_world_static.c[prim_id];
-			t.material_id = vertices_world_static.v[indices.x].material;	// same as triangle[0].material ?
-			break;
-		case AS_TYPE_SKY:
-			t.tex0 = vertices_sky_static.v[indices.x].texIdx0;
-			t.tex1 = vertices_sky_static.v[indices.x].texIdx1;
-
-			t.cluster = cluster_sky_static.c[prim_id];
-			t.material_id = vertices_sky_static.v[indices.x].material;	// same as triangle[0].material ?
-			break;
-		case AS_TYPE_WORLD_DYNAMIC_MATERIAL:
-			t.tex0 = vertices_dynamic_data.v[indices.x].texIdx0;
-			t.tex1 = vertices_dynamic_data.v[indices.x].texIdx1;
-
-			t.cluster = cluster_world_dynamic_data.c[prim_id];
-			t.material_id = vertices_dynamic_data.v[indices.x].material;
-			break;
-		case AS_TYPE_WORLD_DYNAMIC_GEOMETRY:
-			t.tex0 = vertices_dynamic_as.v[indices.x].texIdx0;
-			t.tex1 = vertices_dynamic_as.v[indices.x].texIdx1;
-
-			t.cluster = cluster_world_dynamic_as.c[prim_id];
-			t.material_id = vertices_dynamic_as.v[indices.x].material;
-			break;
-		case AS_TYPE_WORLD_SUBMODEL:
-			t.tex0 = vertices_world_submodel.v[indices.x].texIdx0;
-			t.tex1 = vertices_world_submodel.v[indices.x].texIdx1;
-
-			t.cluster = -1;
-			t.material_id = vertices_world_submodel.v[indices.x].material;
-			break;
-		default:
-			t.tex0 = 0;
-			t.tex1 = 0;
-			t.cluster = 0;
-			t.material_id = 0;
-	}
-
-	t.emissive_factor = 1.0;
-	t.alpha = 1.0;
-
-	return t;
 }
 #endif
 #endif

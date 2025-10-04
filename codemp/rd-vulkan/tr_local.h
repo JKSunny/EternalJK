@@ -1536,14 +1536,19 @@ typedef struct bmodel_s {
 	msurface_t	*firstSurface;
 	int			numSurfaces;
 #ifdef USE_RTX
+	model_geometry_t geometry;
+
 	vec3_t		center;
 	vec3_t		aabb_min;
 	vec3_t		aabb_max;
 
 	uint32_t	idx_offset;
 	uint32_t	xyz_offset;
+	uint32_t	offset_primitives;
+
 	uint32_t	idx_count;
 	uint32_t	xyz_count;
+	uint32_t	num_primitives;
 
 	int				num_light_polys;
 	int				allocated_light_polys;

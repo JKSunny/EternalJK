@@ -232,17 +232,29 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 	UBO_CVAR_LIST // WARNING: Do not put any other members into global_ubo after this: the CVAR list is not vec4-aligned
 
 STRUCT (  
-	MAT4	( M )
+	MAT4	( transform )
+	MAT4	( transform_prev )
 
 	UINT	( material )
-	INT		( offset_curr )
-	INT		( offset_prev )
-	FLOAT	( backlerp )
+	INT		( cluster )
+	UINT	( source_buffer_idx )
+	UINT	( prim_count )
 
-	FLOAT	( alpha )
-	INT		( idx_offset )
-	INT		( model_index )
+	UINT	( prim_offset_curr_pose_curr_frame )
+	UINT	( prim_offset_prev_pose_curr_frame )
+	UINT	( prim_offset_curr_pose_prev_frame )
+	UINT	( prim_offset_prev_pose_prev_frame )
+
 	INT		( is_mdxm )
+	INT		( idx_offset )
+	FLOAT	( pose_lerp_curr_frame )
+	FLOAT	( pose_lerp_prev_frame )
+
+	UINT	( alpha_and_frame )
+	UINT	( render_buffer_idx )
+	UINT	( render_prim_offset )
+	UINT	( pad0 )
+
 , ModelInstance )
 #define MODELINSTANCE(n) ModelInstance n;
 	
@@ -254,29 +266,13 @@ STRUCT (
 #define BSPMESHINSTANCE(n) BspMeshInstance n;
 
 STRUCT ( 
-	UINT			( tlas_instance_type		[1000]						)	// could probably pack this in ray_payload_geometry
-	INT				( model_indices				[SHADER_MAX_ENTITIES + SHADER_MAX_BSP_ENTITIES] )
+	UINT			( animated_model_indices	[SHADER_MAX_ENTITIES]		)
+	MODELINSTANCE	( model_instances			[SHADER_MAX_ENTITIES]		)
 	UINT			( model_current_to_prev		[SHADER_MAX_ENTITIES]		)
 	UINT			( model_prev_to_current		[SHADER_MAX_ENTITIES]		)
-	UINT			( world_current_to_prev		[SHADER_MAX_BSP_ENTITIES]	)
-	UINT			( world_prev_to_current		[SHADER_MAX_BSP_ENTITIES]	)
-	UINT			( bsp_prim_offset			[SHADER_MAX_BSP_ENTITIES]	)
-	UINT			( model_idx_offset			[SHADER_MAX_ENTITIES]		)
-	UINT			( model_cluster_id			[SHADER_MAX_ENTITIES]		)
-	UINT			( model_cluster_id_prev		[SHADER_MAX_ENTITIES]		)
-	UINT			( bsp_cluster_id			[SHADER_MAX_BSP_ENTITIES]	)
-	UINT			( bsp_cluster_id_prev		[SHADER_MAX_BSP_ENTITIES]	)
-	MODELINSTANCE	( model_instances			[SHADER_MAX_ENTITIES]		)
-	MODELINSTANCE	( model_instances_prev		[SHADER_MAX_ENTITIES]		)
 	UINT			( mlight_prev_to_current	[MAX_MODEL_LIGHTS]			)
-	BSPMESHINSTANCE	( bsp_mesh_instances		[SHADER_MAX_BSP_ENTITIES]	)
-	BSPMESHINSTANCE	( bsp_mesh_instances_prev	[SHADER_MAX_BSP_ENTITIES]	)
-
- 	//instance buffer in numberof primitives					  
-	UINT			( model_instance_buf_offset	[SHADER_MAX_ENTITIES]		)
-	UINT			( model_instance_buf_size	[SHADER_MAX_ENTITIES]		)
-	UINT			( bsp_instance_buf_offset	[SHADER_MAX_BSP_ENTITIES]	)
-	UINT			( bsp_instance_buf_size		[SHADER_MAX_BSP_ENTITIES]	)
+	UINT            ( tlas_instance_prim_offsets[MAX_TLAS_INSTANCES]		)
+	INT             ( tlas_instance_model_indices[MAX_TLAS_INSTANCES]		)					  
 	BONESREF		( model_mdxm_bones			[SHADER_MAX_ENTITIES]		)
 , InstanceBuffer ) 
 
@@ -288,7 +284,7 @@ STRUCT (
 
 #ifdef GLSL
 // bindings
-layout( set = GLOBAL_UBO_DESC_SET_IDX, binding = GLOBAL_UBO_BINDING_IDX ) uniform UBO { 
+layout( set = GLOBAL_UBO_DESC_SET_IDX, binding = GLOBAL_UBO_BINDING_IDX, std140 ) uniform UBO { 
 	vkUniformRTX_t global_ubo; 
 };
 
