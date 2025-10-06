@@ -2452,6 +2452,7 @@ extern  cvar_t  *pt_caustics;
 extern  cvar_t  *pt_dof;
 extern  cvar_t  *pt_projection;
 extern  cvar_t  *tm_blend_enable;
+extern  cvar_t  *pt_debug_poly_lights;
 
 #define UBO_CVAR_DO( _handle, _value ) \
 	extern cvar_t *sun_##_handle;

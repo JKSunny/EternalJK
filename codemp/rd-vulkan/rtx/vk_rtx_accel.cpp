@@ -831,13 +831,19 @@ void vkpt_vertex_buffer_upload_bsp_mesh( world_t &worldData )
 	vk_geometry_data_t *world_dynamic_material	= &worldData.geometry.world_dynamic_material;
 	vk_geometry_data_t *world_dynamic_geometry	= &worldData.geometry.world_dynamic_geometry;
 	vk_geometry_data_t *world_submodels			= &worldData.geometry.world_submodels;
-	
+#ifdef DEBUG_POLY_LIGHTS 
+	vk_geometry_data_t *debug_light_polys		= &worldData.geometry.debug_light_polys;
+#endif
+
 	VkCommandBuffer cmd_buf = vkpt_begin_command_buffer(&vk.cmd_buffers_graphics);
 
 	vk_rtx_vertex_buffer_upload_bsp_mesh_geom( cmd_buf, sky_static );
 	vk_rtx_vertex_buffer_upload_bsp_mesh_geom( cmd_buf, world_static );
 	vk_rtx_vertex_buffer_upload_bsp_mesh_geom( cmd_buf, world_dynamic_material );
 	vk_rtx_vertex_buffer_upload_bsp_mesh_geom( cmd_buf, world_dynamic_geometry );
+#ifdef DEBUG_POLY_LIGHTS 
+	vk_rtx_vertex_buffer_upload_bsp_mesh_geom( cmd_buf, debug_light_polys );
+#endif
 
 	// build submodel buffer and blas
 	vkpt_vertex_buffer_upload_bsp_subnmodel_mesh( cmd_buf, worldData );
@@ -859,7 +865,9 @@ void vkpt_vertex_buffer_upload_bsp_mesh( world_t &worldData )
 	vk_rtx_buffer_destroy( &world_dynamic_material->staging_buffer );
 	vk_rtx_buffer_destroy( &world_dynamic_geometry->staging_buffer );
 	vk_rtx_buffer_destroy( &world_submodels->staging_buffer );
-
+#ifdef DEBUG_POLY_LIGHTS 
+	vk_rtx_buffer_destroy( &debug_light_polys->staging_buffer );
+#endif
 
 	vk.scratch_buf_ptr = 0;
 }

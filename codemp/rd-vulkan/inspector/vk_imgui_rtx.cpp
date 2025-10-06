@@ -75,11 +75,17 @@ static float value_sky_amb_phase_g;
 static float value_sky_scattering;
 static float value_physical_sky_draw_clouds;
 
+static float	value_gr_enable;
+static bool		enable_gr_enable;
+
+static float	value_pt_debug_poly_light;
+static bool		enable_pt_debug_poly_light;
+
 void vk_imgui_bind_rtx_cvars( void ) 
 {
 
 #define UBO_CVAR_DO( _label, _handle ) enable_sun_##_handle = (value_sun_##_handle >= 1.0f);
-	UBO_CVAR_FREQUENT_CHECKBOX
+	enable_sun_flt_enable = (value_sun_flt_enable >= 1.0f); enable_sun_pt_restir = (value_sun_pt_restir >= 1.0f); enable_sun_tm_enable = (value_sun_tm_enable >= 1.0f); enable_sun_flt_fixed_albedo = (value_sun_flt_fixed_albedo >= 1.0f);
 #undef UBO_CVAR_DO
 
 	value_pt_caustics		= pt_caustics->integer;
@@ -105,6 +111,12 @@ void vk_imgui_bind_rtx_cvars( void )
 	value_sky_scattering	= sky_scattering->value;
 
 	value_physical_sky_draw_clouds	= physical_sky_draw_clouds->value;
+
+	value_gr_enable			= ri.Cvar_Get( "gr_enable",			"1",	0, "" )->value;
+	enable_gr_enable		= (value_gr_enable >= 1.0f);
+
+	value_pt_debug_poly_light	= pt_debug_poly_lights->value;
+	enable_pt_debug_poly_light	= (value_pt_debug_poly_light >= 1.0f);
 }
 
 const char *rtx_sun_presets[] = { 
@@ -275,6 +287,16 @@ static void vk_imgui_draw_rtx_settings( void )
 			}
 			UBO_CVAR_FREQUENT_CHECKBOX
 		#undef UBO_CVAR_DO
+
+		if ( ImGui::Checkbox( "God rays##_freq", &enable_gr_enable ) ) {
+			value_gr_enable = enable_gr_enable ? 1.0f : 0.0f;
+			ri.Cvar_Set( "gr_enable", va("%f", value_gr_enable));
+		}
+
+		if ( ImGui::Checkbox( "Debug poly lights##_freq", &enable_pt_debug_poly_light ) ) {
+			value_pt_debug_poly_light = enable_pt_debug_poly_light ? 1.0f : 0.0f;
+			ri.Cvar_Set( "pt_debug_poly_lights", va("%f", value_pt_debug_poly_light));
+		}
 
 		#define UBO_CVAR_DO( _label, _handle ) \
 			if ( ImGui::DragFloat( #_handle"##_freq", &value_sun_##_handle, 0.1f, 0.0f, 0.0f, "%.2f" ) ) \

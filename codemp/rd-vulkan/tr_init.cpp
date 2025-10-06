@@ -249,6 +249,7 @@ cvar_t	*pt_caustics;
 cvar_t	*pt_dof;
 cvar_t	*pt_projection;
 cvar_t	*tm_blend_enable;
+cvar_t	*pt_debug_poly_lights;
 
 #define UBO_CVAR_DO( _handle, _value ) cvar_t *sun_##_handle;
 	UBO_CVAR_LIST
@@ -1067,6 +1068,7 @@ void R_Register( void )
 	pt_dof								= ri.Cvar_Get("pt_dof",								"0",	CVAR_NONE, "");
 	pt_projection						= ri.Cvar_Get("pt_projection",						"0",	CVAR_NONE, "");
 	tm_blend_enable						= ri.Cvar_Get("tm_blend_enable",					"1",	CVAR_NONE, "");
+	pt_debug_poly_lights				= ri.Cvar_Get("pt_debug_poly_lights",				"0",	CVAR_NONE, "");
 	
 #define UBO_CVAR_DO( _handle, _value ) sun_##_handle = ri.Cvar_Get( #_handle,	#_value, CVAR_NONE, "" );
 	UBO_CVAR_LIST

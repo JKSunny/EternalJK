@@ -41,7 +41,7 @@ static void vk_bind_storage_buffer( vkdescriptor_t *descriptor, uint32_t binding
 
 static void vk_bind_primitive_buffer( vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage )
 {
-	const uint32_t count = 6;
+	const uint32_t count = 7;
 
 	vk_rtx_add_descriptor_buffer( descriptor, count, binding, stage, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER );
 	vk_rtx_set_descriptor_update_size( descriptor, binding, stage, count );
@@ -51,6 +51,9 @@ static void vk_bind_primitive_buffer( vkdescriptor_t *descriptor, uint32_t bindi
 	vk_rtx_bind_descriptor_buffer_element(descriptor, binding, stage, VERTEX_BUFFER_SKY,				tr.world->geometry.sky_static.buffer[0].buffer);
 	vk_rtx_bind_descriptor_buffer_element(descriptor, binding, stage, VERTEX_BUFFER_WORLD_D_MATERIAL,	tr.world->geometry.world_dynamic_material.buffer[0].buffer);
 	vk_rtx_bind_descriptor_buffer_element(descriptor, binding, stage, VERTEX_BUFFER_WORLD_D_GEOMETRY,	tr.world->geometry.world_dynamic_geometry.buffer[0].buffer);
+#ifdef DEBUG_POLY_LIGHTS
+	vk_rtx_bind_descriptor_buffer_element(descriptor, binding, stage, VERTEX_BUFFER_DEBUG_LIGHT_POLYS,	tr.world->geometry.debug_light_polys.buffer[0].buffer);
+#endif
 	vk_rtx_bind_descriptor_buffer_element(descriptor, binding, stage, VERTEX_BUFFER_SUB_MODELS,			tr.world->geometry.world_submodels.buffer[0].buffer);
 	
 	// instanced
@@ -1980,7 +1983,9 @@ void vk_rtx_reset_world_geometries( world_t *world )
 	vk_rtx_reset_world_geometry( &world->geometry.world_dynamic_material );
 	vk_rtx_reset_world_geometry( &world->geometry.world_dynamic_geometry );
 	vk_rtx_reset_world_geometry( &world->geometry.world_submodels );
-
+#ifdef DEBUG_POLY_LIGHTS 
+	vk_rtx_reset_world_geometry( &world->geometry.debug_light_polys );
+#endif
 	Com_Memset( &world->geometry, 0, sizeof(vkgeometry_t) );
 }
 
@@ -2116,6 +2121,68 @@ compute_sky_visibility( world_t &worldData )
 	}
 }
 
+#ifdef DEBUG_POLY_LIGHTS 
+static void vk_rtx_build_debug_light_poly_mesh( world_t &worldData, vk_geometry_data_t *geom )
+{
+	geom->host.surf_count = 0;
+	geom->host.surf_offset = 0;
+
+	geom->primitives = (VboPrimitive*)calloc( MAX( 1, (geom->num_primitives_allocated )),  sizeof(VboPrimitive) );
+	Com_Memset( geom->primitives, 0, MAX( 1, (geom->num_primitives_allocated)) * sizeof(VboPrimitive) );
+
+	VboPrimitive *primitives_out = geom->primitives + 0;
+
+	uint32_t material_index, material_flags;
+	vk_rtx_shader_to_material( tr.shaders[0], material_index, material_flags );
+
+	for ( int nlight = 0; nlight < geom->num_primitives; nlight++ )
+	{
+		light_poly_t *light = worldData.light_polys + nlight;
+
+		memset(primitives_out, 0, sizeof(VboPrimitive));
+
+		vec3_t a { light->positions[0], light->positions[1], light->positions[2] };
+		vec3_t b { light->positions[3], light->positions[4], light->positions[5] };
+		vec3_t c { light->positions[6], light->positions[7], light->positions[8] };
+
+		if ( DEBUG_POLY_LIGHTS > .0f )
+		{
+			// Get the light plane equation
+			vec3_t e0, e1, normal;
+			VectorSubtract(b, a, e0);
+			VectorSubtract(c, a, e1);
+			CrossProduct(e0, e1, normal);
+			VectorNormalize(normal);
+
+			for ( int j = 0; j < 3; j++ ) {
+				VectorMA(a, DEBUG_POLY_LIGHTS, normal, a);
+				VectorMA(b, DEBUG_POLY_LIGHTS, normal, b);
+				VectorMA(c, DEBUG_POLY_LIGHTS, normal, c);
+			}
+
+			primitives_out->normals[0] = encode_normal( normal );
+			primitives_out->normals[1] = encode_normal( normal );
+			primitives_out->normals[2] = encode_normal( normal );
+		}
+
+		int cluster = BSP_PointLeaf( worldData.nodes, a)->cluster;
+
+		VectorCopy( a, primitives_out->pos0 );
+		VectorCopy( b, primitives_out->pos1 );
+		VectorCopy( c, primitives_out->pos2 );
+
+		float alpha = 1.f;
+		float emissive = 0.f;
+
+		primitives_out->material_id = (material_flags & ~MATERIAL_INDEX_MASK) | (material_index & MATERIAL_INDEX_MASK);
+		primitives_out->emissive_and_alpha = floatToHalf(emissive) | (floatToHalf(alpha) << 16);
+		primitives_out->instance = 0;
+
+		++primitives_out;
+	}
+}
+#endif
+
 void R_PreparePT( world_t &worldData ) 
 {
 	if ( !vk.rtxActive )
@@ -2136,13 +2203,19 @@ void R_PreparePT( world_t &worldData )
 	vk_geometry_data_t *world_dynamic_material	= &worldData.geometry.world_dynamic_material;
 	vk_geometry_data_t *world_dynamic_geometry	= &worldData.geometry.world_dynamic_geometry;
 	vk_geometry_data_t *world_submodels			= &worldData.geometry.world_submodels;
+#ifdef DEBUG_POLY_LIGHTS 
+	vk_geometry_data_t *debug_light_polys		= &worldData.geometry.debug_light_polys;
+#endif
 
-	// initialize .. 														dynamic_flags				fast_build  allow_update	
-	vk_rtx_init_geometry( sky_static,				BLAS_TYPE_FLAG_OPAQUE,	BLAS_DYNAMIC_FLAG_NONE,		qtrue,		qfalse	);
-	vk_rtx_init_geometry( world_static,				BLAS_TYPE_FLAG_ALL,		BLAS_DYNAMIC_FLAG_NONE,		qtrue,		qfalse	);
-	vk_rtx_init_geometry( world_dynamic_material,	BLAS_TYPE_FLAG_ALL,		BLAS_DYNAMIC_FLAG_ALL,		qfalse,		qtrue	);
-	vk_rtx_init_geometry( world_dynamic_geometry,	BLAS_TYPE_FLAG_ALL,		BLAS_DYNAMIC_FLAG_ALL,		qfalse,		qtrue	);
-	vk_rtx_init_geometry( world_submodels,			BLAS_TYPE_FLAG_OPAQUE,	BLAS_DYNAMIC_FLAG_NONE,		qtrue,		qfalse	);
+	// initialize .. 								type (unused)			dynamic_flags(unused)		fast_build (unused)  allow_update (unused)	
+	vk_rtx_init_geometry( sky_static,				BLAS_TYPE_FLAG_OPAQUE,	BLAS_DYNAMIC_FLAG_NONE,		qtrue,				 qfalse	);
+	vk_rtx_init_geometry( world_static,				BLAS_TYPE_FLAG_ALL,		BLAS_DYNAMIC_FLAG_NONE,		qtrue,				 qfalse	);
+	vk_rtx_init_geometry( world_dynamic_material,	BLAS_TYPE_FLAG_ALL,		BLAS_DYNAMIC_FLAG_ALL,		qfalse,				 qtrue	);
+	vk_rtx_init_geometry( world_dynamic_geometry,	BLAS_TYPE_FLAG_ALL,		BLAS_DYNAMIC_FLAG_ALL,		qfalse,				 qtrue	);
+	vk_rtx_init_geometry( world_submodels,			BLAS_TYPE_FLAG_OPAQUE,	BLAS_DYNAMIC_FLAG_NONE,		qtrue,				 qfalse	);
+#ifdef DEBUG_POLY_LIGHTS 
+	vk_rtx_init_geometry( debug_light_polys,		BLAS_TYPE_FLAG_OPAQUE,	BLAS_DYNAMIC_FLAG_NONE,		qtrue,				 qfalse	);
+#endif
 
 	// esitmate size of world geometries
 	vk_rtx_estimate_geometry( worldData, worldData.nodes, sky_static,				filter_sky );
@@ -2233,6 +2306,13 @@ void R_PreparePT( world_t &worldData )
 
 	collect_light_polys( worldData, -1, &worldData.num_light_polys, &worldData.allocated_light_polys, &worldData.light_polys );
 
+#ifdef DEBUG_POLY_LIGHTS
+	debug_light_polys->num_primitives = worldData.num_light_polys;
+	debug_light_polys->num_primitives_allocated = worldData.num_light_polys;
+	vk_rtx_build_debug_light_poly_mesh( worldData, debug_light_polys );
+	vkpt_append_model_geometry( &debug_light_polys->geom_opaque, worldData.num_light_polys, 0, "bsp_model");
+#endif
+
 	for ( i = 0; i < worldData.num_bmodels; i++ ) 
 	{
 		bmodel_t *bmodel = &worldData.bmodels[i];
@@ -2251,6 +2331,7 @@ void R_PreparePT( world_t &worldData )
 #ifdef DEBUG_POLY_LIGHTS
 	vk_rtx_inject_light_poly_debug( world_static, worldData, DEBUG_POLY_LIGHTS );
 #endif
+
 	collect_cluster_lights( worldData );
 
 	compute_sky_visibility( worldData );

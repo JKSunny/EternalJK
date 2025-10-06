@@ -35,6 +35,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "vk_rtx_precomputed_sky.h"
 #include "vk_rtx_physical_sky.h"
 
+#define DEBUG_POLY_LIGHTS 3.0f
+
 // math
 #define frand()     ((rand() & 32767) * (1.0 / 32767))
 
@@ -433,6 +435,9 @@ typedef struct {
 	vk_geometry_data_t world_dynamic_material;
 	vk_geometry_data_t world_dynamic_geometry;
 	vk_geometry_data_t world_submodels;
+#ifdef DEBUG_POLY_LIGHTS
+	vk_geometry_data_t debug_light_polys;
+#endif
 } vkgeometry_t;
 
 
