@@ -22,6 +22,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 #include "../path_tracer.h"	// contains global_ubo.h -> constants.h
 
+#define USE_SIMPLE
 #include "path_tracer_hit_shaders.h"
 
 layout(location = 0) rayPayloadInEXT RayPayloadGeometry ray_payload;

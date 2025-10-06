@@ -26,6 +26,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 static rtx_material_t rtx_materials[MAX_SHADERS];
 
+
 void vk_rtx_clear_material_list( void ) 
 {
 	Com_Memset( &rtx_materials, 0, sizeof(rtx_materials) );
@@ -45,6 +46,56 @@ void vk_rtx_clear_material( uint32_t index )
 		vk_rtx_clear_material( index );
 
 	return &rtx_materials[index];
+}
+
+qboolean RB_IsTransparent( shader_t *shader ) 
+{
+	// skip certain objects that are transparent but should be handled like opaque objects
+	if ( strstr(shader->name, "glass" ) )
+		return qfalse;
+
+	if ( ( shader->contentFlags & CONTENTS_TRANSLUCENT ) == CONTENTS_TRANSLUCENT && shader->sort == SS_OPAQUE ) 
+		return qfalse;
+
+	if ( ( shader->contentFlags & CONTENTS_TRANSLUCENT ) == CONTENTS_TRANSLUCENT || shader->sort > SS_OPAQUE ) 
+		return qtrue;
+
+	return qfalse;
+}
+
+qboolean RB_IsSky(shader_t* shader)
+{
+	return (qboolean)(shader->isSky || shader->sun || (shader->surfaceFlags & SURF_SKY));
+}
+
+qboolean RB_IsDynamicGeometry( shader_t *shader ) 
+{
+	return (qboolean)((shader->numDeforms > 0) || (backEnd.currentEntity->e.frame > 0 || backEnd.currentEntity->e.oldframe > 0));
+}
+
+qboolean RB_IsDynamicMaterial( shader_t *shader ) {
+	uint32_t i, j;
+	qboolean changes = qfalse;
+
+	for ( i = 0; i < MAX_SHADER_STAGES; i++ ) 
+	{
+		if ( shader->stages[i] != NULL && shader->stages[i]->active ) 
+		{
+			for ( j = 0; j < shader->stages[i]->numTexBundles; j++ ) 
+			{
+
+				if ( shader->stages[i]->bundle[j].numImageAnimations > 0 ) 
+					return qtrue;
+
+				if ( (shader->stages[i]->bundle[j].tcGen != TCGEN_BAD) && (shader->stages[i]->bundle[j].numTexMods > 0 ) ) 
+					return qtrue;
+
+				if ( shader->stages[i]->bundle[0].rgbGen == CGEN_WAVEFORM )
+					return qtrue;
+			}
+		}
+	}
+	return changes;
 }
 
 static qboolean RB_NeedsColor() {
@@ -86,21 +137,6 @@ qboolean RB_SkipObject(shader_t* shader) {
 		|| shader->surfaceFlags == SURF_NODRAW /*|| shader->surfaceFlags == SURF_NONE*///SURF_SKIP
 		|| shader->stages[0] == NULL 
 		|| !shader->stages[0]->active )
-		return qtrue;
-
-	return qfalse;
-}
-
-qboolean RB_IsTransparent( shader_t *shader ) 
-{
-	// skip certain objects that are transparent but should be handled like opaque objects
-	if ( strstr(shader->name, "glass" ) )
-		return qfalse;
-
-	if ( ( shader->contentFlags & CONTENTS_TRANSLUCENT ) == CONTENTS_TRANSLUCENT && shader->sort == SS_OPAQUE ) 
-		return qfalse;
-
-	if ( ( shader->contentFlags & CONTENTS_TRANSLUCENT ) == CONTENTS_TRANSLUCENT || shader->sort > SS_OPAQUE ) 
 		return qtrue;
 
 	return qfalse;

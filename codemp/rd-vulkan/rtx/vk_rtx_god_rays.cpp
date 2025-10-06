@@ -221,20 +221,21 @@ void vk_rtx_record_god_rays_filter_command_buffer( VkCommandBuffer command_buffe
 
 void vk_rtx_god_rays_prepare_ubo(
 	vkUniformRTX_t * ubo,
-	/*const aabb_t* world_aabb,*/
+	const aabb_t* world_aabb,
 	const float* proj,
 	const float* view, 
 	const float* shadowmap_viewproj,
 	float shadowmap_depth_scale)
 {
-	//VectorAdd(world_aabb->mins, world_aabb->maxs, ubo->world_center);
+#if 0
 	VectorAdd( tr.viewParms.visBounds[0], tr.viewParms.visBounds[1], ubo->world_center );
-	//Vector4Set( ubo->world_center, 300, 300, 300, 0.0 );
-
 	VectorScale(ubo->world_center, 0.5f, ubo->world_center);
-	//VectorSubtract(world_aabb->maxs, world_aabb->mins, ubo->world_size);
 	VectorSubtract( tr.viewParms.visBounds[1], tr.viewParms.visBounds[0], ubo->world_size);
-	//Vector4Set( ubo->world_size, 1200, 1200, 500, 0.0 );
+#else
+	VectorAdd(world_aabb->mins, world_aabb->maxs, ubo->world_center);
+	VectorScale(ubo->world_center, 0.5f, ubo->world_center);
+	VectorSubtract(world_aabb->maxs, world_aabb->mins, ubo->world_size);
+#endif
 
 	VectorScale(ubo->world_size, 0.5f, ubo->world_half_size_inv);
 	ubo->world_half_size_inv[0] = 1.f / ubo->world_half_size_inv[0];

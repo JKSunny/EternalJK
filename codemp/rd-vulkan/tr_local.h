@@ -1538,21 +1538,16 @@ typedef struct bmodel_s {
 #ifdef USE_RTX
 	model_geometry_t geometry;
 
-	vec3_t		center;
-	vec3_t		aabb_min;
-	vec3_t		aabb_max;
-
-	uint32_t	idx_offset;
-	uint32_t	xyz_offset;
-	uint32_t	offset_primitives;
-
-	uint32_t	idx_count;
-	uint32_t	xyz_count;
-	uint32_t	num_primitives;
+	vec3_t			center;
+	vec3_t			aabb_min;
+	vec3_t			aabb_max;
 
 	int				num_light_polys;
 	int				allocated_light_polys;
 	light_poly_t	*light_polys;
+
+	bool transparent;
+	bool masked;
 #endif
 } bmodel_t;
 
@@ -1611,6 +1606,7 @@ typedef struct world_s {
 	int			clusterBytes;
 	const byte	*vis;					// may be passed in by CM_LoadMap to save space	
 #ifdef USE_RTX
+	aabb_t			world_aabb;
 	aabb_t			*cluster_aabbs;
 
 	vkgeometry_t	geometry;

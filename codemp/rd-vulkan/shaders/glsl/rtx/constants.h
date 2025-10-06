@@ -148,10 +148,15 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 // Variables that have "_lf", "_hf" or "_spec" suffix apply to the low-frequency, high-frequency or specular lighting channels, respectively.
 
 // shader groups
-#define SBT_RGEN				0
-#define SBT_RMISS_EMPTY			1
-#define SBT_RCHIT_GEOMETRY		2
-#define SBT_ENTRIES_PER_PIPELINE 3
+#define SBT_RGEN					0
+#define SBT_RMISS_EMPTY				1
+#define SBT_RCHIT_GEOMETRY			2
+#define SBT_RAHIT_MASKED			3
+#define SBT_ENTRIES_PER_PIPELINE	4
+
+// SBT indices for geometry and shadow rays
+#define SBTO_OPAQUE     (SBT_RCHIT_GEOMETRY - SBT_RCHIT_GEOMETRY)
+#define SBTO_MASKED     (SBT_RAHIT_MASKED - SBT_RCHIT_GEOMETRY)
 
 #define UINT_MAX                                    0xffffffff
 #define UINT_TOP_16BITS_MASK                        0xffff0000

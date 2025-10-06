@@ -364,6 +364,8 @@ typedef struct accel_bottom_match_info_s {
 	int fast_build;
 	uint32_t vertex_count;
 	uint32_t index_count;
+	uint32_t aabb_count;
+	uint32_t instance_count;
 } vk_blas_match_info_t;
 
 typedef struct {
@@ -380,6 +382,7 @@ typedef struct {
 	VkAccelerationStructureBuildRangeInfoKHR	range;
 	uint32_t	create_num_vertices;
 	uint32_t	create_num_indices;
+	bool present;
 } vk_blas_t;
 
 typedef struct {
@@ -390,64 +393,38 @@ typedef struct {
 } vk_geometry_dynamic_surf_t;
 
 typedef struct {
-	vk_blas_t	blas[VK_MAX_SWAPCHAIN_SIZE];
-	uint32_t	idx_count;
-	uint32_t	xyz_count;
 	uint32_t	surf_count;	
-	uint32_t	cluster_count;	
-	uint32_t	num_primitives;
-
-
-	uint32_t	idx_offset;
-	uint32_t	xyz_offset;
 	uint32_t	surf_offset;
-	uint32_t	cluster_offset;
-	uint32_t	offset_primitives;
 } vk_geometry_data_accel_t;
 
 typedef struct {
-	uint32_t					*idx;
-	VertexBuffer				*xyz;
 	vk_geometry_dynamic_surf_t	*dynamic_surfs;
-	uint32_t					*cluster;
-	VboPrimitive				*primitives;
 
-	uint32_t		idx_count;
-	uint32_t		xyz_count;
 	uint32_t		surf_count;
-	uint32_t		cluster_count;
-
-	uint32_t		idx_offset;
-	uint32_t		xyz_offset;
 	uint32_t		surf_offset;
-	uint32_t		cluster_offset;
-
-	uint32_t		num_primitives;
-	uint32_t		offset_primitives;
 } vk_geometry_host_t;
 
 typedef struct {
-	vkbuffer_t	idx[NUM_COMMAND_BUFFERS];	// containing data from all blas types
-	vkbuffer_t	xyz[NUM_COMMAND_BUFFERS];	// containing data from all blas types
-	vkbuffer_t	cluster[NUM_COMMAND_BUFFERS];
-	vkbuffer_t	primitives[NUM_COMMAND_BUFFERS];
 
-	vkbuffer_t	staging_idx; // containing data from all blas types
-	vkbuffer_t	staging_xyz; // containing data from all blas types
-	vkbuffer_t	staging_cluster;
-	vkbuffer_t	staging_primitives;
+	vkbuffer_t	buffer[NUM_COMMAND_BUFFERS];
+	vkbuffer_t	staging_buffer;
 
-	size_t		vertex_data_offset;
-
+	VboPrimitive*	primitives;
+	uint32_t		num_primitives_allocated;
+	uint32_t		num_primitives;
+	size_t			vertex_data_offset;
 
 	uint32_t	blas_type_flags;
 	uint32_t	dynamic_flags;
 	qboolean	fast_build;
 	qboolean	allow_update;
-	qboolean	is_world;
 
 	vk_geometry_host_t		 host;
 	vk_geometry_data_accel_t accel[BLAS_TYPE_COUNT];
+
+	model_geometry_t geom_opaque;
+	model_geometry_t geom_transparent;
+	model_geometry_t geom_masked;
 } vk_geometry_data_t;
 
 typedef struct {
@@ -476,7 +453,6 @@ void		vk_rtx_show_pvs_f( void );
 VkDescriptorSet vk_rtx_get_current_desc_set_textures( void);
 
 void		R_PreparePT( world_t &worldData );
-void		vk_rtx_debug_geom( vk_geometry_data_t *geom );
 
 // matrix
 void		mult_matrix_matrix( float *p, const float *a, const float *b );
@@ -542,9 +518,6 @@ VkResult	vkpt_light_buffers_create( world_t &world );
 VkResult	vkpt_light_buffers_destroy( void );
 void		vk_rtx_create_buffers( void );
 void		vk_rtx_destroy_buffers( void );
-void		vk_rtx_bind_vertices( VertexBuffer *vbo, int cluster );
-void		vk_rtx_bind_indicies( uint32_t* ibo, uint32_t base_vertex );
-void		vk_rtx_bind_cluster( uint32_t *cluster, uint32_t cluster_count, int cluster_id );
 void		vkpt_vertex_buffer_ensure_primbuf_size(uint32_t prim_count);
 
 // acceleration structure
@@ -556,7 +529,7 @@ void		vk_rtx_create_blas( accel_build_batch_t *batch,
 								 vkbuffer_t *index_buffer, VkDeviceAddress index_offset,
 								 uint32_t num_vertices, uint32_t num_indices,
 								 vk_blas_t *blas, qboolean is_dynamic, qboolean fast_build, 
-								 qboolean allow_update, qboolean is_world, size_t first_vertex_offset,
+								 qboolean allow_update, size_t first_vertex_offset,
 								 const char* debug_label );
 void		vk_rtx_update_blas( VkCommandBuffer cmd_buf, vk_geometry_data_t *geom, vk_geometry_data_accel_t *accel,
 								vk_blas_t *blas, vk_blas_t *old_blas );
@@ -632,15 +605,18 @@ VkResult	vk_rtx_shadow_map_initialize( void );
 VkResult	vk_rtx_shadow_map_destroy( void );
 VkResult	vk_rtx_shadow_map_create_pipelines( void );
 VkResult	vk_rtx_shadow_map_destroy_pipelines( void );
-VkResult	vk_rtx_shadow_map_render( VkCommandBuffer cmd_buf, world_t &worldData, float *view_projection_matrix, int num_static_indices, int num_dynamic_verts, int transparent_offset, int num_transparent_verts );
-VkImageView	vk_rtx_shadow_map_get_view( void );
+VkResult	vk_rtx_shadow_map_render(	VkCommandBuffer cmd_buf, world_t &worldData, float *view_projection_matrix, 
+										uint32_t static_offset, uint32_t num_static_verts, 
+										uint32_t dynamic_offset, uint32_t num_dynamic_verts,
+										uint32_t transparent_offset, uint32_t num_transparent_verts );
+	VkImageView	vk_rtx_shadow_map_get_view( void );
 void		vk_rtx_shadow_map_setup( const sun_light_t *light, const float *bbox_min, const float *bbox_max, float *VP, float *depth_scale, qboolean random_sampling );
 
 // god rays
 qboolean	vk_rtx_god_rays_enabled( const sun_light_t* sun_light );
 VkResult	vk_rtx_god_rays_initialize( void );
 VkResult	vk_rtx_god_rays_destroy( void );
-void		vk_rtx_god_rays_prepare_ubo( vkUniformRTX_t * ubo, /*const aabb_t* world_aabb,*/ const float* proj, 
+void		vk_rtx_god_rays_prepare_ubo( vkUniformRTX_t * ubo, const aabb_t* world_aabb, const float* proj, 
 									   const float* view, const float* shadowmap_viewproj, float shadowmap_depth_scale );
 VkResult	vk_rtx_god_rays_create_pipelines( void );
 VkResult	vk_rtx_god_rays_destroy_pipelines( void );

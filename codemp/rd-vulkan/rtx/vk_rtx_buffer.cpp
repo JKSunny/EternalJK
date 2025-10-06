@@ -515,6 +515,8 @@ VkResult vkpt_light_buffer_upload_to_staging( qboolean render_world,
 	return VK_SUCCESS;
 }
 
+#if 0
+// ~sunny, deprecated, kep for reference
 static void vk_rtx_add_stage_color( const int stage, VertexBuffer *vbo ) 
 {
 	for ( uint32_t i = 0; i < tess.numVertexes; i++ )
@@ -535,156 +537,7 @@ static void vk_rtx_add_stage_tex_coords( const int stage, VertexBuffer *vbo )
 		vbo[i].uv[stage][0] = tess.svars.texcoordPtr[0][i][0];
 	}	
 }
-
-void vk_rtx_bind_indicies( uint32_t* cluster, uint32_t base_vertex )
-{
-	uint32_t i;
-
-	// ~sunny, rename xyz_count in geom strucs to base_vertex, base_index?
-
-	for ( i = 0; i < tess.numIndexes; i++ )
-	{
-		cluster[i] = (uint32_t)(tess.indexes[i] + base_vertex );
-	}
-}
-
-void vk_rtx_bind_cluster( uint32_t *cluster, uint32_t cluster_count, int cluster_id )
-{
-	uint32_t i;
-
-	for ( i = 0; i < cluster_count; i++ )
-	{
-		cluster[i] = cluster_id;
-	}
-}
-
-void vk_rtx_bind_vertices( VertexBuffer *vbo, int cluster ) 
-
-{
-	const shaderStage_t *pStage;
-	uint32_t			i, material_index, material_flags;
-	vk_rtx_shader_to_material( tess.shader, material_index, material_flags );
-
-	// encode two tex idx and its needColor and blend flags into one 4 byte uint
-	//uint32_t tex0 = (RB_GetNextTexEncoded(0)) | (RB_GetNextTexEncoded(1) << TEX_SHIFT_BITS);
-	//uint32_t tex1 = (RB_GetNextTexEncoded(2)) | (RB_GetNextTexEncoded(3) << TEX_SHIFT_BITS);
-
-	//uint32_t tex0 = (0U) | (TEX0_IDX_MASK << TEX_SHIFT_BITS);
-	//uint32_t tex0 = (RB_GetNextTexEncoded(0));// | (TEX0_IDX_MASK << TEX_SHIFT_BITS);
-	uint32_t tex0 = material_index;// | (TEX0_IDX_MASK << TEX_SHIFT_BITS);
-	uint32_t tex1 = (TEX0_IDX_MASK) | (TEX0_IDX_MASK << TEX_SHIFT_BITS);
-
-	for ( i = 0; i < tess.numVertexes; i++ ) 
-	{
-		vbo[i].material = (material_flags & ~MATERIAL_INDEX_MASK) | (material_index & MATERIAL_INDEX_MASK);
-		vbo[i].texIdx0 = tex0;
-		vbo[i].texIdx1 = tex1;
-		//int c = R_FindClusterForPos(tess.xyz[i]);
-		vbo[i].cluster = cluster;// c != -1 ? c : cluster;
-
-		memcpy( vbo[i].pos, tess.xyz + i, sizeof(vec3_t) );
-
-		vbo[i].normal[0] = tess.normal[i][0];
-		vbo[i].normal[1] = tess.normal[i][1];
-		vbo[i].normal[2] = tess.normal[i][2];
-		vbo[i].normal[3] = 0;
-
-		vbo[i].qtangent[0] = tess.qtangent[i][0];
-		vbo[i].qtangent[1] = tess.qtangent[i][1];
-		vbo[i].qtangent[2] = tess.qtangent[i][2];
-		vbo[i].qtangent[3] = 0;
-	}
-
-	for ( i = 0; i < MAX_RTX_STAGES; i++ ) 
-	{
-		pStage = tess.shader->stages[i];
-
-		if ( !pStage || !pStage->active )
-			break;
-
-		//
-		// only compute bundle 0 for now
-		//
-		if ( pStage->tessFlags & TESS_RGBA0 )
-		{
-			ComputeColors( 0, tess.svars.colors[0], pStage, 0 );
-			vk_rtx_add_stage_color( i, vbo );
-		}
-
-		if ( pStage->tessFlags & TESS_ST0 )
-		{
-			ComputeTexCoords( 0, &pStage->bundle[0] );
-			vk_rtx_add_stage_tex_coords( i, vbo );
-		}
-	}
-#if 0
-	// if there are multiple stages we need to upload them all
-	if ( tess.shader->stages[0] != NULL && tess.shader->stages[0]->active ) 
-	{
-		ComputeTexCoords( 0, &tess.shader->stages[0]->bundle[0] );
-		ComputeColors(0, tess.svars.colors[0], tess.shader->stages[0], 0);
-
-#if 0
-		if ( tr.world != NULL ) {
-			if (strstr(tess.shader->name, "fog")) {
-			int x = 2;
-			//if (tess.fogNum && tess.shader->fogPass) {
-				fog_t* fog;
-				fog = tr.world->fogs + 4;// tess.fogNum;
-				for (int i = 0; i < tess.numVertexes; i++) {
-					*(int*)&tess.svars.colors[i] = fog->colorInt;
-				}
-				//RB_CalcFogTexCoords((float*)tess.svars.texcoords[0]);
-			}
-		}
 #endif
-		for ( j = 0; j < tess.numVertexes; j++ ) {
-			vData[j].color0 = tess.svars.colors[0][j][0] | tess.svars.colors[0][j][1] << 8 | tess.svars.colors[0][j][2] << 16 | tess.svars.colors[0][j][3] << 24;
-			
-			vData[j].uv0[1] = tess.svars.texcoordPtr[0][j][1];
-			vData[j].uv0[0] = tess.svars.texcoordPtr[0][j][0];
-
-		}
-	}
-
-	if ( tess.shader->stages[1] != NULL && tess.shader->stages[1]->active) 
-	{
-		ComputeTexCoords( 1, &tess.shader->stages[1]->bundle[0] );
-		ComputeColors( 1, tess.svars.colors[0], tess.shader->stages[1], 0);
-
-		for ( j = 0; j < tess.numVertexes; j++ ) {
-			vData[j].color1 = tess.svars.colors[0][j][0] | tess.svars.colors[0][j][1] << 8 | tess.svars.colors[0][j][2] << 16 | tess.svars.colors[0][j][3] << 24;
-			vData[j].uv1[0] = tess.svars.texcoords[0][j][0];
-			vData[j].uv1[1] = tess.svars.texcoords[0][j][1];
-		}
-	}
-
-	if ( tess.shader->stages[2] != NULL && tess.shader->stages[2]->active ) 
-	{
-		ComputeTexCoords( 2, &tess.shader->stages[2]->bundle[0] );
-		ComputeColors( 2, tess.svars.colors[0], tess.shader->stages[2], 0);
-
-		for ( j = 0; j < tess.numVertexes; j++ ) {
-			vData[j].color2 = tess.svars.colors[0][j][0] | tess.svars.colors[0][j][1] << 8 | tess.svars.colors[0][j][2] << 16 | tess.svars.colors[0][j][3] << 24;
-			vData[j].uv2[0] = tess.svars.texcoords[0][j][0];
-			vData[j].uv2[1] = tess.svars.texcoords[0][j][1];
-		}
-	}
-
-	if (tess.shader->stages[3] != NULL && tess.shader->stages[3]->active ) 
-	{
-		ComputeTexCoords( 3, &tess.shader->stages[3]->bundle[0] );
-		ComputeColors( 3, tess.svars.colors[0], tess.shader->stages[3], 0);
-
-		for ( j = 0; j < tess.numVertexes; j++ ) {
-			vData[j].color3 = tess.svars.colors[0][j][0] | tess.svars.colors[0][j][1] << 8 | tess.svars.colors[0][j][2] << 16 | tess.svars.colors[0][j][3] << 24;
-			vData[j].uv3[0] = tess.svars.texcoords[0][j][0];
-			vData[j].uv3[1] = tess.svars.texcoords[0][j][1];
-		}
-	}
-#endif
-
-}
 
 VkResult vk_rtx_readback( ReadbackBuffer *dst )
 {

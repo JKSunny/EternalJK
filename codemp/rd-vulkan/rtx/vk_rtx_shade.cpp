@@ -37,6 +37,12 @@ static ModelInstance model_instances_prev[MAX_REFENTITIES];
 static uint32_t g_num_instances = 0;
 static vk_geometry_instance_t g_instances[MAX_TLAS_INSTANCES];
 
+static const mat4_t g_identity_transform = {
+	1.f, 0.f, 0.f, 0.f,
+	0.f, 1.f, 0.f, 0.f,
+	0.f, 0.f, 1.f, 0.f,
+	0.f, 0.f, 0.f, 1.f
+};
 
 static int			num_model_lights;
 static light_poly_t model_lights[MAX_MODEL_LIGHTS];
@@ -108,23 +114,25 @@ void vkpt_pt_create_all_dynamic( VkCommandBuffer cmd_buf, int idx, const EntityU
 	uint64_t offset_vertex = offset_vertex_base;
 	uint64_t offset_index = 0;
 
-	const qboolean is_world = qfalse;
-
 	vk_rtx_create_blas( &batch, 
 		&vk.buf_positions_instanced, offset_vertex, 
 		NULL, offset_index, 		
 		upload_info->opaque_prim_count * 3, 0,
 		&vk.model_instance.blas.dynamic[idx], 
-		qtrue, qtrue, qfalse, is_world, 0, "instanced opaque" );
+		qtrue, qtrue, qfalse, 0, "instanced opaque" );
 
-	qvkCmdBuildAccelerationStructuresKHR( cmd_buf, batch.numBuilds, batch.buildInfos, batch.rangeInfoPtrs );
+	if ( batch.numBuilds > 0)
+		qvkCmdBuildAccelerationStructuresKHR( cmd_buf, batch.numBuilds, batch.buildInfos, batch.rangeInfoPtrs );
 
 	MEM_BARRIER_BUILD_ACCEL(cmd_buf);
 	vk.scratch_buf_ptr = 0;
 }
 
-static void append_blas( vk_geometry_instance_t *instances, uint32_t *num_instances, uint32_t type, vk_blas_t* blas, int vbo_index, uint32_t prim_offset, int mask, int flags, int sbt_offset )
+static void append_blas( vk_geometry_instance_t *instances, uint32_t *num_instances, vk_blas_t* blas, int vbo_index, uint32_t prim_offset, int mask, int flags, int sbt_offset )
 {
+	if (!blas->present)
+		return;
+
 	vk_geometry_instance_t instance;
 	Com_Memset( &instance, 0, sizeof(vk_geometry_instance_t) );
 
@@ -148,7 +156,6 @@ static void append_blas( vk_geometry_instance_t *instances, uint32_t *num_instan
 
 	//assert(*num_instances < INSTANCE_MAX_NUM);
 	memcpy(instances + *num_instances, &instance, sizeof(instance));
-	//vk.uniform_instance_buffer.tlas_instance_type[*num_instances] = type;	// ~sunny, will be deprecate soon. I hope ;)
 	vk.uniform_instance_buffer.tlas_instance_prim_offsets[*num_instances] = prim_offset;
 	vk.uniform_instance_buffer.tlas_instance_model_indices[*num_instances] = -1;
 	++*num_instances;
@@ -160,6 +167,9 @@ void vkpt_pt_reset_instances()
 }
 
 #define MAT4_GET(mat, row, col) (mat)[(col) * 4 + (row)]  // For column-major 4x4
+
+//vkpt_pt_instance_model_blas( 
+//	&tr.world->geometry.world_static.geom_opaque, g_identity_transform, VERTEX_BUFFER_WORLD, -1, 0 );
 
 void vkpt_pt_instance_model_blas( const model_geometry_t* geom, const mat4_t transform, uint32_t buffer_idx, int model_instance_index, uint32_t override_instance_mask )
 {
@@ -184,10 +194,10 @@ void vkpt_pt_instance_model_blas( const model_geometry_t* geom, const mat4_t tra
 	gpu_instance.transform[10] = MAT4_GET(transform, 2, 2);
 	gpu_instance.transform[11] = MAT4_GET(transform, 2, 3);
 
-	gpu_instance.instance_id		= buffer_idx;
-	gpu_instance.mask				= override_instance_mask ? override_instance_mask : geom->instance_mask;
-	gpu_instance.instance_offset	= geom->sbt_offset;
-	gpu_instance.flags				= geom->instance_flags,
+	gpu_instance.instance_id			= buffer_idx;
+	gpu_instance.mask					= override_instance_mask ? override_instance_mask : geom->instance_mask;
+	gpu_instance.instance_offset		= geom->sbt_offset;
+	gpu_instance.flags					= geom->instance_flags,
 	gpu_instance.acceleration_structure = geom->blas_device_address,
 
 	assert(g_num_instances < MAX_TLAS_INSTANCES);
@@ -199,55 +209,14 @@ void vkpt_pt_instance_model_blas( const model_geometry_t* geom, const mat4_t tra
 
 static void vkpt_pt_create_toplevel( VkCommandBuffer cmd_buf, uint32_t idx, world_t &worldData ) 
 {
-	//#define VERTEX_BUFFER_WORLD 0
-	//#define VERTEX_BUFFER_WORLD_D_MATERIAL 1
-	//#define VERTEX_BUFFER_WORLD_D_GEOMETRY 2
-	//#define VERTEX_BUFFER_SKY 3
-	//#define VERTEX_BUFFER_INSTANCED 4
-	//#define VERTEX_BUFFER_FIRST_MODEL 5
-
-	//
-	// static world
-	//
-	const uint32_t prim_offset = 0;
-	append_blas( g_instances, &g_num_instances, AS_TYPE_WORLD_STATIC,		
-		&worldData.geometry.world_static.accel[BLAS_TYPE_OPAQUE].blas[0], 
-		VERTEX_BUFFER_WORLD, 
-		worldData.geometry.world_static.accel[BLAS_TYPE_OPAQUE].offset_primitives, 
-		AS_FLAG_OPAQUE, 0, 0
-	);
-	
-	//
-	// sky
-	//
-	append_blas( g_instances, &g_num_instances, AS_TYPE_SKY,				
-		&worldData.geometry.sky_static.accel[BLAS_TYPE_OPAQUE].blas[0], 
-		VERTEX_BUFFER_SKY, 
-		worldData.geometry.sky_static.accel[BLAS_TYPE_OPAQUE].offset_primitives, 
-		AS_FLAG_SKY, 0, 0 
-	);
-
 	//
 	// model/entity instances
 	//
-	append_blas( g_instances, &g_num_instances, AS_TYPE_ENTITY_DYNAMIC,		
-		&vk.model_instance.blas.dynamic[idx], 
-		VERTEX_BUFFER_INSTANCED, 
-		0, AS_FLAG_OPAQUE, VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_KHR, 0 );
+	append_blas( g_instances, &g_num_instances,		
+		&vk.model_instance.blas.dynamic[idx], VERTEX_BUFFER_INSTANCED, 0, 
+		AS_FLAG_OPAQUE, VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_KHR, SBTO_OPAQUE );
 
-	//
-	// dynamic world (geometry or material)
-	//
-#if 0
-	vk_rtx_update_dynamic_geometry( cmd_buf,  &worldData.geometry.world_dynamic_geometry );
-	vk_rtx_update_dynamic_geometry( cmd_buf, &worldData.geometry.world_dynamic_material );
-	//vk_rtx_debug_geom( &worldData.geometry.world_dynamic_geometry );
-
-	//append_blas( instances, &num_instances, AS_TYPE_WORLD_DYNAMIC_MATERIAL,	&worldData.geometry.world_dynamic_material.accel[BLAS_TYPE_OPAQUE].blas[idx], VERTEX_BUFFER_WORLD_D_MATERIAL, prim_offset, AS_FLAG_OPAQUE, 0, 0 );
-	//--append_blas( instances, &num_instances, AS_TYPE_WORLD_DYNAMIC_MATERIAL,	&vk.blas_dynamic.data_world_transparent, 0, 0, 0, 0 );
-	//append_blas( instances, &num_instances, AS_TYPE_WORLD_DYNAMIC_GEOMETRY,	&worldData.geometry.world_dynamic_geometry.accel[BLAS_TYPE_OPAQUE].blas[idx], VERTEX_BUFFER_WORLD_D_GEOMETRY, prim_offset, AS_FLAG_OPAQUE, 0, 0 );
-	//--append_blas( instances, &num_instances, AS_TYPE_WORLD_DYNAMIC_GEOMETRY,	&vk.blas_dynamic.as_world_transparent[idx], 0, 0, 0, 0 );
-#endif
+	uint32_t num_instances_geometry = g_num_instances;
 
 	void *instance_data = buffer_map(vk.buf_instances + idx);
 	memcpy(instance_data, &g_instances, sizeof(vk_geometry_instance_t) * g_num_instances);
@@ -259,7 +228,7 @@ static void vkpt_pt_create_toplevel( VkCommandBuffer cmd_buf, uint32_t idx, worl
 	Com_Memset( &batch, 0, sizeof(accel_build_batch_t) );
 
 	vk_rtx_destroy_tlas( &vk.tlas_geometry[idx] );
-	vk_rtx_create_tlas( &batch, &vk.tlas_geometry[idx], vk.buf_instances[idx].address, g_num_instances);
+	vk_rtx_create_tlas( &batch, &vk.tlas_geometry[idx], vk.buf_instances[idx].address, num_instances_geometry );
 
 	qvkCmdBuildAccelerationStructuresKHR( cmd_buf, batch.numBuilds, batch.buildInfos, batch.rangeInfoPtrs );
 
@@ -289,7 +258,6 @@ static void fill_model_instance( ModelInstance* instance, const trRefEntity_t* e
 	const float* transform, qboolean is_viewer_weapon, qboolean is_double_sided,
 	qboolean is_mdxm, uint32_t material_id )
 {
-
 	int cluster = -1;
 	if ( tr.world )
 		cluster = BSP_PointLeaf( tr.world->nodes, (float*)entity->e.origin )->cluster;
@@ -306,14 +274,10 @@ static void fill_model_instance( ModelInstance* instance, const trRefEntity_t* e
 	instance->material = material_id;
 	instance->cluster = cluster;
 	instance->is_mdxm = is_mdxm ? 1 : 0;
-	//instance->source_buffer_idx = (int)(model - r_models) + VERTEX_BUFFER_FIRST_MODEL;
-	instance->source_buffer_idx = mesh->modelIndex;
-	//instance->source_buffer_idx = (int)mesh->modelIndex;
+	instance->source_buffer_idx = mesh->modelIndex; // + VERTEX_BUFFER_FIRST_MODEL ;
 	instance->prim_count = mesh->numIndexes / 3;
 
-
-	uint32_t offset_cur = 0;
-
+	const int offset_cur = 0;
 	instance->prim_offset_curr_pose_curr_frame = offset_cur;
 	instance->prim_offset_prev_pose_curr_frame = offset_cur;
 	instance->prim_offset_curr_pose_prev_frame = instance->prim_offset_curr_pose_curr_frame;
@@ -326,30 +290,13 @@ static void fill_model_instance( ModelInstance* instance, const trRefEntity_t* e
 	instance->iqm_matrix_offset_curr_frame = 0;
 	instance->iqm_matrix_offset_prev_frame = instance->iqm_matrix_offset_curr_frame;
 #endif
+
 	instance->alpha_and_frame = floatToHalf(1.0f);
 	instance->render_buffer_idx = 0; // to be filled later
 	instance->render_prim_offset = 0;
 
 	instance->idx_offset = mesh->indexOffset;
 	instance->pad0 = 10;
-#if 0
-	instance->idx_offset = idx_offset;
-	instance->model_index = model_index;
-
-#ifdef USE_RTX_GLOBAL_MODEL_VBO
-	instance->offset_curr = 0;
-	instance->offset_prev = 0;
-#else
-	int frame = 0; // entity->e.frame;
-	int oldframe = 0; //entity->e.oldframe;
-	instance->offset_curr = mesh->vertexOffset + frame * mesh->numVertexes * (sizeof(model_vertex_t) / sizeof(uint32_t));
-	instance->offset_prev = mesh->vertexOffset + frame * mesh->numVertexes * (sizeof(model_vertex_t) / sizeof(uint32_t));
-#endif
-	instance->backlerp = entity->e.backlerp;
-	instance->material = material_id;
-	instance->alpha = /*(entity->flags & RF_TRANSLUCENT) ? entity->alpha :*/ 1.0f;
-	instance->is_mdxm = is_mdxm ? 1 : 0;
-#endif
 }
 
 static void add_dlight_spot(const dlight_t* dlight, light_poly_t* light)
@@ -543,15 +490,19 @@ static void process_bsp_entity(
 
 	memcpy(&model_entity_ids[entity_frame_num][current_instance_idx], &hash, sizeof(uint32_t));
 
-	//float model_alpha = (entity->flags & RF_TRANSLUCENT) ? entity->alpha : 1.f;
+#if 0
+	float model_alpha = (entity->flags & RF_TRANSLUCENT) ? entity->alpha : 1.f;
+#else
 	float model_alpha = 1.f;
+#endif
+
 	ModelInstance* mi = uniform_instance_buffer->model_instances + current_instance_idx;
 	memcpy(&mi->transform, transform, sizeof(transform));
 	memcpy(&mi->transform_prev, transform, sizeof(transform));
 	mi->material = 0;
 	mi->cluster = cluster;
 	mi->source_buffer_idx = VERTEX_BUFFER_SUB_MODELS;
-	mi->prim_count = bmodel->idx_count / 3;
+	mi->prim_count = bmodel->geometry.prim_counts[0];
 	mi->prim_offset_curr_pose_curr_frame = 0; // bsp models are not processed by the instancing shader
 	mi->prim_offset_prev_pose_curr_frame = 0;
 	mi->prim_offset_curr_pose_prev_frame = 0;
@@ -565,7 +516,7 @@ static void process_bsp_entity(
 #endif
 	mi->alpha_and_frame = (entity->e.frame << 16) | floatToHalf(model_alpha);
 	mi->render_buffer_idx = VERTEX_BUFFER_SUB_MODELS;
-	mi->render_prim_offset = bmodel->idx_offset / 3;
+	mi->render_prim_offset = bmodel->geometry.prim_offsets[0];
 
 	if (bmodel->geometry.accel)
 	{
@@ -573,26 +524,6 @@ static void process_bsp_entity(
 	}
 
 	(*instance_count)++;
-#if 0
-	ubo_bsp_cluster_id[current_bsp_mesh_index] = cluster;
-
-	ubo_bsp_prim_offset[current_bsp_mesh_index] = bmodel->idx_offset / 3;
-
-	const int mesh_vertex_num = bmodel->idx_count;
-
-	ubo_instance_buf_offset[current_bsp_mesh_index] = *num_instanced_vert / 3;
-	ubo_instance_buf_size[current_bsp_mesh_index] = mesh_vertex_num / 3;
-
-	((int*)uniform_instance_buffer->model_indices)[*instance_idx] = ~current_bsp_mesh_index;
-
-	*num_instanced_vert += mesh_vertex_num;
-#if 1
-	instance_model_lights( bmodel->num_light_polys, bmodel->light_polys, transform );
-#endif
-
-	(*bsp_mesh_idx)++;
-	(*instance_idx)++;
-#endif
 }
 
 static void process_regular_entity( 
@@ -609,7 +540,6 @@ static void process_regular_entity(
 
 	int mesh_filter, 
 	qboolean* contains_transparent 
-
 )
 {
 	qboolean is_mdxm = qfalse;
@@ -632,7 +562,6 @@ static void process_regular_entity(
 
 	if ( contains_transparent )
 		*contains_transparent = qfalse;
-
 
 	bool use_static_blas = false;
 
@@ -1655,8 +1584,14 @@ static void vk_begin_trace_rays( world_t &worldData, trRefdef_t *refdef, referen
 		BEGIN_PERF_MARKER( trace_cmd_buf, PROFILER_SHADOW_MAP );
 		if ( god_rays_enabled )
 		{
-			const int index_count = (int)(worldData.geometry.world_static.accel[BLAS_TYPE_OPAQUE].idx_count + worldData.geometry.world_static.accel[BLAS_TYPE_TRANSPARENT].idx_count);
-			vk_rtx_shadow_map_render( trace_cmd_buf, worldData, shadowmap_view_proj, index_count, 0, 0, 0 );
+			vk_rtx_shadow_map_render( trace_cmd_buf, worldData, shadowmap_view_proj, 
+				tr.world->geometry.world_static.geom_opaque.prim_offsets[0] * 3,
+				tr.world->geometry.world_static.geom_opaque.prim_counts[0] * 3,
+				0,
+				upload_info->opaque_prim_count * 3,
+				tr.world->geometry.world_static.geom_transparent.prim_offsets[0] * 3,
+				tr.world->geometry.world_static.geom_transparent.prim_counts[0] * 3
+			);
 		}
 		END_PERF_MARKER( trace_cmd_buf, PROFILER_SHADOW_MAP );
 
@@ -1851,9 +1786,19 @@ void vk_rtx_begin_scene( trRefdef_t *refdef, drawSurf_t *drawSurfs, int numDrawS
 
 	if ( tr.world && render_world )
 	{
+		vkpt_pt_instance_model_blas( &tr.world->geometry.world_static.geom_opaque,					g_identity_transform, VERTEX_BUFFER_WORLD, -1, 0 );
+		vkpt_pt_instance_model_blas( &tr.world->geometry.world_static.geom_transparent,				g_identity_transform, VERTEX_BUFFER_WORLD, -1, 0 );
+
+		vkpt_pt_instance_model_blas( &tr.world->geometry.world_dynamic_material.geom_opaque,		g_identity_transform, VERTEX_BUFFER_WORLD_D_MATERIAL, -1, 0 );
+		//vkpt_pt_instance_model_blas( &tr.world->geometry.world_dynamic_material.geom_transparent,	g_identity_transform, VERTEX_BUFFER_WORLD_D_MATERIAL, -1, 0 );
+		
+		vkpt_pt_instance_model_blas( &tr.world->geometry.world_dynamic_geometry.geom_opaque,		g_identity_transform, VERTEX_BUFFER_WORLD_D_GEOMETRY, -1, 0 );
+		//vkpt_pt_instance_model_blas( &tr.world->geometry.world_dynamic_geometry.geom_transparent,	g_identity_transform, VERTEX_BUFFER_WORLD_D_GEOMETRY, -1, 0 );
+
+		vkpt_pt_instance_model_blas( &tr.world->geometry.sky_static.geom_opaque, g_identity_transform, VERTEX_BUFFER_SKY, -1, 0 );
+
 #if 0
 		vkpt_build_beam_lights(model_lights, &num_model_lights, MAX_MODEL_LIGHTS, bsp_world_model, fd->entities, fd->num_entities, prev_adapted_luminance, light_entity_ids[entity_frame_num], &num_model_lights);
-		add_dlights(vkpt_refdef.fd->dlights, vkpt_refdef.fd->num_dlights, model_lights, &num_model_lights, MAX_MODEL_LIGHTS, bsp_world_model, light_entity_ids[entity_frame_num]);
 #endif
 		add_dlights(refdef->dlights, refdef->num_dlights, model_lights, &num_model_lights, MAX_MODEL_LIGHTS, tr.world, light_entity_ids[entity_frame_num]);
 	}
@@ -1897,15 +1842,15 @@ void vk_rtx_begin_scene( trRefdef_t *refdef, drawSurf_t *drawSurfs, int numDrawS
 	const float unused = 0.0f;
 	vk_rtx_shadow_map_setup(
 		&sun_light,
-		&unused,
-		&unused,
+		tr.world->world_aabb.mins,
+		tr.world->world_aabb.maxs,
 		shadowmap_view_proj,
 		&shadowmap_depth_scale,
 		qfalse);
 
 	vk_rtx_god_rays_prepare_ubo(
 		ubo,
-		/*&vkpt_refdef.bsp_mesh_world.world_aabb,*/
+		&tr.world->world_aabb,
 		ubo->P,
 		ubo->V,
 		shadowmap_view_proj,
