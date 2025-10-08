@@ -33,6 +33,8 @@ with this program; if not, write to the Free Software Foundation, Inc.,
     #define MAT4X3(n)	mat4x3 n;
     #define MAT3X4(n)	mat3x4 n;
     #define UVEC2(n)	uvec2 n;
+    #define UVEC3(n)	uvec3 n;
+    #define UVEC4(n)	uvec4 n;
 	#define IVEC3(n)	ivec3 n;
 	#define IVEC4(n)	ivec4 n;
 	#define uint32_t	uint
@@ -50,7 +52,9 @@ with this program; if not, write to the Free Software Foundation, Inc.,
     #define MAT4(n)		float n[16];
     #define MAT4X3(n)	float n[12];
     #define MAT3X4(n)	float n[12];
-    #define UVEC2(n)	unsigned int[2] n;
+    #define UVEC2(n)	unsigned int n[2];
+    #define UVEC3(n)	unsigned int n[3];
+    #define UVEC4(n)	unsigned int n[4];
 	#define IVEC3(n)	int n[3];
 	#define IVEC4(n)	int n[4];
 	#define BONESREF(n)	mat3x4_t n[72];	

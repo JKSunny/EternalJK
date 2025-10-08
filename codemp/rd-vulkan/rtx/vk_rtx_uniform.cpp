@@ -141,14 +141,14 @@ VkResult vkpt_uniform_buffer_destroy( void )
 	vk.desc_set_layout_ubo = VK_NULL_HANDLE;
 
 	for ( int i = 0; i < VK_MAX_SWAPCHAIN_SIZE; i++ )
-		VK_DestroyBuffer( host_uniform_buffers + i );
+		vk_rtx_buffer_destroy( host_uniform_buffers + i );
 
-	VK_DestroyBuffer( &device_uniform_buffer );
+	vk_rtx_buffer_destroy( &device_uniform_buffer );
 
 	return VK_SUCCESS;
 }
 
-VkResult vkpt_uniform_buffer_update( VkCommandBuffer command_buffer )
+VkResult vkpt_uniform_buffer_upload_to_staging( void )
 {
 	vkbuffer_t *ubo = host_uniform_buffers + vk.current_frame_index;
 
@@ -159,13 +159,22 @@ VkResult vkpt_uniform_buffer_update( VkCommandBuffer command_buffer )
 
 	vkUniformRTX_t *mapped_ubo = (vkUniformRTX_t*)buffer_map( ubo );
 	assert(mapped_ubo);
+	if (!mapped_ubo)
+		return VK_ERROR_MEMORY_MAP_FAILED;
+
 	memcpy( mapped_ubo, &vk.uniform_buffer, sizeof(vkUniformRTX_t) );
 
 	const size_t offset = align( sizeof(vkUniformRTX_t), ubo_alignment );
 	memcpy((uint8_t*)mapped_ubo + offset, &vk.uniform_instance_buffer, sizeof(InstanceBuffer));
 
 	buffer_unmap( ubo );
-	mapped_ubo = NULL;
+
+	return VK_SUCCESS;
+}
+
+void vkpt_uniform_buffer_copy_from_staging( VkCommandBuffer command_buffer )
+{
+	vkbuffer_t *ubo = host_uniform_buffers + vk.current_frame_index;
 
 	VkBufferCopy copy = { 0 };
 	copy.size = align(sizeof(vkUniformRTX_t), ubo_alignment) + sizeof(InstanceBuffer);
@@ -184,6 +193,4 @@ VkResult vkpt_uniform_buffer_update( VkCommandBuffer command_buffer )
 
 	qvkCmdPipelineBarrier( command_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
 		0, 0, NULL, 1, &barrier, 0, NULL );
-
-	return VK_SUCCESS;
 }

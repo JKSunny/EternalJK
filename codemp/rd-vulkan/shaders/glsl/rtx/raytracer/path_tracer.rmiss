@@ -28,6 +28,6 @@ layout(location = 0) rayPayloadInEXT RayPayloadGeometry ray_payload_geometry;
 void
 main()
 {
-	ray_payload_geometry.instanceID = ~0u;
-	ray_payload_geometry.instance_prim = ~0u;
+	//ray_payload_geometry.instanceID = ~0u;
+	//ray_payload_geometry.instance_prim = ~0u;
 }

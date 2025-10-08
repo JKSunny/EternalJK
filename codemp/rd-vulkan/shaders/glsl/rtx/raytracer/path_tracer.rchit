@@ -22,24 +22,15 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 #include "../path_tracer.h"	// contains global_ubo.h -> constants.h
 
-layout(location = 0) rayPayloadInEXT RayPayloadGeometry ray_payload_geometry;
+#define USE_SIMPLE
+#include "path_tracer_hit_shaders.h"
+
+layout(location = 0) rayPayloadInEXT RayPayloadGeometry ray_payload;
 
 hitAttributeEXT vec2 hit_attribs;
 
 void 
 main()
 {
-    ray_payload_geometry.barycentric = hit_attribs;
-
-    ray_payload_geometry.instance_prim = gl_PrimitiveID + gl_InstanceCustomIndexEXT & AS_INSTANCE_MASK_OFFSET;
-
-	if((gl_InstanceCustomIndexEXT & AS_INSTANCE_FLAG_DYNAMIC) != 0)
-		ray_payload_geometry.instance_prim |= INSTANCE_DYNAMIC_FLAG;
-
-	if((gl_InstanceCustomIndexEXT & AS_INSTANCE_FLAG_SKY) != 0)
-		ray_payload_geometry.instance_prim |= INSTANCE_SKY_FLAG;
-
-    ray_payload_geometry.instanceID = gl_InstanceID;
-
-    ray_payload_geometry.hit_distance = gl_RayTmaxEXT;
+	pt_logic_rchit(ray_payload, gl_PrimitiveID, gl_InstanceID, gl_GeometryIndexEXT, gl_InstanceCustomIndexEXT, gl_HitTEXT, hit_attribs.xy);
 }  

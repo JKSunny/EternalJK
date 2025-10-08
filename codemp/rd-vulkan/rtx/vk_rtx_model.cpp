@@ -53,6 +53,150 @@ void vk_rtx_write_model_descriptor( int index, VkDescriptorSet descriptor, VkBuf
 	qvkUpdateDescriptorSets( vk.device, 1, &desc, 0, NULL );
 }
 
+void vk_rtx_extract_model_lights_mdxm( model_t *model )
+{
+	//mdxmSurface_t *surf;
+	return;
+}
+
+static rtx_material_t *vk_rtx_get_mdv_material(mdvSurface_t* surf)
+{
+	uint32_t j;
+	rtx_material_t *material = NULL;
+
+	for ( j = 0; j < surf->numShaderIndexes; j++ )
+	{
+		int index = surf->shaderIndexes[j];
+
+		if ( !index || tr.shaders[index] == NULL )
+			continue;
+
+		uint32_t material_index, material_flags;
+
+		material = vk_rtx_shader_to_material( tr.shaders[index] );
+
+		if ( material != NULL )
+			break;
+	}
+
+	return material;
+}
+
+void vk_rtx_extract_model_lights_mdv( model_t *model, mdvModel_t *mdvModel )
+{
+	uint32_t i, j, tri_idx;
+	mdvSurface_t   *surf;
+
+	int num_lights = 0;
+	return;
+
+	surf = mdvModel->surfaces;
+	for ( i = 0; i < mdvModel->numSurfaces; i++, surf++ ) 
+	{
+		rtx_material_t *material = vk_rtx_get_mdv_material( surf );
+
+		if ( material == NULL )
+			continue;
+
+		if ( material->emissive <= 0 )
+			continue;
+
+		if ( tr.images[material->emissive] == NULL )
+			continue;
+
+		num_lights += MIN( 50, (surf->numIndexes / 3));
+	}
+
+	if (num_lights == 0)
+		return;
+
+	if ( mdvModel->numFrames > 1 )
+	{
+		Com_Printf("Warning: model %s has LIGHT material(s) but more than 1 vertex animation frame, "
+			"which is unsupported.\n", model->name);
+		return;
+	}
+
+	if (!(model->light_polys = (light_poly_t*)calloc( num_lights, sizeof(light_poly_t) ))) {
+		Com_Printf("Warning: unable to allocate memory for %i light polygons.\n", num_lights);
+		return;
+	}
+
+	model->num_light_polys = num_lights;
+
+	num_lights = 0;
+
+	surf = mdvModel->surfaces;
+	for ( i = 0; i < mdvModel->numSurfaces; i++, surf++ ) 
+	{
+		// problem, these are per entity ..
+		rtx_material_t *material = vk_rtx_get_mdv_material( surf );
+		const image_t *emissive_image = tr.images[material->emissive];
+		if ( material == NULL )
+			continue;
+
+		if ( material->emissive <= 0 )
+			continue;
+
+		if ( tr.images[material->emissive] == NULL )
+			continue;
+
+		const int num_triangles = (surf->numIndexes / 3);
+		float *v0, *v1, *v2;
+		vec3_t e0, e1, normal;
+
+		for ( tri_idx = 0; tri_idx < num_triangles; tri_idx++ )
+		{
+			if ( tri_idx > 49 )
+				break;
+
+			light_poly_t* light = model->light_polys + num_lights;
+			num_lights++;
+
+			int i0 = surf->indexes[tri_idx * 3 + 0];
+			int i1 = surf->indexes[tri_idx * 3 + 1];
+			int i2 = surf->indexes[tri_idx * 3 + 2];
+
+			assert(i0 < surf->numVerts);
+			assert(i1 < surf->numVerts);
+			assert(i2 < surf->numVerts);
+
+			v0 = surf->verts->xyz + i0;
+			v1 = surf->verts->xyz + i1;
+			v2 = surf->verts->xyz + i2;
+
+			memcpy(light->positions + 0, surf->verts->xyz + i0, sizeof(light->positions[0]));
+			memcpy(light->positions + 3, surf->verts->xyz + i1, sizeof(light->positions[0]));
+			memcpy(light->positions + 6, surf->verts->xyz + i2, sizeof(light->positions[0]));
+				
+			// add offset
+			VectorSubtract( v1, v0, e0 );
+			VectorSubtract( v2, v0, e1 );
+			CrossProduct( e0, e1, normal );
+			VectorNormalize( normal );
+			const float offset = -0.05f; 
+			for ( int j = 0; j < 3; j++ ) 
+			{
+				VectorMA( light->positions + j * 3, offset, normal, light->positions + j * 3);
+			}
+
+
+			// Cluster is assigned after model instancing and transformation
+			light->cluster = -1;
+
+			light->material = material;
+
+			//memcpy( light->color, emissive_image->light_color, sizeof(vec3_t) );
+			Vector4Set(light->color, 255, 0, 0, 255);
+			light->emissive_factor = 10.f;
+
+			get_triangle_off_center( light->positions, light->off_center, NULL, 1.f  );
+		}
+	}
+
+	return;
+}
+
 #ifdef USE_RTX_GLOBAL_MODEL_VBO
 void vk_rtx_bind_model( int index )
 {
@@ -185,6 +329,29 @@ VkResult vk_rtx_model_vbo_create_pipelines( void )
 	return VK_SUCCESS;
 }
 
+VkResult vk_rtx_model_vbo_destroy_pipelines(void)
+{
+	if (pipeline_instance_geometry != VK_NULL_HANDLE)
+	{
+		qvkDestroyPipeline(vk.device, pipeline_instance_geometry, NULL);
+		pipeline_instance_geometry = VK_NULL_HANDLE;
+	}
+
+	if (pipeline_animate_materials != VK_NULL_HANDLE)
+	{
+		qvkDestroyPipeline(vk.device, pipeline_animate_materials, NULL);
+		pipeline_animate_materials = VK_NULL_HANDLE;
+	}
+
+	if (pipeline_layout_instance_geometry != VK_NULL_HANDLE)
+	{
+		qvkDestroyPipelineLayout(vk.device, pipeline_layout_instance_geometry, NULL);
+		pipeline_layout_instance_geometry = VK_NULL_HANDLE;
+	}
+
+	return VK_SUCCESS;
+}
+
 void vkpt_instance_geometry( VkCommandBuffer cmd_buf, uint32_t num_instances, qboolean update_world_animations ) 
 {
 	VkDescriptorSet desc_sets[] = {
@@ -211,8 +378,8 @@ void vkpt_instance_geometry( VkCommandBuffer cmd_buf, uint32_t num_instances, qb
 	barrier.pNext               = NULL;
 	barrier.srcAccessMask       = VK_ACCESS_SHADER_WRITE_BIT;
 	barrier.dstAccessMask       = VK_ACCESS_SHADER_READ_BIT;
-	barrier.buffer              = vk.model_instance.buffer_vertex.buffer;
-	barrier.size                = vk.model_instance.buffer_vertex.size;
+	barrier.buffer              = vk.buf_primitive_instanced.buffer;
+	barrier.size                = vk.buf_primitive_instanced.size,
 	barrier.srcQueueFamilyIndex = vk.queue_family_index;
 	barrier.dstQueueFamilyIndex = vk.queue_family_index;
 
@@ -330,7 +497,7 @@ void vk_rtx_build_mdxm_vbo( model_t *mod, mdxmHeader_t *mdxm )
 
 		if (vbo->staging_buffer.buffer)
 		{
-			VK_DestroyBuffer( &vbo->staging_buffer );
+			vk_rtx_buffer_destroy( &vbo->staging_buffer );
 
 			vk_rtx_write_model_descriptor( vboModel->model_index, vk.model_instance.descriptor.vbos, vbo->buffer.buffer, vbo->buffer.size );
 		}

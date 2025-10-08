@@ -28,7 +28,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 #define UBO_CVAR_DO( name, default_value ) GLOBAL_UBO_VAR_LIST_DO( FLOAT, name )
 
-#define UBO_CVAR_LIST \
+#define UBO_CVAR_LIST_FLT \
 	UBO_CVAR_DO( flt_antilag_hf,					1		)	/* A-SVGF anti-lag filter strength, [0..inf) */ \
 	UBO_CVAR_DO( flt_antilag_lf,					0.2		) \
 	UBO_CVAR_DO( flt_antilag_spec,					2		) \
@@ -61,6 +61,8 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 	UBO_CVAR_DO( flt_temporal_hf,					1		)	/* temporal filter strength, [0..1] */ \
 	UBO_CVAR_DO( flt_temporal_lf,					1		) \
 	UBO_CVAR_DO( flt_temporal_spec,					1		) \
+	
+#define UBO_CVAR_LIST_PT \
 	UBO_CVAR_DO( pt_aperture,						2.0		)	/* aperture size for the Depth of Field effect, in world units */ \
 	UBO_CVAR_DO( pt_aperture_angle,					0		)	/* rotation of the polygonal aperture, [0..1] */ \
 	UBO_CVAR_DO( pt_aperture_type,					0		)	/* number of aperture polygon edges, circular if less than 3 */ \
@@ -84,6 +86,9 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 	UBO_CVAR_DO( pt_num_bounce_rays,				1		)	/* number of bounce rays, valid values are 0 (disabled), 0.5 (half-res diffuse), 1 (full-res diffuse + specular), 2 (two bounces) */ \
 	UBO_CVAR_DO( pt_particle_softness,				1.0		)	/* particle softness */ \
 	UBO_CVAR_DO( pt_reflect_refract,				2		)	/* number of reflection or refraction bounces: 0, 1 or 2 */ \
+	UBO_CVAR_DO( pt_restir,							1		)	/* switch for using RIS or ReSTIR, 0 or 1 */ \
+	UBO_CVAR_DO( pt_restir_spatial,					1		)	/* ReSTIR spatial samples */ \
+	UBO_CVAR_DO( pt_restir_max_w,					12.0	)	/* ReSTIR max weight clamp */ \
 	UBO_CVAR_DO( pt_roughness_override,				-1		)	/* overrides roughness of all materials if non-negative, [0..1] */ \
 	UBO_CVAR_DO( pt_specular_anti_flicker,			2		)	/* fade factor for rough reflections of surfaces far away, [0..inf) */ \
 	UBO_CVAR_DO( pt_specular_mis,					1		)	/* enables the use of MIS between specular direct lighting and BRDF specular rays */ \
@@ -94,6 +99,8 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 	UBO_CVAR_DO( pt_toksvig,						1		)	/* intensity of Toksvig roughness correction, [0..inf) */ \
 	UBO_CVAR_DO( pt_thick_glass,					0		)	/* switch for thick glass refraction: 0 (disabled), 1 (reference mode only), 2 (real-time mode) */ \
 	UBO_CVAR_DO( pt_water_density,					0.5		)	/* scale for light extinction in water and other media, [0..inf) */ \
+	
+#define UBO_CVAR_LIST_TM \
 	UBO_CVAR_DO( tm_debug,							0		)	/* switch to show the histogram (1) or tonemapping curve (2) */ \
 	UBO_CVAR_DO( tm_dyn_range_stops,				7.0		)	/* Effective display dynamic range in linear stops = log2((max+refl)/(darkest+refl)) (eqn. 6), (-inf..0) */ \
 	UBO_CVAR_DO( tm_enable,							1		)	/* switch for tone mapping, 0 or 1 */ \
@@ -119,6 +126,11 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 	UBO_CVAR_DO( tm_hdr_saturation_scale,			100		)	/* HDR mode saturation adjustment, percentage [0..200], with 0% -> desaturated, 100% -> normal, 200% -> oversaturated */ \
 	UBO_CVAR_DO( ui_hdr_nits,						300		)	/* HDR mode UI (stretch pic) brightness in nits */ \
 
+#define UBO_CVAR_LIST \
+	UBO_CVAR_LIST_FLT \
+	UBO_CVAR_LIST_PT \
+	UBO_CVAR_LIST_TM \
+
 #define GLOBAL_UBO_VAR_LIST \
 	GLOBAL_UBO_VAR_LIST_DO( MAT4,	 V								) \
 	GLOBAL_UBO_VAR_LIST_DO( MAT4,	 invV							) \
@@ -130,7 +142,6 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 	GLOBAL_UBO_VAR_LIST_DO( MAT4,	 shadow_map_VP					) \
 	GLOBAL_UBO_VAR_LIST_DO( MAT4,	 environment_rotation_matrix	) \
 	\
-	GLOBAL_UBO_VAR_LIST_DO( DYNLIGHTDATA, dyn_light_data[MAX_LIGHT_SOURCES] ) \
 	GLOBAL_UBO_VAR_LIST_DO( VEC4,	 cam_pos						) \
 	\
 	GLOBAL_UBO_VAR_LIST_DO( VEC4,	 world_center					) \
@@ -192,7 +203,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 	GLOBAL_UBO_VAR_LIST_DO( FLOAT,   cylindrical_hfov				) \
 	GLOBAL_UBO_VAR_LIST_DO( FLOAT,   cylindrical_hfov_prev			) \
 	GLOBAL_UBO_VAR_LIST_DO( FLOAT,	 tonemap_hdr_clamp_strength		) \
-	GLOBAL_UBO_VAR_LIST_DO( INT,	 num_dyn_lights					) \
+	GLOBAL_UBO_VAR_LIST_DO( INT,	 padding1						) \
 	\
 	GLOBAL_UBO_VAR_LIST_DO( INT	,	 num_static_lights				) \
 	GLOBAL_UBO_VAR_LIST_DO( INT	,	 taa_image_width				) \
@@ -220,32 +231,30 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 	\
 	UBO_CVAR_LIST // WARNING: Do not put any other members into global_ubo after this: the CVAR list is not vec4-aligned
 
-STRUCT ( 
-	VEC3	( center )
-	FLOAT	( radius )
-	VEC3	( color )
-	UINT	( type )			// Combines type (sphere vs spot) and "style" of light (eg spotlight emission profile)
-	VEC3	( spot_direction )
-	/* spot_data depends on spotlight emssion profile:
-	 * DYNLIGHT_SPOT_EMISSION_PROFILE_FALLOFF -> contains packed2x16 with cosTotalWidth, cosFalloffStart
-	 * DYNLIGHT_SPOT_EMISSION_PROFILE_AXIS_ANGLE_TEXTURE -> contains a half with cosTotalWidth and the texture index
-	 */
-	UINT	( spot_data )
-, DynLightData )
-#define DYNLIGHTDATA(n) DynLightData n;
-
 STRUCT (  
-	MAT4	( M )
+	MAT4	( transform )
+	MAT4	( transform_prev )
 
 	UINT	( material )
-	INT		( offset_curr )
-	INT		( offset_prev )
-	FLOAT	( backlerp )
+	INT		( cluster )
+	UINT	( source_buffer_idx )
+	UINT	( prim_count )
 
-	FLOAT	( alpha )
-	INT		( idx_offset )
-	INT		( model_index )
+	UINT	( prim_offset_curr_pose_curr_frame )
+	UINT	( prim_offset_prev_pose_curr_frame )
+	UINT	( prim_offset_curr_pose_prev_frame )
+	UINT	( prim_offset_prev_pose_prev_frame )
+
 	INT		( is_mdxm )
+	INT		( idx_offset )
+	FLOAT	( pose_lerp_curr_frame )
+	FLOAT	( pose_lerp_prev_frame )
+
+	UINT	( alpha_and_frame )
+	UINT	( render_buffer_idx )
+	UINT	( render_prim_offset )
+	UINT	( pad0 )
+
 , ModelInstance )
 #define MODELINSTANCE(n) ModelInstance n;
 	
@@ -257,28 +266,13 @@ STRUCT (
 #define BSPMESHINSTANCE(n) BspMeshInstance n;
 
 STRUCT ( 
-	UINT			( tlas_instance_type		[1000]						)	// could probably pack this in ray_payload_geometry
-	INT				( model_indices				[SHADER_MAX_ENTITIES + SHADER_MAX_BSP_ENTITIES] )
+	UINT			( animated_model_indices	[SHADER_MAX_ENTITIES]		)
+	MODELINSTANCE	( model_instances			[SHADER_MAX_ENTITIES]		)
 	UINT			( model_current_to_prev		[SHADER_MAX_ENTITIES]		)
 	UINT			( model_prev_to_current		[SHADER_MAX_ENTITIES]		)
-	UINT			( world_current_to_prev		[SHADER_MAX_BSP_ENTITIES]	)
-	UINT			( world_prev_to_current		[SHADER_MAX_BSP_ENTITIES]	)
-	UINT			( bsp_prim_offset			[SHADER_MAX_BSP_ENTITIES]	)
-	UINT			( model_idx_offset			[SHADER_MAX_ENTITIES]		)
-	UINT			( model_cluster_id			[SHADER_MAX_ENTITIES]		)
-	UINT			( model_cluster_id_prev		[SHADER_MAX_ENTITIES]		)
-	UINT			( bsp_cluster_id			[SHADER_MAX_BSP_ENTITIES]	)
-	UINT			( bsp_cluster_id_prev		[SHADER_MAX_BSP_ENTITIES]	)
-	MODELINSTANCE	( model_instances			[SHADER_MAX_ENTITIES]		)
-	MODELINSTANCE	( model_instances_prev		[SHADER_MAX_ENTITIES]		)
-	BSPMESHINSTANCE	( bsp_mesh_instances		[SHADER_MAX_BSP_ENTITIES]	)
-	BSPMESHINSTANCE	( bsp_mesh_instances_prev	[SHADER_MAX_BSP_ENTITIES]	)
-
- 	//instance buffer in numberof primitives					  
-	UINT			( model_instance_buf_offset	[SHADER_MAX_ENTITIES]		)
-	UINT			( model_instance_buf_size	[SHADER_MAX_ENTITIES]		)
-	UINT			( bsp_instance_buf_offset	[SHADER_MAX_BSP_ENTITIES]	)
-	UINT			( bsp_instance_buf_size		[SHADER_MAX_BSP_ENTITIES]	)
+	UINT			( mlight_prev_to_current	[MAX_MODEL_LIGHTS]			)
+	UINT            ( tlas_instance_prim_offsets[MAX_TLAS_INSTANCES]		)
+	INT             ( tlas_instance_model_indices[MAX_TLAS_INSTANCES]		)					  
 	BONESREF		( model_mdxm_bones			[SHADER_MAX_ENTITIES]		)
 , InstanceBuffer ) 
 
@@ -290,7 +284,7 @@ STRUCT (
 
 #ifdef GLSL
 // bindings
-layout( set = GLOBAL_UBO_DESC_SET_IDX, binding = GLOBAL_UBO_BINDING_IDX ) uniform UBO { 
+layout( set = GLOBAL_UBO_DESC_SET_IDX, binding = GLOBAL_UBO_BINDING_IDX, std140 ) uniform UBO { 
 	vkUniformRTX_t global_ubo; 
 };
 

@@ -26,6 +26,21 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 static rtx_material_t rtx_materials[MAX_SHADERS];
 
+static void MAT_SetIndex( rtx_material_t *mat )
+{
+	mat->flags = (mat->flags & ~MATERIAL_INDEX_MASK) | (mat->index & MATERIAL_INDEX_MASK);
+}
+
+uint32_t MAT_SetKind(uint32_t material, uint32_t kind)
+{
+	return (material & ~MATERIAL_KIND_MASK) | kind;
+}
+
+bool MAT_IsKind(uint32_t material, uint32_t kind)
+{
+	return (material & MATERIAL_KIND_MASK) == kind;
+}
+
 void vk_rtx_clear_material_list( void ) 
 {
 	Com_Memset( &rtx_materials, 0, sizeof(rtx_materials) );
@@ -47,49 +62,6 @@ void vk_rtx_clear_material( uint32_t index )
 	return &rtx_materials[index];
 }
 
-static qboolean RB_NeedsColor() {
-
-	for (int i = 0; i < MAX_SHADER_STAGES; i++) {
-		if (tess.shader->stages[i] != NULL && tess.shader->stages[i]->active) {
-			if (tess.shader->stages[i]->bundle[0].rgbGen == CGEN_WAVEFORM) {
-				return qtrue;
-			}
-		}
-	}
-	return qfalse;
-}
-
-qboolean RB_StageNeedsColor(int stage) {
-
-	//if ( strstr( tess.shader->name, "fog" ) )
-		//return qtrue;
-
-	if ( tess.shader->stages[stage] != NULL && tess.shader->stages[stage]->active ) 
-	{
-		if ( tess.shader->stages[stage]->bundle[0].rgbGen == CGEN_WAVEFORM || tess.shader->stages[stage]->bundle[0].rgbGen == CGEN_CONST ) {
-			return qtrue;
-		}
-	}
-	return qfalse;
-}
-
-qboolean RB_SkipObject(shader_t* shader) {
-	
-	if ( strstr( shader->name, "glass" ) )
-		return qfalse;
-
-	if (shader->isSky || (shader->surfaceFlags & SURF_SKY) )
-		return qfalse;
-
-	if ( strstr( shader->name, "Shadow" )
-		|| shader->surfaceFlags == SURF_NODRAW /*|| shader->surfaceFlags == SURF_NONE*///SURF_SKIP
-		|| shader->stages[0] == NULL 
-		|| !shader->stages[0]->active )
-		return qtrue;
-
-	return qfalse;
-}
-
 qboolean RB_IsTransparent( shader_t *shader ) 
 {
 	// skip certain objects that are transparent but should be handled like opaque objects
@@ -105,57 +77,141 @@ qboolean RB_IsTransparent( shader_t *shader )
 	return qfalse;
 }
 
-// refactor me
-uint32_t vk_rtx_find_emissive_texture( const shader_t *shader )
+qboolean RB_IsSky(shader_t* shader)
 {
+	return (qboolean)(shader->isSky || shader->sun || (shader->surfaceFlags & (SURF_NODLIGHT | SURF_SKY)));
+}
+
+qboolean RB_IsDynamicGeometry( shader_t *shader ) 
+{
+	return (qboolean)((shader->numDeforms > 0) || (backEnd.currentEntity->e.frame > 0 || backEnd.currentEntity->e.oldframe > 0));
+}
+
+qboolean RB_IsDynamicMaterial( shader_t *shader ) {
 	uint32_t i, j;
+	qboolean changes = qfalse;
 
-	for ( i = 0; i < MAX_RTX_STAGES; i++ ) 
+	for ( i = 0; i < MAX_SHADER_STAGES; i++ ) 
 	{
-		shaderStage_t *pStage = shader->stages[i];
-
-		if ( !pStage || !pStage->active || !pStage->glow )
-			continue;
-
-		for ( j = 0; j < NUM_TEXTURE_BUNDLES; j++ ) 
+		if ( shader->stages[i] != NULL && shader->stages[i]->active ) 
 		{
-			if ( pStage->bundle[j].glow ) {
-				//Com_Printf("found glow texture: %d = %s", pStage->bundle[j].image[0]->index, pStage->bundle[j].image[0]->imgName );
-				return pStage->bundle[j].image[0]->index;
+			for ( j = 0; j < shader->stages[i]->numTexBundles; j++ ) 
+			{
+
+				if ( shader->stages[i]->bundle[j].numImageAnimations > 0 ) 
+					return qtrue;
+
+				if ( (shader->stages[i]->bundle[j].tcGen != TCGEN_BAD) && (shader->stages[i]->bundle[j].numTexMods > 0 ) ) 
+					return qtrue;
+
+				if ( shader->stages[i]->bundle[0].rgbGen == CGEN_WAVEFORM )
+					return qtrue;
 			}
 		}
 	}
-
-	return 0;
+	return changes;
 }
 
-uint32_t RB_GetMaterial( shader_t *shader ) 
-{
-	uint32_t material = 0;
-	material = MATERIAL_KIND_REGULAR;
+static qboolean RB_NeedsColor() {
 
-	if ( vk_rtx_find_emissive_texture( shader ) )
-		material |= MATERIAL_FLAG_LIGHT;
+	for (int i = 0; i < MAX_SHADER_STAGES; i++) {
+		if (tess.shader->stages[i] != NULL && tess.shader->stages[i]->active) {
+			if (tess.shader->stages[i]->bundle[0].rgbGen == CGEN_WAVEFORM) {
+				return qtrue;
+			}
+		}
+	}
+	return qfalse;
+}
+
+qboolean RB_StageNeedsColor( shaderStage_t *stage ) 
+{
+	//if ( strstr( tess.shader->name, "fog" ) )
+		//return qtrue;
+
+	if ( stage == NULL || !stage->active ) 
+		return qfalse;
+
+	if ( stage->bundle[0].rgbGen == CGEN_WAVEFORM || stage->bundle[0].rgbGen == CGEN_CONST ) {
+		return qtrue;
+	}
+
+	return qfalse;
+}
+
+qboolean RB_SkipObject(shader_t* shader) {
 	
 	if ( strstr( shader->name, "glass" ) )
-		material = MATERIAL_KIND_GLASS;
+		return qfalse;
 
-	if ( shader->sort == SS_PORTAL && strstr( shader->name, "mirror" ) != NULL ) 
-		material |= MATERIAL_FLAG_MIRROR;
+	if ( RB_IsSky(shader) )
+		return qfalse;
 
-	if ( ( backEnd.currentEntity->e.renderfx & RF_FIRST_PERSON ) )
-		material |= MATERIAL_FLAG_WEAPON;
+	if ( strstr( shader->name, "Shadow" )
+		|| shader->surfaceFlags == SURF_NODRAW /*|| shader->surfaceFlags == SURF_NONE*///SURF_SKIP
+		|| shader->stages[0] == NULL 
+		|| !shader->stages[0]->active )
+		return qtrue;
 
-	if (shader->isSky || (shader->surfaceFlags & SURF_SKY))
-		material |= MATERIAL_KIND_SKY;
+	return qfalse;
+}
 
-	// sunny
-	if ( strstr( shader->name, "botton") || strstr( shader->name, "door02") ) 
-		material = MATERIAL_KIND_GLASS;
+// refactor me
+uint32_t vk_rtx_find_emissive_texture( const shader_t *shader, rtx_material_t *material )
+{
+	uint32_t i, j;
 
-	//material |= MATERIAL_FLAG_CORRECT_ALBEDO;
+	uint32_t lastValidStage = 0;
+	uint32_t numStages = 0;
+	shaderStage_t *pStage;
 
-	return material;
+	for ( i = 0; i < MAX_RTX_STAGES; i++ ) 
+	{
+		pStage = shader->stages[i];
+
+		if ( !pStage || !pStage->active )
+			continue;
+
+		lastValidStage = i;
+		numStages++;
+
+		if ( !pStage->glow )
+			continue;
+
+		for ( j = 0; j < pStage->numTexBundles; ++j ) 
+		{
+			if ( pStage->bundle[j].glow && pStage->bundle[j].image[0] ) 
+			{
+				//Com_Printf("found glow texture: %d = %s", pStage->bundle[j].image[0]->index, pStage->bundle[j].image[0]->imgName );
+				
+				return pStage->bundle[j].image[0]->index;
+			}
+		}
+
+	}
+
+	// no glow texture found, try surfacelight fallback type
+	if ( !shader->surfacelight )
+		return 0;
+
+	// masked light texture is usualy in the last stage. 
+	uint32_t stage = (numStages == 0) ? 0 : lastValidStage;
+	pStage = shader->stages[stage];
+
+	if ( !pStage ) // check if stage 0 exists
+		return 0;
+
+	const int bundle = (pStage->numTexBundles == 0) ? 0 : pStage->numTexBundles-1;
+	image_t *fallback = pStage->bundle[bundle].image[0];
+
+	if ( fallback ) 
+	{
+		if ( material != NULL )
+			material->surface_light = shader->surfacelight;
+
+		return fallback->index;
+	}
+	return 0;
 }
 
 uint32_t RB_GetNextTex( shader_t *shader, int stage ) 
@@ -196,7 +252,7 @@ uint32_t RB_GetNextTexEncoded( shader_t *shader, int stage )
 		if (stateBits == 101) 
 			blend = TEX0_NORMAL_BLEND_MASK;
 
-		qboolean color = RB_StageNeedsColor(stage);
+		qboolean color = RB_StageNeedsColor( shader->stages[stage] );
 
 		uint32_t nextidx = (uint32_t)indexAnim;
 		uint32_t idx = shader->stages[stage]->bundle[0].image[nextidx]->index;
@@ -209,8 +265,6 @@ uint32_t RB_GetNextTexEncoded( shader_t *shader, int stage )
 
 void vk_rtx_update_shader_material( shader_t *shader, shader_t *updatedShader )
 {
-	uint32_t index, flags;
-
 	if ( !vk.rtxActive )
 		return;
 
@@ -220,17 +274,17 @@ void vk_rtx_update_shader_material( shader_t *shader, shader_t *updatedShader )
 	if ( updatedShader )
 	{
 		vk_rtx_clear_material( (uint32_t)updatedShader->index );
-		vk_rtx_shader_to_material( updatedShader, index, flags );
+		vk_rtx_shader_to_material( updatedShader );
 	}
 
 	if ( shader )
 	{
 		vk_rtx_clear_material( (uint32_t)shader->index );
-		vk_rtx_shader_to_material( shader, index, flags );
+		vk_rtx_shader_to_material( shader );
 	}
 }
 
-VkResult vk_rtx_shader_to_material( shader_t *shader, uint32_t &index, uint32_t &flags )
+rtx_material_t *vk_rtx_shader_to_material( shader_t *shader )
 {
 	shader_t			*state;
 	const shaderStage_t *pStage;
@@ -242,22 +296,27 @@ VkResult vk_rtx_shader_to_material( shader_t *shader, uint32_t &index, uint32_t 
 	if ( shader->updatedShader )
 		state = shader->updatedShader;
 
-	index = 0U;
-	flags = 0U;
-
 	mat = vk_rtx_get_material( (uint32_t)shader->index );
 
 	if ( !mat )
-		return VK_SUCCESS;
+		return NULL;
 
-	index	= (uint32_t)shader->index;
-	flags	= RB_GetMaterial( shader );
+	if ( mat->active )
+		return mat;
 
-	mat->index			= index;
+	// build material
+	mat->index	= (uint32_t)shader->index;	// shared index
+	mat->flags	= MATERIAL_KIND_REGULAR;	// ~sunny, this should be shader or remapped no?
+	
 	mat->remappedIndex	= (state) ? (uint32_t)state->index : 0U;
 	mat->active			= qtrue;
 	mat->albedo			= RB_GetNextTexEncoded( shader, 0 );
-	mat->emissive		= vk_rtx_find_emissive_texture( shader );
+	mat->emissive		= vk_rtx_find_emissive_texture( shader, mat );
+
+	if ( mat->emissive ) {
+		mat->emissive_factor = 1.0f;
+		mat->flags |= MATERIAL_FLAG_LIGHT;
+	}
 
 	if ( mat->index >= (int)MATERIAL_INDEX_MASK || mat->remappedIndex >= (int)MATERIAL_INDEX_MASK  )
 		ri.Error( ERR_DROP, "%s() - MATERIAL_INDEX_MASK(4095) hit. Need to finaly seperate material_index from material_flags", __func__ );
@@ -281,7 +340,9 @@ VkResult vk_rtx_shader_to_material( shader_t *shader, uint32_t &index, uint32_t 
 		}
 	}
 
-	return VK_SUCCESS;
+	MAT_SetIndex( mat );
+
+	return mat;
 }
 
 VkResult vk_rtx_upload_materials( LightBuffer *lbo )

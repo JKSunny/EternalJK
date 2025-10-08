@@ -212,151 +212,99 @@ layout(local_size_x = LOCAL_SIZE_X, local_size_y = 1, local_size_z = 1) in;
 
 void main()
 {
-	uint instance_id = gl_WorkGroupID.x;
+	uint instance_index = instance_buffer.animated_model_indices[gl_WorkGroupID.x];
 
-	int model_index = instance_buffer.model_indices[instance_id];
+	ModelInstance mi = instance_buffer.model_instances[instance_index];
 
-	bool is_world = false;//(model_index & 0x80000000) != 0;
-	uint buf_offset, num_triangles;
-
-#if 0
-	if(is_world)
+	for( uint idx = gl_LocalInvocationID.x; idx < mi.prim_count; idx += LOCAL_SIZE_X )
 	{
-		instance_id = ~model_index;
-		buf_offset = instance_buffer.bsp_instance_buf_offset[instance_id];
-		num_triangles = instance_buffer.bsp_instance_buf_size[instance_id];
-	}
-	else
-#endif
-	{
-		instance_id = model_index;
-		buf_offset = instance_buffer.model_instance_buf_offset[instance_id];
-		num_triangles = instance_buffer.model_instance_buf_size[instance_id];
-	}
+		Triangle t;
 
-	for( uint idx = gl_LocalInvocationID.x; idx < num_triangles; idx += LOCAL_SIZE_X )
-	{
-		Triangle t_i;
-		mat4 M_curr = mat4(1.0);
-		mat4 M_prev = mat4(1.0);
-
-#if 0
-		if(is_world) {
-		}
-		else 
-#endif
-		{	/* model */
-			ModelInstance mi_curr = instance_buffer.model_instances[instance_id];
-			M_curr = mi_curr.M;
-
-			uint id_prev = instance_buffer.model_current_to_prev[instance_id];
-			ModelInstance mi_prev = mi_curr;
-			if(id_prev != ~0u)
-			{
-				mi_prev = instance_buffer.model_instances_prev[id_prev];
-			}
-
+		{
 			/* model mdxm/ghoul2 */
-			if ( mi_curr.is_mdxm != 0 )
+			//if ( mi.iqm_matrix_offset_curr_frame >= 0 )
+			if ( mi.is_mdxm > 0)
 			{
-				t_i	= get_mxdm_triangle( mi_curr.model_index, idx, mi_curr.idx_offset, mi_curr.offset_curr );
+				// Perform bone-based skinning for two frames:
+				// Current frame...
+				t = get_mxdm_triangle( mi.source_buffer_idx, 
+					idx, mi.idx_offset, 0 /*vtx_offset*/ );
 				
-				if (id_prev != ~0u)
-				{
-					Triangle t_prev = get_mxdm_triangle( mi_curr.model_index, idx, mi_curr.idx_offset, mi_curr.offset_prev );
-					t_i.positions_prev = t_prev.positions;
-					M_prev = mi_prev.M;
-				}
-				else
-				{
-					t_i.positions_prev = t_i.positions;
-					M_prev = M_curr;
-				}
+				// ... previous frame
+				Triangle t_prev = get_mxdm_triangle(mi.source_buffer_idx,
+					idx, mi.idx_offset, 0 /*vtx_offset*/ );
+	
+				// Use only the triangle positions from the previous frame
+				t.positions_prev = t_prev.positions;
 
-#if 0
-				t_i.alpha = mi_curr.alpha.x;
-#else
-				// alpha & emsisive set in get_mxdm_triangle() ..
-#endif
-				t_i.material_id = mi_curr.material;
-				// t_i.material_id |= MATERIAL_FLAG_HANDEDNESS; // not sure
-				t_i.cluster = instance_buffer.model_cluster_id[instance_id];
+				// Apply the model-to-world transform
+				for (int vtx = 0; vtx < 3; vtx++)
+				{
+					// Current position
+					t.positions[vtx] = vec3(mi.transform * vec4(t.positions[vtx], 1.0));
+
+					// Previous position
+					t.positions_prev[vtx] = vec3(mi.transform_prev * vec4(t.positions_prev[vtx], 1.0));
+
+					// Current normal
+					t.normals[vtx] = normalize(vec3(mi.transform * vec4(t.normals[vtx], 0.0)));
+
+					// Current tangent
+					t.tangents[vtx] = normalize(vec3(mi.transform * vec4(t.tangents[vtx], 0.0)));
+				}
 			}
 			else
 			{ /* model mdv */
-				//continue;
-
+#if 1
+				Triangle t_a_curr = get_model_triangle( mi.source_buffer_idx, idx, mi.idx_offset, mi.prim_offset_curr_pose_curr_frame );
+				Triangle t_b_curr = get_model_triangle( mi.source_buffer_idx, idx, mi.idx_offset, mi.prim_offset_prev_pose_curr_frame );
+				Triangle t_a_prev = get_model_triangle( mi.source_buffer_idx, idx, mi.idx_offset, mi.prim_offset_curr_pose_prev_frame );
+				Triangle t_b_prev = get_model_triangle( mi.source_buffer_idx, idx, mi.idx_offset, mi.prim_offset_prev_pose_prev_frame );
+			
+				// Blend between the two animation frames and apply the model-to-world transform
+				for (int vtx = 0; vtx < 3; vtx++)
 				{
-					/* read and interpolate triangles for model for _current_ frame */
-					Triangle t		= get_model_triangle( mi_curr.model_index, idx, mi_curr.idx_offset, mi_curr.offset_curr );
-					Triangle t_prev	= get_model_triangle( mi_curr.model_index, idx, mi_curr.idx_offset, mi_curr.offset_prev );
+					// Current position
+					t.positions[vtx] = mix(t_a_curr.positions[vtx], t_b_curr.positions[vtx], mi.pose_lerp_curr_frame);
+					t.positions[vtx] = vec3(mi.transform * vec4(t.positions[vtx], 1.0));
 
-					float backlerp = mi_curr.backlerp;
+					// Previous position
+					t.positions_prev[vtx] = mix(t_a_prev.positions[vtx], t_b_prev.positions[vtx], mi.pose_lerp_prev_frame);
+					t.positions_prev[vtx] = vec3(mi.transform_prev * vec4(t.positions_prev[vtx], 1.0));
 
-					t_i.positions[0] = mix(t.positions[0], t_prev.positions[0], backlerp);
-					t_i.positions[1] = mix(t.positions[1], t_prev.positions[1], backlerp);
-					t_i.positions[2] = mix(t.positions[2], t_prev.positions[2], backlerp);
+					// Current normal
+					t.normals[vtx] = mix(t_a_curr.normals[vtx], t_b_curr.normals[vtx], mi.pose_lerp_curr_frame);
+					t.normals[vtx] = normalize(vec3(mi.transform * vec4(t.normals[vtx], 0.0)));
 
-					t_i.normals[0] = mix(t.normals[0], t_prev.normals[0], backlerp);
-					t_i.normals[1] = mix(t.normals[1], t_prev.normals[1], backlerp);
-					t_i.normals[2] = mix(t.normals[2], t_prev.normals[2], backlerp);
+					// Current tangent
+					t.tangents[vtx] = mix(t_a_curr.tangents[vtx], t_b_curr.tangents[vtx], mi.pose_lerp_curr_frame);
+					t.tangents[vtx] = normalize(vec3(mi.transform * vec4(t.tangents[vtx], 0.0)));
 
-					t_i.tangents[0] = mix(t.tangents[0], t_prev.tangents[0], backlerp);
-					t_i.tangents[1] = mix(t.tangents[1], t_prev.tangents[1], backlerp);
-					t_i.tangents[2] = mix(t.tangents[2], t_prev.tangents[2], backlerp);
-	#if 0
-					t_i.alpha = mi_curr.alpha.x;
-	#else
-					t_i.alpha = t.alpha;
-					t_i.emissive_factor = t.emissive_factor;
-	#endif
-					t_i.tex_coords0  = t.tex_coords0;
-
-					t_i.material_id = t.material_id | mi_curr.material;
-					t_i.cluster = instance_buffer.model_cluster_id[instance_id];
+					// Current texture coordinates - assume no texcoord animation
+					t.tex_coords0[vtx] = t_a_curr.tex_coords0[vtx];
 				}
 
-				if(id_prev != ~0u)
-				{
-					/* read and interpolate triangles for model for _previous_ frame */
-					Triangle t = get_model_triangle(mi_prev.model_index, idx, mi_prev.idx_offset, mi_prev.offset_curr);
-					Triangle t_prev = get_model_triangle(mi_prev.model_index, idx, mi_prev.idx_offset, mi_prev.offset_prev);
-					M_prev = mi_prev.M;
-
-					float backlerp = mi_prev.backlerp;
-
-					t_i.positions_prev[0] = mix(t.positions[0], t_prev.positions[0], backlerp);
-					t_i.positions_prev[1] = mix(t.positions[1], t_prev.positions[1], backlerp);
-					t_i.positions_prev[2] = mix(t.positions[2], t_prev.positions[2], backlerp);
-				}
-				else
-				{
-					M_prev = M_curr;
-
-					t_i.positions_prev[0] = t_i.positions[0];
-					t_i.positions_prev[1] = t_i.positions[1];
-					t_i.positions_prev[2] = t_i.positions[2];
-				}		
+				t.material_id = t_a_curr.material_id;
+				t.shell = t_a_curr.shell;
+				t.emissive_factor = t_a_curr.emissive_factor;
+				t.alpha = t_a_curr.alpha;
+#endif
 			}
 		}
 
-		t_i.positions[0] = vec3(M_curr * vec4(t_i.positions[0], 1.0));
-		t_i.positions[1] = vec3(M_curr * vec4(t_i.positions[1], 1.0));
-		t_i.positions[2] = vec3(M_curr * vec4(t_i.positions[2], 1.0));
+		t.cluster = mi.cluster;
+		t.alpha *= unpackHalf2x16(mi.alpha_and_frame).x;
+		t.instance_index = instance_index;
+		if (mi.material != 0)
+		{
+			t.material_id = mi.material;
+			//t.shell = mi.shell;
+		}
 
-		t_i.positions_prev[0] = vec3(M_prev * vec4(t_i.positions_prev[0], 1.0));
-		t_i.positions_prev[1] = vec3(M_prev * vec4(t_i.positions_prev[1], 1.0));
-		t_i.positions_prev[2] = vec3(M_prev * vec4(t_i.positions_prev[2], 1.0));
-
-		t_i.normals[0] = vec3(M_curr * vec4(t_i.normals[0], 0.0));
-		t_i.normals[1] = vec3(M_curr * vec4(t_i.normals[1], 0.0));
-		t_i.normals[2] = vec3(M_curr * vec4(t_i.normals[2], 0.0));
-
-		t_i.tangents[0] = vec3(M_curr * vec4(t_i.tangents[0], 0.0));
-		t_i.tangents[1] = vec3(M_curr * vec4(t_i.tangents[1], 0.0));
-		t_i.tangents[2] = vec3(M_curr * vec4(t_i.tangents[2], 0.0));
+		// Apply frame-based material animation
+		//t.material_id = animate_material(t.material_id, int(mi.alpha_and_frame >> 16));
 		
-		uint instance_triangle_id = visbuf_pack_instance(instance_id, idx, is_world);
-		store_instanced_triangle(t_i, instance_triangle_id, idx + buf_offset);
+		//store_triangle(t, mi.render_buffer_idx, idx + mi.render_prim_offset);
+		store_triangle(t, mi.render_buffer_idx, idx + mi.render_prim_offset);
 	}
 }

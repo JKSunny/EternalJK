@@ -2857,6 +2857,10 @@ static qboolean ParseShader( const char **text )
 		{
 			token = COM_ParseExt(text, qfalse);
 			tr.sunSurfaceLight = atoi(token);
+#ifdef USE_RTX
+			// https://q3map2.robotrenegade.com/docs/shader_manual/q3map-global-directives.html#q3map_surfaceLight
+			shader.surfacelight = atoi(token);;
+#endif
 		}
 		else if (!Q_stricmp(token, "lightColor"))
 		{
@@ -5323,7 +5327,7 @@ shader_t *GeneratePermanentShader( )
 #ifdef USE_RTX
 	if ( vk.rtxActive )
 	{
-		uint32_t emissive = vk_rtx_find_emissive_texture( newShader );
+		uint32_t emissive = vk_rtx_find_emissive_texture( newShader, NULL );
 
 		if ( emissive && !tr.images[emissive]->processing_complete )
 			vk_rtx_extract_emissive_texture_info( tr.images[emissive] );

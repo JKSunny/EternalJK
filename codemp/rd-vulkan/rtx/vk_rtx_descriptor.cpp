@@ -37,6 +37,7 @@ void vk_rtx_update_descriptor( vkdescriptor_t *descriptor )
 		desc[i].pNext = NULL;
 		desc[i].dstSet = descriptor->set;
 		desc[i].dstBinding = descriptor->bindings[i].binding;
+		desc[i].dstArrayElement	= 0;
 
 		switch ( descriptor->bindings[i].descriptorType ) 
 		{
@@ -102,13 +103,22 @@ void vk_rtx_destroy_descriptor( vkdescriptor_t *descriptor )
     
 	for ( i = 0; i < descriptor->size; ++i ) {
 		if ( descriptor->bindings[i].descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ) 
-			free( descriptor->data[i].image );
+		{
+			if ( descriptor->data[i].image != NULL )
+			{
+				free( descriptor->data[i].image );
+				descriptor->data[i].image = NULL;
+			}
+		}
 	}
 
-    Z_Free( descriptor->data );
-    Z_Free( descriptor->bindings );
-    
-	memset( descriptor, 0, sizeof(vkdescriptor_t) );
+	if ( descriptor->data )
+		free( descriptor->data );
+
+	if ( descriptor->bindings )
+		free( descriptor->bindings );
+
+	Com_Memset( descriptor, 0, sizeof(vkdescriptor_t) );
 }
 
 static void vk_rtx_create_descriptor_layout( vkdescriptor_t *descriptor ) 
@@ -191,6 +201,18 @@ static void vk_rtx_finish_descriptor( vkdescriptor_t *descriptor )
     desc.pSetLayouts = &descriptor->layout;
         
     VK_CHECK( qvkAllocateDescriptorSets( vk.device, &desc, &descriptor->set ) );
+}
+
+vkdescriptor_t *vk_rtx_init_descriptor( vkdescriptor_t *descriptor )
+{
+	Com_Memset( descriptor, 0, sizeof(vkdescriptor_t) );
+
+	// ~sunny, just cus im scared
+	descriptor->data = NULL;
+	descriptor->bindings = NULL;
+	descriptor->size = 0;
+
+	return descriptor;
 }
 
 void vk_rtx_create_descriptor( vkdescriptor_t *descriptor ) 
@@ -338,8 +360,25 @@ void vk_rtx_bind_descriptor_buffer( vkdescriptor_t *descriptor, uint32_t binding
 	}
 }
 
-void vk_rtx_set_descriptor_update_size(  vkdescriptor_t *descriptor, uint32_t binding, 
-										 VkShaderStageFlagBits stage, uint32_t size ) 
+void vk_rtx_bind_descriptor_buffer_element(vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage, uint32_t element, VkBuffer buffer)
+{
+	uint32_t i;
+
+	if ( buffer == NULL )
+		return;	// need to bind empty buffer
+
+    for (uint32_t i = 0; i < descriptor->size; ++i) {
+        if (descriptor->bindings[i].binding != binding || descriptor->bindings[i].stageFlags != stage)
+            continue;
+
+        descriptor->data[i].buffer[element].buffer = buffer;
+        descriptor->data[i].buffer[element].offset = 0;
+        descriptor->data[i].buffer[element].range = VK_WHOLE_SIZE;
+        return;
+    }
+}
+
+void vk_rtx_set_descriptor_update_size(  vkdescriptor_t *descriptor, uint32_t binding,  VkShaderStageFlagBits stage, uint32_t size ) 
 {
 	uint32_t i;
 

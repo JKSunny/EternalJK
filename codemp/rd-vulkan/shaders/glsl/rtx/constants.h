@@ -63,11 +63,12 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 // blas instance type/id
 #define AS_TYPE_DEFAULT                                 (0)
 #define AS_TYPE_WORLD_STATIC                            (1)
-#define AS_TYPE_WORLD_DYNAMIC_DATA                      (2)
-#define AS_TYPE_WORLD_DYNAMIC_AS                        (3)
+#define AS_TYPE_WORLD_DYNAMIC_MATERIAL                      (2)
+#define AS_TYPE_WORLD_DYNAMIC_GEOMETRY                        (3)
 #define AS_TYPE_ENTITY_STATIC                           (4)
 #define AS_TYPE_ENTITY_DYNAMIC                          (5)
 #define AS_TYPE_SKY                                     (6)
+#define AS_TYPE_WORLD_SUBMODEL                          (7)
 
 #define AS_INSTANCE_FLAG_DYNAMIC					(1 << 23)
 #define AS_INSTANCE_FLAG_SKY						(1 << 22)
@@ -98,23 +99,16 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define MATERIAL_KIND_CHROME_MODEL					0xd0000000
 #define MATERIAL_KIND_TRANSP_MODEL					0xe0000000 // Transparent models. No distortion, just "see through".
 
-#define MATERIAL_FLAG_MASK          				0x000ffff0
-#define MATERIAL_FLAG_LIGHT 						0x00000010
-#define MATERIAL_FLAG_TRANSPARENT  					0x00000020
-#define MATERIAL_FLAG_SEE_THROUGH  					0x00000040
-#define MATERIAL_FLAG_MIRROR 						0x00000080
-#define MATERIAL_FLAG_NEEDSCOLOR 					0x00000100
-#define MATERIAL_FLAG_CORRECT_ALBEDO 				0x00000200
-#define MATERIAL_FLAG_PORTAL						0x00000400
-#define MATERIAL_FLAG_BULLET_MARK					0x00000800
-#define MATERIAL_FLAG_WEAPON			    		0x00001000
-#define MATERIAL_FLAG_SEE_THROUGH_ADD  				0x00002000
-#define MATERIAL_FLAG_SEE_THROUGH_NO_ALPHA  	    0x00004000
-#define MATERIAL_FLAG_IGNORE_LUMINANCE 				0x00008000
+#define MATERIAL_FLAG_DOUBLE_SIDED					0x00200000 // bit 21
+#define MATERIAL_FLAG_FLOWING						0x00400000 // bit 22
+#define MATERIAL_FLAG_WARP							0x00800000 // bit 23
+#define MATERIAL_FLAG_WEAPON						0x01000000 // bit 24
+#define MATERIAL_FLAG_HANDEDNESS					0x02000000 // bit 25
+#define MATERIAL_FLAG_LIGHT							0x08000000 // bit 27
 
 #define MATERIAL_LIGHT_STYLE_MASK    0x0003f000
 #define MATERIAL_LIGHT_STYLE_SHIFT   12
-#define MATERIAL_INDEX_MASK			 0x00000fff	// just 4095 material indexes? can cause issues some day?
+#define MATERIAL_INDEX_MASK          0x00000fff	// bits 0–11; just 4095 material indexes? can cause issues some day?
 
 #define CHECKERBOARD_FLAG_PRIMARY    1
 #define CHECKERBOARD_FLAG_REFLECTION 2
@@ -136,16 +130,26 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define ENVIRONMENT_STATIC		1
 #define ENVIRONMENT_DYNAMIC		2
 
-#define MAX_LIGHT_SOURCES        32
-#define MAX_LIGHT_STYLES         64
+#define MAX_MODEL_INSTANCES      8192 // SHADER_MAX_ENTITIES/MAX_ENTITIESTOTAL + SHADER_MAX_BSP_ENTITIES? * (some number of geometries per model, usually 1)
+#define MAX_RESERVED_INSTANCES   16   // TLAS instances reserved for skinned geometry, particles and the like
+#define MAX_TLAS_INSTANCES       (MAX_MODEL_INSTANCES + MAX_RESERVED_INSTANCES)
+
+#define MAX_LIGHT_SOURCES       32
+#define MAX_LIGHT_STYLES        64
+#define MAX_MODEL_LIGHTS		16384
 
 // Variables that have "_lf", "_hf" or "_spec" suffix apply to the low-frequency, high-frequency or specular lighting channels, respectively.
 
 // shader groups
-#define SBT_RGEN				0
-#define SBT_RMISS_EMPTY			1
-#define SBT_RCHIT_GEOMETRY		2
-#define SBT_ENTRIES_PER_PIPELINE 3
+#define SBT_RGEN					0
+#define SBT_RMISS_EMPTY				1
+#define SBT_RCHIT_GEOMETRY			2
+#define SBT_RAHIT_MASKED			3
+#define SBT_ENTRIES_PER_PIPELINE	4
+
+// SBT indices for geometry and shadow rays
+#define SBTO_OPAQUE     (SBT_RCHIT_GEOMETRY - SBT_RCHIT_GEOMETRY)
+#define SBTO_MASKED     (SBT_RAHIT_MASKED - SBT_RCHIT_GEOMETRY)
 
 #define UINT_MAX                                    0xffffffff
 #define UINT_TOP_16BITS_MASK                        0xffff0000
@@ -166,10 +170,6 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define TEX0_BLEND_MASK                             0x00001C00
 #define TEX1_BLEND_MASK                             0x1C000000
 
-#define MAX_VERT_MODEL          (1 << 23)
-#define MAX_IDX_MODEL           (1 << 22)
-#define MAX_PRIM_MODEL          (MAX_IDX_MODEL / 3)
-
 #define SHADER_MAX_ENTITIES		1024
 #define SHADER_MAX_BSP_ENTITIES	128
 
@@ -177,9 +177,10 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define M_PI 3.1415926535897932384626433832795
 #endif
 
-// Dynamic light types
-#define DYNLIGHT_SPHERE         0
-#define DYNLIGHT_SPOT           1
+// Light types
+#define LIGHT_POLYGON        0
+#define LIGHT_SPHERE         1
+#define LIGHT_SPOT           2
 
 //
 // Spotlight styles (emission profiles)

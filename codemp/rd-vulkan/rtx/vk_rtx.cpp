@@ -32,9 +32,31 @@ VkDescriptorSet vk_rtx_get_current_desc_set_textures()
 #endif
 }
 
+byte* BSP_GetPvs( world_t *bsp, int cluster )
+{
+	if (!bsp->vis || !bsp->numClusters)
+		return NULL;
+	
+	if (cluster < 0 || cluster >= bsp->numClusters)
+		return NULL;
+
+	return (byte*)bsp->vis + bsp->clusterBytes * cluster;
+}
+
+byte* BSP_GetPvs2( world_t *bsp, int cluster )
+{
+	if (!bsp->vis || !bsp->numClusters)
+		return NULL;
+
+	if (cluster < 0 || cluster >= bsp->numClusters)
+		return NULL;
+
+	return (byte*)bsp->vis2 + bsp->clusterBytes * cluster;
+}
+
 byte *BSP_ClusterVis( world_t *bsp, byte *mask, int cluster, int vis )
 {
-	if ( !bsp || !vk.vis ) {
+	if ( !bsp || !bsp->vis ) {
 		memset( mask, 0xff, VIS_MAX_BYTES );
 		return mask;
 	}
@@ -45,7 +67,7 @@ byte *BSP_ClusterVis( world_t *bsp, byte *mask, int cluster, int vis )
     }
 
     //if ( cluster < 0 || cluster >= bsp->numClusters ) {
-    if ( cluster < 0 || cluster >= vk.numClusters ) {
+    if ( cluster < 0 || cluster >= bsp->numClusters ) {
         Com_Error( ERR_DROP, "%s: bad cluster", __func__ );
     }
 
@@ -53,7 +75,7 @@ byte *BSP_ClusterVis( world_t *bsp, byte *mask, int cluster, int vis )
 	{
 		if ( bsp->vis2 )
 		{
-			char *row = (char*)bsp->vis2 + cluster * bsp->clusterBytes;
+			byte *row = BSP_GetPvs2( bsp, cluster );
 			memcpy( mask, row, bsp->clusterBytes );
 			return mask;
 		}
@@ -64,8 +86,8 @@ byte *BSP_ClusterVis( world_t *bsp, byte *mask, int cluster, int vis )
 
 	if ( vis == DVIS_PVS/* && bsp->pvs_matrix*/ )
 	{
-		char *row = (char*)vk.vis + cluster * vk.clusterBytes;
-		memcpy(mask, row, vk.clusterBytes);
+		byte *row = BSP_GetPvs( bsp, cluster );
+		memcpy(mask, row, bsp->clusterBytes);
 		return mask;
 	}
 
@@ -238,7 +260,6 @@ void vk_rtx_initialize( void )
 		vk.taa_samples[i][1] = halton(3, i + 1) - 0.5f;
 	}
 
-	vk_rtx_reset_accel_offsets();
 	vk_rtx_initialize_images();
 	vk_rtx_create_images();
 	vk_rtx_create_buffers();
@@ -258,46 +279,9 @@ void vk_rtx_shutdown( void )
 	if ( !vk.rtxActive ) 
 		return;
 
-	uint32_t i;
-
-	vk_rtx_destroy_accel_all();
-
-	vk_rtx_destroy_blas( &vk.blas_static.world );
-	vk_rtx_destroy_blas( &vk.blas_static.world_transparent );
-	vk_rtx_destroy_blas( &vk.blas_dynamic.data_world );
-	vk_rtx_destroy_blas( &vk.blas_dynamic.data_world_transparent );
-
-	for ( i = 0; i < vk.swapchain_image_count; i++ ) 
-	{
-		vk_rtx_destroy_blas(&vk.blas_dynamic.as_world[i] );
-		vk_rtx_destroy_blas(&vk.blas_dynamic.as_world_transparent[i] );
-
-		vk_rtx_destroy_descriptor( &vk.rt_descriptor_set[i] );
-		vk_rtx_destroy_descriptor( &vk.desc_set_vertex_buffer[i] );
-	}
-
-	for ( i = 0; i < PIPELINE_COUNT; i++ )
-	{
-		qvkDestroyPipeline( vk.device, vk.rt_pipelines[i], NULL);
-		vk.rt_pipelines[i] = VK_NULL_HANDLE;
-	}
-	qvkDestroyPipelineLayout( vk.device, vk.rt_pipeline_layout, NULL);
-
-	VK_DestroyBuffer( &vk.buf_shader_binding_table );
-
-	vk_destroy_asvgf_pipelines();
-	vk_destroy_tonemap_pipelines();
-	vk_destroy_physical_sky_pipelines();
 	vk_rtx_destroy_shaders();
 	vk_rtx_destroy_buffers();
+	vk_rtx_destroy_primary_rays_resources();
 
-	vk_rtx_reset_accel_offsets();
-
-	vk_rtx_clear_material_list();
-
-	vk.updateDataOffsetXYZCount = 0;
-	vk.updateASOffsetXYZCount = 0;
 	vk.scratch_buf_ptr = 0;
-
-	vk.worldASInit = qfalse;
 }

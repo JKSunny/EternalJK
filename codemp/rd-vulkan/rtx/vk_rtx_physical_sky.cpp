@@ -305,7 +305,7 @@ void vk_rtx_reset_envmap( void )
 	has_envmap = false;
 }
 
-void vk_rtx_set_envmap_descriptor_binding( void )
+VkResult vk_rtx_set_envmap_descriptor_binding( void )
 {
 	VkDescriptorImageInfo desc_img_info;
 	desc_img_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -327,16 +327,17 @@ void vk_rtx_set_envmap_descriptor_binding( void )
 
 	s.dstSet = vk.desc_set_textures_odd;
 	qvkUpdateDescriptorSets( vk.device, 1, &s, 0, NULL );
+
+	return VK_SUCCESS;
 }
 
-void vk_rtx_prepare_envmap( world_t &worldData ) 
+VkResult vk_rtx_prepare_envmap( world_t &worldData ) 
 {
 	uint32_t	i;
 	int			width, height;
 	byte		*pic;
 
-	if ( has_envmap )
-		return;
+	vk_rtx_reset_envmap();
 
 	for ( i = 0; i < worldData.numsurfaces; i++ ) 
 	{ 
@@ -380,6 +381,8 @@ void vk_rtx_prepare_envmap( world_t &worldData )
 			R_LoadImage(shader->sky->outerbox[2]->imgName, &pic, &width, &height );
 			vk_rtx_upload_image_data( &vk.img_envmap, width, height, pic, 4, 0, 5 ); // left
 			ri.Z_Free( pic );
+
+			has_envmap = true;
 		}
 
 		else if ( shader->stages[0] != NULL ) 
@@ -398,13 +401,29 @@ void vk_rtx_prepare_envmap( world_t &worldData )
 			vk_rtx_upload_image_data( &vk.img_envmap, width, height, pic, 4, 0, 3 );
 			vk_rtx_upload_image_data( &vk.img_envmap, width, height, pic, 4, 0, 4 );
 			vk_rtx_upload_image_data( &vk.img_envmap, width, height, pic, 4, 0, 5 );
+
+			has_envmap = true;
 		}
 
 		vk_rtx_set_envmap_descriptor_binding();
-
-		has_envmap = true;
+		
 		break;
 	}
+
+	if ( !has_envmap )
+	{
+		byte black[4] = { 0,0,0,0 };
+
+		vk_rtx_create_cubemap( &vk.img_envmap, 1, 1,
+			VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 1 );
+
+		for ( int skyIndex = 0; skyIndex < 5; skyIndex++ )
+			vk_rtx_upload_image_data( &vk.img_envmap, 1, 1, black, 4, 0, skyIndex );
+
+		vk_rtx_set_envmap_descriptor_binding();
+	}
+
+	return VK_SUCCESS;
 }
 //
 // traditional envmap end

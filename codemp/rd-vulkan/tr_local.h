@@ -1025,6 +1025,9 @@ typedef struct shader_s {
 	char		*shaderText;
 	qboolean	sun;
 	vec3_t		sunColor;
+#ifdef USE_RTX
+	int			surfacelight;
+#endif
 } shader_t;
 
 /*
@@ -1532,6 +1535,20 @@ typedef struct bmodel_s {
 	vec3_t		bounds[2];			// for culling
 	msurface_t	*firstSurface;
 	int			numSurfaces;
+#ifdef USE_RTX
+	model_geometry_t geometry;
+
+	vec3_t			center;
+	vec3_t			aabb_min;
+	vec3_t			aabb_max;
+
+	int				num_light_polys;
+	int				allocated_light_polys;
+	light_poly_t	*light_polys;
+
+	bool transparent;
+	bool masked;
+#endif
 } bmodel_t;
 
 typedef struct
@@ -1541,18 +1558,6 @@ typedef struct
 	byte		styles[MAXLIGHTMAPS];
 	byte		latLong[2];
 } mgrid_t;
-
-#ifdef USE_RTX
-typedef struct light_poly_s {
-	float	positions[9]; // 3x vec3_t
-	vec3_t	off_center;
-	vec3_t	color;
-	void	*material;
-	int		cluster;
-	int		style;
-	float emissive_factor;
-} light_poly_t;
-#endif
 
 typedef struct world_s {
 	char		name[MAX_QPATH];		// ie: maps/tim_dm2.bsp
@@ -1601,6 +1606,11 @@ typedef struct world_s {
 	int			clusterBytes;
 	const byte	*vis;					// may be passed in by CM_LoadMap to save space	
 #ifdef USE_RTX
+	aabb_t			world_aabb;
+	aabb_t			*cluster_aabbs;
+
+	vkgeometry_t	geometry;
+
 	const byte		*vis2;
 	int				numvisibility;
 
@@ -1611,6 +1621,9 @@ typedef struct world_s {
 	int				num_light_polys;
 	int				allocated_light_polys;
 	light_poly_t	*light_polys;
+
+	int				num_bmodels;
+	byte			sky_visibility[VIS_MAX_BYTES];
 #endif
 
 	byte		*novis;					// clusterBytes of 0xff
@@ -1792,6 +1805,10 @@ typedef struct model_s {
 	} data;
 
 	int	numLods;
+#ifdef USE_RTX
+	int				num_light_polys;
+	light_poly_t	*light_polys;
+#endif
 } model_t;
 
 #define	MAX_MOD_KNOWN	1024
@@ -2430,10 +2447,12 @@ extern cvar_t	*com_cl_running;
 #endif
 
 #ifdef USE_RTX
+extern  cvar_t  *pt_restir;
 extern  cvar_t  *pt_caustics;
 extern  cvar_t  *pt_dof;
 extern  cvar_t  *pt_projection;
 extern  cvar_t  *tm_blend_enable;
+extern  cvar_t  *pt_debug_poly_lights;
 
 #define UBO_CVAR_DO( _handle, _value ) \
 	extern cvar_t *sun_##_handle;
@@ -2696,6 +2715,10 @@ void RB_StageIteratorSky( void );
 void RB_AddQuadStamp( vec3_t origin, vec3_t left, vec3_t up, color4ub_t color );
 void RB_AddQuadStampExt( vec3_t origin, vec3_t left, vec3_t up, color4ub_t color, float s1, float t1, float s2, float t2 );
 void RB_AddQuadStamp2( float x, float y, float w, float h, float s1, float t1, float s2, float t2, color4ub_t color );
+
+#ifdef USE_RTX
+void RB_AddTriangle( vec3_t a, vec3_t b, vec3_t c, color4ub_t color );
+#endif
 
 /*
 ============================================================

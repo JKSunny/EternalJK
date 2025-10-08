@@ -485,6 +485,9 @@ extern PFN_vkCmdFillBuffer									qvkCmdFillBuffer;
 
 extern PFN_vkCmdBeginDebugUtilsLabelEXT						qvkCmdBeginDebugUtilsLabelEXT;
 extern PFN_vkCmdEndDebugUtilsLabelEXT						qvkCmdEndDebugUtilsLabelEXT;
+
+typedef float mat3[3][3];
+typedef mat3 prim_positions_t;
 #endif
 
 typedef float mat4_t[16];
@@ -870,7 +873,6 @@ typedef struct {
 	int32_t			queue_idx_transfer;
 
 	uint64_t		frame_counter;
-	vkgeometry_t	geometry;
 
 	qboolean		rtxSupport;	// device supports raytracing
 	qboolean		rtxActive;	// raytracing on
@@ -903,17 +905,8 @@ typedef struct {
 	bool			supports_fp16;
 	int				effective_aa_mode;
 
-	cluster_t		*clusterList;
-	int				numFixedCluster;
-	int				numClusters;
-	int				clusterBytes;
-	int				numMaxClusters;
-	const byte		*vis;
-
 	char			cluster_debug_mask[VIS_MAX_BYTES];
 	int				cluster_debug_index;
-
-	qboolean		worldASInit;
 
 	vkbuffer_t		buf_shader_binding_table;
 
@@ -979,44 +972,6 @@ typedef struct {
 
 	Shadowmap		precomputed_shadowmapdata;
 
-	struct {
-		// world static (world geometry that does not requiere updates)
-		vk_blas_t	world;
-		vk_blas_t	sky;
-		vk_blas_t	world_transparent;
-	} blas_static;
-
-	struct {
-		// world dynamic data (world geometry that requieres texture/color or uv updates)
-		vk_blas_t	data_world;
-		vk_blas_t	data_world_transparent;
-
-		// world dynamic AS (world geometry that requieres AS updates)
-		vk_blas_t	as_world[VK_MAX_SWAPCHAIN_SIZE];
-		vk_blas_t	as_world_transparent[VK_MAX_SWAPCHAIN_SIZE];
-	} blas_dynamic;
-
-	struct {
-		uint32_t	index_offset;
-		uint32_t	vertex_offset;
-		uint32_t	num_vertices;
-		shader_t	*shader;
-		msurface_t	*surf;
-		int			cluster;
-		int			fogindex;
-	} updateDataOffsetXYZ[3500];
-	uint32_t		updateDataOffsetXYZCount;
-
-	struct {
-		uint32_t	index_offset;
-		uint32_t	vertex_offset;
-		uint32_t	countXYZ;
-		uint32_t	num_vertices;
-		shader_t	*shader;
-		msurface_t	*surf;
-		int			cluster;
-	} updateASOffsetXYZ[3500];
-	uint32_t		updateASOffsetXYZCount;
 
 	// Top AS (Buffers) for each swapchain image
 	vk_tlas_t		tlas_geometry[VK_MAX_SWAPCHAIN_SIZE];
@@ -1026,6 +981,9 @@ typedef struct {
 	
 	vkbuffer_t		buf_readback;
 	vkbuffer_t		buf_readback_staging[VK_MAX_SWAPCHAIN_SIZE];
+
+	vkbuffer_t      buf_primitive_instanced;
+	vkbuffer_t      buf_positions_instanced;
 
 	vkbuffer_t		buf_light;
 	vkbuffer_t		buf_light_staging[VK_MAX_SWAPCHAIN_SIZE];

@@ -244,10 +244,12 @@ cvar_t	*com_cl_running;
 #endif
 
 #ifdef USE_RTX
+cvar_t	*pt_restir;
 cvar_t	*pt_caustics;
 cvar_t	*pt_dof;
 cvar_t	*pt_projection;
 cvar_t	*tm_blend_enable;
+cvar_t	*pt_debug_poly_lights;
 
 #define UBO_CVAR_DO( _handle, _value ) cvar_t *sun_##_handle;
 	UBO_CVAR_LIST
@@ -1061,10 +1063,12 @@ void R_Register( void )
 #endif
 
 #ifdef USE_RTX
+	pt_restir							= ri.Cvar_Get("pt_restir",							"1",	CVAR_NONE, "Switch for experimental direct light sampling algorithms. Default value is 1.\n - 0 — RIS light sampling.\n - 1 — ReSTIR, high quality.\n - 2 — ReSTIR El-Cheapo, uses half of the shadow rays. \n - 3 — ReSTIR El-Very-Cheapo, uses one quarter of the shadow rays.");
 	pt_caustics							= ri.Cvar_Get("pt_caustics",						"1",	CVAR_NONE, "");
 	pt_dof								= ri.Cvar_Get("pt_dof",								"0",	CVAR_NONE, "");
 	pt_projection						= ri.Cvar_Get("pt_projection",						"0",	CVAR_NONE, "");
 	tm_blend_enable						= ri.Cvar_Get("tm_blend_enable",					"1",	CVAR_NONE, "");
+	pt_debug_poly_lights				= ri.Cvar_Get("pt_debug_poly_lights",				"0",	CVAR_NONE, "");
 	
 #define UBO_CVAR_DO( _handle, _value ) sun_##_handle = ri.Cvar_Get( #_handle,	#_value, CVAR_NONE, "" );
 	UBO_CVAR_LIST
@@ -1304,6 +1308,14 @@ void RE_Shutdown( qboolean destroyWindow, qboolean restarting ) {
 
 		vk_delete_textures();
 		vk_release_resources();
+#ifdef USE_RTX
+		if ( vk.rtxActive && tr.world )
+		{
+			vk_rtx_destroy_primary_rays_resources();
+
+			vk_rtx_clear_material_list();
+		}
+#endif
 	//}
 
 	//vk_release_resources(); not merged yet (https://github.com/ec-/Quake3e/commit/d31b84ebf2ab702686e98dff40b7673473026b30)

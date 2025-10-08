@@ -25,19 +25,25 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "conversion.h"
 #include "ghoul2/g2_local.h"
 
-typedef struct entity_hash_s {
-	unsigned int mesh : 8;
-	unsigned int model : 9;
-	unsigned int entity : 15;
-} entity_hash_t;
-
 static int entity_frame_num = 0;
 static int model_entity_ids[2][MAX_REFENTITIES];
 static int world_entity_ids[2][MAX_REFENTITIES];
+static int light_entity_ids[2][MAX_MODEL_LIGHTS];
 static int model_entity_id_count[2];
 static int world_entity_id_count[2];
+static int light_entity_id_count[2];
+static ModelInstance model_instances_prev[MAX_REFENTITIES];
 
-#define MAX_MODEL_LIGHTS 16384
+static uint32_t g_num_instances = 0;
+static vk_geometry_instance_t g_instances[MAX_TLAS_INSTANCES];
+
+static const mat4_t g_identity_transform = {
+	1.f, 0.f, 0.f, 0.f,
+	0.f, 1.f, 0.f, 0.f,
+	0.f, 0.f, 1.f, 0.f,
+	0.f, 0.f, 0.f, 1.f
+};
+
 static int			num_model_lights;
 static light_poly_t model_lights[MAX_MODEL_LIGHTS];
 
@@ -97,85 +103,123 @@ void VK_BeginRenderClear()
 	}
 }
 
-void append_blas( vk_geometry_instance_t *instances, int *num_instances, uint32_t type, vk_blas_t* blas, int instance_id, int mask, int flags, int sbt_offset )
-{
-	vk_geometry_instance_t instance;
-	Com_Memset( &instance, 0, sizeof(vk_geometry_instance_t) );
-
-	instance.instance_id = instance_id;
-	instance.mask = mask;
-	instance.instance_offset = sbt_offset;
-	instance.flags = flags;
-	
-	VkAccelerationStructureDeviceAddressInfoKHR  info;
-	info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR;
-	info.pNext = NULL;
-	info.accelerationStructure = blas->accel;
-	instance.acceleration_structure = qvkGetAccelerationStructureDeviceAddressKHR(vk.device, &info);
-
-	mat3x4_t transform = {
-		1.0f, 0.0f, 0.0f, 0.0f,
-		0.0f, 1.0f, 0.0f, 0.0f,
-		0.0f, 0.0f, 1.0f, 0.0f };
-
-	Com_Memcpy( &instance.transform, &transform, sizeof(mat3x4_t) );
-
-	//assert(*num_instances < INSTANCE_MAX_NUM);
-	memcpy(instances + *num_instances, &instance, sizeof(instance));
-	vk.uniform_instance_buffer.tlas_instance_type[*num_instances] = type;
-	++*num_instances;
-}
-
 void vkpt_pt_create_all_dynamic( VkCommandBuffer cmd_buf, int idx, const EntityUploadInfo *upload_info )
 {
 	vk.scratch_buf_ptr = 0;
-	uint64_t offset_vertex_base = offsetof(ModelDynamicVertexBuffer, positions_instanced);
-	uint64_t offset_vertex = offset_vertex_base;
-	uint64_t offset_index = 0;
 
 	accel_build_batch_t batch;
 	Com_Memset( &batch, 0, sizeof(accel_build_batch_t) );
 
-	const qboolean instanced = qtrue;
+	uint64_t offset_vertex_base = 0;
+	uint64_t offset_vertex = offset_vertex_base;
+	uint64_t offset_index = 0;
 
 	vk_rtx_create_blas( &batch, 
-		&vk.model_instance.buffer_vertex, offset_vertex, NULL, offset_index, 		
-		upload_info->dynamic_vertex_num, 0,
+		&vk.buf_positions_instanced, offset_vertex, 
+		NULL, offset_index, 		
+		upload_info->opaque_prim_count * 3, 0,
 		&vk.model_instance.blas.dynamic[idx], 
-		qtrue, qtrue, qfalse, instanced );
+		qtrue, qtrue, qfalse, 0, "instanced opaque" );
 
-	qvkCmdBuildAccelerationStructuresKHR( cmd_buf, batch.numBuilds, batch.buildInfos, batch.rangeInfoPtrs );
+	if ( batch.numBuilds > 0)
+		qvkCmdBuildAccelerationStructuresKHR( cmd_buf, batch.numBuilds, batch.buildInfos, batch.rangeInfoPtrs );
 
 	MEM_BARRIER_BUILD_ACCEL(cmd_buf);
 	vk.scratch_buf_ptr = 0;
 }
 
-static void vkpt_pt_create_toplevel( VkCommandBuffer cmd_buf, uint32_t idx, drawSurf_t *drawSurfs, int numDrawSurfs ) 
+static void append_blas( vk_geometry_instance_t *instances, uint32_t *num_instances, vk_blas_t* blas, int vbo_index, uint32_t prim_offset, int mask, int flags, int sbt_offset )
 {
-	vk_geometry_instance_t instances[1000];
-	int num_instances = 0;
+	if (!blas->present)
+		return;
 
-	//
-	// world instances ( static & dynamic, no model/entity )
-	//
-	append_blas( instances, &num_instances, AS_TYPE_WORLD_STATIC,		&vk.blas_static.world, 0, AS_FLAG_OPAQUE, 0, 0 );
+	vk_geometry_instance_t instance;
+	Com_Memset( &instance, 0, sizeof(vk_geometry_instance_t) );
+
+	mat3x4_t transform = {
+		1.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, 1.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 1.0f, 0.0f };
+	Com_Memcpy( &instance.transform, &transform, sizeof(mat3x4_t) );
+
+	instance.instance_id		= vbo_index;
+	instance.mask				= mask;
+	instance.instance_offset	= sbt_offset;
+	instance.flags				= flags;
 	
-	// sky
-	append_blas( instances, &num_instances, AS_TYPE_SKY,				&vk.blas_static.sky, 0, AS_FLAG_SKY, 0, 0 );
-	
-	append_blas( instances, &num_instances, AS_TYPE_WORLD_DYNAMIC_DATA,	&vk.blas_dynamic.data_world, 0, AS_FLAG_OPAQUE, 0, 0 );
-	//append_blas( instances, &num_instances, AS_TYPE_WORLD_DYNAMIC_DATA,	&vk.blas_dynamic.data_world_transparent, 0, 0, 0, 0 );
-	
-	append_blas( instances, &num_instances, AS_TYPE_WORLD_DYNAMIC_AS,	&vk.blas_dynamic.as_world[idx], 0, AS_FLAG_OPAQUE, 0, 0 );
-	//append_blas( instances, &num_instances, AS_TYPE_WORLD_DYNAMIC_AS,	&vk.blas_dynamic.as_world_transparent[idx], 0, 0, 0, 0 );
-	
+	VkAccelerationStructureDeviceAddressInfoKHR  info;
+	info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR;
+	info.pNext = NULL;
+	info.accelerationStructure = blas->accel;
+
+	instance.acceleration_structure = qvkGetAccelerationStructureDeviceAddressKHR(vk.device, &info);
+
+	//assert(*num_instances < INSTANCE_MAX_NUM);
+	memcpy(instances + *num_instances, &instance, sizeof(instance));
+	vk.uniform_instance_buffer.tlas_instance_prim_offsets[*num_instances] = prim_offset;
+	vk.uniform_instance_buffer.tlas_instance_model_indices[*num_instances] = -1;
+	++*num_instances;
+}
+
+void vkpt_pt_reset_instances()
+{
+	g_num_instances = 0;
+}
+
+#define MAT4_GET(mat, row, col) (mat)[(col) * 4 + (row)]  // For column-major 4x4
+
+//vkpt_pt_instance_model_blas( 
+//	&tr.world->geometry.world_static.geom_opaque, g_identity_transform, VERTEX_BUFFER_WORLD, -1, 0 );
+
+void vkpt_pt_instance_model_blas( const model_geometry_t* geom, const mat4_t transform, uint32_t buffer_idx, int model_instance_index, uint32_t override_instance_mask )
+{
+	if (!geom->accel)
+		return;
+
+	vk_geometry_instance_t gpu_instance;
+	Com_Memset( &gpu_instance, 0, sizeof(vk_geometry_instance_t) );
+
+	gpu_instance.transform[0] = MAT4_GET(transform, 0, 0);
+	gpu_instance.transform[1] = MAT4_GET(transform, 0, 1);
+	gpu_instance.transform[2] = MAT4_GET(transform, 0, 2);
+	gpu_instance.transform[3] = MAT4_GET(transform, 0, 3);
+
+	gpu_instance.transform[4] = MAT4_GET(transform, 1, 0);
+	gpu_instance.transform[5] = MAT4_GET(transform, 1, 1);
+	gpu_instance.transform[6] = MAT4_GET(transform, 1, 2);
+	gpu_instance.transform[7] = MAT4_GET(transform, 1, 3);
+
+	gpu_instance.transform[8]  = MAT4_GET(transform, 2, 0);
+	gpu_instance.transform[9]  = MAT4_GET(transform, 2, 1);
+	gpu_instance.transform[10] = MAT4_GET(transform, 2, 2);
+	gpu_instance.transform[11] = MAT4_GET(transform, 2, 3);
+
+	gpu_instance.instance_id			= buffer_idx;
+	gpu_instance.mask					= override_instance_mask ? override_instance_mask : geom->instance_mask;
+	gpu_instance.instance_offset		= geom->sbt_offset;
+	gpu_instance.flags					= geom->instance_flags,
+	gpu_instance.acceleration_structure = geom->blas_device_address,
+
+	assert(g_num_instances < MAX_TLAS_INSTANCES);
+	memcpy(g_instances + g_num_instances, &gpu_instance, sizeof(gpu_instance));
+	vk.uniform_instance_buffer.tlas_instance_prim_offsets[g_num_instances] = geom->prim_offsets[0];
+	vk.uniform_instance_buffer.tlas_instance_model_indices[g_num_instances] = model_instance_index;
+	++g_num_instances;
+}
+
+static void vkpt_pt_create_toplevel( VkCommandBuffer cmd_buf, uint32_t idx, world_t &worldData ) 
+{
 	//
 	// model/entity instances
 	//
-	append_blas( instances, &num_instances, AS_TYPE_ENTITY_DYNAMIC,		&vk.model_instance.blas.dynamic[idx], AS_INSTANCE_FLAG_DYNAMIC, AS_FLAG_OPAQUE, 0, 0 );
+	append_blas( g_instances, &g_num_instances,		
+		&vk.model_instance.blas.dynamic[idx], VERTEX_BUFFER_INSTANCED, 0, 
+		AS_FLAG_OPAQUE, VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_KHR, SBTO_OPAQUE );
+
+	uint32_t num_instances_geometry = g_num_instances;
 
 	void *instance_data = buffer_map(vk.buf_instances + idx);
-	memcpy(instance_data, &instances, sizeof(vk_geometry_instance_t) * num_instances);
+	memcpy(instance_data, &g_instances, sizeof(vk_geometry_instance_t) * g_num_instances);
 
 	buffer_unmap(vk.buf_instances + idx);
 	instance_data = NULL;
@@ -184,88 +228,146 @@ static void vkpt_pt_create_toplevel( VkCommandBuffer cmd_buf, uint32_t idx, draw
 	Com_Memset( &batch, 0, sizeof(accel_build_batch_t) );
 
 	vk_rtx_destroy_tlas( &vk.tlas_geometry[idx] );
-	vk_rtx_create_tlas( &batch, &vk.tlas_geometry[idx], vk.buf_instances[idx].address, num_instances);
+	vk_rtx_create_tlas( &batch, &vk.tlas_geometry[idx], vk.buf_instances[idx].address, num_instances_geometry );
 
 	qvkCmdBuildAccelerationStructuresKHR( cmd_buf, batch.numBuilds, batch.buildInfos, batch.rangeInfoPtrs );
 
 	MEM_BARRIER_BUILD_ACCEL(cmd_buf); /* probably not needed here but doesn't matter */
 }
 
-static inline uint32_t fill_model_instance( const trRefEntity_t* entity, const int idx_offset, const int model_index, shader_t *shader,
-	const float* transform, int model_instance_index, qboolean is_viewer_weapon, qboolean is_double_sided,
-	qboolean is_mdxm )
+static uint32_t compute_mesh_material_flags(const trRefEntity_t* entity, const int model_index, shader_t *shader )
 {
-	uint32_t material_index, material_flags;
+	rtx_material_t *material = vk_rtx_shader_to_material( shader );
 
-	vk_rtx_shader_to_material( shader, material_index, material_flags );
-	uint32_t material_id = (material_flags & ~MATERIAL_INDEX_MASK) | (material_index & MATERIAL_INDEX_MASK);
+	uint32_t material_id = material->flags;
 
-	ModelInstance *instance = &vk.uniform_instance_buffer.model_instances[model_instance_index];
-	memcpy(instance->M, transform, sizeof(float) * 16);
-
-	instance->idx_offset = idx_offset;
-	instance->model_index = model_index;
-
-#ifdef USE_RTX_GLOBAL_MODEL_VBO
-	instance->offset_curr = 0;
-	instance->offset_prev = 0;
-#else
-	int frame = 0; // entity->e.frame;
-	int oldframe = 0; //entity->e.oldframe;
-	instance->offset_curr = mesh->vertexOffset + frame * mesh->numVertexes * (sizeof(model_vertex_t) / sizeof(uint32_t));
-	instance->offset_prev = mesh->vertexOffset + frame * mesh->numVertexes * (sizeof(model_vertex_t) / sizeof(uint32_t));
-#endif
-	instance->backlerp = entity->e.backlerp;
-	instance->material = material_id;
-	instance->alpha = /*(entity->flags & RF_TRANSLUCENT) ? entity->alpha :*/ 1.0f;
-	instance->is_mdxm = is_mdxm ? 1 : 0;
+	if ( ( entity && entity->e.renderfx & RF_FIRST_PERSON ) )
+		material_id |= MATERIAL_FLAG_WEAPON;
 
 	return material_id;
 }
 
-static void add_dlight_spot(const dlight_t* light, DynLightData* dynlight_data)
+static inline void transform_point(const float* p, const float* matrix, float* result)
+{
+	vec4_t point = { p[0], p[1], p[2], 1.f };
+	vec4_t transformed;
+	mult_matrix_vector(transformed, matrix, point);
+	VectorCopy(transformed, result); // vec4 -> vec3
+}
+
+static void fill_model_instance( ModelInstance* instance, const trRefEntity_t* entity, const maliasmesh_t *mesh, shader_t *shader,
+	const float* transform, qboolean is_viewer_weapon, qboolean is_double_sided,
+	qboolean is_mdxm, uint32_t material_id )
+{
+	int cluster = -1;
+	if ( tr.world )
+		cluster = BSP_PointLeaf( tr.world->nodes, (float*)entity->e.origin )->cluster;
+
+#if 0
+	int frame = entity->e.frame;
+	int oldframe = entity->e.oldframe;
+#else
+	int frame = 0;
+	int oldframe = 0;
+#endif
+	memcpy(instance->transform, transform, sizeof(float) * 16);
+	memcpy(instance->transform_prev, transform, sizeof(float) * 16);
+	instance->material = material_id;
+	instance->cluster = cluster;
+	instance->is_mdxm = is_mdxm ? 1 : 0;
+	instance->source_buffer_idx = mesh->modelIndex; // + VERTEX_BUFFER_FIRST_MODEL ;
+	instance->prim_count = mesh->numIndexes / 3;
+
+	const int offset_cur = 0;
+	instance->prim_offset_curr_pose_curr_frame = offset_cur;
+	instance->prim_offset_prev_pose_curr_frame = offset_cur;
+	instance->prim_offset_curr_pose_prev_frame = instance->prim_offset_curr_pose_curr_frame;
+	instance->prim_offset_prev_pose_prev_frame = instance->prim_offset_prev_pose_curr_frame;
+
+#if 1
+	instance->pose_lerp_curr_frame = entity->e.backlerp;
+	instance->pose_lerp_prev_frame = instance->pose_lerp_curr_frame;
+#else
+	instance->iqm_matrix_offset_curr_frame = 0;
+	instance->iqm_matrix_offset_prev_frame = instance->iqm_matrix_offset_curr_frame;
+#endif
+
+	instance->alpha_and_frame = floatToHalf(1.0f);
+	instance->render_buffer_idx = 0; // to be filled later
+	instance->render_prim_offset = 0;
+
+	instance->idx_offset = mesh->indexOffset;
+	instance->pad0 = 10;
+}
+
+static void add_dlight_spot(const dlight_t* dlight, light_poly_t* light)
 {
 	// Copy spot data
-	VectorCopy(light->spot.direction, dynlight_data->spot_direction);
-	switch(light->spot.emission_profile)
+	VectorCopy(dlight->spot.direction, light->positions + 6);
+	uint32_t spot_type = 0;
+	uint32_t spot_data = 0;
+	switch(dlight->spot.emission_profile)
 	{
 	case DLIGHT_SPOT_EMISSION_PROFILE_FALLOFF:
-		dynlight_data->type |= DYNLIGHT_SPOT_EMISSION_PROFILE_FALLOFF << 16;
-		dynlight_data->spot_data = floatToHalf(light->spot.cos_total_width) | (floatToHalf(light->spot.cos_falloff_start) << 16);
+		spot_type = DYNLIGHT_SPOT_EMISSION_PROFILE_FALLOFF;
+		spot_data = floatToHalf(dlight->spot.cos_total_width) | (floatToHalf(dlight->spot.cos_falloff_start) << 16);
 		break;
 	case DLIGHT_SPOT_EMISSION_PROFILE_AXIS_ANGLE_TEXTURE:
-		dynlight_data->type |= DYNLIGHT_SPOT_EMISSION_PROFILE_AXIS_ANGLE_TEXTURE << 16;
-		dynlight_data->spot_data = floatToHalf(light->spot.total_width) | (light->spot.texture << 16);
+		spot_type = DYNLIGHT_SPOT_EMISSION_PROFILE_AXIS_ANGLE_TEXTURE;
+		spot_data = floatToHalf(dlight->spot.total_width) | (dlight->spot.texture << 16);
 		break;
 	}
+	light->positions[4] = uintBitsToFloat(spot_type);
+	light->positions[5] = uintBitsToFloat(spot_data);
 }
 
-static void add_dlights(const dlight_t* lights, int num_lights, vkUniformRTX_t* ubo)
+static void
+add_dlights(const dlight_t* dlights, int num_dlights, light_poly_t* light_list, int* num_lights, int max_lights, world_t *worldData, int* light_entity_ids)
 {
-	ubo->num_dyn_lights = 0;
-
-	for (int i = 0; i < num_lights; i++)
+	for (int i = 0; i < num_dlights; i++)
 	{
-		const dlight_t* light = lights + i;
+		if (*num_lights >= max_lights)
+			return;
 
-		DynLightData* dynlight_data = ubo->dyn_light_data + ubo->num_dyn_lights;
-		VectorCopy(light->origin, dynlight_data->center);
-		VectorScale(light->color, light->radius / 25.f, dynlight_data->color);
+		const dlight_t* dlight = dlights + i;
+		light_poly_t* light = light_list + *num_lights;
 
-		dynlight_data->radius = light->radius;
-		switch(light->light_type) {
-		case DLIGHT_SPHERE:
-			dynlight_data->type = DYNLIGHT_SPHERE;
-			break;
-		case DLIGHT_SPOT:
-			dynlight_data->type = DYNLIGHT_SPOT;
-			add_dlight_spot(light, dynlight_data);
-			break;
+		light->cluster = BSP_PointLeaf(worldData->nodes, (float*)dlight->origin)->cluster;
+
+		entity_hash_t hash;
+		hash.entity = i + 1; //entity ID
+		hash.mesh = 0xAA;
+
+		//if(light->cluster >= 0)
+		{
+			//Super wasteful but we want to have all lights in the same list.
+
+			VectorCopy(dlight->origin, light->positions + 0);
+			VectorScale(dlight->color, dlight->radius / 250.f, light->color);
+			light->positions[3] = dlight->radius;
+			light->material = NULL;
+			light->style = 0;
+
+			switch(dlight->light_type) {
+				case DLIGHT_SPHERE:
+					light->type = LIGHT_SPHERE;
+					hash.model = 0xFE;
+					break;
+				case DLIGHT_SPOT:
+					light->type = LIGHT_SPOT;
+					// Copy spot data
+					add_dlight_spot(dlight, light);
+					hash.model = 0xFD;
+					break;
+			}
+
+			light_entity_ids[(*num_lights)] = *(uint32_t*)&hash;
+			(*num_lights)++;
+
 		}
-
-		ubo->num_dyn_lights++;
 	}
 }
+
 
 #define MESH_FILTER_TRANSPARENT 1
 #define MESH_FILTER_OPAQUE 2
@@ -297,6 +399,134 @@ static qboolean vk_rtx_find_entity_vbo_meshes( const model_t* model, const uint3
 	return enitity_num_meshes > 0 ? qtrue : qfalse;
 }
 
+static void instance_model_lights(int num_light_polys, const light_poly_t* light_polys, const float* transform)
+{
+	for (int nlight = 0; nlight < num_light_polys; nlight++)
+	{
+		if (num_model_lights >= MAX_MODEL_LIGHTS)
+		{
+			assert(!"Model light count overflow");
+			break;
+		}
+
+		const light_poly_t* src_light = light_polys + nlight;
+		light_poly_t* dst_light = model_lights + num_model_lights;
+
+		// Transform the light's positions and center
+		transform_point(src_light->positions + 0, transform, dst_light->positions + 0);
+		transform_point(src_light->positions + 3, transform, dst_light->positions + 3);
+		transform_point(src_light->positions + 6, transform, dst_light->positions + 6);
+		transform_point(src_light->off_center, transform, dst_light->off_center);
+
+		// Find the cluster based on the center. Maybe it's OK to use the model's cluster, need to test.
+		dst_light->cluster = BSP_PointLeaf(tr.world->nodes, dst_light->off_center)->cluster;
+
+		// We really need to map these lights to a cluster
+		if (dst_light->cluster < 0)
+			continue;
+
+		// Copy the other light properties
+		VectorCopy(src_light->color, dst_light->color);
+		dst_light->material = src_light->material;
+		dst_light->style = src_light->style;
+
+		num_model_lights++;
+	}
+}
+
+static void process_bsp_entity(
+	const uint32_t entityNum,
+	const trRefdef_t *refdef,
+	trRefEntity_t *entity, 
+	const model_t *model,
+	int* instance_count )
+{
+	InstanceBuffer* uniform_instance_buffer = &vk.uniform_instance_buffer;
+
+	const int current_instance_idx = *instance_count;
+	if (current_instance_idx >= MAX_REFENTITIES)
+	{
+		assert(!"Entity count overflow");
+		return;
+	}
+
+	mat4_t transform;
+	create_entity_matrix( transform, entity, qfalse );
+
+	bmodel_t* bmodel = model->data.bmodel;
+
+	vec3_t origin;
+	transform_point(bmodel->center, transform, origin);
+	int cluster = BSP_PointLeaf( tr.world->nodes, origin)->cluster;
+
+	if (cluster < 0)
+	{
+		// In some cases, a model slides into a wall, like a push button, so that its center 
+		// is no longer in any BSP node. We still need to assign a cluster to the model,
+		// so try the corners of the model instead, see if any of them has a valid cluster.
+
+		for (int corner = 0; corner < 8; corner++)
+		{
+			vec3_t corner_pt = {
+				(corner & 1) ? bmodel->aabb_max[0] : bmodel->aabb_min[0],
+				(corner & 2) ? bmodel->aabb_max[1] : bmodel->aabb_min[1],
+				(corner & 4) ? bmodel->aabb_max[2] : bmodel->aabb_min[2]
+			};
+
+			vec3_t corner_pt_world;
+			transform_point(corner_pt, transform, corner_pt_world);
+
+			cluster = BSP_PointLeaf( tr.world->nodes, corner_pt_world)->cluster;
+
+			if(cluster >= 0)
+				break;
+		}
+	}
+
+	entity_hash_t hash;
+	hash.entity = entity->e.id;
+	hash.model = ~entity->e.hModel;
+	hash.mesh = 0;
+	hash.bsp = 1;
+
+	memcpy(&model_entity_ids[entity_frame_num][current_instance_idx], &hash, sizeof(uint32_t));
+
+#if 0
+	float model_alpha = (entity->flags & RF_TRANSLUCENT) ? entity->alpha : 1.f;
+#else
+	float model_alpha = 1.f;
+#endif
+
+	ModelInstance* mi = uniform_instance_buffer->model_instances + current_instance_idx;
+	memcpy(&mi->transform, transform, sizeof(transform));
+	memcpy(&mi->transform_prev, transform, sizeof(transform));
+	mi->material = 0;
+	mi->cluster = cluster;
+	mi->source_buffer_idx = VERTEX_BUFFER_SUB_MODELS;
+	mi->prim_count = bmodel->geometry.prim_counts[0];
+	mi->prim_offset_curr_pose_curr_frame = 0; // bsp models are not processed by the instancing shader
+	mi->prim_offset_prev_pose_curr_frame = 0;
+	mi->prim_offset_curr_pose_prev_frame = 0;
+	mi->prim_offset_prev_pose_prev_frame = 0;
+#if 1
+	mi->pose_lerp_curr_frame = 0.f;
+	mi->pose_lerp_prev_frame = 0.f;
+#else
+	mi->iqm_matrix_offset_curr_frame = -1;
+	mi->iqm_matrix_offset_prev_frame = -1;
+#endif
+	mi->alpha_and_frame = (entity->e.frame << 16) | floatToHalf(model_alpha);
+	mi->render_buffer_idx = VERTEX_BUFFER_SUB_MODELS;
+	mi->render_prim_offset = bmodel->geometry.prim_offsets[0];
+
+	if (bmodel->geometry.accel)
+	{
+		vkpt_pt_instance_model_blas(&bmodel->geometry, mi->transform, VERTEX_BUFFER_SUB_MODELS, current_instance_idx, (model_alpha < 1.f) ? AS_FLAG_TRANSPARENT : 0);
+	}
+
+	(*instance_count)++;
+}
+
 static void process_regular_entity( 
 	const uint32_t entityNum,
 	const trRefdef_t *refdef,
@@ -304,11 +534,14 @@ static void process_regular_entity(
 	const model_t *model,
 	qboolean is_viewer_weapon, 
 	qboolean is_double_sided, 
-	int* model_instance_idx, 
-	int* instance_idx, 
-	int* num_instanced_vert, 
+
+	int* instance_count, 
+	int* animated_count, 
+	int* num_instanced_prim, 
+
 	int mesh_filter, 
-	qboolean* contains_transparent )
+	qboolean* contains_transparent 
+)
 {
 	qboolean is_mdxm = qfalse;
 
@@ -319,69 +552,92 @@ static void process_regular_entity(
 		return;
 
 	InstanceBuffer *uniform_instance_buffer = &vk.uniform_instance_buffer;
-	uint32_t *ubo_instance_buf_offset	= (uint32_t*)uniform_instance_buffer->model_instance_buf_offset;
-	uint32_t *ubo_instance_buf_size		= (uint32_t*)uniform_instance_buffer->model_instance_buf_size;
-	uint32_t *ubo_model_idx_offset		= (uint32_t*)uniform_instance_buffer->model_idx_offset;
-	uint32_t *ubo_model_cluster_id		= (uint32_t*)uniform_instance_buffer->model_cluster_id;
 	uint32_t i;
 
-	float transform[16];
+	mat4_t transform;
 	create_entity_matrix( transform, (trRefEntity_t*)entity, qfalse );
 
-	int current_model_instance_index = *model_instance_idx;
-	int current_instance_index = *instance_idx;
-	int current_num_instanced_vert = *num_instanced_vert;
+	int current_instance_index = *instance_count;
+	int current_animated_index = *animated_count;
+	int current_num_instanced_prim = *num_instanced_prim;
 
 	if ( contains_transparent )
 		*contains_transparent = qfalse;
+
+	bool use_static_blas = false;
 
 	for ( i = 0; i < enitity_num_meshes; i++ ) 
 	{
 		maliasmesh_t *mesh = enitity_meshes[i];
 		shader_t *shader = enitity_meshes_shader[i];
 
-		if ( current_model_instance_index >= SHADER_MAX_ENTITIES )
+		if ( current_instance_index >= SHADER_MAX_ENTITIES )
 			return assert(!"Model entity count overflow");
 
-		if ( current_instance_index >= ( SHADER_MAX_ENTITIES + SHADER_MAX_BSP_ENTITIES ) )
+		if (!use_static_blas && current_animated_index >= SHADER_MAX_ENTITIES)
 			return assert(!"Total entity count overflow");
 
 		if ( mesh->indexOffset < 0 ) // failed to upload the vertex data - don't instance this mesh
 			return;
 
-		uint32_t material_id = fill_model_instance( entity, mesh->indexOffset, mesh->modelIndex, 
-			shader,  transform, current_model_instance_index, is_viewer_weapon, is_double_sided,
-			is_mdxm );
+		uint32_t material_id = compute_mesh_material_flags( entity, mesh->modelIndex, shader );
+
 		if (!material_id)
-			return;
+			continue;
 
 		entity_hash_t hash;
 		hash.entity = entity->e.id;
 		hash.model = mesh->modelIndex;
 		hash.mesh = i;
+		hash.bsp = 0;
 
-		model_entity_ids[entity_frame_num][current_model_instance_index] = *(uint32_t*)&hash;
-
-		uint32_t cluster_id = ~0u;
-		if ( tr.world )
-			cluster_id = R_FindClusterForPos3( *tr.world, entity->e.origin );
-		ubo_model_cluster_id[current_model_instance_index] = cluster_id;
-
-		ubo_model_idx_offset[current_model_instance_index] = mesh->indexOffset;
+		memcpy(&model_entity_ids[entity_frame_num][current_instance_index], &hash, sizeof(uint32_t));
 		
-		ubo_instance_buf_offset[current_model_instance_index] = current_num_instanced_vert / 3;
-		ubo_instance_buf_size[current_model_instance_index] = mesh->numIndexes / 3;
+		//ModelInstance* mi = uniform_instance_buffer->model_instances + current_instance_index;
+		ModelInstance* mi = &uniform_instance_buffer->model_instances[current_instance_index];
 
-		((int*)uniform_instance_buffer->model_indices)[current_instance_index] = current_model_instance_index;
-	
-		current_model_instance_index++;
+		fill_model_instance( mi, entity, mesh, 
+							 shader,  transform, is_viewer_weapon, is_double_sided, 
+							 is_mdxm, material_id 
+		);
+
+
+		if (use_static_blas)
+		{
+			// ~sunny, not implemented yet
+		}
+		else {
+			uniform_instance_buffer->animated_model_indices[current_animated_index] = current_instance_index;
+
+			mi->render_buffer_idx = VERTEX_BUFFER_INSTANCED;
+			mi->render_prim_offset = current_num_instanced_prim;
+
+			current_animated_index++;
+			current_num_instanced_prim += mesh->numIndexes / 3;
+		}
+
 		current_instance_index++;
-		current_num_instanced_vert += mesh->numIndexes;
 	}
 
-	*model_instance_idx = current_model_instance_index;
-	*instance_idx = current_instance_index;
-	*num_instanced_vert = current_num_instanced_vert;
+#if 0
+	// add cylinder lights for wall lamps
+	if (model->model_class == MCLASS_STATIC_LIGHT)
+	{
+		vec4_t begin, end, color;
+		vec4_t offset1 = { 0.f, 0.5f, -10.f, 1.f };
+		vec4_t offset2 = { 0.f, 0.5f,  10.f, 1.f };
+
+		mult_matrix_vector(begin, transform, offset1);
+		mult_matrix_vector(end, transform, offset2);
+		VectorSet(color, 0.25f, 0.5f, 0.07f);
+
+		vkpt_build_cylinder_light(model_lights, &num_model_lights, MAX_MODEL_LIGHTS, bsp_world_model, begin, end, color, 1.5f);
+	}
+#endif
+
+	*instance_count = current_instance_index;
+	*animated_count = current_animated_index;
+	*num_instanced_prim = current_num_instanced_prim;
 }
 
 static void prepare_entities( EntityUploadInfo *upload_info, const trRefdef_t *refdef ) 
@@ -392,27 +648,20 @@ static void prepare_entities( EntityUploadInfo *upload_info, const trRefdef_t *r
 
 	InstanceBuffer *instance_buffer = &vk.uniform_instance_buffer;
 
-	memcpy( instance_buffer->bsp_mesh_instances_prev, instance_buffer->bsp_mesh_instances,
-		sizeof(instance_buffer->bsp_mesh_instances_prev) );
-	memcpy( instance_buffer->model_instances_prev, instance_buffer->model_instances,
-		sizeof(instance_buffer->model_instances_prev) );
-
-	memcpy( instance_buffer->bsp_cluster_id_prev, instance_buffer->bsp_cluster_id, sizeof(instance_buffer->bsp_cluster_id) );
-	memcpy( instance_buffer->model_cluster_id_prev, instance_buffer->model_cluster_id, sizeof(instance_buffer->model_cluster_id) );
-
 	static int transparent_model_indices[MAX_REFENTITIES];
 	static int viewer_model_indices[MAX_REFENTITIES];
 	static int viewer_weapon_indices[MAX_REFENTITIES];
 	static int explosion_indices[MAX_REFENTITIES];
 	int transparent_model_num = 0;
+	int masked_model_num = 0;
 	int viewer_model_num = 0;
 	int viewer_weapon_num = 0;
 	int explosion_num = 0;
 
 	int model_instance_idx = 0;
-	int bsp_mesh_idx = 0;
-	int num_instanced_vert = 0; /* need to track this here to find lights */
+	int num_instanced_prim = 0; /* need to track this here to find lights */
 	int instance_idx = 0;
+	int iqm_matrix_offset = 0;
 
 	for ( i = 0; i < refdef->num_entities; i++ )
 	{
@@ -454,34 +703,38 @@ static void prepare_entities( EntityUploadInfo *upload_info, const trRefdef_t *r
 
 					if ( !model )
 						continue;
+					
+					qboolean contains_transparent = qfalse;
 
-					// sunny, revisit these duplications
 					switch ( model->type )
 					{
-						case MOD_MESH:
+						case MOD_BRUSH:
 							{
-								qboolean contains_transparent = qfalse;
-								process_regular_entity( i, refdef, entity, model, qfalse, qfalse, &model_instance_idx, &instance_idx, &num_instanced_vert, 2, &contains_transparent );
-					
-								if ( contains_transparent )
-									transparent_model_indices[transparent_model_num++] = i;
+								process_bsp_entity( i, refdef, entity, model, &model_instance_idx );
 							}
 							break;
-						case MOD_BRUSH:
-							break;
+						case MOD_MESH:
 						case MOD_MDXM:
 						case MOD_BAD:
 							{
-								qboolean contains_transparent = qfalse;
-								process_regular_entity( i, refdef, entity, model, qfalse, qfalse, &model_instance_idx, &instance_idx, &num_instanced_vert, 2, &contains_transparent );
-					
-								if ( contains_transparent )
-									transparent_model_indices[transparent_model_num++] = i;
+								process_regular_entity( i, refdef, entity, model, qfalse, qfalse, &model_instance_idx, &instance_idx, &num_instanced_prim, MESH_FILTER_OPAQUE, &contains_transparent );
+							
+								if (model->num_light_polys > 0)
+								{
+									mat4_t transform;
+									//const bool is_viewer_weapon = (entity->e.renderfx & RF_FIRST_PERSON) != 0;
+									create_entity_matrix( transform, entity, qfalse );
+
+									instance_model_lights( model->num_light_polys, model->light_polys, transform );
+								}
 							}
 							break;
 						default:
 							break;
 					}
+
+					if ( contains_transparent )
+						transparent_model_indices[transparent_model_num++] = i;
 
 					break;
 				}
@@ -491,7 +744,8 @@ static void prepare_entities( EntityUploadInfo *upload_info, const trRefdef_t *r
 		}
 	}
 
-	upload_info->dynamic_vertex_num = num_instanced_vert;
+	upload_info->opaque_prim_count = num_instanced_prim;
+	//upload_info->transparent_prim_offset = num_instanced_prim;
 
 	// transparent
 	{
@@ -507,39 +761,40 @@ static void prepare_entities( EntityUploadInfo *upload_info, const trRefdef_t *r
 
 	// bind
 	upload_info->num_instances = instance_idx;
-	upload_info->num_vertices  = num_instanced_vert;
+	upload_info->num_prims  = num_instanced_prim;
 
-	memset(instance_buffer->world_current_to_prev, ~0u, sizeof(instance_buffer->world_current_to_prev));
-	memset(instance_buffer->world_prev_to_current, ~0u, sizeof(instance_buffer->world_prev_to_current));
-	memset(instance_buffer->model_current_to_prev, ~0u, sizeof(instance_buffer->model_current_to_prev));
-	memset(instance_buffer->model_prev_to_current, ~0u, sizeof(instance_buffer->model_prev_to_current));
-
-#if 0
-	world_entity_id_count[entity_frame_num] = bsp_mesh_idx;
-	for(int i = 0; i < world_entity_id_count[entity_frame_num]; i++) {
-		for(int j = 0; j < world_entity_id_count[!entity_frame_num]; j++) {
-			if(world_entity_ids[entity_frame_num][i] == world_entity_ids[!entity_frame_num][j]) {
-				instance_buffer->world_current_to_prev[i] = j;
-				instance_buffer->world_prev_to_current[j] = i;
-			}
-		}
-	}
-#endif
+	memset(instance_buffer->model_current_to_prev, -1, sizeof(instance_buffer->model_current_to_prev));
+	memset(instance_buffer->model_prev_to_current, -1, sizeof(instance_buffer->model_prev_to_current));
+	memset(instance_buffer->mlight_prev_to_current, ~0u, sizeof(instance_buffer->mlight_prev_to_current));
 
 	model_entity_id_count[entity_frame_num] = model_instance_idx;
-	for ( i = 0; i < model_entity_id_count[entity_frame_num]; i++ ) 
-	{
-		for ( j = 0; j < model_entity_id_count[!entity_frame_num]; j++ ) 
-		{
-			entity_hash_t hash = *(entity_hash_t*)&model_entity_ids[entity_frame_num][i];
+	for(int i = 0; i < model_entity_id_count[entity_frame_num]; i++) {
+		for(int j = 0; j < model_entity_id_count[!entity_frame_num]; j++) {
+			entity_hash_t hash;
+			memcpy(&hash, &model_entity_ids[entity_frame_num][i], sizeof(entity_hash_t));
 
-			if ( model_entity_ids[entity_frame_num][i] == model_entity_ids[!entity_frame_num][j] && hash.entity != 0 ) 
-			{
+			if(model_entity_ids[entity_frame_num][i] == model_entity_ids[!entity_frame_num][j] && hash.entity != 0u) {
 				instance_buffer->model_current_to_prev[i] = j;
 				instance_buffer->model_prev_to_current[j] = i;
+
+				// Copy the "prev" instance paramters from the previous frame's instance buffer
+				ModelInstance* mi_curr = instance_buffer->model_instances + i;
+				ModelInstance* mi_prev = model_instances_prev + j;
+
+				memcpy(mi_curr->transform_prev, mi_prev->transform, sizeof(mi_curr->transform_prev));
+				mi_curr->prim_offset_curr_pose_prev_frame = mi_prev->prim_offset_curr_pose_curr_frame;
+				mi_curr->prim_offset_prev_pose_prev_frame = mi_prev->prim_offset_prev_pose_curr_frame;
+#if 1
+				mi_curr->pose_lerp_prev_frame = mi_prev->pose_lerp_curr_frame;
+#else
+				mi_curr->iqm_matrix_offset_prev_frame = mi_prev->iqm_matrix_offset_curr_frame;
+#endif
 			}
 		}
 	}
+
+	// Save the current model instances for the next frame
+	memcpy(model_instances_prev, instance_buffer->model_instances, sizeof(ModelInstance) * model_entity_id_count[entity_frame_num]);
 }
 
 static void vk_rtx_process_render_feedback( ref_feedback_t *feedback, mnode_t *viewleaf, 
@@ -579,7 +834,7 @@ static void vk_rtx_process_render_feedback( ref_feedback_t *feedback, mnode_t *v
 		feedback->lookatcluster = readback.cluster;
 		feedback->num_light_polys = 0;
 
-		if ( tr.world && feedback->lookatcluster >= 0 && feedback->lookatcluster < vk.numClusters )
+		if ( tr.world && feedback->lookatcluster >= 0 && feedback->lookatcluster < tr.world->numClusters )
 		{
 			int* light_offsets = tr.world->cluster_light_offsets + feedback->lookatcluster;
 			feedback->num_light_polys = light_offsets[1] - light_offsets[0];
@@ -909,11 +1164,27 @@ static void vk_rtx_prepare_ubo( trRefdef_t *refdef, world_t *world, mnode_t *vie
 	VectorCopy( sky_matrix[1], ubo->environment_rotation_matrix + 4 );
 	VectorCopy( sky_matrix[2], ubo->environment_rotation_matrix + 8 );
 
-	add_dlights( refdef->dlights, refdef->num_dlights, ubo );
+	//add_dlights( refdef->dlights, refdef->num_dlights, ubo );
 	//add_dlights( backEnd.viewParms.dlights, backEnd.viewParms.num_dlights, ubo );
 
 	ubo->pt_cameras = 0;
 	//ubo->num_cameras = 0;
+}
+
+static void
+update_mlight_prev_to_current(void)
+{
+	light_entity_id_count[entity_frame_num] = num_model_lights;
+	for(int i = 0; i < light_entity_id_count[entity_frame_num]; i++) {
+		entity_hash_t hash = *(entity_hash_t*)&light_entity_ids[entity_frame_num][i];
+		if(hash.entity == 0u) continue;
+		for(int j = 0; j < light_entity_id_count[!entity_frame_num]; j++) {
+			if(light_entity_ids[entity_frame_num][i] == light_entity_ids[!entity_frame_num][j]) {
+				vk.uniform_instance_buffer.mlight_prev_to_current[j] = i;
+				break;
+			}
+		}
+	}
 }
 
 static void vk_rtx_setup_rt_pipeline( VkCommandBuffer cmd_buf, VkPipelineBindPoint bind_point, uint32_t index )
@@ -1058,6 +1329,12 @@ static void vk_rxt_trace_lighting( VkCommandBuffer cmd_buf, float num_bounce_ray
 	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_COLOR_LF_COCG] );
 	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_COLOR_HF] );
 	BARRIER_COMPUTE( cmd_buf, vk.img_rtx[RTX_IMG_PT_COLOR_SPEC] );
+
+	if ( pt_restir->value != 0 ) 
+	{
+		int frame_idx = vk.frame_counter & 1;
+		BARRIER_COMPUTE(cmd_buf, vk.img_rtx[RTX_IMG_PT_RESTIR_A + frame_idx]);
+	}
 
 	BUFFER_BARRIER( cmd_buf,
 		VK_ACCESS_SHADER_WRITE_BIT,
@@ -1236,7 +1513,7 @@ static VkResult vkpt_pt_update_descripter_set_bindings( int idx )
 	return VK_SUCCESS;
 }
 
-static void vk_begin_trace_rays( trRefdef_t *refdef, reference_mode_t *ref_mode, 
+static void vk_begin_trace_rays( world_t &worldData, trRefdef_t *refdef, reference_mode_t *ref_mode, 
 	vkUniformRTX_t *ubo, drawSurf_t *drawSurfs, int numDrawSurfs, 
 	float *shadowmap_view_proj, qboolean god_rays_enabled, qboolean render_world, 
 	const EntityUploadInfo *upload_info ) 
@@ -1245,8 +1522,8 @@ static void vk_begin_trace_rays( trRefdef_t *refdef, reference_mode_t *ref_mode,
 	VkSemaphore					trace_semaphores;
 	VkSemaphore					prev_trace_semaphores;
 	VkPipelineStageFlags		wait_stages;
-	VkCommandBuffer				transfer_cmd_buf;
-	VkCommandBufferBeginInfo	begin_info;
+	//VkCommandBuffer				transfer_cmd_buf;
+	//VkCommandBufferBeginInfo	begin_info;
 	uint32_t device_indices[2];
 	uint32_t all_device_mask = (1 << vk.device_count) - 1;
 	bool *prev_trace_signaled = &vk.tess[(vk.current_frame_index - 1) % NUM_COMMAND_BUFFERS].semaphores.trace_signaled;
@@ -1283,11 +1560,10 @@ static void vk_begin_trace_rays( trRefdef_t *refdef, reference_mode_t *ref_mode,
 	{
 		VkCommandBuffer trace_cmd_buf = vkpt_begin_command_buffer(&vk.cmd_buffers_graphics);
 
-
-
-		VK_CHECK( vkpt_uniform_buffer_update( trace_cmd_buf ) );
-
-
+		// Copy the UBO contents from the staging buffer.
+		// Actual contents are uploaded to the staging UBO below, right before executing the command buffer.
+		vkpt_uniform_buffer_copy_from_staging( trace_cmd_buf );
+		//VK_CHECK( vkpt_uniform_buffer_update( trace_cmd_buf ) );
 
 		BEGIN_PERF_MARKER( trace_cmd_buf, PROFILER_UPDATE_ENVIRONMENT );
 		if ( render_world )
@@ -1302,19 +1578,28 @@ static void vk_begin_trace_rays( trRefdef_t *refdef, reference_mode_t *ref_mode,
 
 		BEGIN_PERF_MARKER( trace_cmd_buf, PROFILER_BVH_UPDATE );
 		vkpt_pt_create_all_dynamic( trace_cmd_buf, vk.current_frame_index, upload_info );
-		vkpt_pt_create_toplevel( trace_cmd_buf, vk.current_frame_index, drawSurfs, numDrawSurfs );
+		vkpt_pt_create_toplevel( trace_cmd_buf, vk.current_frame_index, worldData );
 		vkpt_pt_update_descripter_set_bindings( vk.current_frame_index );
 		END_PERF_MARKER( trace_cmd_buf, PROFILER_BVH_UPDATE );
 
 		BEGIN_PERF_MARKER( trace_cmd_buf, PROFILER_SHADOW_MAP );
 		if ( god_rays_enabled )
 		{
-			vk_rtx_shadow_map_render( trace_cmd_buf, shadowmap_view_proj,
-				vk.geometry.idx_world_static_offset, 0, 0, 0 );
+			vk_rtx_shadow_map_render( trace_cmd_buf, worldData, shadowmap_view_proj, 
+				tr.world->geometry.world_static.geom_opaque.prim_offsets[0] * 3,
+				tr.world->geometry.world_static.geom_opaque.prim_counts[0] * 3,
+				0,
+				upload_info->opaque_prim_count * 3,
+				tr.world->geometry.world_static.geom_transparent.prim_offsets[0] * 3,
+				tr.world->geometry.world_static.geom_transparent.prim_counts[0] * 3
+			);
 		}
 		END_PERF_MARKER( trace_cmd_buf, PROFILER_SHADOW_MAP );
 
 		vk_rtx_trace_primary_rays( trace_cmd_buf );
+
+		// The host-side image of the uniform buffer is only ready after the `vkpt_pt_create_toplevel` call above
+		VK_CHECK( vkpt_uniform_buffer_upload_to_staging() );
 
 		vkpt_submit_command_buffer(
 			trace_cmd_buf,
@@ -1450,6 +1735,7 @@ void vk_rtx_begin_scene( trRefdef_t *refdef, drawSurf_t *drawSurfs, int numDrawS
 	if ( tr.world )
 		render_world = qtrue;
 
+	//bool render_world = (fd->rdflags & RDF_NOWORLDMODEL) == 0;
 #if 0
 	if ( !temporal_frame_valid )
 	{
@@ -1496,10 +1782,34 @@ void vk_rtx_begin_scene( trRefdef_t *refdef, drawSurf_t *drawSurfs, int numDrawS
 	num_model_lights = 0;
 	EntityUploadInfo upload_info;
 	Com_Memset( &upload_info, 0, sizeof(EntityUploadInfo) );
+	vkpt_pt_reset_instances();
 	prepare_entities( &upload_info, refdef );
+
+	if ( tr.world && render_world )
+	{
+		vkpt_pt_instance_model_blas( &tr.world->geometry.world_static.geom_opaque,					g_identity_transform, VERTEX_BUFFER_WORLD, -1, 0 );
+		vkpt_pt_instance_model_blas( &tr.world->geometry.world_static.geom_transparent,				g_identity_transform, VERTEX_BUFFER_WORLD, -1, 0 );
+		vkpt_pt_instance_model_blas( &tr.world->geometry.world_dynamic_material.geom_opaque,		g_identity_transform, VERTEX_BUFFER_WORLD_D_MATERIAL, -1, 0 );
+		//vkpt_pt_instance_model_blas( &tr.world->geometry.world_dynamic_material.geom_transparent,	g_identity_transform, VERTEX_BUFFER_WORLD_D_MATERIAL, -1, 0 );
+		vkpt_pt_instance_model_blas( &tr.world->geometry.world_dynamic_geometry.geom_opaque,		g_identity_transform, VERTEX_BUFFER_WORLD_D_GEOMETRY, -1, 0 );
+		//vkpt_pt_instance_model_blas( &tr.world->geometry.world_dynamic_geometry.geom_transparent,	g_identity_transform, VERTEX_BUFFER_WORLD_D_GEOMETRY, -1, 0 );
+		vkpt_pt_instance_model_blas( &tr.world->geometry.sky_static.geom_opaque,					g_identity_transform, VERTEX_BUFFER_SKY, -1, 0 );
+
+#ifdef DEBUG_POLY_LIGHTS
+		if ( pt_debug_poly_lights->integer )
+			vkpt_pt_instance_model_blas( &tr.world->geometry.debug_light_polys.geom_opaque,			g_identity_transform, VERTEX_BUFFER_DEBUG_LIGHT_POLYS, -1, 0 );
+#endif
+
 #if 0
-	if ( tr.world )
-		vkpt_build_beam_lights(model_lights, &num_model_lights, MAX_MODEL_LIGHTS, bsp_world_model, fd->entities, fd->num_entities, prev_adapted_luminance);
+		vkpt_build_beam_lights(model_lights, &num_model_lights, MAX_MODEL_LIGHTS, bsp_world_model, fd->entities, fd->num_entities, prev_adapted_luminance, light_entity_ids[entity_frame_num], &num_model_lights);
+#endif
+		add_dlights(refdef->dlights, refdef->num_dlights, model_lights, &num_model_lights, MAX_MODEL_LIGHTS, tr.world, light_entity_ids[entity_frame_num]);
+	}
+
+	update_mlight_prev_to_current();
+
+#if 1
+	vkpt_vertex_buffer_ensure_primbuf_size(upload_info.num_prims);
 #endif
 
 	ubo = &vk.uniform_buffer;
@@ -1535,15 +1845,15 @@ void vk_rtx_begin_scene( trRefdef_t *refdef, drawSurf_t *drawSurfs, int numDrawS
 	const float unused = 0.0f;
 	vk_rtx_shadow_map_setup(
 		&sun_light,
-		&unused,
-		&unused,
+		tr.world->world_aabb.mins,
+		tr.world->world_aabb.maxs,
 		shadowmap_view_proj,
 		&shadowmap_depth_scale,
 		qfalse);
 
 	vk_rtx_god_rays_prepare_ubo(
 		ubo,
-		/*&vkpt_refdef.bsp_mesh_world.world_aabb,*/
+		&tr.world->world_aabb,
 		ubo->P,
 		ubo->V,
 		shadowmap_view_proj,
@@ -1551,7 +1861,7 @@ void vk_rtx_begin_scene( trRefdef_t *refdef, drawSurf_t *drawSurfs, int numDrawS
 
 	qboolean god_rays_enabled = ( vk_rtx_god_rays_enabled(&sun_light) && render_world) ? qtrue : qfalse;
 
-	vk_begin_trace_rays( refdef, &ref_mode, ubo, 
+	vk_begin_trace_rays( *tr.world, refdef, &ref_mode, ubo, 
 		drawSurfs, numDrawSurfs, shadowmap_view_proj, 
 		god_rays_enabled, render_world, &upload_info );
 

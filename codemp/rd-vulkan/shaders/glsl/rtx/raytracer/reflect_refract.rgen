@@ -518,7 +518,11 @@ main()
 #if 0
 	transparent = alpha_blend(transparent, unpackHalf4x16(ray_payload_geometry.transparency) * vec4(throughput, 1));
 #else
-	transparent = alpha_blend(transparent, ray_payload_geometry.transparency * vec4(throughput, 1));
+	//transparent = alpha_blend(transparent, ray_payload_geometry.transparency * vec4(throughput, 1));
+
+	vec4 effects = trace_effects_ray(reflection_ray, /* skip_procedural = */ false);
+
+	transparent = alpha_blend_premultiplied(transparent, effects * vec4(throughput, 1));
 #endif
 
 	if(!found_intersection(ray_payload_geometry) || is_sky(triangle.material_id))
@@ -753,13 +757,8 @@ main()
 			// If the path was split *on the same model* before, continue tracing.
 			// We don't want to show the internal geometry of a translucent model.
 			uint primary_instance_index = imageLoad(IMG_PT_VISBUF_PRIM_A, ipos).x;
-			bool is_dynamic_primitive = is_dynamic_instance(ray_payload_geometry);
-			uint primitive_id = get_primitive(ray_payload_geometry);
-			uint triangle_instance_id = is_dynamic_primitive ? 
-				get_instance_id_instanced( primitive_id ) : 
-				visbuf_pack_static_instance( ray_payload_geometry.instanceID );
 
-			if (primary_instance_index == triangle_instance_id)
+			if (primary_instance_index == triangle.instance_index)
 			{
 				material_id = (material_id & ~MATERIAL_KIND_MASK) | transparency_kind;
 			}
@@ -771,14 +770,9 @@ main()
 		transparent = alpha_blend_premultiplied(transparent, vec4(primary_emissive * throughput, 0));
 	}
 
-	bool is_dynamic_primitive = is_dynamic_instance(ray_payload_geometry);
-	uint primitive_id = get_primitive(ray_payload_geometry);
-
 	uvec2 vis_buf;
-	vis_buf.x = is_dynamic_primitive ? 
-		get_instance_id_instanced( primitive_id ) : 
-		visbuf_pack_static_instance( ray_payload_geometry.instanceID );
-	vis_buf.y = primitive_id;
+	vis_buf.x = triangle.instance_index;
+	vis_buf.y = triangle.instance_prim;
 	imageStore(IMG_PT_VISBUF_PRIM_A, ipos, uvec4(vis_buf, 0, 0));
 	imageStore(IMG_PT_VISBUF_BARY_A, ipos, vec4(bary.yz, 0, 0));
 

@@ -23,8 +23,21 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include "tr_local.h"
 
+#define     MAX_MAP_CLUSTERS    65536
+
+static int local_light_counts[MAX_MAP_CLUSTERS];
+static int cluster_light_counts[MAX_MAP_CLUSTERS];
+static int light_list_tails[MAX_MAP_CLUSTERS];
 static int max_model_lights = 0;
 
+static cvar_t* cvar_pt_primbuf = NULL;
+static uint32_t current_primbuf_size = 0;
+
+// Clamps and default setting for the animated primitive buffer size
+#define PRIMBUF_SIZE_MIN (1 << 16)
+#define PRIMBUF_SIZE_MAX (1 << 26)
+
+#define PRIMBUF_SIZE_DEFAULT (1 << 20)
 void vkpt_light_buffer_reset_counts( void )	// not used yet
 {
 	max_model_lights = 0;
@@ -69,7 +82,7 @@ copy_light(const light_poly_t* light, float* vblight, const float* sky_radiance)
 
 	vblight[12] = style_scale;
 	vblight[13] = prev_style;
-	vblight[14] = 0.f;
+	vblight[14] = light->type;
 	vblight[15] = 0.f;
 }
 
@@ -194,7 +207,12 @@ fail_buffer:
 
 VkResult vk_rtx_buffer_destroy( vkbuffer_t *buf )
 {
+#if 1
 	assert(!buf->is_mapped);
+#else
+	if ( buf->is_mapped )
+		qvkUnmapMemory( vk.device, buf->memory );
+#endif
 
 	if ( buf->memory != VK_NULL_HANDLE )
 		qvkFreeMemory( vk.device, buf->memory, NULL );
@@ -208,38 +226,6 @@ VkResult vk_rtx_buffer_destroy( vkbuffer_t *buf )
 	buf->address = 0;
 
 	return VK_SUCCESS;
-}
-
-void VK_DestroyBuffer( vkbuffer_t *buffer )
-{
-	if ( buffer->p ) {
-		qvkUnmapMemory( vk.device, buffer->memory );
-		buffer->p = NULL;
-	}
-
-	if ( buffer->buffer != NULL )
-		qvkDestroyBuffer( vk.device, buffer->buffer, NULL );
-
-	if ( buffer->memory != NULL )
-		qvkFreeMemory( vk.device, buffer->memory, NULL );
-
-	memset(buffer, 0, sizeof(vkbuffer_t));
-}
-
-void vk_rtx_destroy_buffers( void ) 
-{
-	uint32_t i = 0;
-
-	VK_DestroyBuffer( &vk.buf_readback );
-	VK_DestroyBuffer( &vk.buf_tonemap );
-	VK_DestroyBuffer( &vk.buf_light );
-	VK_DestroyBuffer( &vk.buf_sun_color );
-
-	for ( i = 0; i < vk.swapchain_image_count; i++ ) 
-	{
-		VK_DestroyBuffer( vk.buf_readback_staging + i );
-		VK_DestroyBuffer( vk.buf_light_staging + i );
-	}
 }
 
 void *buffer_map( vkbuffer_t *buf )
@@ -262,6 +248,12 @@ void buffer_unmap( vkbuffer_t *buf )
 
 	buf->is_mapped = 0;
 	qvkUnmapMemory( vk.device, buf->memory );
+}
+
+void vk_rtx_buffer_attach_name( const vkbuffer_t *buf, const char *name )
+{
+	VK_SET_OBJECT_NAME( buf->buffer, name, VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT );
+	VK_SET_OBJECT_NAME( buf->memory, name, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT );
 }
 
 static uint32_t VK_DeviceLocalMemoryIndex()	// hmm
@@ -300,12 +292,15 @@ void VK_CreateImageMemory(VkMemoryPropertyFlags properties, VkImage *image, VkDe
 	VK_CHECK(qvkBindImageMemory(vk.device, *image, *bufferMemory, 0));
 }
 
-void VK_CreateAttributeBuffer(vkbuffer_t* buffer, VkDeviceSize size, VkBufferUsageFlagBits usage) {
+void VK_CreateAttributeBuffer(vkbuffer_t* buffer, VkDeviceSize size, VkBufferUsageFlagBits usage, qboolean is_host_visible ) {
 	VkDeviceSize nCAS = vk.props.limits.nonCoherentAtomSize;
 	buffer->size = ((size + (nCAS - 1)) / nCAS) * nCAS;
 
-	vk_rtx_buffer_create( buffer, buffer->size, usage, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT );
-	VK_CHECK(qvkMapMemory(vk.device, buffer->memory, 0, buffer->size, 0, (void**)&buffer->p));
+	VkMemoryPropertyFlags mem_flags = is_host_visible
+		? (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
+		: VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+	vk_rtx_buffer_create( buffer, buffer->size, usage, mem_flags );
 }
 
 void vk_rtx_upload_buffer_data_offset( vkbuffer_t *buffer, VkDeviceSize offset, VkDeviceSize size, const byte *data ) 
@@ -313,12 +308,10 @@ void vk_rtx_upload_buffer_data_offset( vkbuffer_t *buffer, VkDeviceSize offset, 
     if (offset + size > buffer->size) {
         ri.Error(ERR_FATAL, "Vulkan: Buffer to small!");
     }
-	if (buffer->p == NULL) {
-		ri.Error(ERR_FATAL, "Vulkan: Buffer not mapped!");
-	}
 
-    byte*p = buffer->p + offset;
-    Com_Memcpy(p, data, (size_t)(size));
+    byte *p = (byte *)buffer_map(buffer);
+    Com_Memcpy(p + offset, data, (size_t)(size));
+    buffer_unmap(buffer);
 }
 
 void vk_rtx_upload_buffer_data( vkbuffer_t *buffer, const byte *data ) 
@@ -328,19 +321,135 @@ void vk_rtx_upload_buffer_data( vkbuffer_t *buffer, const byte *data )
 
 static void copy_bsp_lights( world_t *world, LightBuffer *lbo )
 {
-	memcpy( lbo->light_list_lights, world->cluster_lights, world->cluster_light_offsets[vk.numClusters] * sizeof(uint32_t) );
-	memcpy( lbo->light_list_offsets, world->cluster_light_offsets, (vk.numClusters + 1) * sizeof(uint32_t)  );
+	memcpy( lbo->light_list_lights, world->cluster_lights, world->cluster_light_offsets[world->numClusters] * sizeof(uint32_t) );
+	memcpy( lbo->light_list_offsets, world->cluster_light_offsets, (world->numClusters + 1) * sizeof(uint32_t)  );
 		
 	// Store the light counts in the light counts history entry for the current frame
 	uint32_t history_index = vk.frame_counter % LIGHT_COUNT_HISTORY;
 	uint32_t *sample_light_counts = (uint32_t *)buffer_map( vk.buf_light_counts_history + history_index );
 		
-	for ( int c = 0; c < vk.numClusters; c++ )
+	for ( int c = 0; c < world->numClusters; c++ )
 	{
 		sample_light_counts[c] = world->cluster_light_offsets[c + 1] - world->cluster_light_offsets[c];
 	}
 
 	buffer_unmap( vk.buf_light_counts_history + history_index );
+}
+
+static void inject_model_lights( world_t* world, int num_model_lights, light_poly_t* transformed_model_lights, int model_light_offset, LightBuffer *lbo)
+{
+	uint32_t *dst_list_offsets = lbo->light_list_offsets;
+	uint32_t *dst_lists = lbo->light_list_lights;
+
+	memset(local_light_counts, 0, world->numClusters * sizeof(int));
+	memset(cluster_light_counts, 0, world->numClusters * sizeof(int));
+
+	// Count the number of model lights per cluster
+
+	for (int nlight = 0; nlight < num_model_lights; nlight++)
+	{
+		local_light_counts[transformed_model_lights[nlight].cluster]++;
+	}
+
+	// Count the number of model lights visible from each cluster, using the PVS
+
+	for (int c = 0; c < world->numClusters; c++)
+	{
+		if (local_light_counts[c])
+		{
+			const byte* mask = BSP_GetPvs(world, c);
+
+			for (int j = 0; j < world->clusterBytes; j++) {
+				if (mask[j]) {
+					for (int k = 0; k < 8; ++k) {
+						if (mask[j] & (1 << k))
+							cluster_light_counts[j * 8 + k] += local_light_counts[c];
+					}
+				}
+			}
+		}
+	}
+
+	// Count the total required list size
+
+	int required_size = world->cluster_light_offsets[world->numClusters];
+	for (int c = 0; c < world->numClusters; c++)
+	{
+		required_size += cluster_light_counts[c];
+	}
+
+	// See if we have enough room in the interaction buffer
+	
+	if (required_size > MAX_LIGHT_LIST_NODES)
+	{
+		Com_Printf("Insufficient light interaction buffer size (%d needed). Increase MAX_LIGHT_LIST_NODES.\n", required_size);
+
+		// Copy the BSP light lists verbatim
+		copy_bsp_lights( world, lbo );
+
+		return;
+	}
+	
+	// Store the light counts in the light counts history entry for the current frame
+	uint32_t history_index = vk.frame_counter % LIGHT_COUNT_HISTORY;
+	uint32_t *sample_light_counts = (uint32_t *)buffer_map(vk.buf_light_counts_history + history_index);
+
+	// Copy the static light lists, and make room in these lists to inject the model lights
+
+	int tail = 0;
+	for (int c = 0; c < world->numClusters; c++)
+	{
+		int original_size = world->cluster_light_offsets[c + 1] - world->cluster_light_offsets[c];
+
+		dst_list_offsets[c] = tail;
+		memcpy(dst_lists + tail, world->cluster_lights + world->cluster_light_offsets[c], sizeof(uint32_t) * original_size);
+		tail += original_size;
+		
+		assert(tail + cluster_light_counts[c] < MAX_LIGHT_LIST_NODES);
+		
+		light_list_tails[c] = tail;
+		tail += cluster_light_counts[c];
+
+		sample_light_counts[c] = original_size + cluster_light_counts[c];
+	}
+	dst_list_offsets[world->numClusters] = tail;
+
+	buffer_unmap(vk.buf_light_counts_history + history_index);
+
+	// Write the model light indices into the light lists
+
+	for (int nlight = 0; nlight < num_model_lights; nlight++)
+	{
+		const byte* mask = BSP_GetPvs(world, transformed_model_lights[nlight].cluster);
+
+		if (!mask) continue;
+
+		for (int j = 0; j < world->clusterBytes; j++) {
+			if (mask[j]) {
+				for (int k = 0; k < 8; ++k) {
+					if (mask[j] & (1 << k))
+					{
+						int other_cluster = j * 8 + k;
+						int list_index = light_list_tails[other_cluster]++;
+						// assert we're not writing into the space reserved for following cluster
+						assert(list_index < dst_list_offsets[other_cluster + 1]);
+						dst_lists[list_index] = model_light_offset + nlight;
+					}
+				}
+			}
+		}
+	}
+
+#if defined(_DEBUG)
+	// Verify tight packing
+	for (int c = 0; c < world->numClusters; c++)
+	{
+		int list_start = dst_list_offsets[c];
+		int list_end = dst_list_offsets[c + 1];
+		int original_size = world->cluster_light_offsets[c + 1] - world->cluster_light_offsets[c];
+		assert(list_end - list_start == original_size + cluster_light_counts[c]);
+	}
+#endif
 }
 
 VkResult vkpt_light_buffer_upload_to_staging( qboolean render_world, 
@@ -360,12 +469,10 @@ VkResult vkpt_light_buffer_upload_to_staging( qboolean render_world,
 
 		if ( max_model_lights > 0 )
 		{
-#if 0
 			// If any of the BSP models contain lights, inject these lights right into the visibility lists.
 			// The shader doesn't know that these lights are dynamic.
 
-			inject_model_lights(bsp_mesh, bsp, num_model_lights, transformed_model_lights, model_light_offset, lbo);
-#endif
+			inject_model_lights( world, num_model_lights, transformed_model_lights, model_light_offset, lbo );
 		}
 		else
 		{
@@ -376,6 +483,13 @@ VkResult vkpt_light_buffer_upload_to_staging( qboolean render_world,
 		{
 			light_poly_t* light = world->light_polys + nlight;
 			float* vblight = *(lbo->light_polys + nlight * LIGHT_POLY_VEC4S);
+			copy_light(light, vblight, sky_radiance);
+		}
+
+		for (int nlight = 0; nlight < num_model_lights && nlight + model_light_offset < MAX_LIGHT_POLYS; nlight++)
+		{
+			light_poly_t* light = transformed_model_lights + nlight;
+			float* vblight = *(lbo->light_polys + (nlight + model_light_offset) * LIGHT_POLY_VEC4S);
 			copy_light(light, vblight, sky_radiance);
 		}
 	}
@@ -393,6 +507,7 @@ VkResult vkpt_light_buffer_upload_to_staging( qboolean render_world,
 	}
 
 	memcpy( lbo->cluster_debug_mask, vk.cluster_debug_mask, MAX_LIGHT_LISTS / 8 );
+	memcpy( lbo->sky_visibility, tr.world->sky_visibility, MAX_LIGHT_LISTS / 8);
 
 	buffer_unmap( staging );
 	lbo = NULL;
@@ -400,6 +515,8 @@ VkResult vkpt_light_buffer_upload_to_staging( qboolean render_world,
 	return VK_SUCCESS;
 }
 
+#if 0
+// ~sunny, deprecated, kep for reference
 static void vk_rtx_add_stage_color( const int stage, VertexBuffer *vbo ) 
 {
 	for ( uint32_t i = 0; i < tess.numVertexes; i++ )
@@ -420,160 +537,7 @@ static void vk_rtx_add_stage_tex_coords( const int stage, VertexBuffer *vbo )
 		vbo[i].uv[stage][0] = tess.svars.texcoordPtr[0][i][0];
 	}	
 }
-
-void vk_rtx_upload_vertices( vkbuffer_t *buffer, uint32_t offsetXYZ, int cluster ) 
-{
-	const shaderStage_t *pStage;
-	VertexBuffer		*vbo;
-	uint32_t			i, material_index, material_flags;
-
-	vbo = (VertexBuffer*)calloc( tess.numVertexes, sizeof(VertexBuffer) );
-	assert(vbo);
-
-	vk_rtx_shader_to_material( tess.shader, material_index, material_flags );
-
-	// encode two tex idx and its needColor and blend flags into one 4 byte uint
-	//uint32_t tex0 = (RB_GetNextTexEncoded(0)) | (RB_GetNextTexEncoded(1) << TEX_SHIFT_BITS);
-	//uint32_t tex1 = (RB_GetNextTexEncoded(2)) | (RB_GetNextTexEncoded(3) << TEX_SHIFT_BITS);
-
-	//uint32_t tex0 = (0U) | (TEX0_IDX_MASK << TEX_SHIFT_BITS);
-	//uint32_t tex0 = (RB_GetNextTexEncoded(0));// | (TEX0_IDX_MASK << TEX_SHIFT_BITS);
-	uint32_t tex0 = material_index;// | (TEX0_IDX_MASK << TEX_SHIFT_BITS);
-	uint32_t tex1 = (TEX0_IDX_MASK) | (TEX0_IDX_MASK << TEX_SHIFT_BITS);
-
-	for ( i = 0; i < tess.numVertexes; i++ ) 
-	{
-		vbo[i].material = (material_flags & ~MATERIAL_INDEX_MASK) | (material_index & MATERIAL_INDEX_MASK);
-		vbo[i].texIdx0 = tex0;
-		vbo[i].texIdx1 = tex1;
-		//int c = R_FindClusterForPos(tess.xyz[i]);
-		vbo[i].cluster = cluster;// c != -1 ? c : cluster;
-
-		memcpy( vbo[i].pos, tess.xyz + i, sizeof(vec3_t) );
-#if 0
-		memcpy( vbo[i].qtangent, tess.qtangent + i, sizeof(vec4_t) );
-		memcpy( vbo[i].normal, tess.normal + i, sizeof(vec4_t) );
-#else
-		vbo[i].normal[0] = tess.normal[i][0];
-		vbo[i].normal[1] = tess.normal[i][1];
-		vbo[i].normal[2] = tess.normal[i][2];
-		vbo[i].normal[3] = 0;
-
-		vbo[i].qtangent[0] = tess.qtangent[i][0];
-		vbo[i].qtangent[1] = tess.qtangent[i][1];
-		vbo[i].qtangent[2] = tess.qtangent[i][2];
-		vbo[i].qtangent[3] = 0;
 #endif
-	}
-
-	for ( i = 0; i < MAX_RTX_STAGES; i++ ) 
-	{
-		pStage = tess.shader->stages[i];
-
-		if ( !pStage || !pStage->active )
-			break;
-
-		//
-		// only compute bundle 0 for now
-		//
-		if ( pStage->tessFlags & TESS_RGBA0 )
-		{
-			ComputeColors( 0, tess.svars.colors[0], pStage, 0 );
-			vk_rtx_add_stage_color( i, vbo );
-		}
-
-		if ( pStage->tessFlags & TESS_ST0 )
-		{
-			ComputeTexCoords( 0, &pStage->bundle[0] );
-			vk_rtx_add_stage_tex_coords( i, vbo );
-		}
-	}
-
-#if 0
-	// if there are multiple stages we need to upload them all
-	if ( tess.shader->stages[0] != NULL && tess.shader->stages[0]->active ) 
-	{
-		ComputeTexCoords( 0, &tess.shader->stages[0]->bundle[0] );
-		ComputeColors(0, tess.svars.colors[0], tess.shader->stages[0], 0);
-
-#if 0
-		if ( tr.world != NULL ) {
-			if (strstr(tess.shader->name, "fog")) {
-			int x = 2;
-			//if (tess.fogNum && tess.shader->fogPass) {
-				fog_t* fog;
-				fog = tr.world->fogs + 4;// tess.fogNum;
-				for (int i = 0; i < tess.numVertexes; i++) {
-					*(int*)&tess.svars.colors[i] = fog->colorInt;
-				}
-				//RB_CalcFogTexCoords((float*)tess.svars.texcoords[0]);
-			}
-		}
-#endif
-		for ( j = 0; j < tess.numVertexes; j++ ) {
-			vData[j].color0 = tess.svars.colors[0][j][0] | tess.svars.colors[0][j][1] << 8 | tess.svars.colors[0][j][2] << 16 | tess.svars.colors[0][j][3] << 24;
-			
-			vData[j].uv0[1] = tess.svars.texcoordPtr[0][j][1];
-			vData[j].uv0[0] = tess.svars.texcoordPtr[0][j][0];
-
-		}
-	}
-
-	if ( tess.shader->stages[1] != NULL && tess.shader->stages[1]->active) 
-	{
-		ComputeTexCoords( 1, &tess.shader->stages[1]->bundle[0] );
-		ComputeColors( 1, tess.svars.colors[0], tess.shader->stages[1], 0);
-
-		for ( j = 0; j < tess.numVertexes; j++ ) {
-			vData[j].color1 = tess.svars.colors[0][j][0] | tess.svars.colors[0][j][1] << 8 | tess.svars.colors[0][j][2] << 16 | tess.svars.colors[0][j][3] << 24;
-			vData[j].uv1[0] = tess.svars.texcoords[0][j][0];
-			vData[j].uv1[1] = tess.svars.texcoords[0][j][1];
-		}
-	}
-
-	if ( tess.shader->stages[2] != NULL && tess.shader->stages[2]->active ) 
-	{
-		ComputeTexCoords( 2, &tess.shader->stages[2]->bundle[0] );
-		ComputeColors( 2, tess.svars.colors[0], tess.shader->stages[2], 0);
-
-		for ( j = 0; j < tess.numVertexes; j++ ) {
-			vData[j].color2 = tess.svars.colors[0][j][0] | tess.svars.colors[0][j][1] << 8 | tess.svars.colors[0][j][2] << 16 | tess.svars.colors[0][j][3] << 24;
-			vData[j].uv2[0] = tess.svars.texcoords[0][j][0];
-			vData[j].uv2[1] = tess.svars.texcoords[0][j][1];
-		}
-	}
-
-	if (tess.shader->stages[3] != NULL && tess.shader->stages[3]->active ) 
-	{
-		ComputeTexCoords( 3, &tess.shader->stages[3]->bundle[0] );
-		ComputeColors( 3, tess.svars.colors[0], tess.shader->stages[3], 0);
-
-		for ( j = 0; j < tess.numVertexes; j++ ) {
-			vData[j].color3 = tess.svars.colors[0][j][0] | tess.svars.colors[0][j][1] << 8 | tess.svars.colors[0][j][2] << 16 | tess.svars.colors[0][j][3] << 24;
-			vData[j].uv3[0] = tess.svars.texcoords[0][j][0];
-			vData[j].uv3[1] = tess.svars.texcoords[0][j][1];
-		}
-	}
-#endif
-
-	vk_rtx_upload_buffer_data_offset( buffer,
-		offsetXYZ * sizeof(VertexBuffer),
-		tess.numVertexes * sizeof(VertexBuffer), (const byte*)vbo );
-	
-	free( vbo );
-}
-
-void vk_rtx_upload_indices( vkbuffer_t *buffer, uint32_t offsetIDX, uint32_t offsetXYZ ) 
-{
-	uint32_t *indices = (uint32_t*)calloc(tess.numIndexes, sizeof(uint32_t));
-	uint32_t i;
-
-	for ( i = 0; i < tess.numIndexes; i++ )
-		indices[i] = (uint32_t)(tess.indexes[i] + offsetXYZ);
-
-	vk_rtx_upload_buffer_data_offset( buffer, offsetIDX * sizeof(uint32_t), tess.numIndexes * sizeof(uint32_t), (const byte*)indices );
-	free( indices );
-}
 
 VkResult vk_rtx_readback( ReadbackBuffer *dst )
 {
@@ -595,7 +559,7 @@ VkResult vkpt_light_buffers_create( world_t &worldData )
 	vkpt_light_buffers_destroy();
 
 	// Light statistics: 2 uints (shadowed, unshadowed) per light per surface orientation (6) per cluster.
-	uint32_t num_stats = vk.numClusters * worldData.num_light_polys * 6 * 2;
+	uint32_t num_stats = worldData.numClusters * worldData.num_light_polys * 6 * 2;
 
     // Handle rare cases when the map has zero lights
     if ( num_stats == 0 )
@@ -610,7 +574,7 @@ VkResult vkpt_light_buffers_create( world_t &worldData )
 
 	for ( int h = 0; h < LIGHT_COUNT_HISTORY; h++ )
 	{
-		vk_rtx_buffer_create( vk.buf_light_counts_history + h, sizeof(uint32_t) * vk.numClusters,
+		vk_rtx_buffer_create( vk.buf_light_counts_history + h, sizeof(uint32_t) * worldData.numClusters,
 			VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT );
 	}
@@ -623,12 +587,102 @@ VkResult vkpt_light_buffers_create( world_t &worldData )
 VkResult vkpt_light_buffers_destroy( void )
 {
 	for ( int frame = 0; frame < NUM_LIGHT_STATS_BUFFERS; frame++ )
-		VK_DestroyBuffer( vk.buf_light_stats + frame );
+		vk_rtx_buffer_destroy( vk.buf_light_stats + frame );
 
 	for ( int h = 0; h < LIGHT_COUNT_HISTORY; h++ )
-		VK_DestroyBuffer( vk.buf_light_counts_history + h );
+		vk_rtx_buffer_destroy( vk.buf_light_counts_history + h );
 
 	return VK_SUCCESS;
+}
+
+static size_t Q_snprintf(char *dest, size_t size, const char *fmt, ...)
+{
+    va_list argptr;
+    size_t  ret;
+
+    va_start(argptr, fmt);
+    ret = Q_vsnprintf(dest, size, fmt, argptr);
+    va_end(argptr);
+
+    return ret;
+}
+
+static int Cvar_ClampInteger(cvar_t *var, int min, int max)
+{
+    if (var->integer < min) {
+        ri.Cvar_SetValue(var->name, min);
+        return min;
+    }
+    if (var->integer > max) {
+        ri.Cvar_SetValue(var->name, max);
+        return max;
+    }
+    return var->integer;
+}
+
+void create_primbuf( void )
+{
+	int primbuf_size = Cvar_ClampInteger(cvar_pt_primbuf, PRIMBUF_SIZE_MIN, PRIMBUF_SIZE_MAX);
+
+	vk_rtx_buffer_create(&vk.buf_primitive_instanced, sizeof(VboPrimitive) * primbuf_size,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+	vk_rtx_buffer_create(&vk.buf_positions_instanced, sizeof(prim_positions_t) * primbuf_size,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+	current_primbuf_size = primbuf_size;
+}
+
+void destroy_primbuf(void)
+{
+	vk_rtx_buffer_destroy( &vk.buf_primitive_instanced );
+	vk_rtx_buffer_destroy( &vk.buf_positions_instanced );
+}
+
+static inline size_t align(size_t x, size_t alignment)
+{
+	return (x + (alignment - 1)) & ~(alignment - 1);
+}
+
+void vkpt_vertex_buffer_ensure_primbuf_size(uint32_t prim_count)
+{
+	if (prim_count <= current_primbuf_size)
+		return;
+	
+	qvkDeviceWaitIdle(vk.device);
+
+	destroy_primbuf();
+
+	prim_count = (uint32_t)align(prim_count, PRIMBUF_SIZE_MIN);
+	ri.Cvar_SetValue(cvar_pt_primbuf->name, (int)prim_count);
+
+	Com_Printf("Resizing the animation buffers to fit all meshes. Set pt_primbuf to at least %d to avoid this.\n", prim_count);
+
+	create_primbuf();
+
+	VkDescriptorBufferInfo buf_info = { 0 };
+
+	VkWriteDescriptorSet output_buf_write;
+	Com_Memset(&output_buf_write, 0, sizeof(VkWriteDescriptorSet));
+	output_buf_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	output_buf_write.dstSet = vk.desc_set_vertex_buffer->set;
+	output_buf_write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	output_buf_write.descriptorCount = 1;
+	output_buf_write.pBufferInfo = &buf_info;
+
+	output_buf_write.dstBinding = PRIMITIVE_BUFFER_BINDING_IDX;
+	output_buf_write.dstArrayElement = VERTEX_BUFFER_INSTANCED;
+	buf_info.buffer = vk.buf_primitive_instanced.buffer;
+	buf_info.range = vk.buf_primitive_instanced.size;
+	qvkUpdateDescriptorSets(vk.device, 1, &output_buf_write, 0, NULL);
+
+	output_buf_write.dstBinding = POSITION_BUFFER_BINDING_IDX;
+	output_buf_write.dstArrayElement = 0;
+	buf_info.buffer = vk.buf_positions_instanced.buffer;
+	buf_info.range = vk.buf_positions_instanced.size;
+	qvkUpdateDescriptorSets(vk.device, 1, &output_buf_write, 0, NULL);
 }
 
 void vk_rtx_create_buffers( void ) 
@@ -647,35 +701,6 @@ void vk_rtx_create_buffers( void )
 		vk_rtx_buffer_create(		&vk.buf_instances[i],		VK_MAX_BOTTOM_AS_INSTANCES * sizeof(vk_geometry_instance_t), VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT );	
 	}
 
-	// world static
-	// idx_world_static VK_BUFFER_USAGE_INDEX_BUFFER_BIT is used for shadowmap rendering
-	// using vkCmdDrawIndexed
-	VK_CreateAttributeBuffer( &vk.geometry.idx_world_static, RTX_WORLD_STATIC_IDX_SIZE * sizeof(uint32_t), VkBufferUsageFlagBits( AS_BUFFER_FLAGS | VK_BUFFER_USAGE_INDEX_BUFFER_BIT ) );
-	VK_CreateAttributeBuffer( &vk.geometry.xyz_world_static, RTX_WORLD_STATIC_XYZ_SIZE * sizeof(VertexBuffer), AS_BUFFER_FLAGS );
-	
-	// world dynamic data
-	for ( i = 0; i < vk.swapchain_image_count; i++ ) 
-	{
-		VK_CreateAttributeBuffer( &vk.geometry.idx_world_dynamic_data[i], RTX_WORLD_DYNAMIC_DATA_IDX_SIZE * sizeof(uint32_t), AS_BUFFER_FLAGS );
-		VK_CreateAttributeBuffer( &vk.geometry.xyz_world_dynamic_data[i], RTX_WORLD_DYNAMIC_DATA_XYZ_SIZE * sizeof(VertexBuffer), AS_BUFFER_FLAGS );
-	}
-	
-	// world dynamic as
-	for ( i = 0; i < vk.swapchain_image_count; i++ ) 
-	{
-		VK_CreateAttributeBuffer( &vk.geometry.idx_world_dynamic_as[i], RTX_WORLD_DYNAMIC_AS_IDX_SIZE * sizeof(uint32_t), AS_BUFFER_FLAGS );
-		VK_CreateAttributeBuffer( &vk.geometry.xyz_world_dynamic_as[i], RTX_WORLD_DYNAMIC_AS_XYZ_SIZE * sizeof(VertexBuffer), AS_BUFFER_FLAGS );
-	}
-
-	VK_CreateAttributeBuffer( &vk.geometry.cluster_world_static, RTX_WORLD_STATIC_IDX_SIZE/3 * sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT );
-	VK_CreateAttributeBuffer( &vk.geometry.cluster_world_dynamic_data, RTX_WORLD_DYNAMIC_DATA_IDX_SIZE / 3 * sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT );	
-	VK_CreateAttributeBuffer( &vk.geometry.cluster_world_dynamic_as, RTX_WORLD_DYNAMIC_AS_IDX_SIZE / 3 * sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT );
-
-	VK_CreateAttributeBuffer( &vk.geometry.idx_sky_static, RTX_WORLD_STATIC_IDX_SIZE * sizeof(uint32_t), VkBufferUsageFlagBits( AS_BUFFER_FLAGS | VK_BUFFER_USAGE_INDEX_BUFFER_BIT ) );
-	VK_CreateAttributeBuffer( &vk.geometry.xyz_sky_static, RTX_WORLD_STATIC_XYZ_SIZE * sizeof(VertexBuffer), AS_BUFFER_FLAGS );
-	VK_CreateAttributeBuffer( &vk.geometry.cluster_sky_static, RTX_WORLD_STATIC_IDX_SIZE/3 * sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT );
-
-
 	// readback
 	vk_rtx_buffer_create( &vk.buf_readback, sizeof(ReadbackBuffer),
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
@@ -687,10 +712,6 @@ void vk_rtx_create_buffers( void )
 			VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT );	
 	}
-
-	vk_rtx_buffer_create( &vk.model_instance.buffer_vertex, sizeof(ModelDynamicVertexBuffer),
-		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 	// light & material buffer
 	vk_rtx_buffer_create( &vk.buf_light, sizeof(LightBuffer),
@@ -713,5 +734,36 @@ void vk_rtx_create_buffers( void )
 	vk_rtx_buffer_create( &vk.buf_sun_color, sizeof(SunColorBuffer),
 		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+	// primbuf
+	char primbuf_initial_value[16];
+	Q_snprintf(primbuf_initial_value, sizeof(primbuf_initial_value), "%d", PRIMBUF_SIZE_DEFAULT);
+	cvar_pt_primbuf = ri.Cvar_Get("pt_primbuf", primbuf_initial_value, CVAR_ARCHIVE, "");
+
+	create_primbuf();
 }
 
+void vk_rtx_destroy_buffers( void ) 
+{
+	uint32_t i = 0;
+
+	vk_rtx_buffer_destroy( &vk.buf_accel_scratch );
+	
+	destroy_primbuf();
+
+	vk_rtx_buffer_destroy( &vk.buf_readback );
+	vk_rtx_buffer_destroy( &vk.buf_tonemap );
+	vk_rtx_buffer_destroy( &vk.buf_light );
+	vk_rtx_buffer_destroy( &vk.buf_sun_color );
+
+	for ( i = 0; i < vk.swapchain_image_count; i++ ) 
+	{
+		vk_rtx_buffer_destroy( &vk.buf_instances[i] );
+		vk_rtx_buffer_destroy( vk.buf_readback_staging + i );
+		vk_rtx_buffer_destroy( vk.buf_light_staging + i );
+	}
+
+
+	vk_rtx_destroy_accel_all();
+	vkpt_light_buffers_destroy();
+}

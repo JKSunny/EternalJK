@@ -63,6 +63,9 @@ static void vk_rtx_destroy_shader( vkshader_t *shader )
 {
 	uint32_t i;
 
+	if ( shader == NULL)
+		return;
+
 	for ( i = 0; i < shader->size; i++ ) 
 		qvkDestroyShaderModule( vk.device, shader->modules[i], NULL );
 
@@ -172,8 +175,9 @@ void vk_rtx_destroy_shaders( void )
 	SHADER_MODULE_DO( SHADER_PATH_TRACER_DIRECT_LIGHTING_RGEN,		direct_lighting_rgen	) \
 	SHADER_MODULE_DO( SHADER_PATH_TRACER_INDIRECT_LIGHTING_RGEN,	indirect_lighting_rgen	) \
 	\
-	SHADER_MODULE_DO( SHADER_PATH_TRACER_PATH_TRACER_RMISS,			path_tracer_rmiss		) \
-	SHADER_MODULE_DO( SHADER_PATH_TRACER_PATH_TRACER_RCHIT,			path_tracer_rchit		) \
+	SHADER_MODULE_DO( SHADER_PATH_TRACER_RMISS,						path_tracer_rmiss		) \
+	SHADER_MODULE_DO( SHADER_PATH_TRACER_RCHIT,						path_tracer_rchit		) \
+	SHADER_MODULE_DO( SHADER_PATH_TRACER_MASKED_RAHIT,				path_tracer_masked_rahit) \
 
 enum {
 #define SHADER_MODULE_DO( _index, ... ) _index,
@@ -235,8 +239,9 @@ void vk_rtx_create_pipelines( void )
 		shader_stages[0].pName = "main";
 		// Shader module is set below
 	}
-	SHADER_STAGE( 1, SHADER_PATH_TRACER_PATH_TRACER_RMISS,	VK_SHADER_STAGE_MISS_BIT_KHR		)
-	SHADER_STAGE( 2, SHADER_PATH_TRACER_PATH_TRACER_RCHIT,	VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR )
+	SHADER_STAGE( 1, SHADER_PATH_TRACER_RMISS,			VK_SHADER_STAGE_MISS_BIT_KHR		)
+	SHADER_STAGE( 2, SHADER_PATH_TRACER_RCHIT,			VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR )
+	SHADER_STAGE( 3, SHADER_PATH_TRACER_MASKED_RAHIT,	VK_SHADER_STAGE_ANY_HIT_BIT_KHR		)
 
 	for ( uint32_t index = 0; index < PIPELINE_COUNT; index++ )
 	{
@@ -306,6 +311,15 @@ void vk_rtx_create_pipelines( void )
 		group->generalShader		= VK_SHADER_UNUSED_KHR;
 		group->closestHitShader		= 2;
 		group->anyHitShader			= VK_SHADER_UNUSED_KHR;
+		group->intersectionShader	= VK_SHADER_UNUSED_KHR;
+
+		group						= &rt_shader_group_info[SBT_RAHIT_MASKED];
+		group->pNext				= NULL;
+		group->sType				= VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
+		group->type					= VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
+		group->generalShader		= VK_SHADER_UNUSED_KHR;
+		group->closestHitShader		= 2;
+		group->anyHitShader			= 3;
 		group->intersectionShader	= VK_SHADER_UNUSED_KHR;
 
 		unsigned int num_shader_groups = ARRAY_LEN(rt_shader_group_info);

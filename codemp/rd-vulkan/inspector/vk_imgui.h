@@ -287,8 +287,7 @@ void vk_imgui_bind_rtx_cvars( void );
 void vk_imgui_bind_rtx_draw_image( void );
 void vk_imgui_rtx_add_unbound_texture( VkDescriptorSet *image, VkImageView view, VkSampler sampler );
 
-void vk_imgui_draw_rtx_settings( void );
-void vk_imgui_draw_rtx_feedback( void );
+void vk_imgui_draw_rtx( void );
 
 void vk_imgui_draw_inspector_rtx_light_poly( void );
 void vk_rtx_imgui_draw_objects_lights( void );

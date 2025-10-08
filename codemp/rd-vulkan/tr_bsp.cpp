@@ -2206,6 +2206,9 @@ static	void R_LoadSubmodels( const lump_t *l, world_t &worldData, int index ) {
 	count = l->filelen / sizeof(*in);
 
 	worldData.bmodels = out = (bmodel_t *)Hunk_Alloc( count * sizeof(*out), h_low );
+#ifdef USE_RTX
+	worldData.num_bmodels = count;
+#endif
 
 	for ( i=0 ; i<count ; i++, in++, out++ ) {
 		model_t *model;

@@ -554,7 +554,81 @@ void vk_rtx_create_images( void )
 	}
 }
 
-void vk_rtx_initialize_images( void ) 
+static VkResult vk_rtx_create_blue_noise( void ) 
+{
+	uint32_t	i, j, channel;
+	int			width, height;
+	int			bytes_per_channel = 2;
+	byte		*pic;
+
+	const int num_blue_noise_images = NUM_BLUE_NOISE_TEX / 4;
+	const int res = BLUE_NOISE_RES;
+	const size_t img_size = (size_t)res * (size_t)res;
+	const size_t total_size = img_size * sizeof(uint16_t);
+
+	VkComponentMapping component_map;
+	component_map.r = VK_COMPONENT_SWIZZLE_R;
+	component_map.g = VK_COMPONENT_SWIZZLE_R;
+	component_map.b = VK_COMPONENT_SWIZZLE_R;
+	component_map.a = VK_COMPONENT_SWIZZLE_R;
+
+	vk_rtx_create_image_array( "blue noise array", &vk.img_blue_noise, res, res, VK_FORMAT_R16_UNORM, 
+		VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 
+		1, NUM_BLUE_NOISE_TEX, 0, &component_map );
+	
+	for ( i = 0; i < num_blue_noise_images; i++ ) 
+	{
+		char buf[1024];
+		snprintf(buf, sizeof buf, "blue_noise/%d_%d/HDR_RGBA_%04d.png", res, res, i);
+			
+		R_LoadImage16( buf, &pic, &width, &height );
+
+		if ( pic == NULL ) {
+			Com_Error(ERR_DROP, "Couln't load blue noise.\n");
+			return VK_ERROR_INITIALIZATION_FAILED;
+		}
+		// HDR is RGBA
+		for ( channel = 0; channel < 4; channel++ ) 
+		{
+			uint8_t img[2 * res * res];
+
+			for ( j = 0; j < img_size; j++ ) 
+			{
+				img[(j * bytes_per_channel) + 0] = *(pic + ((j * 8) + ((channel * bytes_per_channel) + 0)));
+				img[(j * bytes_per_channel) + 1] = *(pic + ((j * 8) + ((channel * bytes_per_channel) + 1)));
+			}
+
+			vk_rtx_upload_image_data( &vk.img_blue_noise, width, height, img, bytes_per_channel, 0, (i*4) + channel );
+		}
+
+		Z_Free( pic );
+	}
+
+	VkDescriptorImageInfo desc_img_info;
+	desc_img_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	desc_img_info.imageView   = vk.img_blue_noise.view;
+	desc_img_info.sampler     = vk.tex_sampler;
+
+	VkWriteDescriptorSet s;
+	Com_Memset( &s, 0, sizeof(VkWriteDescriptorSet) );
+	s.sType				= VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	s.pNext				= NULL;
+	s.dstSet			= vk.desc_set_textures_even;
+	s.dstBinding		= BINDING_OFFSET_BLUE_NOISE;
+	s.dstArrayElement	= 0;
+	s.descriptorType	= VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	s.descriptorCount	= 1;
+	s.pImageInfo		= &desc_img_info;
+
+	qvkUpdateDescriptorSets( vk.device, 1, &s, 0, NULL );
+
+	s.dstSet = vk.desc_set_textures_odd;
+	qvkUpdateDescriptorSets( vk.device, 1, &s, 0, NULL );
+	
+	qvkQueueWaitIdle( vk.queue );
+}
+
+VkResult vk_rtx_initialize_images( void ) 
 {
 	VkSamplerCreateInfo sampler_info;
 	Com_Memset( &sampler_info, 0, sizeof(VkSamplerCreateInfo) );
@@ -768,7 +842,10 @@ void vk_rtx_initialize_images( void )
 	VK_CHECK( qvkAllocateDescriptorSets( vk.device, &alloc, &vk.desc_set_textures_even ) );
 	VK_CHECK( qvkAllocateDescriptorSets( vk.device, &alloc, &vk.desc_set_textures_odd ) );
 
-	vk_rtx_create_blue_noise();
+	if ( vk_rtx_create_blue_noise() != VK_SUCCESS )
+		return VK_ERROR_INITIALIZATION_FAILED;
+
+	return VK_SUCCESS;
 }
 
 void vk_rtx_destroy_image( vkimage_t *image )
@@ -794,77 +871,4 @@ void vk_rtx_destroy_image( vkimage_t *image )
 	}
 
 	memset( image, 0, sizeof(vkimage_t) );
-}
-
-void vk_rtx_create_blue_noise( void ) 
-{
-	uint32_t	i, j, channel;
-	int			width, height;
-	int			bytes_per_channel = 2;
-	byte		*pic;
-
-	const int num_blue_noise_images = NUM_BLUE_NOISE_TEX / 4;
-	const int res = BLUE_NOISE_RES;
-	const size_t img_size = (size_t)res * (size_t)res;
-	const size_t total_size = img_size * sizeof(uint16_t);
-
-	VkComponentMapping component_map;
-	component_map.r = VK_COMPONENT_SWIZZLE_R;
-	component_map.g = VK_COMPONENT_SWIZZLE_R;
-	component_map.b = VK_COMPONENT_SWIZZLE_R;
-	component_map.a = VK_COMPONENT_SWIZZLE_R;
-
-	vk_rtx_create_image_array( "blue noise array", &vk.img_blue_noise, res, res, VK_FORMAT_R16_UNORM, 
-		VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 
-		1, NUM_BLUE_NOISE_TEX, 0, &component_map );
-	
-	for ( i = 0; i < num_blue_noise_images; i++ ) 
-	{
-		char buf[1024];
-		snprintf(buf, sizeof buf, "blue_noise/%d_%d/HDR_RGBA_%04d.png", res, res, i);
-			
-		R_LoadImage16( buf, &pic, &width, &height );
-
-		if ( pic == NULL )
-			Com_Error(ERR_DROP, "Couln't load blue noise.\n");
-
-		// HDR is RGBA
-		for ( channel = 0; channel < 4; channel++ ) 
-		{
-			uint8_t img[2 * res * res];
-
-			for ( j = 0; j < img_size; j++ ) 
-			{
-				img[(j * bytes_per_channel) + 0] = *(pic + ((j * 8) + ((channel * bytes_per_channel) + 0)));
-				img[(j * bytes_per_channel) + 1] = *(pic + ((j * 8) + ((channel * bytes_per_channel) + 1)));
-			}
-
-			vk_rtx_upload_image_data( &vk.img_blue_noise, width, height, img, bytes_per_channel, 0, (i*4) + channel );
-		}
-
-		Z_Free( pic );
-	}
-
-	VkDescriptorImageInfo desc_img_info;
-	desc_img_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	desc_img_info.imageView   = vk.img_blue_noise.view;
-	desc_img_info.sampler     = vk.tex_sampler;
-
-	VkWriteDescriptorSet s;
-	Com_Memset( &s, 0, sizeof(VkWriteDescriptorSet) );
-	s.sType				= VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	s.pNext				= NULL;
-	s.dstSet			= vk.desc_set_textures_even;
-	s.dstBinding		= BINDING_OFFSET_BLUE_NOISE;
-	s.dstArrayElement	= 0;
-	s.descriptorType	= VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	s.descriptorCount	= 1;
-	s.pImageInfo		= &desc_img_info;
-
-	qvkUpdateDescriptorSets( vk.device, 1, &s, 0, NULL );
-
-	s.dstSet = vk.desc_set_textures_odd;
-	qvkUpdateDescriptorSets( vk.device, 1, &s, 0, NULL );
-	
-	qvkQueueWaitIdle( vk.queue );
 }
