@@ -128,8 +128,8 @@ Converting skyboxes to local lights provides two benefits:
 #define gl_RayFlagsSkipProceduralPrimitives 0x200 // not defined in GLSL
 
 #define INSTANCE_DYNAMIC_FLAG        (1u << 31)
-#define INSTANCE_SKY_FLAG            (1u << 30)
-#define PRIM_ID_MASK (~(INSTANCE_DYNAMIC_FLAG | INSTANCE_SKY_FLAG))
+
+#define PRIM_ID_MASK (~INSTANCE_DYNAMIC_FLAG)
 
 #ifndef NO_GLOBAL_UBO
 #define GLOBAL_UBO_DESC_SET_IDX 3

@@ -73,9 +73,7 @@ static rtx_material_t *vk_rtx_get_mdv_material(mdvSurface_t* surf)
 
 		uint32_t material_index, material_flags;
 
-		vk_rtx_shader_to_material( tr.shaders[index], material_index, material_flags );
-
-		material = vk_rtx_get_material( index );
+		material = vk_rtx_shader_to_material( tr.shaders[index] );
 
 		if ( material != NULL )
 			break;

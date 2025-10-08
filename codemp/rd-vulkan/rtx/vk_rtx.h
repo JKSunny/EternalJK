@@ -171,6 +171,7 @@ typedef struct {
 	vec4_t		specular_scale;
 	uint32_t	emissive_factor;
 	int			surface_light;	// q3map_surfacelight fallback
+	uint32_t	flags;
 } rtx_material_t;
 
 typedef struct light_poly_s {
@@ -502,7 +503,7 @@ void		vk_rtx_destroy_pipeline( vkpipeline_t *pipeline );
 VkResult	vkpt_uniform_buffer_create( void );
 VkResult	vkpt_uniform_buffer_destroy( void );
 VkResult	vkpt_uniform_buffer_upload_to_staging( void );
-VkResult	vkpt_uniform_buffer_copy_from_staging( VkCommandBuffer command_buffer );
+void		vkpt_uniform_buffer_copy_from_staging( VkCommandBuffer command_buffer );
 
 // buffer
 VkResult	allocate_gpu_memory( VkMemoryRequirements mem_req, VkDeviceMemory *pMemory );
@@ -563,20 +564,21 @@ qboolean	get_triangle_off_center(const float* positions, float* center, float* a
 int			vk_get_surface_cluster( world_t &worldData, surfaceType_t *surf );
 
 // material
+uint32_t		MAT_SetKind(uint32_t material, uint32_t kind);
+bool			MAT_IsKind(uint32_t material, uint32_t kind);
 void			vk_rtx_clear_material_list( void ) ;
 void			vk_rtx_clear_material( uint32_t index );
 rtx_material_t	*vk_rtx_get_material( uint32_t index );
 
 uint32_t	vk_rtx_find_emissive_texture( const shader_t *shader, rtx_material_t *material );
 qboolean	RB_StageNeedsColor( int stage );
-uint32_t	RB_GetMaterial( shader_t *shader );
 uint32_t	RB_GetNextTex( shader_t *shader, int stage );
 uint32_t	RB_GetNextTexEncoded( shader_t *shader, int stage );
 //qboolean	RB_IsLight( shader_t *shader );
 qboolean	RB_SkipObject( shader_t *shader );
 qboolean	RB_IsTransparent( shader_t *shader );
 void		vk_rtx_update_shader_material( shader_t *shader, shader_t *updatedShader );
-VkResult	vk_rtx_shader_to_material( shader_t *shader, uint32_t &index, uint32_t &flags );
+rtx_material_t	*vk_rtx_shader_to_material( shader_t *shader );
 VkResult	vk_rtx_upload_materials( LightBuffer *lbo );
 
 // image

@@ -99,23 +99,16 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define MATERIAL_KIND_CHROME_MODEL					0xd0000000
 #define MATERIAL_KIND_TRANSP_MODEL					0xe0000000 // Transparent models. No distortion, just "see through".
 
-#define MATERIAL_FLAG_MASK          				0x000ffff0
-#define MATERIAL_FLAG_LIGHT 						0x00000010
-#define MATERIAL_FLAG_TRANSPARENT  					0x00000020
-#define MATERIAL_FLAG_SEE_THROUGH  					0x00000040
-#define MATERIAL_FLAG_MIRROR 						0x00000080
-#define MATERIAL_FLAG_NEEDSCOLOR 					0x00000100
-#define MATERIAL_FLAG_CORRECT_ALBEDO 				0x00000200
-#define MATERIAL_FLAG_PORTAL						0x00000400
-#define MATERIAL_FLAG_BULLET_MARK					0x00000800
-#define MATERIAL_FLAG_WEAPON			    		0x00001000
-#define MATERIAL_FLAG_SEE_THROUGH_ADD  				0x00002000
-#define MATERIAL_FLAG_SEE_THROUGH_NO_ALPHA  	    0x00004000
-#define MATERIAL_FLAG_IGNORE_LUMINANCE 				0x00008000
+#define MATERIAL_FLAG_DOUBLE_SIDED					0x00200000 // bit 21
+#define MATERIAL_FLAG_FLOWING						0x00400000 // bit 22
+#define MATERIAL_FLAG_WARP							0x00800000 // bit 23
+#define MATERIAL_FLAG_WEAPON						0x01000000 // bit 24
+#define MATERIAL_FLAG_HANDEDNESS					0x02000000 // bit 25
+#define MATERIAL_FLAG_LIGHT							0x08000000 // bit 27
 
 #define MATERIAL_LIGHT_STYLE_MASK    0x0003f000
 #define MATERIAL_LIGHT_STYLE_SHIFT   12
-#define MATERIAL_INDEX_MASK			 0x00000fff	// just 4095 material indexes? can cause issues some day?
+#define MATERIAL_INDEX_MASK          0x00000fff	// bits 0–11; just 4095 material indexes? can cause issues some day?
 
 #define CHECKERBOARD_FLAG_PRIMARY    1
 #define CHECKERBOARD_FLAG_REFLECTION 2
@@ -176,10 +169,6 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define TEX1_ADD_BLEND_MASK                         0x10000000
 #define TEX0_BLEND_MASK                             0x00001C00
 #define TEX1_BLEND_MASK                             0x1C000000
-
-#define MAX_VERT_MODEL          (1 << 23)
-#define MAX_IDX_MODEL           (1 << 22)
-#define MAX_PRIM_MODEL          (MAX_IDX_MODEL / 3)
 
 #define SHADER_MAX_ENTITIES		1024
 #define SHADER_MAX_BSP_ENTITIES	128

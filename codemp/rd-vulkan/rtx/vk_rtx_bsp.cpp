@@ -1003,14 +1003,11 @@ collect_frames_emissive_info( shader_t *shader, rtx_material_t *material, bool *
 	max_light_texcoord[0] = max_light_texcoord[1] = 0.0f;
 
 	bool any_emissive_valid = false;
-#if 0
-	uint32_t emissive_image_index = vk_rtx_find_emissive_texture( shader, NULL );
-#else
+
 	if ( material == NULL )
 		return false;
 
 	uint32_t emissive_image_index = material->emissive;
-#endif
 
 	if ( !emissive_image_index )
 		return false;
@@ -1579,36 +1576,11 @@ encode_normal(const vec3_t normal)
 }
 
 // create_poly(worldData, surf, material_id, geom, surface_prims);
-static uint32_t create_poly( vk_geometry_data_t *geom, VboPrimitive* primitives_out )
+static uint32_t create_poly( vk_geometry_data_t *geom, rtx_material_t *material, uint32_t material_id, VboPrimitive *primitives_out )
 {
 	int i0, i1, i2;
 	const shaderStage_t *pStage;
 
-	for ( uint32_t i = 0; i < MAX_RTX_STAGES; i++ ) 
-	{
-		pStage = tess.shader->stages[i];
-
-		if ( !pStage || !pStage->active )
-			break;
-
-		//
-		// only compute bundle 0 for now
-		//
-		if ( pStage->tessFlags & TESS_RGBA0 )
-		{
-			ComputeColors( 0, tess.svars.colors[0], pStage, 0 );
-		}
-
-		if ( pStage->tessFlags & TESS_ST0 )
-		{
-			ComputeTexCoords( 0, &pStage->bundle[0] );
-		}
-	}
-
-	uint32_t material_index, material_flags;
-	vk_rtx_shader_to_material( tess.shader, material_index, material_flags );
-
-	rtx_material_t *material = vk_rtx_get_material( tess.shader->index );
 	const float emissive_factor = compute_emissive(material);
 
 	float alpha = 1.f;
@@ -1618,6 +1590,8 @@ static uint32_t create_poly( vk_geometry_data_t *geom, VboPrimitive* primitives_
 	const uint32_t emissive_and_alpha = floatToHalf(emissive_factor) | (floatToHalf(alpha) << 16);
 
 	int numTris = tess.numIndexes / 3;
+
+	VboPrimitive *base_primitive = primitives_out;
 
 	for ( uint32_t i = 0; i < numTris; ++i ) 
 	{
@@ -1641,24 +1615,58 @@ static uint32_t create_poly( vk_geometry_data_t *geom, VboPrimitive* primitives_
 		primitives_out->tangents[1] = encode_normal( tess.qtangent[i1] );
 		primitives_out->tangents[2] = encode_normal( tess.qtangent[i2] );
 
-		primitives_out->uv0[0] = tess.svars.texcoordPtr[0][i0][0];
-		primitives_out->uv0[1] = tess.svars.texcoordPtr[0][i0][1];
-
-		primitives_out->uv1[0] = tess.svars.texcoordPtr[0][i1][0];
-		primitives_out->uv1[1] = tess.svars.texcoordPtr[0][i1][1];
-
-		primitives_out->uv2[0] = tess.svars.texcoordPtr[0][i2][0];
-		primitives_out->uv2[1] = tess.svars.texcoordPtr[0][i2][1];
-
 		primitives_out->color0[0] = tess.svars.colors[0][i0][0] | tess.svars.colors[0][i0][1] << 8 | tess.svars.colors[0][i0][2] << 16 | tess.svars.colors[0][i0][3] << 24;
 		primitives_out->color1[0] = tess.svars.colors[0][i1][0] | tess.svars.colors[0][i1][1] << 8 | tess.svars.colors[0][i1][2] << 16 | tess.svars.colors[0][i1][3] << 24;
 		primitives_out->color2[0] = tess.svars.colors[0][i2][0] | tess.svars.colors[0][i2][1] << 8 | tess.svars.colors[0][i2][2] << 16 | tess.svars.colors[0][i2][3] << 24;
 
-		primitives_out->material_id = (material_flags & ~MATERIAL_INDEX_MASK) | (material_index & MATERIAL_INDEX_MASK);
+		primitives_out->material_id = material_id; //(material_flags & ~MATERIAL_INDEX_MASK) | (material_index & MATERIAL_INDEX_MASK);
 		primitives_out->emissive_and_alpha = emissive_and_alpha;
 		primitives_out->instance = 0;
 
 		++primitives_out;
+	}
+
+	for ( uint32_t stage = 0; stage < MAX_RTX_STAGES; stage++ ) 
+	{
+		pStage = tess.shader->stages[stage];
+
+		if ( !pStage || !pStage->active )
+			break;
+
+		//
+		// only compute bundle 0 for now
+		//
+		if ( pStage->tessFlags & TESS_RGBA0 )
+			ComputeColors( 0, tess.svars.colors[0], pStage, 0 );
+
+		if ( pStage->tessFlags & TESS_ST0 )
+			ComputeTexCoords( 0, &pStage->bundle[0] );
+
+		primitives_out = base_primitive;
+		for ( uint32_t prim = 0; prim < numTris; ++prim ) 
+		{
+			uint32_t idx_base = prim * 3;
+
+			i0 = tess.indexes[idx_base + 0];
+			i1 = tess.indexes[idx_base + 1];
+			i2 = tess.indexes[idx_base + 2];
+
+			if ( pStage->tessFlags & TESS_ST0 )
+			{
+				primitives_out->uv0[stage] = floatToHalf(tess.svars.texcoordPtr[0][i0][0]) | (floatToHalf(tess.svars.texcoordPtr[0][i0][1]) << 16);
+				primitives_out->uv1[stage] = floatToHalf(tess.svars.texcoordPtr[0][i1][0]) | (floatToHalf(tess.svars.texcoordPtr[0][i1][1]) << 16);
+				primitives_out->uv2[stage] = floatToHalf(tess.svars.texcoordPtr[0][i2][0]) | (floatToHalf(tess.svars.texcoordPtr[0][i2][1]) << 16);
+			}
+
+			if ( pStage->tessFlags & TESS_RGBA0 ) 
+			{
+				primitives_out->color0[stage] = tess.svars.colors[0][i0][0] | tess.svars.colors[0][i0][1] << 8 | tess.svars.colors[0][i0][2] << 16 | tess.svars.colors[0][i0][3] << 24;
+				primitives_out->color1[stage] = tess.svars.colors[0][i1][0] | tess.svars.colors[0][i1][1] << 8 | tess.svars.colors[0][i1][2] << 16 | tess.svars.colors[0][i1][3] << 24;
+				primitives_out->color2[stage] = tess.svars.colors[0][i2][0] | tess.svars.colors[0][i2][1] << 8 | tess.svars.colors[0][i2][2] << 16 | tess.svars.colors[0][i2][3] << 24;
+			}
+
+			++primitives_out;
+		}
 	}
 
 	return numTris;
@@ -1679,7 +1687,7 @@ static void vk_rtx_collect_surfaces( uint32_t *prim_ctr, vk_geometry_data_t *geo
 	}
 
 	vk_geometry_data_accel_t *accel = &geom->accel[type];
-
+	
 	mark = node->firstmarksurface;
 
 	for ( j = 0; j < node->nummarksurfaces; j++ ) 
@@ -1698,8 +1706,38 @@ static void vk_rtx_collect_surfaces( uint32_t *prim_ctr, vk_geometry_data_t *geo
 		if ( !filter_visibiliy( shader ) )
 			continue;
 
-		if ( !filter( shader ) )
-			continue;
+		rtx_material_t *mat = vk_rtx_shader_to_material( shader );
+		uint32_t material_id = mat ? mat->flags : 0;
+
+		if ( RB_IsSky(shader) )
+		{
+			if ( !filter( shader ) )
+				continue;
+
+			material_id = MAT_SetKind(material_id, MATERIAL_KIND_SKY);
+
+			// ~sunny, force for now
+			if ( (material_id & MATERIAL_FLAG_LIGHT) == 0 )
+			{
+				material_id |= MATERIAL_FLAG_LIGHT;
+			}
+		}
+		else 
+		{
+			{	// ~sunny, debug
+				if ( strstr( shader->name, "glass" ) )
+					material_id = MAT_SetKind(material_id, MATERIAL_KIND_GLASS);
+
+				if ( strstr( shader->name, "botton") || strstr( shader->name, "door02") ) 
+					material_id = MAT_SetKind(material_id, MATERIAL_KIND_GLASS);
+
+				//if ( shader->sort == SS_PORTAL && strstr( shader->name, "mirror" ) != NULL ) 
+				//	material_id |= MATERIAL_FLAG_MIRROR;
+			}
+
+			if ( !filter( shader ) )
+				continue;
+		}
 
 		if ( skip_invalid_surface( shader ) || *surf->data == SF_BAD || *surf->data == SF_SKIP) 
 		{
@@ -1729,8 +1767,12 @@ static void vk_rtx_collect_surfaces( uint32_t *prim_ctr, vk_geometry_data_t *geo
 			accel->surf_count++;
 		}
 
+
+
+
+
 		VboPrimitive* surface_prims = geom->primitives + *prim_ctr;
-		uint32_t prims_in_surface = create_poly( geom, surface_prims );
+		uint32_t prims_in_surface = create_poly( geom, mat, material_id, surface_prims );
 
 		for (uint32_t k = 0; k < prims_in_surface; ++k) {
 			//if (model_idx < 0) world, sub bmodels have sep collector
@@ -1791,8 +1833,12 @@ static void vk_rtx_collect_bmodel_surfaces( uint32_t *prim_ctr, world_t &worldDa
 		tess.allowVBO = qfalse;
 		rb_surfaceTable[*surf->data](surf->data);
 
+		// ~sunny, rework this
+		rtx_material_t *mat = vk_rtx_shader_to_material( tess.shader );
+		uint32_t material_id = (mat != NULL) ? mat->flags : 0U;
+
 		VboPrimitive* surface_prims = geom->primitives + *prim_ctr;
-		uint32_t prims_in_surface = create_poly( geom, surface_prims );
+		uint32_t prims_in_surface = create_poly( geom, mat, material_id, surface_prims );
 
 		for (uint32_t k = 0; k < prims_in_surface; ++k) {
 			//if (model_idx < 0) world, sub bmodels have sep collector
@@ -2132,8 +2178,7 @@ static void vk_rtx_build_debug_light_poly_mesh( world_t &worldData, vk_geometry_
 
 	VboPrimitive *primitives_out = geom->primitives + 0;
 
-	uint32_t material_index, material_flags;
-	vk_rtx_shader_to_material( tr.shaders[0], material_index, material_flags );
+	rtx_material_t *mat = vk_rtx_shader_to_material( tr.shaders[0] );
 
 	for ( int nlight = 0; nlight < geom->num_primitives; nlight++ )
 	{
@@ -2174,7 +2219,7 @@ static void vk_rtx_build_debug_light_poly_mesh( world_t &worldData, vk_geometry_
 		float alpha = 1.f;
 		float emissive = 0.f;
 
-		primitives_out->material_id = (material_flags & ~MATERIAL_INDEX_MASK) | (material_index & MATERIAL_INDEX_MASK);
+		primitives_out->material_id = mat->flags;
 		primitives_out->emissive_and_alpha = floatToHalf(emissive) | (floatToHalf(alpha) << 16);
 		primitives_out->instance = 0;
 

@@ -433,20 +433,12 @@ VkResult vk_rtx_shadow_map_render( VkCommandBuffer cmd_buf, world_t &worldData, 
 
 	qvkCmdSetScissor( cmd_buf, 0, 1, &scissor);
 
-	qvkCmdPushConstants( cmd_buf, pipeline_layout_smap, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(float) * 16, view_projection_matrix );
+	qvkCmdPushConstants( cmd_buf, pipeline_layout_smap, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(mat4_t), view_projection_matrix );
 
-	
-#if 0
-	VkDeviceSize vertex_offset[1] = { 0 };
-	qvkCmdBindVertexBuffers( cmd_buf, 0, 1, &worldData.geometry.world_static.xyz[0].buffer, vertex_offset);
-	qvkCmdBindIndexBuffer( cmd_buf, worldData.geometry.world_static.idx[0].buffer, 0, VK_INDEX_TYPE_UINT32);
-	qvkCmdDrawIndexed( cmd_buf, num_static_indices, 1, 0, 0, 0 );
-#else
 	VkDeviceSize vertex_offset = tr.world->geometry.world_static.vertex_data_offset; // render using prim_positions_t offset	
 	qvkCmdBindVertexBuffers( cmd_buf, 0, 1, &tr.world->geometry.world_static.buffer[0].buffer, &vertex_offset );
 
 	qvkCmdDraw( cmd_buf, num_static_verts, 1, static_offset, 0 );
-#endif
 
 	//vertex_offset = offsetof(struct ModelDynamicVertexBuffer, positions_instanced);
 	//vkCmdBindVertexBuffers(cmd_buf, 0, 1, &qvk.model_instance.buffer_vertex.buffer, &vertex_offset);

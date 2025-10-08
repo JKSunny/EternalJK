@@ -61,6 +61,16 @@ layout(local_size_x = GROUP_SIZE_PIXELS, local_size_y = GROUP_SIZE_PIXELS, local
 // that normally happens between frames can make a difference between a light sample
 // being visible or shadowed.
 
+#ifdef USE_MULTI_WORLD_BUFFERS
+bool is_static_visbuf(uint x) {
+    return x >= ~VERTEX_BUFFER_WORLD_D_GEOMETRY;
+}
+
+uint decode_static_buffer_idx(uint x) {
+    return ~x;
+}
+#endif
+
 void patch_position(ivec2 ipos, ivec2 found_pos_prev)
 {
 	// Read the visibility buffer
@@ -70,11 +80,19 @@ void patch_position(ivec2 ipos, ivec2 found_pos_prev)
 	uint buffer_idx;
 	uint primitive_id;
 
+#ifdef USE_MULTI_WORLD_BUFFERS
+	if ( is_static_visbuf(vis_buf.x) ) // is a static primitive
+	{
+		primitive_id = vis_buf.y;
+		buffer_idx = decode_static_buffer_idx(vis_buf.x);
+	}
+#else
 	if (vis_buf.x == ~0u) // is a static primitive
 	{
 		primitive_id = vis_buf.y;
 		buffer_idx = VERTEX_BUFFER_WORLD;
 	}
+#endif
 	else
 	{
 		uint instance_id_prev = vis_buf.x;

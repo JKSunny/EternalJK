@@ -237,12 +237,13 @@ static void vkpt_pt_create_toplevel( VkCommandBuffer cmd_buf, uint32_t idx, worl
 
 static uint32_t compute_mesh_material_flags(const trRefEntity_t* entity, const int model_index, shader_t *shader )
 {
+	rtx_material_t *material = vk_rtx_shader_to_material( shader );
 
-	uint32_t material_index, material_flags;
+	uint32_t material_id = material->flags;
 
-	vk_rtx_shader_to_material( shader, material_index, material_flags );
-	uint32_t material_id = (material_flags & ~MATERIAL_INDEX_MASK) | (material_index & MATERIAL_INDEX_MASK);
-	
+	if ( ( entity && entity->e.renderfx & RF_FIRST_PERSON ) )
+		material_id |= MATERIAL_FLAG_WEAPON;
+
 	return material_id;
 }
 

@@ -26,6 +26,20 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 static rtx_material_t rtx_materials[MAX_SHADERS];
 
+static void MAT_SetIndex( rtx_material_t *mat )
+{
+	mat->flags = (mat->flags & ~MATERIAL_INDEX_MASK) | (mat->index & MATERIAL_INDEX_MASK);
+}
+
+uint32_t MAT_SetKind(uint32_t material, uint32_t kind)
+{
+	return (material & ~MATERIAL_KIND_MASK) | kind;
+}
+
+bool MAT_IsKind(uint32_t material, uint32_t kind)
+{
+	return (material & MATERIAL_KIND_MASK) == kind;
+}
 
 void vk_rtx_clear_material_list( void ) 
 {
@@ -65,7 +79,7 @@ qboolean RB_IsTransparent( shader_t *shader )
 
 qboolean RB_IsSky(shader_t* shader)
 {
-	return (qboolean)(shader->isSky || shader->sun || (shader->surfaceFlags & SURF_SKY));
+	return (qboolean)(shader->isSky || shader->sun || (shader->surfaceFlags & (SURF_NODLIGHT | SURF_SKY)));
 }
 
 qboolean RB_IsDynamicGeometry( shader_t *shader ) 
@@ -200,35 +214,6 @@ uint32_t vk_rtx_find_emissive_texture( const shader_t *shader, rtx_material_t *m
 	return 0;
 }
 
-uint32_t RB_GetMaterial( shader_t *shader ) 
-{
-	uint32_t material = 0;
-	material = MATERIAL_KIND_REGULAR;
-
-	if ( vk_rtx_find_emissive_texture( shader, NULL ) )
-		material |= MATERIAL_FLAG_LIGHT;
-	
-	if ( strstr( shader->name, "glass" ) )
-		material = MATERIAL_KIND_GLASS;
-
-	if ( shader->sort == SS_PORTAL && strstr( shader->name, "mirror" ) != NULL ) 
-		material |= MATERIAL_FLAG_MIRROR;
-
-	if ( ( backEnd.currentEntity && backEnd.currentEntity->e.renderfx & RF_FIRST_PERSON ) )
-		material |= MATERIAL_FLAG_WEAPON;
-
-	if ( RB_IsSky(shader) )
-		material |= MATERIAL_KIND_SKY;
-
-	// sunny
-	if ( strstr( shader->name, "botton") || strstr( shader->name, "door02") ) 
-		material = MATERIAL_KIND_GLASS;
-
-	//material |= MATERIAL_FLAG_CORRECT_ALBEDO;
-
-	return material;
-}
-
 uint32_t RB_GetNextTex( shader_t *shader, int stage ) 
 {
 	int indexAnim = 0;
@@ -280,8 +265,6 @@ uint32_t RB_GetNextTexEncoded( shader_t *shader, int stage )
 
 void vk_rtx_update_shader_material( shader_t *shader, shader_t *updatedShader )
 {
-	uint32_t index, flags;
-
 	if ( !vk.rtxActive )
 		return;
 
@@ -291,17 +274,17 @@ void vk_rtx_update_shader_material( shader_t *shader, shader_t *updatedShader )
 	if ( updatedShader )
 	{
 		vk_rtx_clear_material( (uint32_t)updatedShader->index );
-		vk_rtx_shader_to_material( updatedShader, index, flags );
+		vk_rtx_shader_to_material( updatedShader );
 	}
 
 	if ( shader )
 	{
 		vk_rtx_clear_material( (uint32_t)shader->index );
-		vk_rtx_shader_to_material( shader, index, flags );
+		vk_rtx_shader_to_material( shader );
 	}
 }
 
-VkResult vk_rtx_shader_to_material( shader_t *shader, uint32_t &index, uint32_t &flags )
+rtx_material_t *vk_rtx_shader_to_material( shader_t *shader )
 {
 	shader_t			*state;
 	const shaderStage_t *pStage;
@@ -313,25 +296,27 @@ VkResult vk_rtx_shader_to_material( shader_t *shader, uint32_t &index, uint32_t 
 	if ( shader->updatedShader )
 		state = shader->updatedShader;
 
-	index = 0U;
-	flags = 0U;
-
 	mat = vk_rtx_get_material( (uint32_t)shader->index );
 
 	if ( !mat )
-		return VK_SUCCESS;
+		return NULL;
 
-	index	= (uint32_t)shader->index;
-	flags	= RB_GetMaterial( shader );	// ~sunny, this should be shader or remapped no?
+	if ( mat->active )
+		return mat;
 
-	mat->index			= index;
+	// build material
+	mat->index	= (uint32_t)shader->index;	// shared index
+	mat->flags	= MATERIAL_KIND_REGULAR;	// ~sunny, this should be shader or remapped no?
+	
 	mat->remappedIndex	= (state) ? (uint32_t)state->index : 0U;
 	mat->active			= qtrue;
 	mat->albedo			= RB_GetNextTexEncoded( shader, 0 );
 	mat->emissive		= vk_rtx_find_emissive_texture( shader, mat );
 
-	if ( mat->emissive )
+	if ( mat->emissive ) {
 		mat->emissive_factor = 1.0f;
+		mat->flags |= MATERIAL_FLAG_LIGHT;
+	}
 
 	if ( mat->index >= (int)MATERIAL_INDEX_MASK || mat->remappedIndex >= (int)MATERIAL_INDEX_MASK  )
 		ri.Error( ERR_DROP, "%s() - MATERIAL_INDEX_MASK(4095) hit. Need to finaly seperate material_index from material_flags", __func__ );
@@ -355,7 +340,9 @@ VkResult vk_rtx_shader_to_material( shader_t *shader, uint32_t &index, uint32_t 
 		}
 	}
 
-	return VK_SUCCESS;
+	MAT_SetIndex( mat );
+
+	return mat;
 }
 
 VkResult vk_rtx_upload_materials( LightBuffer *lbo )

@@ -133,27 +133,6 @@ ivec2 get_image_size()
 	return ivec2(global_ubo.width, global_ubo.height);
 }
 
-/*
-bool
-is_dynamic_instance(RayPayloadGeometry rp)
-{
-	return (rp.instance_prim & INSTANCE_DYNAMIC_FLAG) > 0;
-}
-*/
-/*
-uint
-get_primitive(RayPayloadGeometry rp)
-{
-	return rp.instance_prim & PRIM_ID_MASK;
-}
-
-bool
-found_intersection(RayPayloadGeometry rp)
-{
-	return rp.instanceID != ~0u;
-}
-*/
-
 bool
 found_intersection(RayPayloadGeometry rp)
 {
@@ -187,28 +166,6 @@ get_rng(uint idx)
 
 	return min(texelFetch(TEX_BLUE_NOISE, ivec3(p), 0).r, 0.9999999999999);
 	//return fract(vec2(get_rng_uint(idx)) / vec2(0xffffffffu));
-}
-
-// material flags
-bool
-is_mirror( in uint material )
-{
-	return (material & MATERIAL_FLAG_MIRROR) != 0;
-}
-bool
-isSeeThrough( in uint material) 
-{
-	return (material & MATERIAL_FLAG_SEE_THROUGH) != 0;
-}
-bool
-isSeeThroughAdd( in uint material) 
-{
-	return (material & MATERIAL_FLAG_SEE_THROUGH_ADD) != 0;
-}
-bool
-isSeeThroughNoAlpha( in uint material) 
-{
-	return (material & MATERIAL_FLAG_SEE_THROUGH_NO_ALPHA) != 0;
 }
 
 // material kinds
@@ -561,6 +518,7 @@ get_direct_illumination(
 		polygon lights do not have polygonal indices, and it would be difficult to map them 
 		between frames.
 	*/
+	
 	
 	if(global_ubo.pt_light_stats != 0 
 		&& !null_light

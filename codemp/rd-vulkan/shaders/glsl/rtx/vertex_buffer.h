@@ -64,6 +64,9 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 // light stats
 #define BINDING_OFFSET_LIGHT_STATS_BUFFER					10
 
+// debug relations
+#define USE_MULTI_WORLD_BUFFERS
+
 #define VERTEX_BUFFER_WORLD					0
 #define VERTEX_BUFFER_SKY					1
 #define VERTEX_BUFFER_WORLD_D_MATERIAL		2
@@ -130,24 +133,6 @@ STRUCT (
 	FLOAT	( sky_luminance )
 , SunColorBuffer )
 
-// holds all bsp vertex data
-STRUCT ( 
-    VEC3    ( pos )
-    UINT    ( material )
-
-	// using packed qtangent instead, this can be removed or commented for now
-    VEC4    ( normal )
-    VEC4    ( qtangent )
-    UINT    ( color[4] )
-
-    VEC2    ( uv[4] )
-
-    UINT	( texIdx0 )
-    UINT    ( texIdx1 )
-    INT     ( cluster )
-    UINT    ( buff2 )
-,VertexBuffer )
-
 STRUCT (
 	VEC3    ( pos0 )
 	UINT    ( material_id )
@@ -166,9 +151,9 @@ STRUCT (
 	 * alpha in y component/high 16 bits */
 	UINT    ( emissive_and_alpha )
 
-	VEC2    ( uv0 )
-	VEC2    ( uv1 )
-	VEC2    ( uv2 )
+	UVEC4    ( uv0 )
+	UVEC4    ( uv1 )
+	UVEC4    ( uv2 )
 
 	UVEC2	( custom0 )  // The custom fields store motion for instanced meshes in the animated buffer,
 	UVEC2	( custom1 )  // or blend indices and weights for skinned meshes before they're animated.
@@ -177,6 +162,8 @@ STRUCT (
 	UINT    ( color0[4] )
 	UINT    ( color1[4] )
 	UINT    ( color2[4] )
+
+	UVEC2	( pad0 )
 , VboPrimitive )
 
 #ifdef GLSL
@@ -295,6 +282,10 @@ struct Triangle {
 	//float  alpha;
 };
 
+vec2 get_uv(uvec4 packed_uvs, int stage) {
+    return unpackHalf2x16(packed_uvs[stage]);
+}
+
 Triangle
 load_triangle(uint buffer_idx, uint prim_id)
 {
@@ -320,9 +311,21 @@ load_triangle(uint buffer_idx, uint prim_id)
 	t.tangents[1] = decode_normal(prim.tangents.y);
 	t.tangents[2] = decode_normal(prim.tangents.z);
 
-	t.tex_coords0[0] = prim.uv0;
-	t.tex_coords0[1] = prim.uv1;
-	t.tex_coords0[2] = prim.uv2;
+	t.tex_coords0[0] = get_uv( prim.uv0, 0 );
+	t.tex_coords0[1] = get_uv( prim.uv1, 0 );
+	t.tex_coords0[2] = get_uv( prim.uv2, 0 );
+
+	t.tex_coords1[0] = get_uv( prim.uv0, 1 );
+	t.tex_coords1[1] = get_uv( prim.uv1, 1 );
+	t.tex_coords1[2] = get_uv( prim.uv2, 1 );
+
+	t.tex_coords2[0] = get_uv( prim.uv0, 2 );
+	t.tex_coords2[1] = get_uv( prim.uv1, 2 );
+	t.tex_coords2[2] = get_uv( prim.uv2, 2 );
+
+	t.tex_coords3[0] = get_uv( prim.uv0, 3 );
+	t.tex_coords3[1] = get_uv( prim.uv1, 3 );
+	t.tex_coords3[2] = get_uv( prim.uv2, 3 );
 
 	t.material_id = prim.material_id;
 	t.shell = prim.shell;
@@ -387,12 +390,20 @@ load_and_transform_triangle(int instance_idx, uint buffer_idx, uint prim_id)
 		ModelInstance mi = instance_buffer.model_instances[t.instance_index];
 		t.instance_prim = prim_id - mi.render_prim_offset;
 	}
-	else if (buffer_idx == VERTEX_BUFFER_WORLD)
+	else if (buffer_idx >= VERTEX_BUFFER_WORLD && buffer_idx <= VERTEX_BUFFER_WORLD_D_GEOMETRY)
 	{
 		// Static BSP primitive.
-		
+#ifdef USE_MULTI_WORLD_BUFFERS
+		t.instance_index = ~buffer_idx;
+#else
 		t.instance_index = ~0u;
+#endif
 		t.instance_prim = prim_id;
+
+		if ( buffer_idx == VERTEX_BUFFER_WORLD_D_MATERIAL )
+		{
+			//t.material_id = 0;
+		}
 	}
 
 	return t;
@@ -421,9 +432,9 @@ store_triangle(Triangle t, uint buffer_idx, uint prim_id)
 	prim.tangents.y = encode_normal(t.tangents[1]);
 	prim.tangents.z = encode_normal(t.tangents[2]);
 
-	prim.uv0 = t.tex_coords0[0];
-	prim.uv1 = t.tex_coords0[1];
-	prim.uv2 = t.tex_coords0[2];
+	prim.uv0[0] = packHalf2x16(t.tex_coords0[0]);
+	prim.uv1[0] = packHalf2x16(t.tex_coords0[1]);
+	prim.uv2[0] = packHalf2x16(t.tex_coords0[2]);
 
 	prim.material_id = t.material_id;
 	prim.shell = t.shell;
