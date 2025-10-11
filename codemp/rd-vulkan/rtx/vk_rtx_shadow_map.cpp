@@ -249,6 +249,11 @@ VkImageView vk_rtx_shadow_map_get_view( void )
 
 }
 
+VkImage vk_rtx_shadow_map_get_image( void )
+{
+	return img_smap;
+}
+
 VkResult vk_rtx_shadow_map_create_pipelines( void ) 
 {
 	VkPipelineShaderStageCreateInfo shader_info[1];

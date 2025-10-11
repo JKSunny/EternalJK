@@ -1414,10 +1414,14 @@ static VkResult vkpt_final_blit_simple( VkCommandBuffer cmd_buf )
 		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
 	);
 
-	int output_img = RTX_IMG_TAA_OUTPUT;
+#ifdef USE_VK_IMGUI
+	VkImage output_img = vk_imgui_get_rtx_render_mode();
+#else
+	VkImage output_img = vk.img_rtx[RTX_IMG_TAA_OUTPUT].handle;
+#endif
 
 	IMAGE_BARRIER( cmd_buf,
-		vk.img_rtx[output_img].handle,
+		output_img,
 		subresource_range,
 		VK_ACCESS_SHADER_WRITE_BIT,
 		VK_ACCESS_TRANSFER_READ_BIT,
@@ -1443,7 +1447,7 @@ static VkResult vkpt_final_blit_simple( VkCommandBuffer cmd_buf )
 	img_blit.dstOffsets[1] = blit_size_unscaled;
 
 	qvkCmdBlitImage( cmd_buf,
-		vk.img_rtx[output_img].handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+		output_img, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 		vk.color_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 		1, &img_blit, VK_FILTER_NEAREST );
 
@@ -1457,7 +1461,7 @@ static VkResult vkpt_final_blit_simple( VkCommandBuffer cmd_buf )
 	);
 
 	IMAGE_BARRIER( cmd_buf,
-		vk.img_rtx[output_img].handle,
+		output_img,
 		subresource_range,
 		VK_ACCESS_TRANSFER_READ_BIT,
 		VK_ACCESS_SHADER_WRITE_BIT,

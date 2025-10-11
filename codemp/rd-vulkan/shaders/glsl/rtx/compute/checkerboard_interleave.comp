@@ -145,16 +145,7 @@ void main()
         return;
     }
   
-    vec4 center;
- #ifdef USE_VK_IMGUI   
-    // prepare the input based on selected render mode in the inspector  
-    bool is_interleaved = true;
-    if ( global_ubo.render_mode > 0 )
-        center = prepare_render_mode_input( global_ubo.render_mode, ipos, is_interleaved );
-    else
-#endif
-        center = imageLoad( IMG_ASVGF_COLOR, ipos );
-
+    vec4 center = imageLoad(IMG_ASVGF_COLOR, ipos);
     vec4 color;
     bool use_center_mv = true;
     int checkerboard_flags = int(center.a);

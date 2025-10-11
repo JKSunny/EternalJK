@@ -104,8 +104,7 @@ void vk_imgui_bind_rtx_draw_image( void )
 	
 	sampler = vk_find_sampler( &sd );
 
-	inspector.render_mode.rtx_image.bound[0] = inspector.render_mode.image;	// blitted to color_image
-	inspector.render_mode.rtx_image.bound[1] = ImGui_ImplVulkan_AddTexture( sampler, vk.img_rtx[RTX_IMG_FLAT_COLOR].view, VK_IMAGE_LAYOUT_GENERAL );
+	inspector.render_mode.rtx_image = inspector.render_mode.image;	// blitted to color_image
 }
 #endif
 
@@ -308,15 +307,7 @@ void vk_imgui_shutdown( void )
 	ImGui_ImplVulkan_RemoveTexture( inspector.render_mode.image );
 
 #ifdef USE_RTX
-	uint32_t i;
-
-	ImGui_ImplVulkan_RemoveTexture( inspector.render_mode.rtx_image.bound[0] );
-	ImGui_ImplVulkan_RemoveTexture( inspector.render_mode.rtx_image.bound[1] );
-
-	for ( i = 0; i < NUM_UNBOUND_RENDER_MODES_RTX; i++ ) 
-	{
-		ImGui_ImplVulkan_RemoveTexture( inspector.render_mode.rtx_image.unbound[i] );
-	}	
+	ImGui_ImplVulkan_RemoveTexture( inspector.render_mode.rtx_image );
 #endif
 }
 

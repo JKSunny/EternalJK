@@ -619,7 +619,8 @@ VkResult	vk_rtx_shadow_map_render(	VkCommandBuffer cmd_buf, world_t &worldData, 
 										uint32_t static_offset, uint32_t num_static_verts, 
 										uint32_t dynamic_offset, uint32_t num_dynamic_verts,
 										uint32_t transparent_offset, uint32_t num_transparent_verts );
-	VkImageView	vk_rtx_shadow_map_get_view( void );
+VkImageView	vk_rtx_shadow_map_get_view( void );
+VkImage		vk_rtx_shadow_map_get_image( void );
 void		vk_rtx_shadow_map_setup( const sun_light_t *light, const float *bbox_min, const float *bbox_max, float *VP, float *depth_scale, qboolean random_sampling );
 
 // god rays

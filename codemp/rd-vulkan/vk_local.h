@@ -1648,6 +1648,7 @@ struct ImGuiGlobal {
 extern ImGuiGlobal	imguiGlobal;
 
 #ifdef USE_RTX
+VkImage		vk_imgui_get_rtx_render_mode( void );
 VkResult	vkpt_final_blit_filtered(VkCommandBuffer cmd_buf);
 void		vk_rtx_create_final_blit_pipeline( void );
 void		vk_imgui_bind_rtx_cvars( void );
