@@ -608,6 +608,9 @@ void		vk_rtx_evaluate_sun_light( sun_light_t *light, const vec3_t sky_matrix[3],
 VkResult	vk_rtx_physical_sky_update_ubo( vkUniformRTX_t *ubo, const sun_light_t *light, qboolean render_world );
 
 // shadow map
+void		vkpt_shadow_map_reset_instances();
+void		vkpt_shadow_map_add_instance( const float* model_matrix, VkBuffer buffer, size_t vertex_offset, uint32_t prim_count );
+
 VkResult	vk_rtx_shadow_map_initialize( void );
 VkResult	vk_rtx_shadow_map_destroy( void );
 VkResult	vk_rtx_shadow_map_create_pipelines( void );

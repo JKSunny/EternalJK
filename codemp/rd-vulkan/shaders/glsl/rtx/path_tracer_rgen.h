@@ -160,7 +160,6 @@ float
 get_rng(uint idx)
 {
 	uvec3 p = uvec3(rng_seed >> RNG_SEED_SHIFT_X, rng_seed >> RNG_SEED_SHIFT_Y, rng_seed >> RNG_SEED_SHIFT_ISODD);
-	p.z = (p.z >> 1) + (p.z & 1);
 	p.z = (p.z + idx);
 	p &= uvec3(BLUE_NOISE_RES - 1, BLUE_NOISE_RES - 1, NUM_BLUE_NOISE_TEX - 1);
 
@@ -715,10 +714,10 @@ vec3 get_emissive_shell(uint material_id, uint shell)
 
 	    if((material_id & MATERIAL_FLAG_WEAPON) != 0) c *= 0.2;
 	}
+#endif
 
 	if(tonemap_buffer.adapted_luminance > 0)
 			c.rgb *= tonemap_buffer.adapted_luminance * 100;
-#endif
 
     return c;
 }
@@ -902,7 +901,7 @@ void get_material(
 	else
 		emissive = vec3(0);
 
-	emissive += get_emissive_shell(triangle.material_id, 0 /*triangle.shell*/) * base_color * (1 - metallic * 0.9);
+	emissive += get_emissive_shell(triangle.material_id, triangle.shell) * base_color * (1 - metallic * 0.9);
 }
 
 // Anisotropic texture sampling algorithm from 

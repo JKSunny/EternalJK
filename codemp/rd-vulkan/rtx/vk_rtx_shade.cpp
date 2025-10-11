@@ -273,6 +273,7 @@ static void fill_model_instance( ModelInstance* instance, const trRefEntity_t* e
 	memcpy(instance->transform, transform, sizeof(float) * 16);
 	memcpy(instance->transform_prev, transform, sizeof(float) * 16);
 	instance->material = material_id;
+	instance->shell = 0U;
 	instance->cluster = cluster;
 	instance->is_mdxm = is_mdxm ? 1 : 0;
 	instance->source_buffer_idx = mesh->modelIndex; // + VERTEX_BUFFER_FIRST_MODEL ;
@@ -297,7 +298,6 @@ static void fill_model_instance( ModelInstance* instance, const trRefEntity_t* e
 	instance->render_prim_offset = 0;
 
 	instance->idx_offset = mesh->indexOffset;
-	instance->pad0 = 10;
 }
 
 static void add_dlight_spot(const dlight_t* dlight, light_poly_t* light)
@@ -524,6 +524,12 @@ static void process_bsp_entity(
 		vkpt_pt_instance_model_blas(&bmodel->geometry, mi->transform, VERTEX_BUFFER_SUB_MODELS, current_instance_idx, (model_alpha < 1.f) ? AS_FLAG_TRANSPARENT : 0);
 	}
 
+	if (!bmodel->transparent)
+	{
+		vkpt_shadow_map_add_instance(transform, tr.world->geometry.world_submodels.buffer->buffer,  tr.world->geometry.world_submodels.vertex_data_offset
+			+ mi->render_prim_offset * sizeof(prim_positions_t), mi->prim_count);
+	}
+
 	(*instance_count)++;
 }
 
@@ -602,11 +608,22 @@ static void process_regular_entity(
 		);
 
 
+#if 0
+		// ~sunny, not implemented yet
 		if (use_static_blas)
 		{
-			// ~sunny, not implemented yet
+			mi->render_buffer_idx = mi->source_buffer_idx;
+			mi->render_prim_offset = mi->prim_offset_curr_pose_curr_frame;
+
+			if (!MAT_IsTransparent(mat_shell.material_id))
+			{
+				vkpt_shadow_map_add_instance(transform, vbo->buffer.buffer, vbo->vertex_data_offset
+					+ mi->render_prim_offset * sizeof(prim_positions_t), mi->prim_count);
+			}
 		}
-		else {
+		else 
+#endif
+		{
 			uniform_instance_buffer->animated_model_indices[current_animated_index] = current_instance_index;
 
 			mi->render_buffer_idx = VERTEX_BUFFER_INSTANCED;
@@ -1783,6 +1800,7 @@ void vk_rtx_begin_scene( trRefdef_t *refdef, drawSurf_t *drawSurfs, int numDrawS
 	EntityUploadInfo upload_info;
 	Com_Memset( &upload_info, 0, sizeof(EntityUploadInfo) );
 	vkpt_pt_reset_instances();
+	vkpt_shadow_map_reset_instances();
 	prepare_entities( &upload_info, refdef );
 
 	if ( tr.world && render_world )

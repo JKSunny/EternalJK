@@ -369,7 +369,7 @@ load_and_transform_triangle(int instance_idx, uint buffer_idx, uint prim_id)
 
 		if (mi.material != 0) {
 			t.material_id = mi.material;
-			//t.shell = mi.shell;
+			t.shell = mi.shell;
 		}
 		int frame = int(mi.alpha_and_frame >> 16);
 		//t.material_id = animate_material(t.material_id, frame);
