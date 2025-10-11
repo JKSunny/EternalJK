@@ -608,6 +608,9 @@ void		vk_rtx_evaluate_sun_light( sun_light_t *light, const vec3_t sky_matrix[3],
 VkResult	vk_rtx_physical_sky_update_ubo( vkUniformRTX_t *ubo, const sun_light_t *light, qboolean render_world );
 
 // shadow map
+void		vkpt_shadow_map_reset_instances();
+void		vkpt_shadow_map_add_instance( const float* model_matrix, VkBuffer buffer, size_t vertex_offset, uint32_t prim_count );
+
 VkResult	vk_rtx_shadow_map_initialize( void );
 VkResult	vk_rtx_shadow_map_destroy( void );
 VkResult	vk_rtx_shadow_map_create_pipelines( void );
@@ -616,7 +619,8 @@ VkResult	vk_rtx_shadow_map_render(	VkCommandBuffer cmd_buf, world_t &worldData, 
 										uint32_t static_offset, uint32_t num_static_verts, 
 										uint32_t dynamic_offset, uint32_t num_dynamic_verts,
 										uint32_t transparent_offset, uint32_t num_transparent_verts );
-	VkImageView	vk_rtx_shadow_map_get_view( void );
+VkImageView	vk_rtx_shadow_map_get_view( void );
+VkImage		vk_rtx_shadow_map_get_image( void );
 void		vk_rtx_shadow_map_setup( const sun_light_t *light, const float *bbox_min, const float *bbox_max, float *VP, float *depth_scale, qboolean random_sampling );
 
 // god rays

@@ -58,9 +58,34 @@ static void vk_imgui_execute_cmd( const char *text )
 {
 	ri.Cbuf_ExecuteText( EXEC_APPEND, va( "%s\n", text ) );	
 }
+#ifdef USE_RTX
+VkImage vk_imgui_get_rtx_render_mode( void )
+{
+	const int render_mode = inspector.render_mode.index;
+	VkImage image = vk.img_rtx[RTX_IMG_TAA_OUTPUT].handle;
+
+	if ( !render_mode )
+		return vk.img_rtx[RTX_IMG_TAA_OUTPUT].handle;
+	
+	// these images do not live in vk.img_rtx/LIST_IMAGES,
+	// add them manually
+	if ( render_mode >= NUM_TOTAL_LIST_IMAGES ) 
+	{
+		if ( render_mode == SHADOWMAP_RENDER_MODE_RTX ) 
+			image = vk_rtx_shadow_map_get_image();
+	}
+	else 
+	{
+		image = vk.img_rtx[(render_mode - 1 )].handle;
+	}
+
+	return image;
+}
+#endif
 
 int vk_imgui_get_render_mode( void )
 {
+
 	return inspector.render_mode.index;
 }
 

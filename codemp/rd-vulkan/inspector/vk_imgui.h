@@ -45,17 +45,13 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #ifdef USE_RTX
 enum {
+	DEFAULT_RENDER_MODE_RTX,
 #define IMG_DO( _handle, ... ) _handle##_RENDER_MODE_RTX,
-	LIST_RTX_RENDER_MODES
-#undef IMG_DO
-	NUM_BOUND_RENDER_MODES_RTX,    
-	// images bound to rtx and compute descriptors stop here
-
-    // reset to 0, using a different variable ( rtxImage and rtxDebug )
-    SHADOW_MAP_RENDER_MODE_RTX = 0,
-
-    NUM_UNBOUND_RENDER_MODES_RTX,
-    NUM_TOTAL_RENDER_MODES_RTX = NUM_BOUND_RENDER_MODES_RTX + NUM_UNBOUND_RENDER_MODES_RTX
+	LIST_IMAGES
+#undef IMG_DO 
+	NUM_TOTAL_LIST_IMAGES,
+	SHADOWMAP_RENDER_MODE_RTX = NUM_TOTAL_LIST_IMAGES,
+	NUM_TOTAL_RENDER_MODES_RTX
 };
 #endif
 
@@ -69,13 +65,9 @@ typedef struct {
 	struct {
 		int				index;
 		VkDescriptorSet	image;	// attachment image the engine renders to
-
 #ifdef USE_RTX
-		struct {
-			VkDescriptorSet bound[2];		// rtx or compute descriptor bound images
-			VkDescriptorSet unbound[NUM_UNBOUND_RENDER_MODES_RTX];	// direct images
+		VkDescriptorSet rtx_image;
 #endif
-		} rtx_image;
 	} render_mode;
 
 	struct {
@@ -220,12 +212,11 @@ static const char *render_modes[23] = {
 
 #ifdef USE_RTX
 static const char *rtx_render_modes[] = { 
-	#define IMG_DO( _handle, _name, ... ) _name,
-		LIST_RTX_RENDER_MODES
+	"FINAL IMAGE",
+	#define IMG_DO( _handle, ... ) #_handle,
+		LIST_IMAGES
 	#undef IMG_DO 
-	// images bound to rtx and compute descriptors stop here
-
-	"Shadowmap",
+	"SHADOW MAP"
 };
 #endif
 

@@ -125,7 +125,7 @@ get_model_triangle(uint model_id, uint prim_id, uint idx_offset, uint vert_offse
 	t.tangents[2] = get_model_float3(model_id, idx[2] + MODEL_VERTEX_TANGENTS);
 
 	t.material_id = 0; // needs to come from uniform buffer
-
+	t.shell = 0;
 #if 0
 	if(tangent.w < 0)
 		t.material_id |= MATERIAL_FLAG_HANDEDNESS;
@@ -194,7 +194,7 @@ get_mxdm_triangle(uint model_id, uint prim_id, uint idx_offset, uint vert_offset
 	}
 
 	t.material_id = 0; // needs to come from uniform buffer
-
+	t.shell = 0;
 #if 0
 	if(tangent.w < 0)
 		t.material_id |= MATERIAL_FLAG_HANDEDNESS;
@@ -220,76 +220,74 @@ void main()
 	{
 		Triangle t;
 
+		/* model mdxm/ghoul2 */
+		//if ( mi.iqm_matrix_offset_curr_frame >= 0 )
+		if ( mi.is_mdxm > 0)
 		{
-			/* model mdxm/ghoul2 */
-			//if ( mi.iqm_matrix_offset_curr_frame >= 0 )
-			if ( mi.is_mdxm > 0)
-			{
-				// Perform bone-based skinning for two frames:
-				// Current frame...
-				t = get_mxdm_triangle( mi.source_buffer_idx, 
-					idx, mi.idx_offset, 0 /*vtx_offset*/ );
+			// Perform bone-based skinning for two frames:
+			// Current frame...
+			t = get_mxdm_triangle( mi.source_buffer_idx, 
+				idx, mi.idx_offset, 0 /*vtx_offset*/ );
 				
-				// ... previous frame
-				Triangle t_prev = get_mxdm_triangle(mi.source_buffer_idx,
-					idx, mi.idx_offset, 0 /*vtx_offset*/ );
+			// ... previous frame
+			Triangle t_prev = get_mxdm_triangle(mi.source_buffer_idx,
+				idx, mi.idx_offset, 0 /*vtx_offset*/ );
 	
-				// Use only the triangle positions from the previous frame
-				t.positions_prev = t_prev.positions;
+			// Use only the triangle positions from the previous frame
+			t.positions_prev = t_prev.positions;
 
-				// Apply the model-to-world transform
-				for (int vtx = 0; vtx < 3; vtx++)
-				{
-					// Current position
-					t.positions[vtx] = vec3(mi.transform * vec4(t.positions[vtx], 1.0));
+			// Apply the model-to-world transform
+			for (int vtx = 0; vtx < 3; vtx++)
+			{
+				// Current position
+				t.positions[vtx] = vec3(mi.transform * vec4(t.positions[vtx], 1.0));
 
-					// Previous position
-					t.positions_prev[vtx] = vec3(mi.transform_prev * vec4(t.positions_prev[vtx], 1.0));
+				// Previous position
+				t.positions_prev[vtx] = vec3(mi.transform_prev * vec4(t.positions_prev[vtx], 1.0));
 
-					// Current normal
-					t.normals[vtx] = normalize(vec3(mi.transform * vec4(t.normals[vtx], 0.0)));
+				// Current normal
+				t.normals[vtx] = normalize(vec3(mi.transform * vec4(t.normals[vtx], 0.0)));
 
-					// Current tangent
-					t.tangents[vtx] = normalize(vec3(mi.transform * vec4(t.tangents[vtx], 0.0)));
-				}
+				// Current tangent
+				t.tangents[vtx] = normalize(vec3(mi.transform * vec4(t.tangents[vtx], 0.0)));
 			}
-			else
-			{ /* model mdv */
-#if 1
-				Triangle t_a_curr = get_model_triangle( mi.source_buffer_idx, idx, mi.idx_offset, mi.prim_offset_curr_pose_curr_frame );
-				Triangle t_b_curr = get_model_triangle( mi.source_buffer_idx, idx, mi.idx_offset, mi.prim_offset_prev_pose_curr_frame );
-				Triangle t_a_prev = get_model_triangle( mi.source_buffer_idx, idx, mi.idx_offset, mi.prim_offset_curr_pose_prev_frame );
-				Triangle t_b_prev = get_model_triangle( mi.source_buffer_idx, idx, mi.idx_offset, mi.prim_offset_prev_pose_prev_frame );
+		}
+
+		/* model mdv */
+		else
+		{ 
+			Triangle t_a_curr = get_model_triangle( mi.source_buffer_idx, idx, mi.idx_offset, mi.prim_offset_curr_pose_curr_frame );
+			Triangle t_b_curr = get_model_triangle( mi.source_buffer_idx, idx, mi.idx_offset, mi.prim_offset_prev_pose_curr_frame );
+			Triangle t_a_prev = get_model_triangle( mi.source_buffer_idx, idx, mi.idx_offset, mi.prim_offset_curr_pose_prev_frame );
+			Triangle t_b_prev = get_model_triangle( mi.source_buffer_idx, idx, mi.idx_offset, mi.prim_offset_prev_pose_prev_frame );
 			
-				// Blend between the two animation frames and apply the model-to-world transform
-				for (int vtx = 0; vtx < 3; vtx++)
-				{
-					// Current position
-					t.positions[vtx] = mix(t_a_curr.positions[vtx], t_b_curr.positions[vtx], mi.pose_lerp_curr_frame);
-					t.positions[vtx] = vec3(mi.transform * vec4(t.positions[vtx], 1.0));
+			// Blend between the two animation frames and apply the model-to-world transform
+			for (int vtx = 0; vtx < 3; vtx++)
+			{
+				// Current position
+				t.positions[vtx] = mix(t_a_curr.positions[vtx], t_b_curr.positions[vtx], mi.pose_lerp_curr_frame);
+				t.positions[vtx] = vec3(mi.transform * vec4(t.positions[vtx], 1.0));
 
-					// Previous position
-					t.positions_prev[vtx] = mix(t_a_prev.positions[vtx], t_b_prev.positions[vtx], mi.pose_lerp_prev_frame);
-					t.positions_prev[vtx] = vec3(mi.transform_prev * vec4(t.positions_prev[vtx], 1.0));
+				// Previous position
+				t.positions_prev[vtx] = mix(t_a_prev.positions[vtx], t_b_prev.positions[vtx], mi.pose_lerp_prev_frame);
+				t.positions_prev[vtx] = vec3(mi.transform_prev * vec4(t.positions_prev[vtx], 1.0));
 
-					// Current normal
-					t.normals[vtx] = mix(t_a_curr.normals[vtx], t_b_curr.normals[vtx], mi.pose_lerp_curr_frame);
-					t.normals[vtx] = normalize(vec3(mi.transform * vec4(t.normals[vtx], 0.0)));
+				// Current normal
+				t.normals[vtx] = mix(t_a_curr.normals[vtx], t_b_curr.normals[vtx], mi.pose_lerp_curr_frame);
+				t.normals[vtx] = normalize(vec3(mi.transform * vec4(t.normals[vtx], 0.0)));
 
-					// Current tangent
-					t.tangents[vtx] = mix(t_a_curr.tangents[vtx], t_b_curr.tangents[vtx], mi.pose_lerp_curr_frame);
-					t.tangents[vtx] = normalize(vec3(mi.transform * vec4(t.tangents[vtx], 0.0)));
+				// Current tangent
+				t.tangents[vtx] = mix(t_a_curr.tangents[vtx], t_b_curr.tangents[vtx], mi.pose_lerp_curr_frame);
+				t.tangents[vtx] = normalize(vec3(mi.transform * vec4(t.tangents[vtx], 0.0)));
 
-					// Current texture coordinates - assume no texcoord animation
-					t.tex_coords0[vtx] = t_a_curr.tex_coords0[vtx];
-				}
-
-				t.material_id = t_a_curr.material_id;
-				t.shell = t_a_curr.shell;
-				t.emissive_factor = t_a_curr.emissive_factor;
-				t.alpha = t_a_curr.alpha;
-#endif
+				// Current texture coordinates - assume no texcoord animation
+				t.tex_coords0[vtx] = t_a_curr.tex_coords0[vtx];
 			}
+
+			t.material_id = t_a_curr.material_id;
+			t.shell = t_a_curr.shell;
+			t.emissive_factor = t_a_curr.emissive_factor;
+			t.alpha = t_a_curr.alpha;
 		}
 
 		t.cluster = mi.cluster;
@@ -298,7 +296,7 @@ void main()
 		if (mi.material != 0)
 		{
 			t.material_id = mi.material;
-			//t.shell = mi.shell;
+			t.shell = mi.shell;
 		}
 
 		// Apply frame-based material animation

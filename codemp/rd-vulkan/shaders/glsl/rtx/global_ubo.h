@@ -236,6 +236,7 @@ STRUCT (
 	MAT4	( transform_prev )
 
 	UINT	( material )
+	UINT	( shell )
 	INT		( cluster )
 	UINT	( source_buffer_idx )
 	UINT	( prim_count )
@@ -253,7 +254,6 @@ STRUCT (
 	UINT	( alpha_and_frame )
 	UINT	( render_buffer_idx )
 	UINT	( render_prim_offset )
-	UINT	( pad0 )
 
 , ModelInstance )
 #define MODELINSTANCE(n) ModelInstance n;

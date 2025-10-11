@@ -34,6 +34,37 @@ static VkImageView             imv_smap_depth2;
 static VkImageView             imv_smap_depth_array;
 static VkDeviceMemory          mem_smap;
 
+typedef struct
+{
+	mat4_t model_matrix;
+	VkBuffer buffer;
+	size_t vertex_offset;
+	uint32_t prim_count;
+} shadowmap_instance_t;
+
+static uint32_t num_shadowmap_instances;
+static shadowmap_instance_t shadowmap_instances[MAX_MODEL_INSTANCES];
+
+void vkpt_shadow_map_reset_instances()
+{
+	num_shadowmap_instances = 0;
+}
+
+void vkpt_shadow_map_add_instance(const float* model_matrix, VkBuffer buffer, size_t vertex_offset, uint32_t prim_count)
+{
+	if (num_shadowmap_instances < MAX_MODEL_INSTANCES)
+	{
+		shadowmap_instance_t* instance = shadowmap_instances + num_shadowmap_instances;
+
+		memcpy(instance->model_matrix, model_matrix, sizeof(mat4_t));
+		instance->buffer = buffer;
+		instance->vertex_offset = vertex_offset;
+		instance->prim_count = prim_count;
+
+		++num_shadowmap_instances;
+	}
+}
+
 static void create_render_pass( void )
 {
 	//LOG_FUNC();
@@ -216,6 +247,11 @@ VkImageView vk_rtx_shadow_map_get_view( void )
 {
 	return imv_smap_depth_array;
 
+}
+
+VkImage vk_rtx_shadow_map_get_image( void )
+{
+	return img_smap;
 }
 
 VkResult vk_rtx_shadow_map_create_pipelines( void ) 
@@ -437,21 +473,38 @@ VkResult vk_rtx_shadow_map_render( VkCommandBuffer cmd_buf, world_t &worldData, 
 
 	VkDeviceSize vertex_offset = tr.world->geometry.world_static.vertex_data_offset; // render using prim_positions_t offset	
 	qvkCmdBindVertexBuffers( cmd_buf, 0, 1, &tr.world->geometry.world_static.buffer[0].buffer, &vertex_offset );
-
 	qvkCmdDraw( cmd_buf, num_static_verts, 1, static_offset, 0 );
 
-	//vertex_offset = offsetof(struct ModelDynamicVertexBuffer, positions_instanced);
-	//vkCmdBindVertexBuffers(cmd_buf, 0, 1, &qvk.model_instance.buffer_vertex.buffer, &vertex_offset);
-	//vkCmdDraw(cmd_buf, num_dynamic_verts, 1, 0, 0);
+	vertex_offset = 0;
+	qvkCmdBindVertexBuffers(cmd_buf, 0, 1, &vk.buf_positions_instanced.buffer, &vertex_offset);
+	qvkCmdDraw(cmd_buf, num_dynamic_verts, 1, dynamic_offset, 0);
+
+	mat4_t mvp_matrix;
+
+	for (uint32_t instance_idx = 0; instance_idx < num_shadowmap_instances; instance_idx++)
+	{
+		const shadowmap_instance_t* mi = shadowmap_instances + instance_idx;
+
+		mult_matrix_matrix(mvp_matrix, view_projection_matrix, mi->model_matrix);
+
+		qvkCmdPushConstants(cmd_buf, pipeline_layout_smap, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(mat4_t), mvp_matrix);
+
+		qvkCmdBindVertexBuffers(cmd_buf, 0, 1, &mi->buffer, &mi->vertex_offset);
+
+		qvkCmdDraw(cmd_buf, mi->prim_count * 3, 1, 0, 0);
+	}
 
 	qvkCmdEndRenderPass( cmd_buf );
 
 	render_pass_info.framebuffer = framebuffer_smap2;
 	qvkCmdBeginRenderPass( cmd_buf, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE );
 
-	//vertex_offset = offsetof(struct BspVertexBuffer, positions_bsp);
-	//vkCmdBindVertexBuffers(cmd_buf, 0, 1, &qvk.buf_vertex_bsp.buffer, &vertex_offset);
-	//vkCmdDraw(cmd_buf, num_transparent_verts, 1, transparent_offset, 0);
+	qvkCmdPushConstants(cmd_buf, pipeline_layout_smap, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(mat4_t), view_projection_matrix);
+
+	vertex_offset = tr.world->geometry.world_static.vertex_data_offset;
+	qvkCmdBindVertexBuffers(cmd_buf, 0, 1, &tr.world->geometry.world_static.buffer[0].buffer, &vertex_offset);
+
+	qvkCmdDraw(cmd_buf, num_transparent_verts, 1, transparent_offset, 0);
 
 	qvkCmdEndRenderPass( cmd_buf );
 

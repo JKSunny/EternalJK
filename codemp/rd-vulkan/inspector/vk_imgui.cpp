@@ -389,41 +389,10 @@ static void vk_imgui_draw_viewport( void )
 #ifdef USE_RTX
 	if ( vk.rtxActive )  
 	{
-		uint32_t index;
-
 		vk_imgui_draw_render_mode( rtx_render_modes, NUM_TOTAL_RENDER_MODES_RTX );
 
-		if ( inspector.render_mode.index < NUM_BOUND_RENDER_MODES_RTX )
-		{
-			if ( inspector.render_mode.index > 0 )
-				index = 1; // FLAT_COLOR;
-			else 
-				index = 0; // TAA_OUTPUT + TONEMAPPING;
-
-			index = 0; // debug with tonemapping applied.
-
-			ImGui::Image( (ImU64)inspector.render_mode.rtx_image.bound[index], 
+		ImGui::Image( (ImU64)inspector.render_mode.rtx_image, 
 				{ (float)gls.windowWidth, (float)gls.windowHeight } );
-		}
-
-		// unbound images in the rtx or compute descriptors will have to be drawn directly
-		else
-		{
-			VkDescriptorSet *image = &inspector.render_mode.rtx_image.unbound[SHADOW_MAP_RENDER_MODE_RTX];
-			if ( *image == NULL )
-			{
-				VkImageView shadow_image_view;
-				VkSampler shadow_sampler;
-				vk_rtx_get_god_rays_shadowmap( shadow_image_view, shadow_sampler );
-
-				vk_imgui_rtx_add_unbound_texture( image, shadow_image_view, shadow_sampler );
-			}
-
-			index = ( inspector.render_mode.index - NUM_BOUND_RENDER_MODES_RTX);
-
-			ImGui::Image( (ImU64)inspector.render_mode.rtx_image.unbound[index], 
-				{ (float)gls.windowWidth, (float)gls.windowHeight } );
-		}
 	}
 	else
 #endif
