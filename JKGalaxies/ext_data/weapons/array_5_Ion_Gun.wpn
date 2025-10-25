@@ -3,7 +3,7 @@
     "type":             "WP_FLECHETTE",
     "variation":        5,
     "classname":        "array_Ion",
-    "description":      "@JKG_ITEMS_array_Ion_Gunerial",
+    "description":      "@JKG_ITEMS_array_Ion_Gun",
     
     "visual": {
         "viewmodel":        "models/weapons/Ion_Gun/viewmodel.md3",

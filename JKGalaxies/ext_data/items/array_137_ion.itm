@@ -1,0 +1,12 @@
+{
+	"name":             "@JKG_ITEMS_array_Ion",
+	"internal":             "array_ion",
+	"itemtype":             "weapon",
+	"weapon":		"WP_FLECHETTE",
+	"variation":		"5",
+	"weight":		"4",
+	"cost":		"750",
+	"xml":			"xml/items/ion_gun.xml",
+	"itemIcon":		"models/weapons/ARC_CasterImperial/icon_default",
+	"itemDescription": "A crude, but effective ion weapon capable of disabling droids and other electronics, it is less effective, although painful, to organic targets. Many of these weapons are found in the hands of jawas."
+}
