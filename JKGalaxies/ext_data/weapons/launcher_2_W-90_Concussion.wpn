@@ -65,12 +65,37 @@
         {
             "damage":       75,//100,
             "buffs": [
-			{
-			    "buff": "standard-emp",
-			    "duration": 4000
+            {
+				"buff": "super-slow",
+				"duration": 6000
 			}
             ]
         },
+        "secondarydamage":
+		{
+			"damageradius": { 
+                                  "start": 25,
+								  "end": 350,
+								  "function": [ "clamp" ],
+								  "param": 40,
+								   "falloff": "constant"
+							},
+				"duration": 1000,
+				"damage": 1,
+				"damagedelay": 250,
+				"delay": 250,
+				"buffs": [
+				{
+					"buff": "super-slow",
+					"duration": 3000
+				},
+                {
+			        "buff": "standard-emp",
+			        "duration": 2000
+                }
+				],
+				"penetration": 2
+		},
         "ballistic":    true,
         "collisionsize":1.0,
         "ammocost":     1,

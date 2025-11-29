@@ -466,8 +466,8 @@
 	"AMMO_STOUKER": {
 		"shortname": "Stouker Power Cells",
 		"longname": "Stouker Concussion Chamber Power Cells",
-		"max": 20,
-		"pricePerUnit": 25 //total: 500
+		"max": 64,
+		"pricePerUnit": 7.25 //total: 500
 	},
 
 	"AMMO_ANTIARMOR_CHARGE": {

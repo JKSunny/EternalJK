@@ -197,6 +197,40 @@
 		
 		}
 	},
+
+	//move real slowlike
+	"super-slow":
+	{
+		"category": "slow",
+		
+		"canceling": 
+		{
+			"priority": 80,
+			"noBuffStack": false,
+			"noCategoryStack": false,
+
+			"cancelOther": [
+				{
+					"category": "haste",
+					"priority": 100
+				}
+			]
+		},
+		
+		"passive": {
+			"movemodifier" : 0.65,
+			"maxstacks" : 3
+		},
+
+		"damage": {
+			"means": "MOD_STUNNED"
+		},
+		
+		"visuals":
+		{
+		
+		}
+	},
 	
 	//stacking movement speed increase, does no damage
 	"standard-haste":

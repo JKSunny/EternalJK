@@ -76,7 +76,7 @@
             "buffs": [
 					{
 						"buff": "standard-emp",
-						"duration": 4000
+						"duration": 5000
 					}
                     ],
 			"damageradius": 

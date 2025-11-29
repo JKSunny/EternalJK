@@ -70,9 +70,37 @@
 			{
 			    "buff": "standard-emp",
 			    "duration": 4000
-			}
+			},
+            {
+                    "buff": "standard-stun",
+                    "duration": 2500
+            }
             ]
         },
+        "secondarydamage":
+		{
+			"damageradius": { 
+                                  "start": 25,
+								  "end": 350,
+								  "function": [ "clamp" ],
+								  "param": 40,
+								   "falloff": "constant"
+							},
+				"duration": 1000,
+				"damage": 1,
+				"damagedelay": 150,
+				"delay": 150,
+				"buffs": [
+				{
+			        "buff": "standard-emp",
+			        "duration": 1000
+			    },
+                {
+                    "buff": "standard-stun",
+                    "duration": 1000
+                }
+				]
+		},
         "ballistic":    true,
         "collisionsize":1.0,
         "ammocost":     2,
@@ -121,7 +149,7 @@
         "range":        1000.0,
         "recoil":       10.0,
         "spread":       0.4,
-        "splashrange":  60,//30,
+        "splashrange":  90,//30,
         "projectilespeed": 10000.0,
         "projectileclass":"flech_proj",
         "meansofdeath": "MOD_SONIC",
