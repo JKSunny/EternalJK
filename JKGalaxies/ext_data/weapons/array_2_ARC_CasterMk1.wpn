@@ -117,7 +117,7 @@
         "ammocost":     1,
         "collisionsize": 5.0,
         "firedelay":    50,
-        "range":        750.0,
+        "range":        850.0,
         "recoil":       0.2,
         "spread":       0.4,
         "projectilespeed": 7000.0,
