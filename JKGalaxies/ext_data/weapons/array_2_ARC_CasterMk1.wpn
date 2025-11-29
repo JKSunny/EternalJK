@@ -59,7 +59,7 @@
             "runsound":     "sound/effects/energy_crackle.wav",
             "miss":         { "impactfx": "blasters/electric_impacttiny" },
             "hit":          { "impactfx": "blasters/electric_impacttiny" },
-	    "displayName":  "Automatic"
+	    "displayName":  "Repeater"
     }
 },
     
@@ -117,7 +117,7 @@
         "ammocost":     1,
         "collisionsize": 5.0,
         "firedelay":    50,
-        "range":        1450.0,
+        "range":        750.0,
         "recoil":       0.2,
         "spread":       0.4,
         "projectilespeed": 7000.0,
