@@ -456,18 +456,18 @@
 		"max": 400 //total: 160
 	},
 
-	"AMMO_CONCUSSION": {
+	"AMMO_SONIC_CONCUSSION": {
 		"shortname": "Concussion Canisters",
-		"longname": "Concussion Canisters",
-		"max": 20,
-		"pricePerUnit": 22 //total: 440
+		"longname": "Sonic Concussion Canisters",
+		"max": 50,
+		"pricePerUnit": 10 //total: 440
 	},
 
 	"AMMO_STOUKER": {
 		"shortname": "Stouker Power Cells",
 		"longname": "Stouker Concussion Chamber Power Cells",
-		"max": 64,
-		"pricePerUnit": 7.25 //total: 500
+		"max": 56,
+		"pricePerUnit": 9 //total: 500
 	},
 
 	"AMMO_ANTIARMOR_CHARGE": {

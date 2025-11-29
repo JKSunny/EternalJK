@@ -122,8 +122,8 @@
         "projectileclass":"conc_proj",
         "meansofdeath": "MOD_SONIC",
         "splashmeansofdeath": "MOD_SONIC",
-	"ammobase": "AMMO_CONCUSSION",
-	"ammodefault": "AMMO_CONCUSSION",
+	"ammobase": "MOD_ELECTRICAL",
+	"ammodefault": "MOD_ELECTRICAL",
         "clipSize":              6,
             "accuracy": {
         "accuracyRating": 35,
@@ -185,8 +185,8 @@
         "projectileclass":"conc_proj",
         "meansofdeath": "MOD_SONIC",
         "splashmeansofdeath": "MOD_SONIC",
-	"ammobase": "AMMO_CONCUSSION",
-	"ammodefault": "AMMO_CONCUSSION",
+	"ammobase": "AMMO_SONIC_CONCUSSION",
+	"ammodefault": "AMMO_SONIC_CONCUSSION",
         "clipSize":              6,
             "accuracy": {
         "accuracyRating": 24,
