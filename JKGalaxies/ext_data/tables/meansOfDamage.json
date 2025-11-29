@@ -429,7 +429,7 @@
 			"ignoreArmor": true,
 			"dodgeable": true,
 			"organic": 1.0,
-			"shield": 0.7,
+			"shield": 0.65,
 			"droid": 1.0
 		},
 
@@ -452,7 +452,7 @@
 			"ignoreArmor": true,
 			"dodgeable": true,
 			"organic": 0.5,
-			"shield": 2.0,
+			"shield": 2.1,
 			"droid": 2.0
 		},
 
@@ -477,8 +477,8 @@
 			"isEMP": true,
 			"isCC": true,
 			"dodgeable": true,
-			"organic": 0.75,
-			"shield": 1.7,
+			"organic": 0.7,
+			"shield": 1.8,
 			"droid": 1.7
 		},
 
@@ -502,9 +502,9 @@
 		"modifiers": {
 			"isEMP": true,
 			"isCC": true,
-			"armor": 0.8,
+			"armor": 0.75,
 			"organic": 1.15,
-			"shield": 1.8,
+			"shield": 1.9,
 			"droid": 2.0
 		},
 
@@ -636,7 +636,7 @@
 			"organic": 1.0,
 			"shield": 0.85,
 			"droid": 0.9,
-			"armorPenetration": 0.25	//crossbows penetrate 25% of target's armor
+			"armorPenetration": 0.20	//crossbows penetrate 20% of target's armor
 		},
 
 		"dismemberment": {
