@@ -211,6 +211,36 @@ int ClientNumberFromString( gentity_t *to, const char *s, qboolean allowconnecti
 	return -1;
 }
 
+/*
+==================
+G_ClientNumFromArg
+==================
+*/
+int G_ClientNumberFromArg(const char *name)
+{
+	int client_id = 0;
+	const char *cp = name;
+	while (*cp)
+	{
+		if (*cp >= '0' && *cp <= '9') cp++;
+		else
+		{
+			client_id = -1; //mark as alphanumeric
+			break;
+		}
+	}
+
+	if (client_id == 0)
+	{ // arg is assumed to be client number
+		client_id = atoi(name);
+	}
+	// arg is client name
+	if (client_id == -1)
+	{
+		client_id = G_ClientNumberFromStrippedSubstring(name, qfalse);
+	}
+	return client_id;
+}
 
 //damage & healing plums copied from g_combat
 /*
@@ -379,29 +409,40 @@ Cmd_Pay_f
 ==================
 */
 #define PAY_DISTANCE	256
+extern void G_BuffEntity(gentity_t* ent, gentity_t* buffer, int buffID, float intensity, int duration);
 void Cmd_Pay_f(gentity_t* ent) {
 	trace_t tr;
 	vec3_t traceStart, traceEnd, forward;
 	char creditBuffer[MAX_STRING_CHARS];
+	char arg2[MAX_STRING_CHARS];
+	int targetNum = -1;
 	int credits;
 	int limit;  //credit limit we can pay
 	int teamTime; //how much time we've been on the team
+	gentity_t* target;	//who we're going to pay
 
-	if (trap->Argc() != 2) {
-		trap->SendServerCommand(ent - g_entities, "print \"Usage: /pay <# of credits, or \"all\">\n\"");
+	if (trap->Argc() < 2 || trap->Argc() > 3) {
+		trap->SendServerCommand(ent - g_entities, "print \"Usage: /pay <# of credits or \'max\'>, /pay <# of credits> <client name/client number>\n\"");
 		return;
 	}
 
 	if (jkg_payTime.integer < 1)
 	{
-		trap->SendServerCommand(ent - g_entities, "/pay is not allowed on this server!\n\"");
+		trap->SendServerCommand(ent - g_entities, "print \"/pay is not allowed on this server!\n\"");
 		return;
 	}
 
 	trap->Argv(1, creditBuffer, MAX_STRING_CHARS);
 
-	if (!Q_stricmp(creditBuffer, "all")) {
+	if(trap->Argc() == 3)
+	{
+		trap->Argv( 2, arg2, sizeof( arg2 ) );
+		targetNum = G_ClientNumberFromArg( arg2 );
+	}
+
+	if (!Q_stricmp(creditBuffer, "max")) {
 		credits = ent->client->ps.credits;
+		credits = credits - jkg_startingCredits.integer;
 	}
 	else 
 		credits = atoi(creditBuffer);
@@ -429,37 +470,76 @@ void Cmd_Pay_f(gentity_t* ent) {
 		trap->SendServerCommand(ent - g_entities, va("print \"You can't afford that!  You can only pay up to %i credits.\n\"", limit));
 		return;
 	}
-	if (credits > ent->client->ps.credits) {
+	if (credits > ent->client->ps.credits) { //should probably never be triggered
 		trap->SendServerCommand(ent - g_entities, "print \"You can't afford that!\n\"");
 		return;
 	}
-	
 
-	AngleVectors(ent->client->ps.viewangles, forward, nullptr, nullptr);
-	traceEnd[0] = ent->client->ps.origin[0] + forward[0] * PAY_DISTANCE;
-	traceEnd[1] = ent->client->ps.origin[1] + forward[1] * PAY_DISTANCE;
-	traceEnd[2] = (ent->client->ps.origin[2] + ent->client->ps.viewheight) + forward[2] * PAY_DISTANCE;
+	//we didn't specify a client, so pay whoever we're looking at
+	if(trap->Argc() == 2)
+	{
+		AngleVectors(ent->client->ps.viewangles, forward, nullptr, nullptr);
+		traceEnd[0] = ent->client->ps.origin[0] + forward[0] * PAY_DISTANCE;
+		traceEnd[1] = ent->client->ps.origin[1] + forward[1] * PAY_DISTANCE;
+		traceEnd[2] = (ent->client->ps.origin[2] + ent->client->ps.viewheight) + forward[2] * PAY_DISTANCE;
 
-	VectorCopy(ent->client->ps.origin, traceStart);
-	traceStart[2] += ent->client->ps.viewheight;
+		VectorCopy(ent->client->ps.origin, traceStart);
+		traceStart[2] += ent->client->ps.viewheight;
 
-	trap->Trace(&tr, traceStart, nullptr, nullptr, traceEnd, ent->s.number, MASK_PLAYERSOLID, 0, 0, 0);
-	if (tr.fraction >= 1.0f) {
-		trap->SendServerCommand(ent - g_entities, "print \"Couldn't find anything to pay.\n\"");
+		trap->Trace(&tr, traceStart, nullptr, nullptr, traceEnd, ent->s.number, MASK_PLAYERSOLID, 0, 0, 0);
+		if (tr.fraction >= 1.0f) {
+			trap->SendServerCommand(ent - g_entities, "print \"Couldn't find anything to pay.\n\"");
+			return;
+		}
+		targetNum = tr.entityNum;
+	}
+
+	if(targetNum < 0)
+	{
+		trap->SendServerCommand(ent - g_entities, "print \"Invalid entity specified!\n\"");
 		return;
 	}
-	if (tr.entityNum >= MAX_CLIENTS) {
+
+	if (targetNum >= level.maxclients) {
 		trap->SendServerCommand(ent - g_entities, "print \"You can't pay that entity money!\n\"");
 		return;
 	}
 
-	gentity_t* target = &g_entities[tr.entityNum];
+	target = &g_entities[targetNum];	//assign our entity
+
+	if(!target || !target->client)
+	{
+		trap->SendServerCommand(ent - g_entities, "print \"Invalid player specified, check name or client number.\n\"");
+		return;
+	}
+
+	if (ent == target)
+	{
+		trap->SendServerCommand(ent - g_entities, "print \"You can't pay yourself!\n\"");
+		return;
+	}
+	
+	if(target->client->sess.sessionTeam == TEAM_SPECTATOR || target->client->pers.connected != CON_CONNECTED)
+	{
+		trap->SendServerCommand(ent - g_entities, "print \"Invalid player specified, check name or client number.\n\"");
+		return;
+	}
+
+	//don't allow enemies to pay each other?
+	/*if(level.gametype >= GT_TEAM && ent->client->sess.sessionTeam != target->client->sess.sessionTeam)
+	{
+		trap->SendServerCommand(ent - g_entities, "print \"You are attempting to aid the enemy. Traitor must be punished!\n\"");
+		G_BuffEntity(ent, ent, JKG_ResolveBuffName("standard-fire"), 1.0f, 60000); //traitors must burn
+		return;
+	}*/
+	
 	target->client->ps.credits += credits;
 	//ent->client->ps.spent += credits;		//paying other players counts as buying something!
 	ent->client->ps.credits -= credits;
 
 	trap->SendServerCommand(ent - g_entities, va("print \"You paid %i to %s\n\"", credits, target->client->pers.netname));
-	trap->SendServerCommand(tr.entityNum, va("%s " S_COLOR_WHITE "paid you %i credits.\n\"", ent->client->pers.netname, credits));
+	trap->SendServerCommand(targetNum, va("%s " S_COLOR_WHITE "paid you %i credits.\n\"", ent->client->pers.netname, credits));
+	trap->SendServerCommand(targetNum, va("notify 1 \"Payment Received: +%i Credits\"", credits));
 	G_PreDefSound(ent->r.currentOrigin, PDSOUND_PAY);
 }
 
@@ -1406,37 +1486,6 @@ Good for testing desync
 void Cmd_DumpWeaponList_f( gentity_t *ent )
 {
 	BG_DumpWeaponList("svweaponlist.txt");
-}
-
-/*
-==================
-G_ClientNumFromArg
-==================
-*/
-int G_ClientNumberFromArg(const char *name)
-{
-	int client_id = 0;
-	const char *cp = name;
-	while (*cp)
-	{
-		if (*cp >= '0' && *cp <= '9') cp++;
-		else
-		{
-			client_id = -1; //mark as alphanumeric
-			break;
-		}
-	}
-
-	if (client_id == 0)
-	{ // arg is assumed to be client number
-		client_id = atoi(name);
-	}
-	// arg is client name
-	if (client_id == -1)
-	{
-		client_id = G_ClientNumberFromStrippedSubstring(name, qfalse);
-	}
-	return client_id;
 }
 
 /*
