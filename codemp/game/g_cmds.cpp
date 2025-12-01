@@ -538,9 +538,10 @@ void Cmd_Pay_f(gentity_t* ent) {
 	ent->client->ps.credits -= credits;
 
 	trap->SendServerCommand(ent - g_entities, va("print \"You paid %i to %s\n\"", credits, target->client->pers.netname));
-	trap->SendServerCommand(targetNum, va("%s " S_COLOR_WHITE "paid you %i credits.\n\"", ent->client->pers.netname, credits));
+	trap->SendServerCommand(targetNum, va("print \"%s " S_COLOR_WHITE "paid you %i credits.\n\"", ent->client->pers.netname, credits));
 	trap->SendServerCommand(targetNum, va("notify 1 \"Payment Received: +%i Credits\"", credits));
 	G_PreDefSound(ent->r.currentOrigin, PDSOUND_PAY);
+	G_PreDefSound(target->r.currentOrigin, PDSOUND_TRADE);
 }
 
 /*
