@@ -3589,6 +3589,77 @@ void ClientDisconnect( int clientNum ) {
 		return;
 	}
 
+	//in TFFA & CTF we want to be nice to their team, so we'll distribute 50% of their earned credits
+	if(jkg_disconnectBonus.integer && (g_gametype.integer >= GT_TEAM))
+	{
+		int value = 0;	//value of dead player's assets
+		int teamToReward = ent->client->sess.sessionTeam;	//get disconnect guy's team
+
+		if (teamToReward == TEAM_RED)	//if he was red, blue team gets reward
+			teamToReward = TEAM_BLUE;
+		else if (teamToReward == TEAM_BLUE)	//if he was blue, red team gets reward
+			teamToReward = TEAM_RED;
+		else
+			teamToReward = -1;	//if he was neither then no reward
+
+		//add up their raw credits
+		if(ent->client->ps.credits > jkg_startingCredits.integer)
+		{
+			value = ent->client->ps.credits - jkg_startingCredits.integer;
+			if(value < 0)
+			{
+				value = 0;
+			}
+		}
+
+		//add up their inventory values...then half it
+		if(ent->inventory->size() > 0)
+		{
+			//loop through inventory and get price /2 and then total it up
+			for (auto it = ent->inventory->begin(); it != ent->inventory->end(); ++it) 
+			{
+				value = value + ((it->id->baseCost * it->quantity) / 2);	//todo: adjust further based on item tier?
+			}
+		}
+
+		std::vector<int> awards; awards.reserve((MAX_CLIENTS * 0.5)+1);	//which players on the team to award
+		gentity_t* teammate;
+		for (int i = 0; i < sv_maxclients.integer; i++)
+		{
+			teammate = &g_entities[i];
+			if (teammate == nullptr || teammate->client == nullptr || 
+				!teammate->inuse || teammate->client->sess.sessionTeam != teamToReward) //don't reward spectators, nonclients, etc
+				continue;
+
+			if (teammate->client->sess.sessionTeam == teamToReward)
+			{
+				awards.push_back(i);	//add the client to the award list
+			}
+		}
+
+		if (awards.size() < 1)	//nobody on the team
+			return;
+
+		//calculate team reward split
+		value = (value / awards.size());															//equally distribute reward among team
+		value = (value < jkg_teamKillBonus.integer) ? jkg_teamKillBonus.integer : value;			//unless its less than teamKillBonus
+		if (awards.size() == 1)																		//if only one player, they get 50%
+			value = value * 0.5;
+
+		//if we're on the disconnected player's team, award us
+		for (int i : awards)
+		{
+			teammate = &g_entities[i];
+			if (teammate->client->sess.sessionTeam == teamToReward)
+			{
+				trap->SendServerCommand(teammate->s.number, va("print \"Distributing %s" S_COLOR_WHITE "'s networth: received +%i Credits from their estate.\"", ent->client->pers.netname, value));
+				teammate->client->ps.credits += value;
+				trap->SendServerCommand(teammate->s.number, va("notify 1 \"Payment Received: +%i Credits\"", value));
+				G_PreDefSound(teammate->r.currentOrigin, PDSOUND_TRADE);
+			}
+		}
+	}
+
 	if (ent->inventory != nullptr) {
 		ent->inventory->clear();
 	}

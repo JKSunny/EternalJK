@@ -1658,6 +1658,10 @@ JKG_HandleUnclaimedBounties
 */
 qboolean JKG_HandleUnclaimedBounties(gentity_t* deadguy)
 {
+	//only valid for GT_TEAM & GT_CTF
+	if(g_gametype.integer >= GT_TEAM)
+		return false;
+
 	int multiplier = (deadguy->client->numKillsThisLife > jkg_maxKillStreakBounty.integer) ? jkg_maxKillStreakBounty.integer : deadguy->client->numKillsThisLife;
 	gentity_t* player; int reward = jkg_bounty.integer*multiplier;	//set default reward as jkg_bounty
 	std::vector<int> awards; awards.reserve((MAX_CLIENTS * 0.5)+1);	//which players on the team to award
