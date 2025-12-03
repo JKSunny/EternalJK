@@ -408,7 +408,7 @@ Cmd_Pay_f
 
 ==================
 */
-#define PAY_DISTANCE	256
+#define PAY_DISTANCE	512	//this is just so we don't trace forever
 extern void G_BuffEntity(gentity_t* ent, gentity_t* buffer, int buffID, float intensity, int duration);
 void Cmd_Pay_f(gentity_t* ent) {
 	trace_t tr;
@@ -4131,13 +4131,13 @@ void Cmd_Reload_f( gentity_t *ent ) {
 		return;
 	}
 
-	// Can't reload while sprinting
+	// Can't reload while sprinting  --Futuza: unless...gunner skill?
 	if ( BG_IsSprinting (&ent->client->ps, &ent->client->pers.cmd, qfalse) )
 	{
 	    return;
 	}
 
-	// Can't reload while rolling or flipping
+	// Can't reload while rolling or flipping  --Futuza: unless...gunner skill?
 	if ( ent->client->ps.pm_flags & PMF_ROLLING || BG_FlippingAnim ( ent->client->ps.legsAnim ) )
 	{
 	    return;
@@ -4157,6 +4157,12 @@ void Cmd_Reload_f( gentity_t *ent ) {
 
 	if ( weapon == WP_SABER)
 	{
+		// we are not on the ground or already kicking
+		if( PM_InKnockDown(pm->ps) ||  BG_KickingAnim(pm->ps->legsAnim) || BG_KickingAnim(pm->ps->torsoAnim) )
+		{
+			return;
+		}
+		
 		// Do a kick instead, regardless if we're moving
 		ent->client->ps.saberActionFlags |= ( 1 << SAF_KICK );
 		return;
