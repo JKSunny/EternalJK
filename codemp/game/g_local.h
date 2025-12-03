@@ -1619,6 +1619,8 @@ const char *G_GetStringEdString2(char *refName);
 char *ClientConnect( int clientNum, qboolean firstTime, qboolean isBot );
 qboolean ClientUserinfoChanged( int clientNum );
 void ClientDisconnect( int clientNum );
+int JKG_CalcPassiveIncome(gclient_t *client, int delta);
+int JKG_CalcUnderdogIncome(gclient_t *client, int delta);
 void ClientBegin( int clientNum, qboolean allowTeamReset );
 void G_BreakArm(gentity_t *ent, int arm);
 void G_UpdateClientAnims(gentity_t *self, float animSpeedScale);

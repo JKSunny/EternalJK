@@ -2644,6 +2644,99 @@ tryTorso:
 
 /*
 ===========
+Both CaclPassiveIncome & 
+CalcUnderdogIncome are 
+used by ClientSpawn to
+figure out how many credits
+a player joining a new team
+should receive.
+
+Both are controlled by toggleable
+cvars:
+jkg_passiveCreditsAmount
+jkg_underdogBonus
+
+Some other functions also 
+use it for credit calculations
+as well, such as 
+JKG_HandleDisconnectDistribution()
+===========
+*/
+int JKG_CalcPassiveIncome(gclient_t *client, int delta)
+{	
+	int reward = 0;
+
+	// award missing passive credits if enabled
+	if (jkg_passiveCreditsAmount.integer > 0)
+	{
+		// award if we joined at least jkg_passiveCreditsWait late (typically 1 minute)
+		if (delta > jkg_passiveCreditsWait.integer)
+		{
+			reward = (jkg_passiveCreditsAmount.integer * (delta / jkg_passiveCreditsRate.integer)); // calculate amount we would have got
+			if (jkg_passiveCreditsWait.integer > jkg_passiveCreditsRate.integer)
+				reward -= (jkg_passiveCreditsAmount.integer * (jkg_passiveCreditsWait.integer / jkg_passiveCreditsRate.integer)); // minus the initial wait before credits are disbursed
+		}
+	}
+	return reward;
+}
+int JKG_CalcUnderdogIncome(gclient_t *client, int delta)
+{
+	int money = 0;
+
+	// underdog reward if you join the losing team late
+	if (jkg_underdogBonus.integer > 0 && (delta > jkg_passiveCreditsWait.integer))
+	{
+
+		// who is currently winning?
+		auto my_team = client->sess.sessionTeam;
+		int curr_winner = -1;
+
+		if (level.teamScores[TEAM_RED] > level.teamScores[TEAM_BLUE])
+			curr_winner = TEAM_RED;
+		else if (level.teamScores[TEAM_RED] < level.teamScores[TEAM_BLUE])
+			curr_winner = TEAM_BLUE;
+		else
+			curr_winner = -1; // tie
+
+		// if we are the loser
+		if (my_team != curr_winner && my_team != TEAM_SPECTATOR && curr_winner != -1)
+		{
+			int score_diff = 0;
+
+			// find score difference
+			if (my_team == TEAM_RED)
+				score_diff = level.teamScores[TEAM_BLUE] - level.teamScores[TEAM_RED];
+			else if (my_team == TEAM_BLUE)
+				score_diff = level.teamScores[TEAM_RED] - level.teamScores[TEAM_BLUE];
+			else
+				;
+
+			// calculate reward based on how much time in the match is left
+			float match_percent = ((delta / ((float)(timelimit.integer * 60000))) * 100);
+			if (30 <= match_percent && match_percent < 45)
+				money += (jkg_startingCredits.integer * 0.25);
+			else if (45 <= match_percent && match_percent < 60)
+				money += (jkg_startingCredits.integer * 0.4);
+			else if (60 <= match_percent && match_percent < 65)
+				money += (jkg_startingCredits.integer * 0.7);
+			else if (65 <= match_percent && match_percent < 70)
+				money += (jkg_startingCredits.integer * 0.8);
+			else if (70 <= match_percent && match_percent < 80)
+				money += jkg_startingCredits.integer;
+			else if (80 <= match_percent && match_percent < 101)
+				money += (jkg_startingCredits.integer * 0.25) + jkg_startingCredits.integer;
+			else
+				money += (jkg_startingCredits.integer * 0.10);
+
+			if ((score_diff < 3 && level.gametype != GT_CTF) || (level.gametype == GT_CTF && score_diff < 201))
+				money = money / 2;
+		}
+	}
+	return money;
+}
+
+/*
+===========
 ClientSpawn
 
 Called every time a client is placed fresh in the world:
@@ -3153,73 +3246,12 @@ void ClientSpawn(gentity_t *ent, qboolean respawn) {
 						itemInstance_t item = BG_ItemInstance(itemID, 1, MAX_DEFAULT_DURABILITY);
 						ent->client->ps.credits = jkg_startingCredits.integer;
 						//ent->client->ps.spent = 0;
+						int delta = level.time - level.startTime; // how long has the match been going?
+						client->ps.credits += JKG_CalcPassiveIncome(client, delta); //award missing passive credits if enabled
+						int money = JKG_CalcUnderdogIncome(client, delta); //underdog reward if you join the losing team late
 
-						int delta = level.time - level.startTime;	//how long has the match been going?
-						//award missing passive credits if enabled
-						if (jkg_passiveCreditsAmount.integer > 0)
-						{
-							//award if we joined at least jkg_passiveCreditsWait late (typically 1 minute)
-							if (delta > jkg_passiveCreditsWait.integer)
-							{
-								int reward = 0;
-								reward = (jkg_passiveCreditsAmount.integer * (delta / jkg_passiveCreditsRate.integer));				//calculate amount we would have got
-								if (jkg_passiveCreditsWait.integer > jkg_passiveCreditsRate.integer)
-									reward -= (jkg_passiveCreditsAmount.integer * (jkg_passiveCreditsWait.integer / jkg_passiveCreditsRate.integer));		//minus the initial wait before credits are disbursed
-								client->ps.credits += reward;
-							}
-						}
-
-						//underdog reward if you join the losing team late
-						if (jkg_underdogBonus.integer > 0 && (delta > jkg_passiveCreditsWait.integer))
-						{
-							//who is currently winning?
-							auto my_team = ent->client->sess.sessionTeam; int curr_winner = -1; int money = 0;
-
-							if (level.teamScores[TEAM_RED] > level.teamScores[TEAM_BLUE])
-								curr_winner = TEAM_RED;
-							else if (level.teamScores[TEAM_RED] < level.teamScores[TEAM_BLUE])
-								curr_winner = TEAM_BLUE;
-							else
-								curr_winner = -1;	//tie
-
-							//if we are the loser
-							if (my_team != curr_winner && my_team != TEAM_SPECTATOR && curr_winner != -1)
-							{
-								int score_diff = 0; 
-
-								//find score difference
-								if (my_team == TEAM_RED)
-									score_diff = level.teamScores[TEAM_BLUE] - level.teamScores[TEAM_RED];
-								else if (my_team == TEAM_BLUE)
-									score_diff = level.teamScores[TEAM_RED] - level.teamScores[TEAM_BLUE];
-								else
-									;
-
-								//calculate reward based on how much time in the match is left
-								float match_percent = ((delta / ((float)(timelimit.integer * 60000))) * 100);
-								if (30 <= match_percent && match_percent < 45)
-									money += (jkg_startingCredits.integer * 0.25);
-								else if (45 <= match_percent && match_percent < 60)
-									money += (jkg_startingCredits.integer * 0.4);
-								else if (60 <= match_percent && match_percent < 65)
-									money += (jkg_startingCredits.integer * 0.7);
-								else if (65 <= match_percent && match_percent < 70)
-									money += (jkg_startingCredits.integer * 0.8);
-								else if (70 <= match_percent && match_percent < 80)
-									money += jkg_startingCredits.integer;
-								else if (80 <= match_percent && match_percent < 101)
-									money += (jkg_startingCredits.integer * 0.25) + jkg_startingCredits.integer;
-								else
-									money += (jkg_startingCredits.integer * 0.10);
-
-								if ((score_diff < 3 && level.gametype != GT_CTF) || (level.gametype == GT_CTF && score_diff < 201))
-									money = money / 2;
-
-								trap->SendServerCommand(ent->s.number, va("notify 1 \"Underdog Bonus: +%i Credits\"", money));
-								client->ps.credits += money;
-							}
-
-						}
+						trap->SendServerCommand(ent->s.number, va("notify 1 \"Underdog Bonus: +%i Credits\"", money));
+						client->ps.credits += money;
 
 						BG_GiveItem(ent, item, true);
 
@@ -3563,6 +3595,97 @@ void G_ClearTeamVote( gentity_t *ent, int team ) {
 
 /*
 ===========
+HandleDisconnectDistribution
+
+Called by ClientDisconnect 
+when a client disconnects,
+distrubtes their wealth 
+amongst their team.
+
+===========
+*/
+void JKG_HandleDisconnectDistribution(gentity_t *ent)
+{
+	int value = 0;									  // value of dead player's assets
+	int teamToReward = ent->client->sess.sessionTeam; // get disconnect guy's team
+
+	trap->SendServerCommand(-1, va("chat 100 \"%s^7's disconnected, distributing their estate.\"", ent->client->pers.netname));
+
+	//not a teamplayer? you're out!
+	if(teamToReward < 1)
+		return;
+
+	// add up their raw credits and subtract handouts
+	if (ent->client->ps.credits > static_cast<unsigned int>(jkg_startingCredits.integer))
+	{
+		int delta = ent->client->pers.enterTime - level.startTime; 		//when did they join the delta between teamjoin and match start
+		value = ent->client->ps.credits - jkg_startingCredits.integer;	
+		value =- JKG_CalcPassiveIncome(ent->client, delta);	
+		value =- JKG_CalcUnderdogIncome(ent->client, delta);			
+
+		if (value < 0)
+		{
+			value = 0;
+		}
+	}
+
+	// add up their inventory values...then half it
+	if (ent->inventory->size() > 1)
+	{
+		// loop through inventory and get price /2 and then total it up
+		for (auto it = ent->inventory->begin(); it != ent->inventory->end(); ++it)
+		{
+			value = value + ((it->id->baseCost * it->quantity) * 0.5); // todo: adjust further based on item tier?
+		}
+	}
+	else
+		value += 1; // they have the starting weapon
+
+	std::vector<int> awards; awards.reserve((sv_maxclients.integer * 0.5) + 1); // which players on the team to award
+	gentity_t *teammate;
+
+	for (int i = 0; i < sv_maxclients.integer; i++)
+	{
+		teammate = &g_entities[i];
+		if (teammate == nullptr || teammate->client == nullptr || !teammate->inuse) // don't reward spectators, nonclients, etc
+			continue;
+
+		if (teammate->client->sess.sessionTeam == teamToReward)
+		{
+			awards.push_back(i);
+		}
+	}
+
+	if (awards.size() < 1)
+	{
+		//trap->SendServerCommand(-1, "chat 100 \"Nobody to reward.\"");	//dbug
+		return;
+	}
+
+	// calculate team reward split
+	trap->SendServerCommand(-1, va("chat 100 \"Total award: %i.\"", value)); //dbug
+	value = (value / awards.size());												 // equally distribute reward among team
+	trap->SendServerCommand(-1, va("chat 100 \"Team Size=%i, value=%i.\"", awards.size(), value));	//dbug
+	value = (value < jkg_teamKillBonus.integer) ? jkg_teamKillBonus.integer : value; // give em a minimum, even if the player was homeless
+	if (awards.size() == 1)															 // if only one player, they get 50%
+		value = value * 0.5;
+
+	// if we're on the disconnected player's team, award us
+	for (int i : awards)
+	{
+		teammate = &g_entities[i];
+		if (teammate->client->sess.sessionTeam == teamToReward)
+		{
+			trap->SendServerCommand(teammate->s.number, va("print \"Distributing %s" S_COLOR_WHITE "'s networth: received +%i Credits from their estate.\"", ent->client->pers.netname, value));
+			teammate->client->ps.credits += value;
+			trap->SendServerCommand(teammate->s.number, va("notify 1 \"Payment Received: +%i Credits\"", value));
+			G_PreDefSound(teammate->r.currentOrigin, PDSOUND_TRADE);
+		}
+	}
+}
+
+/*
+===========
 ClientDisconnect
 
 Called when a player drops from the server.
@@ -3590,74 +3713,9 @@ void ClientDisconnect( int clientNum ) {
 	}
 
 	//in TFFA & CTF we want to be nice to their team, so we'll distribute 50% of their earned credits
-	if(jkg_disconnectBonus.integer && (g_gametype.integer >= GT_TEAM))
+	if(jkg_disconnectBonus.integer && g_gametype.integer >= GT_TEAM)
 	{
-		int value = 0;	//value of dead player's assets
-		int teamToReward = ent->client->sess.sessionTeam;	//get disconnect guy's team
-
-		if (teamToReward == TEAM_RED)	//if he was red, blue team gets reward
-			teamToReward = TEAM_BLUE;
-		else if (teamToReward == TEAM_BLUE)	//if he was blue, red team gets reward
-			teamToReward = TEAM_RED;
-		else
-			teamToReward = -1;	//if he was neither then no reward
-
-		//add up their raw credits
-		if(ent->client->ps.credits > jkg_startingCredits.integer)
-		{
-			value = ent->client->ps.credits - jkg_startingCredits.integer;
-			if(value < 0)
-			{
-				value = 0;
-			}
-		}
-
-		//add up their inventory values...then half it
-		if(ent->inventory->size() > 0)
-		{
-			//loop through inventory and get price /2 and then total it up
-			for (auto it = ent->inventory->begin(); it != ent->inventory->end(); ++it) 
-			{
-				value = value + ((it->id->baseCost * it->quantity) / 2);	//todo: adjust further based on item tier?
-			}
-		}
-
-		std::vector<int> awards; awards.reserve((MAX_CLIENTS * 0.5)+1);	//which players on the team to award
-		gentity_t* teammate;
-		for (int i = 0; i < sv_maxclients.integer; i++)
-		{
-			teammate = &g_entities[i];
-			if (teammate == nullptr || teammate->client == nullptr || 
-				!teammate->inuse || teammate->client->sess.sessionTeam != teamToReward) //don't reward spectators, nonclients, etc
-				continue;
-
-			if (teammate->client->sess.sessionTeam == teamToReward)
-			{
-				awards.push_back(i);	//add the client to the award list
-			}
-		}
-
-		if (awards.size() < 1)	//nobody on the team
-			return;
-
-		//calculate team reward split
-		value = (value / awards.size());															//equally distribute reward among team
-		value = (value < jkg_teamKillBonus.integer) ? jkg_teamKillBonus.integer : value;			//unless its less than teamKillBonus
-		if (awards.size() == 1)																		//if only one player, they get 50%
-			value = value * 0.5;
-
-		//if we're on the disconnected player's team, award us
-		for (int i : awards)
-		{
-			teammate = &g_entities[i];
-			if (teammate->client->sess.sessionTeam == teamToReward)
-			{
-				trap->SendServerCommand(teammate->s.number, va("print \"Distributing %s" S_COLOR_WHITE "'s networth: received +%i Credits from their estate.\"", ent->client->pers.netname, value));
-				teammate->client->ps.credits += value;
-				trap->SendServerCommand(teammate->s.number, va("notify 1 \"Payment Received: +%i Credits\"", value));
-				G_PreDefSound(teammate->r.currentOrigin, PDSOUND_TRADE);
-			}
-		}
+		JKG_HandleDisconnectDistribution(ent);
 	}
 
 	if (ent->inventory != nullptr) {
