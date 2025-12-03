@@ -2663,6 +2663,11 @@ Some other functions also
 use it for credit calculations
 as well, such as 
 JKG_HandleDisconnectDistribution()
+
+Keep in mind these are estimates, 
+as underdog bonuses, can double passive income, 
+when a team is losing - and so the rate of change
+can change over time.
 ===========
 */
 int JKG_CalcPassiveIncome(gclient_t *client, int delta)
@@ -3612,7 +3617,7 @@ void JKG_HandleDisconnectDistribution(gentity_t *ent)
 	int value = 0;									  // value of dead player's assets
 	int teamToReward = ent->client->sess.sessionTeam; // get disconnect guy's team
 
-	Com_Printf(va("%s^7's disconnected, distributing their estate.\"", ent->client->pers.netname));
+	Com_Printf(va("%s^7 disconnected, distributing their estate.\n", ent->client->pers.netname));
 
 	//not a teamplayer? you're out!
 	if(teamToReward < 1)
@@ -3623,9 +3628,8 @@ void JKG_HandleDisconnectDistribution(gentity_t *ent)
 	{
 		int delta = ent->client->pers.enterTime - level.startTime; 		//time between teamjoin and match start
 		value = ent->client->ps.credits - jkg_startingCredits.integer;	
-		value -= JKG_CalcPassiveIncome(ent->client, delta);	
+		value -= JKG_CalcPassiveIncome(ent->client, delta);
 		value -= JKG_CalcUnderdogIncome(ent->client, delta);			
-
 		if (value < 0)
 		{
 			value = 0;
@@ -3635,14 +3639,62 @@ void JKG_HandleDisconnectDistribution(gentity_t *ent)
 	// add up their inventory values...then half it
 	if (ent->inventory->size() > 1)
 	{
+
+		//for checking if they have starting weapon in inventory
+		qboolean haveItem = qfalse;
+		weaponData_t* weapon = nullptr;
+		int itemID = 0;
+
+		if (level.startingWeapon[0])
+		{
+			weapon = BG_GetWeaponByClassName(level.startingWeapon);
+			itemID = BG_GetItemByWeaponIndex(BG_GetWeaponIndex((unsigned int)weapon->weaponBaseIndex, (unsigned int)weapon->weaponModIndex))->itemID;
+			if (!itemID)
+				weapon = nullptr;	//don't bother if no itemID
+		}
+			
 		// loop through inventory and get price /2 and then total it up
 		for (auto it = ent->inventory->begin(); it != ent->inventory->end(); ++it)
 		{
-			value = value + ((it->id->baseCost * it->quantity) * 0.5); // todo: adjust further based on item tier?
+			if (itemID && it->id && haveItem == qfalse)	//if there's a weapon, 
+			{
+				if (it->id->itemID == itemID) 
+				{
+					haveItem = qtrue;
+					value += 1;
+					continue;
+				}
+			}
+
+			//calculate durability value (this should be the same as what is in jkg_shop.cpp -> JKG_Shop_InventoryItemCost, sob in duplicate code)
+			if (it->durability < it->id->maxDurability)
+			{
+				//durability damage gives us 1/4th the cost + whatever % of 1/4 is left based on durability out of maxdurability
+				int usedCost = it->id->baseCost * 0.25;
+				float depreciation = static_cast<float>(it->durability) / static_cast<float>(it->id->maxDurability);
+				usedCost = usedCost * depreciation;
+				if (it->durability > 0)
+				{
+					usedCost = (it->id->baseCost * 0.25) + usedCost;
+				}
+				else
+				{
+					usedCost = it->id->baseCost * 0.1;	//broken only nets us 10% of original cost
+				}
+
+				//must be at least 1 credit
+				if (usedCost < 1)
+					usedCost = 1;
+
+				int percent = (static_cast<float>(it->durability) / it->id->maxDurability) * 100;
+				value +=  usedCost * it->quantity;
+			}
+			else
+				value += it->id->baseCost * 0.5 * it->quantity;	//wow something normal!
 		}
 	}
 	else
-		value += 1; // they have the starting weapon
+		value += 1; // they have a single item (most likely starting weapon, but we don't care about proving that)
 
 	std::vector<int> awards; awards.reserve((sv_maxclients.integer * 0.5) + 1); // which players on the team to award
 	gentity_t *teammate;
@@ -3667,12 +3719,20 @@ void JKG_HandleDisconnectDistribution(gentity_t *ent)
 
 	// calculate team reward split
 #ifdef _DEBUG
-	Com_Printf(va("print \"Total award: %i.\n\"", value));
+	Com_Printf(va("Total award: %i.\n", value));
 #endif
 	value = (value / awards.size());												 // equally distribute reward among team
 	value = (value < jkg_teamKillBonus.integer) ? jkg_teamKillBonus.integer : value; // give em a minimum, even if the player was homeless
+
 	if (awards.size() == 1)															 // if only one player, they get 50%
 		value = value * 0.5;
+
+	if (value > jkg_startingCredits.integer * 2)
+		value = jkg_startingCredits.integer * 2;
+
+#ifdef _DEBUG
+	Com_Printf(va("Adjusted Value: %i\n", value));
+#endif
 
 	// if we're on the disconnected player's team, award us
 	for (int i : awards)
@@ -3687,7 +3747,7 @@ void JKG_HandleDisconnectDistribution(gentity_t *ent)
 		}
 	}
 #ifdef _DEBUG
-	Com_Printf(va("print \"Team Size=%i, Distrubted Payment Value=%i.\n\"", awards.size(), value));
+	Com_Printf(va("Team Size=%i, Final Distributed Payment Amounts=%i.\n\n", awards.size(), value));
 #endif
 
 }

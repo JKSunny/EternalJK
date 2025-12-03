@@ -468,6 +468,7 @@ void JKG_Shop_InventoryItemCost(itemDef_t* item, int nOwnerDrawID) {
 	else 
 	{
 		//if there's durability damage its reduced further
+		//if you change below code also change JKG_HandleDisconnectDistribution() in g_client.cpp, or fix it with a single unified function
 		if (pItem->durability < pItem->id->maxDurability)
 		{
 			//durability damage gives us 1/4th the cost + whatever % of 1/4 is left based on durability out of maxdurability
