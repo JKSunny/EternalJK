@@ -2644,6 +2644,9 @@ tryTorso:
 
 /*
 ===========
+JKG_CalcPassiveIncome
+JKG_CalcUnderdogIncome
+
 Both CaclPassiveIncome & 
 CalcUnderdogIncome are 
 used by ClientSpawn to
@@ -3609,7 +3612,7 @@ void JKG_HandleDisconnectDistribution(gentity_t *ent)
 	int value = 0;									  // value of dead player's assets
 	int teamToReward = ent->client->sess.sessionTeam; // get disconnect guy's team
 
-	trap->SendServerCommand(-1, va("chat 100 \"%s^7's disconnected, distributing their estate.\"", ent->client->pers.netname));
+	Com_Printf(va("%s^7's disconnected, distributing their estate.\"", ent->client->pers.netname));
 
 	//not a teamplayer? you're out!
 	if(teamToReward < 1)
@@ -3618,10 +3621,10 @@ void JKG_HandleDisconnectDistribution(gentity_t *ent)
 	// add up their raw credits and subtract handouts
 	if (ent->client->ps.credits > static_cast<unsigned int>(jkg_startingCredits.integer))
 	{
-		int delta = ent->client->pers.enterTime - level.startTime; 		//when did they join the delta between teamjoin and match start
+		int delta = ent->client->pers.enterTime - level.startTime; 		//time between teamjoin and match start
 		value = ent->client->ps.credits - jkg_startingCredits.integer;	
-		value =- JKG_CalcPassiveIncome(ent->client, delta);	
-		value =- JKG_CalcUnderdogIncome(ent->client, delta);			
+		value -= JKG_CalcPassiveIncome(ent->client, delta);	
+		value -= JKG_CalcUnderdogIncome(ent->client, delta);			
 
 		if (value < 0)
 		{
@@ -3647,7 +3650,7 @@ void JKG_HandleDisconnectDistribution(gentity_t *ent)
 	for (int i = 0; i < sv_maxclients.integer; i++)
 	{
 		teammate = &g_entities[i];
-		if (teammate == nullptr || teammate->client == nullptr || !teammate->inuse) // don't reward spectators, nonclients, etc
+		if (!teammate|| !teammate->client || !teammate->inuse || teammate == ent) // don't reward spectators, nonclients, the leaver, etc
 			continue;
 
 		if (teammate->client->sess.sessionTeam == teamToReward)
@@ -3658,14 +3661,15 @@ void JKG_HandleDisconnectDistribution(gentity_t *ent)
 
 	if (awards.size() < 1)
 	{
-		//trap->SendServerCommand(-1, "chat 100 \"Nobody to reward.\"");	//dbug
+		Com_Printf(S_COLOR_YELLOW "Nobody to reward.\n");
 		return;
 	}
 
 	// calculate team reward split
-	trap->SendServerCommand(-1, va("chat 100 \"Total award: %i.\"", value)); //dbug
+#ifdef _DEBUG
+	Com_Printf(va("print \"Total award: %i.\n\"", value));
+#endif
 	value = (value / awards.size());												 // equally distribute reward among team
-	trap->SendServerCommand(-1, va("chat 100 \"Team Size=%i, value=%i.\"", awards.size(), value));	//dbug
 	value = (value < jkg_teamKillBonus.integer) ? jkg_teamKillBonus.integer : value; // give em a minimum, even if the player was homeless
 	if (awards.size() == 1)															 // if only one player, they get 50%
 		value = value * 0.5;
@@ -3676,12 +3680,16 @@ void JKG_HandleDisconnectDistribution(gentity_t *ent)
 		teammate = &g_entities[i];
 		if (teammate->client->sess.sessionTeam == teamToReward)
 		{
-			trap->SendServerCommand(teammate->s.number, va("print \"Distributing %s" S_COLOR_WHITE "'s networth: received +%i Credits from their estate.\"", ent->client->pers.netname, value));
+			trap->SendServerCommand(teammate->s.number, va("print \"Distributing %s" S_COLOR_WHITE "'s networth. Received +%i Credits from their estate.\n\"", ent->client->pers.netname, value));
 			teammate->client->ps.credits += value;
 			trap->SendServerCommand(teammate->s.number, va("notify 1 \"Payment Received: +%i Credits\"", value));
 			G_PreDefSound(teammate->r.currentOrigin, PDSOUND_TRADE);
 		}
 	}
+#ifdef _DEBUG
+	Com_Printf(va("print \"Team Size=%i, Distrubted Payment Value=%i.\n\"", awards.size(), value));
+#endif
+
 }
 
 /*
