@@ -3634,7 +3634,7 @@ void JKG_HandleDisconnectDistribution(gentity_t *ent)
 	if (value < 0) value = 0; //no negative values
 
 	// add up their inventory values...then half it
-	if (ent->inventory->size() > 1)
+	if (ent->inventory->size() > 0)
 	{
 		//for checking if they have starting weapon in inventory
 		qboolean haveItem = qfalse;
@@ -3690,7 +3690,7 @@ void JKG_HandleDisconnectDistribution(gentity_t *ent)
 		}
 	}
 	else
-		equipment_value += 1; // they have a single item (most likely starting weapon, but we don't care about proving that)
+		equipment_value += 1; // they poor
 
 	if (equipment_value < 1) equipment_value = 1;
 
