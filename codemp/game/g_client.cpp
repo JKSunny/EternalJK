@@ -3614,32 +3614,28 @@ amongst their team.
 */
 void JKG_HandleDisconnectDistribution(gentity_t *ent)
 {
-	int value = 0;									  // value of dead player's assets
 	int teamToReward = ent->client->sess.sessionTeam; // get disconnect guy's team
-
 	Com_Printf(va("%s^7 disconnected, distributing their estate.\n", ent->client->pers.netname));
 
 	//not a teamplayer? you're out!
 	if(teamToReward < 1)
 		return;
 
-	// add up their raw credits and subtract handouts
-	if (ent->client->ps.credits > static_cast<unsigned int>(jkg_startingCredits.integer))
-	{
-		int delta = ent->client->pers.enterTime - level.startTime; 		//time between teamjoin and match start
-		value = ent->client->ps.credits - jkg_startingCredits.integer;	
-		value -= JKG_CalcPassiveIncome(ent->client, delta);
-		value -= JKG_CalcUnderdogIncome(ent->client, delta);			
-		if (value < 0)
-		{
-			value = 0;
-		}
-	}
+	int value = 0;				// value of dead player's assets
+	int equipment_value = 0;	//how much our equipment is worth
+	int expected_income = 0;	//how much we expect a player to be worth
+
+	// calculate their expected income
+	int delta = ent->client->pers.enterTime - level.startTime; 		//time between teamjoin and match start
+	expected_income = jkg_startingCredits.integer;
+	expected_income += JKG_CalcPassiveIncome(ent->client, delta);
+	expected_income += JKG_CalcUnderdogIncome(ent->client, delta);
+	value = ent->client->ps.credits;
+	if (value < 0) value = 0; //no negative values
 
 	// add up their inventory values...then half it
 	if (ent->inventory->size() > 1)
 	{
-
 		//for checking if they have starting weapon in inventory
 		qboolean haveItem = qfalse;
 		weaponData_t* weapon = nullptr;
@@ -3661,7 +3657,7 @@ void JKG_HandleDisconnectDistribution(gentity_t *ent)
 				if (it->id->itemID == itemID) 
 				{
 					haveItem = qtrue;
-					value += 1;
+					equipment_value += 1;
 					continue;
 				}
 			}
@@ -3687,15 +3683,27 @@ void JKG_HandleDisconnectDistribution(gentity_t *ent)
 					usedCost = 1;
 
 				int percent = (static_cast<float>(it->durability) / it->id->maxDurability) * 100;
-				value +=  usedCost * it->quantity;
+				equipment_value +=  usedCost * it->quantity;
 			}
 			else
-				value += it->id->baseCost * 0.5 * it->quantity;	//wow something normal!
+				equipment_value += it->id->baseCost * 0.5 * it->quantity;	//wow something normal!
 		}
 	}
 	else
-		value += 1; // they have a single item (most likely starting weapon, but we don't care about proving that)
+		equipment_value += 1; // they have a single item (most likely starting weapon, but we don't care about proving that)
 
+	if (equipment_value < 1) equipment_value = 1;
+
+	//now that we've checked our inventory and credits, subtract expected income, the remainder is our actual value
+	value += equipment_value;
+	value -= expected_income;
+	if (value < 2) value = 1; //we're always worth at least a single credit
+
+#ifdef _DEBUG
+	Com_Printf(va("%s's total networth: %i.\n", ent->client->pers.netname, value));
+#endif
+
+	//distribute
 	std::vector<int> awards; awards.reserve((sv_maxclients.integer * 0.5) + 1); // which players on the team to award
 	gentity_t *teammate;
 
@@ -3718,15 +3726,14 @@ void JKG_HandleDisconnectDistribution(gentity_t *ent)
 	}
 
 	// calculate team reward split
-#ifdef _DEBUG
-	Com_Printf(va("Total award: %i.\n", value));
-#endif
-	value = (value / awards.size());												 // equally distribute reward among team
+	value = (value / awards.size());
 	value = (value < jkg_teamKillBonus.integer) ? jkg_teamKillBonus.integer : value; // give em a minimum, even if the player was homeless
 
-	if (awards.size() == 1)															 // if only one player, they get 50%
+	// if only one player, they get 50%
+	if (awards.size() == 1)															 
 		value = value * 0.5;
 
+	//maximum award possible
 	if (value > jkg_startingCredits.integer * 2)
 		value = jkg_startingCredits.integer * 2;
 
@@ -3780,7 +3787,7 @@ void ClientDisconnect( int clientNum ) {
 		return;
 	}
 
-	//in TFFA & CTF we want to be nice to their team, so we'll distribute 50% of their earned credits
+	//in TFFA & CTF we want to be nice to their team, so we'll distribute their earned credits
 	if(jkg_disconnectBonus.integer && g_gametype.integer >= GT_TEAM)
 	{
 		JKG_HandleDisconnectDistribution(ent);
