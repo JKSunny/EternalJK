@@ -189,7 +189,7 @@ void G_LogWeaponOutput(void)
 #ifdef LOGGING_WEAPONS
 	int i, j;
 	fileHandle_t weaponfile;
-	char string[1024];
+	char string[MAX_STRING_CHARS];
 
 	int totalpickups[WP_NUM_WEAPONS];
 	int totaltime[WP_NUM_WEAPONS];
@@ -198,8 +198,8 @@ void G_LogWeaponOutput(void)
 	int totalkills = 0;
 	int totalshots[WP_NUM_WEAPONS];
 	int percharacter[WP_NUM_WEAPONS];
-	char info[1024];
-	char mapname[128];
+	char info[MAX_INFO_STRING];
+	char mapname[MAX_QPATH];
 	char *nameptr, *unknownname = "<Unknown>";
 
 	if (!g_statLog.integer)

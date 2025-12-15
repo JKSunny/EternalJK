@@ -1902,19 +1902,8 @@ void G_SetTauntAnim( gentity_t *ent, int taunt )
 	}
 }
 
-/*
-==============
-ClientThink
 
-This will be called once for each client frame, which will
-usually be a couple times for each server frame on fast clients.
-
-If "g_synchronousClients 1" is set, this will be called exactly
-once for each server frame, which makes for smooth demo recording.
-==============
-*/
 void JKG_PMTrace( trace_t *results, const vec3_t start, const vec3_t mins, const vec3_t maxs, const vec3_t end, int passEntityNum, int contentmask );
-
 
 gentity_t *currentPMEnt = 0;
 // Should only be called from within Pmove, if the weapon is changed
@@ -1974,6 +1963,17 @@ void G_PM_SwitchWeaponFiringMode(playerState_t *ps, int newweapon, int newvariat
 	ent->client->ps.firingMode = ent->client->firingModes[ BG_GetWeaponIndexFromClass(newweapon, newvariation) ];
 }
 
+/*
+==============
+ClientThink
+
+This will be called once for each client frame, which will
+usually be a couple times for each server frame on fast clients.
+
+If "g_synchronousClients 1" is set, this will be called exactly
+once for each server frame, which makes for smooth demo recording.
+==============
+*/
 gentity_t *WP_FireGenericGrenade( gentity_t *ent, int firemode, vec3_t origin, vec3_t dir );
 void ClientThink_real( gentity_t *ent ) {
 	gclient_t	*client;
@@ -3457,7 +3457,7 @@ void ClientThink_real( gentity_t *ent ) {
 				//--futuza to do in phase 2: 
 				/* leave a corpse behind, that corpse will eventually decay, but should last for a few mins
 				   should be able to loot corpses for dropped items, items will be removed from players inventory
-				   based on drop rules, unless they have high notiriety only a few items are dropped
+				   based on drop rules.  Unless they have high notiriety only a few items are dropped
 				   allow players in the death cam to be seen by players using force sense as 'ghosts'
 				   allow them to be revived by revive items or force powers during the deathcam
 

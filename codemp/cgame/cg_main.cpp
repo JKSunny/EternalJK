@@ -2570,6 +2570,7 @@ Ghoul2 Insert End
 	cg.ourTradeItems = new std::vector<itemInstance_t>();
 	cg.otherTradeItems = new std::vector<itemInstance_t>();
 
+	CG_LoadingString ("Items");
 	JKG_LoadShields();
 	JKG_LoadArmor();
 	BG_InitItems();

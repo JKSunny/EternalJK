@@ -1157,7 +1157,7 @@ void Cmd_BuyItem_f(gentity_t *ent)
 	//no room in inventory to add
 	if (ent->inventory->size() >= MAX_INVENTORY_ITEMS)
 	{
-		trap->SendServerCommand(ent - g_entities, "print \"^1Inventory full! ^7You do not have neough room to purchase that item.\n\"");
+		trap->SendServerCommand(ent - g_entities, "print \"^1Inventory full! ^7You do not have enough room to purchase that item.\n\"");
 		trap->SendServerCommand(ent - g_entities, va("notify 1 \"Inventory full!\""));
 		return;
 	}

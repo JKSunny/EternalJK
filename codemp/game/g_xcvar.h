@@ -134,7 +134,7 @@ XCVAR_DEF( g_saberRealisticCombat,		"0",			NULL,				CVAR_CHEAT,										qfalse 
 XCVAR_DEF( g_saberRestrictForce,		"0",			NULL,				CVAR_ARCHIVE,									qfalse )
 XCVAR_DEF( g_saberTraceSaberFirst,		"0",			NULL,				CVAR_ARCHIVE,									qtrue )
 XCVAR_DEF( g_saberWallDamageScale,		"0.4",			NULL,				CVAR_NONE,										qfalse )
-XCVAR_DEF( g_securityLog,				"1",			NULL,				CVAR_ARCHIVE,									qfalse )
+XCVAR_DEF( g_securityLog,				"1",			NULL,				CVAR_ARCHIVE,									qfalse )	//1 == append to end of file, 2 == append, but wait until file write finishes
 XCVAR_DEF( g_showDuelHealths,			"0",			NULL,				CVAR_SERVERINFO,								qfalse )
 XCVAR_DEF( g_siegeRespawn,				"20",			NULL,				CVAR_ARCHIVE,									qtrue )
 XCVAR_DEF( g_siegeTeam1,				"none",			NULL,				CVAR_ARCHIVE|CVAR_SERVERINFO,					qfalse )
@@ -170,12 +170,12 @@ XCVAR_DEF( sv_maxclients,				"8",			NULL,				CVAR_SERVERINFO|CVAR_LATCH|CVAR_ARC
 XCVAR_DEF( timelimit,					"45",			NULL,				CVAR_SERVERINFO|CVAR_ARCHIVE|CVAR_NORESTART,	qtrue )
 
 // Jedi Knight Galaxies
-XCVAR_DEF( jkg_shop_replenish_time,		"300",			NULL,				CVAR_ARCHIVE,									true )
-XCVAR_DEF( jkg_startingCredits,			"500",			NULL,				CVAR_ARCHIVE|CVAR_LATCH|CVAR_SERVERINFO,		false )
-XCVAR_DEF( jkg_bounty,					"225",			NULL,				CVAR_ARCHIVE,									true )
+XCVAR_DEF( jkg_shop_replenish_time,		"300",			NULL,				CVAR_ARCHIVE,									true )	//how many secs till shops refresh
+XCVAR_DEF( jkg_startingCredits,			"500",			NULL,				CVAR_ARCHIVE|CVAR_LATCH|CVAR_SERVERINFO,		false )	//how many credits each player starts a match with
+XCVAR_DEF( jkg_bounty,					"225",			NULL,				CVAR_ARCHIVE,									true )	//how many credits are rewarded to players with a bounty (increases per kill)
 XCVAR_DEF( jkg_killsPerBounty,			"3",			NULL,				CVAR_ARCHIVE,									true )	//how many kills are required before a bounty is placed on the killer
-XCVAR_DEF( jkg_maxKillStreakBounty,		"7",			NULL,				CVAR_ARCHIVE,									true )	//the max number of killstreaks
-XCVAR_DEF( jkg_creditsPerKill,			"150",			NULL,				CVAR_ARCHIVE,									true )
+XCVAR_DEF( jkg_maxKillStreakBounty,		"7",			NULL,				CVAR_ARCHIVE,									true )	//the max number of killstreaks (bounty reward maxes out)
+XCVAR_DEF( jkg_creditsPerKill,			"150",			NULL,				CVAR_ARCHIVE,									true )	//how many credits each kill earns
 XCVAR_DEF( jkg_passiveCreditsAmount,	"15",			NULL,				CVAR_ARCHIVE|CVAR_SERVERINFO|CVAR_LATCH,		true )	//0 >= disables, default: 15
 XCVAR_DEF( jkg_passiveCreditsRate,		"30000",		NULL,				CVAR_ARCHIVE|CVAR_SERVERINFO|CVAR_LATCH,		true )	//default: 30000
 XCVAR_DEF( jkg_passiveCreditsWait,		"60000",		NULL,				CVAR_ARCHIVE|CVAR_SERVERINFO|CVAR_LATCH,		true )	//how long to wait before starting passiveCredits, default: 60000 (60 seconds)
@@ -185,23 +185,23 @@ XCVAR_DEF( jkg_disconnectBonus,			"1",			NULL,				CVAR_ARCHIVE,									true )	/
 XCVAR_DEF( jkg_teamKillBonus,			"10",			NULL,				CVAR_ARCHIVE,									true )	//0 >= disables, default: 10
 XCVAR_DEF( jkg_payTime,					"5",			NULL,				CVAR_ARCHIVE,									true )  //0 >= disables /pay cmd, default: 5 (mins) - how long to wait before you can pay other players
 XCVAR_DEF( jkg_minAssistAwardRatio,		"25",			NULL,				CVAR_ARCHIVE,									true )	//value is % out of 100, Max allowed value is 50
-XCVAR_DEF( jkg_creditsPerTeamCapture,	"125",			NULL,				CVAR_ARCHIVE,									true )
-XCVAR_DEF( jkg_creditsPerCapture,		"300",			NULL,				CVAR_ARCHIVE,									true )
-XCVAR_DEF( jkg_creditsPerReturn,		"75",			NULL,				CVAR_ARCHIVE,									true )
+XCVAR_DEF( jkg_creditsPerTeamCapture,	"125",			NULL,				CVAR_ARCHIVE,									true )	//how many credits each player on a team gets when they capture a flag
+XCVAR_DEF( jkg_creditsPerCapture,		"300",			NULL,				CVAR_ARCHIVE,									true )	//how many credits the player who captured the flag gets
+XCVAR_DEF( jkg_creditsPerReturn,		"75",			NULL,				CVAR_ARCHIVE,									true )	//how many credits the player who safely returned their own team's flag gets
 XCVAR_DEF( jkg_buyAnnounce,				"1",			NULL,				CVAR_ARCHIVE,									true )	//0 = don't announce, 1 = announce to same team, 2+ = announce to all
-XCVAR_DEF( jkg_buyAnnounceThreshold,	"500",			NULL,				CVAR_ARCHIVE,									false )
+XCVAR_DEF( jkg_buyAnnounceThreshold,	"500",			NULL,				CVAR_ARCHIVE,									false )	//how many credits does an item's value need to be worth to announce?
 XCVAR_DEF( jkg_announceShopRefresh,		"1",			NULL,				CVAR_ARCHIVE,									false )	//have npc vendors announce when their treasure classes update?
 XCVAR_DEF( g_listEntity,				"0",			NULL,				CVAR_CHEAT,										false )
-XCVAR_DEF( jkg_arearestrictions,		"0",			NULL,				CVAR_ARCHIVE,									true )
+XCVAR_DEF( jkg_arearestrictions,		"0",			NULL,				CVAR_ARCHIVE,									true )	//disable certain spawns/locations
 XCVAR_DEF( jkg_deathTimer,				"1",			NULL,				CVAR_ARCHIVE,									true )
 XCVAR_DEF( jkg_antifakeplayer,			"0",			NULL,				CVAR_ARCHIVE,									false )
 XCVAR_DEF( jkg_chatFloodProtect,		"1",			NULL,				CVAR_ARCHIVE,									false )
 XCVAR_DEF( jkg_startingGun,				"pistol_DL-18",	NULL,				CVAR_ARCHIVE|CVAR_SERVERINFO,					true )
 XCVAR_DEF( jkg_startingSaberDuel,		"saber_kyle",	NULL,				CVAR_ARCHIVE|CVAR_SERVERINFO,					true )
 XCVAR_DEF( g_banfile,					"",				NULL,				CVAR_ARCHIVE,									false )
-XCVAR_DEF( jkg_healthRegen,				"1",			NULL,				CVAR_ARCHIVE,									true )
+XCVAR_DEF( jkg_healthRegen,				"1",			NULL,				CVAR_ARCHIVE,									true )	//can players regen health over time?
 XCVAR_DEF( jkg_healthRegenDelay,		"25000",		NULL,				CVAR_ARCHIVE,									true )	//after 25 secs no dmg, start regen
-XCVAR_DEF( jkg_healthRegenSpeed,		"1500",			NULL,				CVAR_ARCHIVE,									true )  //every 1.5 secs, regen a health
+XCVAR_DEF( jkg_healthRegenSpeed,		"1500",			NULL,				CVAR_ARCHIVE,									true )  //rate of regen (every 1.5 secs, regen a health)
 XCVAR_DEF( jkg_safeTreasureClasses,		"0",			NULL,				CVAR_ARCHIVE|CVAR_LATCH,						false )	//temporarily defaults to off until we can fix the treasureclass checker
 XCVAR_DEF( jkg_minVendors,				"2",			NULL,				CVAR_ARCHIVE|CVAR_LATCH|CVAR_SERVERINFO,		true)	//0 == don't spawn extra vendors, 1 == make sure we have at least 1 vendor, 2 == make sure we have at least 2, etc.
 XCVAR_DEF( jkg_removenpcbody,			"0",			NULL,				CVAR_ARCHIVE|CVAR_LATCH|CVAR_SERVERINFO,		true )

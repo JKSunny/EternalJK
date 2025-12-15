@@ -1302,7 +1302,7 @@ local function ChangeMap(ply, argc, argv)
 
 		--SystemReply(ply, "Attempting to load map...")
 		
-
+		--check for <mapname> == vstr definition, and if so load map cycle instead of an individual map
 
 		--get a list of all maps on the server in an array
 		--local maplist = ply:GetMapList() --maplist, cmd currently doesn't work
