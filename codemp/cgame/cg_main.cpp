@@ -1168,7 +1168,7 @@ static void CG_RegisterGraphics( void ) {
 	CG_LoadingString( cgs.mapname );
 
 	cg.showMapLoadProgress = 1;
-	trap->R_LoadWorld( cgs.mapname );		// The hooks in here will update the progress of the BSP loading
+	trap->R_LoadWorld( cgs.mapname );		// The hooks in here will update the progress of the BSP loading.  TODO: replace with non-hooks
 	cg.showMapLoadProgress = 0;
 
 	// precache status bar pics
@@ -2493,14 +2493,13 @@ Ghoul2 Insert Start
 
 	JKG_LoadMeansOfDamage();
 	JKG_InitializeBuffs();
-	
+	JKG_InitializeConstants();
+
 	// Yum, ammo
 	BG_InitializeAmmo();
 	
 	/* Initialize the weapon data table */
 	BG_InitializeWeapons();
-
-	JKG_InitializeConstants();
 
 	/* Here be crystals */
 	JKG_InitializeSaberCrystalData();
@@ -2570,7 +2569,7 @@ Ghoul2 Insert End
 	cg.ourTradeItems = new std::vector<itemInstance_t>();
 	cg.otherTradeItems = new std::vector<itemInstance_t>();
 
-	CG_LoadingString ("Items");
+	CG_LoadingString ("Item data");
 	JKG_LoadShields();
 	JKG_LoadArmor();
 	BG_InitItems();
@@ -2657,10 +2656,10 @@ Ghoul2 Insert End
 	CG_TrueViewInit();
 	//[/TrueView]
 
-	//CG_LoadingString ( "Sounds" );
+	CG_LoadingString ( "Sounds" );
 	CG_RegisterSounds();
 
-	//CG_LoadingString( "Graphics" );
+	CG_LoadingString( "Graphics" );
 	if(cgs.gametype >= GT_TEAM)
 	{
 		// Gang Wars stuff
