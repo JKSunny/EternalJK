@@ -20,6 +20,9 @@ sortedRanks = { }
 permissions = { }
 sortedpermissions = { }
 local numPermissions = 0
+local minPassLength = 6
+local minUserLength = 3
+local maxUserLength = 36
 
 
 --[[ ------------------------------------------------
@@ -83,6 +86,7 @@ local function InitPermissions( )
 	AddPermission( "can-rank-deletepermission", 	0, "admrank deletepermission", 	"^1" )
 	AddPermission( "can-alter-rank", 		0, "admalter rank", 		"^6" )
 	AddPermission( "can-alter-password", 	0, "admalter password", 	"^6" )
+	AddPermission( "can-alter-username",	0, "admalter username",		"^6" )
 	AddPermission( "can-status", 			1, "admstatus", 			"^2" )
 	AddPermission( "can-say", 				0, "admsay", 				"^5" )
 	AddPermission( "can-tell", 				0, "admtell", 				"^5" )
@@ -527,7 +531,7 @@ local function Login(ply, argc, argv)
 	if ply.isLoggedIn then
 		-- We are logged in, so no need to re-log us
 		local account = ply:GetAccount()
-		SystemReply(ply, "^4You are already logged in as ^7" .. account .. "")
+		SystemReply(ply, "^5You are already logged in as ^7" .. account .. "")
 		return
 	end
 	if accounts[argv[1]] ~= nil then
@@ -577,9 +581,13 @@ local function ChangePassword(ply, argc, argv)
 					SystemReply(ply, "Your old password did not match correctly. Please try again.")
 				else
 					-- kk, change.
+					if (string.len(argv[2]) < minPassLength) then
+						SystemReply(ply, "^1Password needs to be at least " .. tostring(minPassLength) .. " characters in length.")
+						return
+					end
 					account["password"] = argv[2]
 					UpdateAccount( account, account["username"] .. " changed their password" )
-					SystemReply(ply, "^4Password changed.")
+					SystemReply(ply, "^5Password changed.")
 				end
 			end
 	else
@@ -595,7 +603,7 @@ local function Register(ply, argc, argv)
 	if ply.isLoggedIn then
 		-- We are logged in, so no need to re-log us
 		local account = ply:GetAccount()
-		SystemReply(ply, "^4You are already logged in as ^7" .. account .. ".")
+		SystemReply(ply, "^5You are already logged in as ^7" .. account .. ".")
 		return
 	end
 	
@@ -608,32 +616,32 @@ local function Register(ply, argc, argv)
 		end
 			
 		len = string.len(username)
-		if (len < 3) then
-			SystemReply(ply, "^1Username needs to be at least 3 characters in length.")
+		if (len < minUserLength) then
+			SystemReply(ply, "^1Username needs to be at least " .. tostring(minUserLength) .. "characters in length.")
 			return
 		end
 
-		if (len > 36) then
-			SystemReply(ply, "^1Username needs to be no more than 36 characters in length.")
+		if (len > maxUserLength) then
+			SystemReply(ply, "^1Username needs to be no more than " .. tostring(maxUserLength) .. " characters in length.")
 			return 
 		end
 
 		len = string.len(password)
-		if (len < 6) then
-			SystemReply(ply, "^1Password needs to be at least 6 characters in length.")
+		if (len < minPassLength) then
+			SystemReply(ply, "^1Password needs to be at least " .. tostring(minPassLength) .. " characters in length.")
 			return
 		end
 
-		-- Set the username to lowercase so it is case INsensitve
-		lowercase_username = string.lower(username)
-
+		--okay ready to proceed
+		username = string.lower(username) -- Set the username to lowercase so it is case INsensitve
 		local newaccount = {}
-		newaccount["username"] = argv[1]
-		newaccount["password"] = argv[2]
+		newaccount["username"] = username
+		newaccount["password"] = password
 		newaccount["rank"] = "Client"
 		AddAccount( newaccount )
-		SystemReply(ply, "^4Account created! You can now /login.")
-		-- try automatic login here? wasn't working when I tried it.
+		SystemReply(ply, "^5Account created! Username: ^7" .. newaccount["username"] .. "^5 Rank: ^7" .. newaccount["rank"])
+		Login(ply, 3, argv) --autosign in
+		SystemReply(ply, "^5Welcome " .. username .. "! When you are done, use /logout.  To sign in again use /login.")
 	end
 end
 
@@ -642,7 +650,7 @@ local function Kick(ply, argc, argv)
 	local k,v
 	if ply.isLoggedIn then
 		local rank = GetRank(ply)
-		if rank["can-kick"] == true then
+		if rank ~= nil and rank["can-kick"] == true then
 			if argc < 2 then
 				SystemReply(ply, "^1Please specify a player to kick.")
 				return
@@ -676,7 +684,7 @@ local function ChangeDetails(ply, argc, argv)
 		if rank["can-changedetails"] == true then
 			-- Change our account details then?
 			if argc < 2 then
-				SystemReply(ply, "Please specify which details you'd like to change: password.")
+				SystemReply(ply, "Please specify which details you'd like to change: password, username")
 			elseif argv[1] == "password" or argv[1] == "Password" then
 				-- We want to change the password on this account.
 				-- Syntax:
@@ -692,14 +700,61 @@ local function ChangeDetails(ply, argc, argv)
 						-- kk, change.
 						account["password"] = argv[3]
 						UpdateAccount( account, account["username"] .. " changed their password" )
-						SystemReply(ply, "^4Password changed.")
+						SystemReply(ply, "^5Password changed.")
 					end
 				end
+			elseif argv[1] == "username" or argv[1] == "Username" or argv[1] == "user" then
+				--Syntax: /admchangedetails username <newusername>
+				if argc ~= 3 then
+					SystemReply(ply, "^3Syntax: /admchangedetails username <newusername>")
+				else
+					local accountname = ply:GetAccount()
+					local account = accounts[accountname]
+					if account["username"] == argv[2] then
+						SystemReply(ply, "^3The new username specified is the same as the previous one. Nothing to change.")
+						return
+					end
+
+					local len = 0
+					local user = string.lower(argv[2])
+					len = string.len(user)
+					if (len < minUserLength) then
+						SystemReply(ply, "^1Username needs to be at least " .. tostring(minUserLength) .. " characters in length.")
+						return
+					end
+
+					if (len > maxUserLength) then
+						SystemReply(ply, "^1Username needs to be no more than " .. tostring(maxUserLength) .. " characters in length.")
+						return
+					end
+
+					-- proceed: create a copy of the user
+					local pass = account["password"]
+					local newaccount = {}
+					newaccount["username"] = user
+					newaccount["password"] = pass
+					newaccount["rank"] = account["rank"]
+					AddAccount( newaccount )
+					
+					UpdateAccount(account, account["username"] .. " changed their username to " .. user)
+					UpdateAccount(newaccount, newaccount["username"] .. " changed their username from " .. account["username"])
+
+					--now logout and delete original
+					SystemReply(ply, "^5Switching accounts...")
+					Logout(ply, 1, "")
+					DeleteAccount(account)
+					local cmd = {}
+					cmd[0] = "login"
+					cmd[1] = user
+					cmd[2] = pass
+					Login(ply, 3, cmd)
+					SystemReply(ply, "^5Username changed.")
+				end
 			else
-				SystemReply(ply, "Invalid details type specified. Valid details: password")
+				SystemReply(ply, "Invalid details type specified. Valid details: password, username")
 			end
 		else
-			SystemReply(ply, "^4You don't have permission to perform this action.")
+			SystemReply(ply, "^5You don't have permission to perform this action.")
 		end
 	else
 		SystemReply(ply, "^1You are not logged in.")
@@ -739,7 +794,7 @@ local function CreateAccount(ply, argc, argv)
 					newaccount["rank"] = argv[3]
 					if ranks[newaccount["rank"]] ~= nil then
 						AddAccount( newaccount )
-						SystemReply(ply, "^4Account added.")
+						SystemReply(ply, "^5Account added.")
 					else
 						SystemReply(ply, "^3The account you added does not have a valid rank. Please add the rank and try again." )
 					end
@@ -776,7 +831,7 @@ local function RemoveAccount(ply, argc, argv)
 			return
 		else
 			if argc ~= 2 then
-				SystemReply(ply, "^3Syntax: /admdeleteaccount <username>")
+				SystemReply(ply, "^3Syntax: /admremoveaccount <username>")
 				return
 			end
 			
@@ -786,7 +841,7 @@ local function RemoveAccount(ply, argc, argv)
 				if ourAccount["username"] ~= argv[1] then
 					LogoutAccount(desiredaccount)
 					DeleteAccount(desiredaccount)
-					SystemReply(ply, "^4Account deleted.")
+					SystemReply(ply, "^5Account deleted.")
 				else
 					SystemReply(ply, "^1You cannot delete your own account.")
 				end
@@ -811,7 +866,7 @@ local function List(ply, argc, argv)
 				else
 					local k = 0
 					local printstring = ""
-					SystemReply(ply, "^4Results printed to console.")
+					SystemReply(ply, "^5Results printed to console.")
 					while players.GetByID(k) ~= nil do
 						local plysel = players.GetByID(k)
 						if plysel:IsValid() then
@@ -834,7 +889,7 @@ local function List(ply, argc, argv)
 				if rank["can-list-admins"] ~= true then
 					SystemReply(ply, "^1You do not have permission to perform this action.")
 				else
-					SystemReply(ply, "^4Results printed to console.")
+					SystemReply(ply, "^5Results printed to console.")
 					ply:SendPrint("^2All admin accounts:")
 					local k
 					local printstring = ""
@@ -847,7 +902,7 @@ local function List(ply, argc, argv)
 				if rank["can-list-ranks"] ~= true then
 					SystemReply(ply, "^1You do not have permission to perform this action.")
 				else
-					SystemReply(ply, "^4Results printed to console.")
+					SystemReply(ply, "^5Results printed to console.")
 					ply:SendPrint("^2All ranks:")
 					local k
 					local printstring = ""
@@ -860,7 +915,7 @@ local function List(ply, argc, argv)
 				if rank["can-list-powers"] ~= true then
 					SystemReply(ply, "^1You do not have permission to perform this action.")
 				else
-					SystemReply(ply, "^4Results printed to console.")
+					SystemReply(ply, "^5Results printed to console.")
 					ply:SendPrint("^2Your powers:")
 					
 					ply:SendPrint(AdminHelp_ListPowers( rank, false, false ))
@@ -869,7 +924,7 @@ local function List(ply, argc, argv)
 				if rank["can-list-permissions"] ~= true then	
 					SystemReply(ply, "^1You do not have permission to perform this action.")
 				else
-					SystemReply(ply, "^4Results printed to console.")
+					SystemReply(ply, "^5Results printed to console.")
 					ply:SendPrint("^2All permissions:")
 
 					ply:SendPrint(AdminHelp_ListPowers( rank, true, true ))
@@ -899,7 +954,7 @@ local function Rank(ply, argc, argv)
 					if inspectedrank == nil then
 						SystemReply(ply, "^1'" .. argv[2] .. "' is not a valid rank.")
 					else
-						SystemReply(ply, "^4Rank permissions printed to console.")
+						SystemReply(ply, "^5Rank permissions printed to console.")
 						ply:SendPrint("^5This rank (" .. argv[2] .. ") can...")
 						
 						ply:SendPrint(AdminHelp_ListPowers( inspectedrank, false, false ))
@@ -918,7 +973,7 @@ local function Rank(ply, argc, argv)
 					local blankrank = {}
 					blankrank["name"] = argv[2]
 					AddRank( blankrank )
-					SystemReply(ply, "^4Rank successfully added.")
+					SystemReply(ply, "^5Rank successfully added.")
 				end
 			elseif argv[1] == "delete" then
 				if argc < 3 then
@@ -946,7 +1001,7 @@ local function Rank(ply, argc, argv)
 					-- K, guess it's okay to kill the rank, now...
 					-- You will be missed, rank.
 					DeleteRank( rank )
-					SystemReply(ply, "^4Rank deleted.")
+					SystemReply(ply, "^5Rank deleted.")
 				end
 			elseif argv[1] == "addpermission" then
 				if argc < 4 then
@@ -968,7 +1023,7 @@ local function Rank(ply, argc, argv)
 
 					rank[permissionname] = true
 					UpdateRank( rank, ply:GetAccount() .. " added permission '" .. permissionname .. "' to rank " .. rank["name"])
-					SystemReply(ply, "^4Rank updated successfully.")
+					SystemReply(ply, "^5Rank updated successfully.")
 				end
 			elseif argv[1] == "deletepermission" then
 				if argc < 4 then
@@ -990,7 +1045,7 @@ local function Rank(ply, argc, argv)
 
 					rank[permissionname] = false
 					UpdateRank( rank, ply:GetAccount() .. " deleted permission '" .. permissionname .. "' from rank " .. rank["name"])
-					SystemReply(ply, "^4Rank updated successfully.")
+					SystemReply(ply, "^5Rank updated successfully.")
 				end
 			else
 				SystemReply(ply, "^3Unknown admrank mode, valid modes are: inspect, create, delete, addpermission, deletepermission")
@@ -1006,7 +1061,7 @@ local function Alter(ply, argc, argv)
 		local accountname = ply:GetAccount()
 		local rank = GetRank(ply)
 		if argc ~= 4 then
-			SystemReply(ply, "^3Syntax: /admalter <username> <rank/password> <change to..>")
+			SystemReply(ply, "^3Syntax: /admalter <username> <password/rank/username> <change to..>")
 		else
 			local alteraccount = accounts[argv[1]]
 			if alteraccount == nil then
@@ -1020,7 +1075,7 @@ local function Alter(ply, argc, argv)
 						if ranks[newrank] == nil then
 							SystemReply(ply, "^1Invalid rank.")
 						else
-							SystemReply(ply, "^4Account altered.")
+							SystemReply(ply, "^5Account altered.")
 							alteraccount["rank"] = argv[3]
 							UpdateAccount( alteraccount, accountname .. " altered " .. alteraccount["username"] .. "'s rank (changed to " .. argv[3] .. ")" )
 						end
@@ -1029,9 +1084,59 @@ local function Alter(ply, argc, argv)
 					if rank["can-alter-password"] ~= true then
 						SystemReply(ply, "^1You do not have permission to perform this action.")
 					else
-						SystemReply(ply, "^4Account altered.")
+						if (string.len(argv[3]) < minPassLength) then
+							--only warns, admins may break pass length rules
+							SystemReply(ply, "^1Warning: Chosen password is less than minimum length (" .. tostring(minPassLength) .. ").")
+						end
+						SystemReply(ply, "^5Account altered.")
 						alteraccount["password"] = argv[3]
 						UpdateAccount( alteraccount, accountname .. " altered " .. alteraccount["username"] .. "'s password" )
+					end
+				elseif argv[2] == "username" then
+					if rank["can-alter-username"] ~= true then
+						SystemReply(ply, "^1You do not have permission to perform this action.")
+					else
+						local len = 0
+						local user = string.lower(argv[3])
+						len = string.len(user)
+						if (len < minUserLength) then
+							SystemReply(ply, "^1Username needs to be at least " .. tostring(minUserLength) .. " characters in length.")
+							return
+						end
+						if (len > maxUserLength) then
+							SystemReply(ply, "^1Username needs to be no more than " .. tostring(maxUserLength) .. " characters in length.")
+							return
+						end
+						-- proceed: create a copy of the user
+
+						local olduser = alteraccount["username"]
+						--alteraccount["username"] = user  --can't just do this, or it will leave artifacts behind with multiple username's pointing to the same account
+						
+						local pass = alteraccount["password"]
+						local newaccount = {}
+						newaccount["username"] = user
+						newaccount["password"] = pass
+						newaccount["rank"] = alteraccount["rank"]
+						AddAccount( newaccount )
+						UpdateAccount(alteraccount, alteraccount["username"] .. " changed their username to " .. user)
+						UpdateAccount(newaccount, newaccount["username"] .. " changed their username from " .. alteraccount["username"])
+
+						--todo: decide if adding this to username/password/rank is a good idea and if there should be a silent update switch
+						SystemReply(ply, "^5Notifying signed in users of change.")
+						local k = 0
+						while players.GetByID(k) ~= nil do
+							local target = players.GetByID(k)
+							if target:IsValid() then
+								if target.isLoggedIn then
+									if(target:GetAccount() == olduser) then
+										SystemReply(target, "^3Your username has been changed from ^7" .. olduser .. "^3 to ^7" .. user .. "^3.")
+									end
+								end
+							end
+							k = k + 1
+						end
+						DeleteAccount(alteraccount)
+						SystemReply(ply, "^5Username changed.")
 					end
 				else
 					SystemReply(ply, "^3Invalid alter type. Valid types are rank, password.")
@@ -1050,7 +1155,7 @@ local function Status(ply, argc, argv)
 			SystemReply(ply, "^1You do not have permission to perform this action.")
 		else
 			local k = 0
-			SystemReply(ply, "^4Results printed to console.")
+			SystemReply(ply, "^5Results printed to console.")
 			ply:SendPrint("^2Status:")
 			local printstring = ""
 			while players.GetByID(k) ~= nil do
@@ -1468,8 +1573,8 @@ local function Help(ply, argc, argv)
 		SystemReply(ply, "See console for cmdlist.")
 		ply:SendPrint("Commands:")
 		printstring = "^3login ^7- allows user to sign into an account.\n^3logout ^7- signs out of the current account.\n^3changepassword ^7- change current account password.\n^3register ^7- register for a new client account.\n"
-		printstring = printstring .. "^3admkick ^7- kick a user off the server.\n^3admchangedetails ^7- edit account details.\n^3admprofile ^7- check what account you're logged in with.\n^3admnewaccount ^7- create a new account as an admin.\n"
-		printstring = printstring .. "^3admremoveaccount ^7- delete an account as an admin.\n^3admlist ^7- query for info about accounts.\n^3admrank ^7- query for permission held by a rank\n^3admalter ^7- alter an accounts rank or password.\n"
+		printstring = printstring .. "^3admkick ^7- kick a user off the server.\n^3admchangedetails ^7- edit your account details.\n^3admprofile ^7- check what account you're logged in with.\n^3admnewaccount ^7- create a new account as an admin.\n"
+		printstring = printstring .. "^3admremoveaccount ^7- delete an account as an admin.\n^3admlist ^7- query for info about accounts.\n^3admrank ^7- query for permission held by a rank\n^3admalter ^7- alter an accounts info (password/rank/username).\n"
 		printstring = printstring .. "^3admstatus ^7- list logged in users and status.\n^3admsay ^7- imitates the /say cmd for admins.\n^3admtell ^7- imitates the /tell cmd for admins.\n^3admspeak ^7- imitates the /sayglobal cmd for admins."
 		ply:SendPrint(printstring) 	 --getting too long, gotta break it up
 		printstring = "^3admannounce ^7- make a server announcement.\n^3admpuppet ^7- allows admins to masquerade messages as other users.\n^3admchangemap ^7- change the current map (not implemented).\n"
