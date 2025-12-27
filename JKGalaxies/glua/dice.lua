@@ -52,8 +52,8 @@ local function RollOneDice(ply, sides, chan, targ)
 			SystemReply(ply, "^1Invalid player specified.")
 			return
 		end
-        if targ != ply then
-            ply:SendChat("^3Dice[^6Tell^3]: ^6" .. ply:GetName() .. "^6 rolls a " .. math.floor(sides) .. "-sided dice: ^3" .. result) --send to self, if we're not the target
+        if targ ~= ply then
+            ply:SendChat("^3Dice[^6Tell -> ^7" .. targ:GetName() .. "^3]: ^6" .. ply:GetName() .. "^6 rolls a " .. math.floor(sides) .. "-sided dice: ^3" .. result) --send to self, if we're not the target
         end
         targ:SendChat("^3Dice[^6Tell^3]: ^6" .. ply:GetName() .. "^6 rolls a " .. math.floor(sides) .. "-sided dice: ^3" .. result) --send to target
     else
