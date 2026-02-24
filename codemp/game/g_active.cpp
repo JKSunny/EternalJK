@@ -1985,6 +1985,15 @@ void ClientThink_real( gentity_t *ent ) {
 	qboolean	controlledByPlayer = qfalse;
 	int i;
 
+	//I am, therefore I think.
+	if (!ent || !ent->client)
+	{
+		#ifdef _DEBUG
+			Com_Printf("ERROR: NULL ent passed to ClientThink, ignoring.\n");
+		#endif
+		return;
+	}
+
 	client = ent->client;
 	// Store the current entity for G_PM_SwitchWeaponClip
 	currentPMEnt = ent;

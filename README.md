@@ -40,9 +40,9 @@ To install, you will first need Jedi Academy installed. If you don't already own
 
 There are a few ways to actually install JKG itself, the simplest is to just get the [binaries](https://github.com/JKGDevs/JediKnightGalaxies/releases) and [assets](https://icedrive.net/s/CfgDhyf1BSwNbQ9bWgQWu7y22CvQ), and then follow the directions in the readme included.  Please note that while we try to keep these relatively up to date, the github will always contain the most current version of the source code and you can always compile and pack the pk3s yourself to get a more up to date version.  Most of the JKG assets are not stored on this github repository, only source code and code-like assets.
 
-Alternatively you can install the assets and binaries inside a directory such as C:\JKG\ and then use a batch file/command line arguments to open jkgalaxies.x86.exe while pointing it to the Jedi Academy assets.  This is the recommended setup for developers, as you can then call your exe's location with appropriate args directly from your IDE.  You can do this by setting the fs_basepath arg to be equal to your Jedi Academy install location.  You'll also want to set the fs_cdpath to be equal to JKG's directory.  Optionally you can use fs_homepath to store screenshots and other user specific information, if not specified fs_homepath will be set to "...Documents\My Games\JKGalaxies"  For example, use this batch script on steam installs for windows:
+Alternatively you can install the assets and binaries inside a directory such as C:\JKG\ and then use a batch file/command line arguments to open jkgalaxies.x86.exe while pointing it to the Jedi Academy assets.  This is the recommended setup for developers, as you can then call your exe's location with appropriate args directly from your IDE.  You can do this by setting the fs_basepath arg to be equal to your Jedi Academy install location.  Optionally you can use fs_homepath to store screenshots and other user specific information, if not specified fs_homepath will be set to "...Documents\My Games\JKGalaxies"  For example, use this batch script on steam installs for windows:
 
-	jkgalaxies.x86.exe +set fs_game "JKG" +set fs_cdpath "." +set fs_basepath "C:\Program Files (x86)\Steam\SteamApps\common\Jedi Academy\GameData" +set r_mode -2
+	jkgalaxies.x86.exe +set fs_basepath "C:\Program Files (x86)\Steam\SteamApps\common\Jedi Academy\GameData" +set r_mode -2
 
 If you're stuck, you can also watch [this video](https://www.youtube.com/watch?v=odx-3f07_eA) to see how to install the game.
 
@@ -55,6 +55,7 @@ Want to build and compile JKG yourself from the source code? Checkout these guid
 
 ## Dependencies ##
 
+* A C++14 Compliant Compiler such as [Microsoft Visual Studios](https://visualstudio.microsoft.com/vs/community/) or [GCC](https://gcc.gnu.org/)
 * [CMake (3.12.0+)](https://cmake.org/download/) (for build system)
 * [Git (2.50.0+)](https://git-scm.com/download/) (for build system)
 * SDL2 (2.30.8+) (included on Windows)
@@ -82,6 +83,15 @@ Please be aware of the implications of the GPLv2 licence. In short, be prepared 
 * Once you have finished your new feature and tested it, merge it back into your fork's develop branch.
 * Send a [pull request](https://help.github.com/articles/creating-a-pull-request) to upstream (JKGDevs/JediKnightGalaxies).  We will review your request and then approve it if it looks good.  Please note that it is helpful to specify how you would like to be credited in your pull request.  Also make sure that you have permission to use everything you have included in your pull request.  (For example, make sure your code is GPLv2 compliant).
 * Celebrate!  We appreciate every contribution!
+
+#### A brief note about generative AI/LLM usage ####
+TLDR: Don't.
+
+We don't want to see it spamming our repo.  Why?  While we have nothing against our community or individuals personally choosing to use AI to assist, learn, or develop their own software, it does not belong in the repo.  Jedi Knight Galaxies is at its heart a hobby project, and a work of art.  We work on it because it is something we enjoy, and therefore the experience and journey of making JKG matters more than the end result.  Additionally, machines neither understand nuance, taste, opinion, security; nor can they be trusted with final decisions.  While it is fine to use it to help you find and fix bugs, understand the codebase, or write boiler plate outlines – we do not trust it to be competent enough to correctly diagnose issues, nor understand the team's vision well enough to be trusted with something as complex as creating a pull request.  
+
+What does this mean for a contributor?  It means that you don't submit pull requests that were written mostly by or entirely by AI agents/tools.  You need to understand what your pull request is doing, why it is needed and why your fix solves the issue.  You need to back up your claims and test it yourself (that doesn't just mean unit tests! It means booting the game up, and testing extensively making sure your feature/fix performs as intended without causing other side effects or impacting performance in a bad way).  If you are trying to fix an issue/bug and use AI to help you, don't just trust it to be correct!  Do the work yourself, look at the proposed solution, try it, prove it, test it and make sure that it  makes sense...then after doing all that due diligence you can start writing up a pull request, yourself.  It takes time to understand the game and the code – especially to the point where you can explain in a pull request why you are wanting to change something.  **If you submit multiple successive pull requests, open multiple issues – you better be doing it of your own volition and understanding.  If there is evidence or patterns consistent with using AI tools to generate these, we will treat it like it is: spam.   This may result in a ban or other corrective action to protect the project and our hobby.**  Furthermore, please consider that because most AI's are not trained on only GPLv2 compliant code, they may regurgitate code or content that may be copyrighted or might not be compliant with the GPLv2 license.  If you’re not sure whether AI use may be an issue, please error on the side of caution and ask us first.
+
+"If droids could think, there'd be none of us here." *-Obi-Wan*  
 
 ### If you wish to base your work off JKGalaxies (mod or engine) ###
 * [Fork](https://github.com/JKGDevs/JediKnightGalaxies/fork) the project on Github
@@ -137,7 +147,7 @@ The repo is organized into the following directories.  Not all subdirectories ar
   - `strings`: Contains strings used by the game such as `strings/English/jkg_items.str` contains English translations for placeholder text.
   - `ui`: UI code (mostly menus).
 * `JKGServer`: Contains additional configuration information needed to run a JKG server.  For example, the account list `accountlist.json` or server configuration settings `server.cfg`.  The contents of this directory are placed in the JKG subdirectory of the game when packed for release.
-* `_Deprecated GLUA`: Contains Lua code no longer used by the game, but may be useful as examples of how to use lua to interact with the game or that may eventually be added back in.  Be warned most of these contain errors as they have not been updated to work with the current GLUA system.
+* `_Deprecated GLUA`: Contains Lua code no longer used by the game, but may be useful as examples of how to use lua to interact with the game or that may eventually be added back in.  Be warned most of these contain errors as they have not been updated to work with the current GLUA system. Many of these are quite old.
 * `codemp`: The game's source code.  Contains the following subdirectories:
   - `botlib`: For handling multiplayer bots (mimic player behavior).  Mostly unchanged from JKA.
   - `cgame`: Contains cg code (eg: user interface code such as cg_scoreboard.cpp or cg_view.cpp).  For drawing mainly 2d things on the client's screen.
