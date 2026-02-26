@@ -1816,7 +1816,8 @@ void JKG_ClearGenericMemoryObject(GenericMemoryObject *gmo)
 
 void JKG_GenericMemoryObject_AddElement(GenericMemoryObject *gmo, void *element)
 {
-	if(gmo->memAllocated <= gmo->numElements+1)
+	if(gmo->numElements >= 0 &&
+		gmo->memAllocated <= (unsigned int)(gmo->numElements+1))	//cast to fix signed/unsigned comparison warning, numElements is always postive
 	{
 		gmo->memAllocated *= 2;
 		void *elementcheck = realloc(gmo->elements, gmo->memAllocated*gmo->elementSize);
@@ -1840,7 +1841,7 @@ void Q_RGBCopy( vec4_t *output, vec4_t source )
 	(*output)[2] = source[2];
 }
 
-void getGalacticTimeStamp(char* outStr)	//to use : char myarray[17]; getBuildTimeStamp(myarray); 
+void getGalacticTimeStamp(char* outStr)	//to use : char myarray[17]; getGalacticTimeStamp(myarray); 
 {
 	char result[17];
 	time_t t = time(0);   // get time now
@@ -1850,7 +1851,7 @@ void getGalacticTimeStamp(char* outStr)	//to use : char myarray[17]; getBuildTim
 	strftime(result, sizeof(result) - 1, "%y-%m-%d  %H:%M", now);
 
 	//store results
-	for (int i = 0; i<sizeof(result); i++)
+	for (long unsigned int i = 0; i<sizeof(result); i++)
 		outStr[i] = result[i];
 
 	return;
