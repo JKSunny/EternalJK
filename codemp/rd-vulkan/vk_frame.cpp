@@ -1036,6 +1036,8 @@ static void vk_begin_render_pass( VkRenderPass renderPass, VkFramebuffer frameBu
             case RENDER_PASS_CUBEMAP:
                     clear_values[ (int)( vk.msaaActive ? 2 : 0 )  ].color = { { 1.0f, 0.0f, 0.0f, 1.0f } };
                 break;
+            default:
+                break;
         }
 #endif
 #ifndef USE_REVERSED_DEPTH
