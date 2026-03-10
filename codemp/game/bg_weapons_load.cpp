@@ -309,6 +309,17 @@ static void BG_ParseWeaponFireMode ( weaponFireModeStats_t *fireModeStats, cJSON
     if (fireModeStats->decayRate < 0)
         fireModeStats->decayRate = 0.0f;
 
+    node = cJSON_GetObjectItem(fireModeNode, "arcangle");
+    fireModeStats->arcAngle = (float)cJSON_ToNumberOpt(node, 0); //this is the half-angle arc (so it is essentially doubled, 90 = 180, 45 = 90 etc
+    if (fireModeStats->arcAngle > 180.0f)
+        fireModeStats->arcAngle = 180.0f;
+    if (fireModeStats->arcAngle < 0)
+        fireModeStats->arcAngle = 0.0f;    //off
+
+    //arcangle overwrites hitscans if present
+    if (fireModeStats->hitscan && fireModeStats->arcAngle > 0.0f)
+        fireModeStats->hitscan = (char)qfalse;
+
     node = cJSON_GetObjectItem(fireModeNode, "armorPenetration");
     fireModeStats->armorPenetration = (float)cJSON_ToNumberOpt(node, 0.0);
     if (fireModeStats->armorPenetration > 0.999f) //clamp range

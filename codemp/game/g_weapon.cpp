@@ -2226,6 +2226,102 @@ gentity_t *WP_FireGenericGrenade( gentity_t *ent, int firemode, vec3_t origin, v
 	return bolt;
 }
 
+
+/**************************************************
+* WP_FireGenericArc
+*
+* Fires the generic arc trace function, utilizes
+* the weapon table for the weapon statistics. This
+* function does an instant atk to all valid targets 
+* within the arc's firing range. To optimize 
+* calculations, we first get a bbox of everybody in
+* range of the player, and then search that list for
+* valid targets, and run dot products and traces
+* to each one to make sure they're not behind cover
+* or something.  Designed for electric arc weapons,
+* but can probably apply to other things like weird
+* melee weapons that don't behave like sabers.
+**************************************************/
+void WP_FireGenericArc(gentity_t* ent, int firemode)
+{
+	int			 iDamage = WP_GetWeaponDamage(ent, firemode);
+	float		 fRange = WP_GetWeaponRange(ent, firemode);
+	float		 fMaxRange = fRange; //same as range, unless decayRate is set
+	int			 iSkip = ent->s.number;
+	float		 fDecayRate = WP_GetWeaponDecayRate(ent, firemode);
+	float		 fAngle = WP_GetWeaponArcAngle(ent, firemode); //default 90 (which is doubled for 180 deg arc)
+	//float		 fArmorPenetration = WP_GetWeaponArmorPenetration(ent, firemode); //todo, add other overrides like how firing a generic missile works
+
+	const float cone = cos(DEG2RAD(fAngle));
+
+	//find the max effective range beyond a weapon's range (when damage == 0), if decayRate is a factor
+	if (fDecayRate > 0.0 && fDecayRate < 1.0)
+	{
+		fMaxRange = WP_GetMaxRangeWithDecay(iDamage, fRange, fDecayRate); 
+	}
+
+	vec3_t origin; vec3_t forward;
+	VectorCopy(ent->r.currentOrigin, origin);
+	AngleVectors(ent->client->ps.viewangles, forward, NULL, NULL);
+	
+	//Setup the bbox to search in
+	int	list[MAX_GENTITIES];
+	vec3_t mins, maxs;
+	for (int i = 0; i < 3; i++)
+	{
+		mins[i] = origin[i] - fMaxRange;
+		maxs[i] = origin[i] + fMaxRange;
+	}
+	int total = trap->EntitiesInBox(mins, maxs, list, MAX_GENTITIES); //Get the number of entities in da box
+
+	weaponFireModeStats_t* fireMode = (weaponFireModeStats_t*)GetEntsCurrentFireMode(ent); //create firemode struct pointer
+	float maxRangeSq = fMaxRange * fMaxRange;	//square maxRange for calculations below
+
+	//loop through entities that are in arc range
+	for (int i = 0; i < total; i++)
+	{
+		gentity_t* target = &g_entities[list[i]];
+
+		if (!target->inuse || !target->takedamage || !target->client)
+			continue;
+
+		if (target == ent)
+			continue;
+
+		vec3_t toTarget;
+		VectorSubtract(target->r.currentOrigin, origin, toTarget);
+
+		//check if the target is out of range without using a sqrt
+		float distSq = VectorLengthSquared(toTarget);
+		if (distSq > maxRangeSq)
+			continue;
+
+		//okay get the real distance
+		float distance = sqrt(distSq);
+		VectorScale(toTarget, 1.0f / distance, toTarget);
+
+		//calcluate dot product cone
+		float dot = DotProduct(forward, toTarget);
+		if (dot < cone)
+			continue;
+
+		//run trace to target to make sure we can actually hit it
+		trace_t tr;
+		trap->Trace(&tr, origin, NULL, NULL, target->r.currentOrigin, iSkip, MASK_SHOT, 0, 0, 0);
+
+		if (tr.entityNum != target->s.number)
+			continue;
+
+		/* We're in range to do damage, kill em*/
+		damageDecay_t decay = {};
+		decay.maxRange = fMaxRange;
+		decay.recommendedRange = fRange;
+		decay.distanceToDamageOrigin = distance;
+		decay.decayRate = fDecayRate;	
+		JKG_DoDirectDamage(fireMode, target, ent, ent, forward, tr.endpos, DAMAGE_NORMAL, WP_GetWeaponMOD(ent, firemode), &decay);
+	}
+}
+
 /**************************************************
 * WP_FireGenericMissile
 *
@@ -2584,6 +2680,14 @@ qboolean WP_GetWeaponIsHitscan( gentity_t* ent, int firemode )
 	}
 
     return thisWeaponData->firemodes[firemode].hitscan;
+}
+
+qboolean WP_IsWeaponArcscan(gentity_t* ent, int firemode)
+{
+	if (WP_GetWeaponArcAngle(ent, firemode) > 0)
+		return qtrue;
+	else
+		return qfalse;
 }
 	
 qboolean WP_IsWeaponGrenade ( const gentity_t *ent, int firemode )
@@ -3005,6 +3109,28 @@ float WP_GetWeaponDecayRate(gentity_t* ent, int firemode)
 
 
 /**************************************************
+* WP_GetWeaponArcAngle
+*
+* Gets the weapon's arcangle for the currently selected
+* weapon with the appropriate mode. This references
+* the weapon table for this information.  0 means
+* it doesn't use an arcangle.
+**************************************************/
+float WP_GetWeaponArcAngle(gentity_t* ent, int firemode)
+{
+	weaponData_t* thisWeaponData = GetWeaponData(ent->s.weapon, ent->s.weaponVariation);
+	double arcangle;
+	
+	if (!thisWeaponData)
+		return 0.0f;
+
+	arcangle = thisWeaponData->firemodes[firemode].arcAngle;
+	JKG_ApplyAmmoOverride(arcangle, ammoTable[ent->s.ammoType].overrides.arcAngle);
+
+	return arcangle;
+}
+
+/**************************************************
 * WP_GetWeaponShotCount
 *
 * Gets the shot count for the currently selected
@@ -3252,6 +3378,11 @@ void WP_FireGenericWeapon( gentity_t *ent, int firemode )
 					
 					ent->client->ps.torsoTimer += 100;
 					WP_FireGenericTraceLine( ent, firemode );
+				}
+				else if (WP_IsWeaponArcscan(ent, firemode))
+				{
+					ent->client->ps.torsoTimer += 100;
+					WP_FireGenericArc(ent, firemode);
 				}
 				else if ( WP_IsWeaponGrenade (ent, firemode) )
 				{

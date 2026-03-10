@@ -35,6 +35,24 @@
             "hit":          { "impactfx": "blasters/electric_impactmedium" },
             "deathFx":    "saber/ignitionflare_blue",
 	    "displayName": "Charge"
+        },
+		
+		"firemode1": {
+            "type":         "blaster",
+            
+            "muzzlefx":     "blasters/muzzleflash_arccaster",
+            "firesound":    [
+                "sound/weapons/blasters/arc_caster1.mp3",
+                "sound/weapons/blasters/arc_caster2.mp3",
+                "sound/weapons/blasters/arc_caster3.mp3",
+                "sound/weapons/blasters/arc_caster4.mp3"
+            ],
+            "projectilefx": "blasters/shot_electricity",
+            "runsound":     "sound/effects/energy_crackle.wav",
+            "miss":         { "impactfx": "blasters/electric_impactmedium" },
+            "hit":          { "impactfx": "blasters/electric_impactmedium" },
+            "deathFx":    "saber/ignitionflare_blue",
+			"displayName": "Arc Blast"
         }
 	},
     
@@ -70,6 +88,38 @@
         "meansofdeath": "MOD_ELECTRICAL",
 	"ammobase": "AMMO_ARC_POWERPACK",
 	"ammodefault": "AMMO_ARC_POWERPACK",
+        "clipSize":              80,
+        "accuracy": {
+        	"accuracyRating": 20,
+        	"accuracyRatingPerShot": 12,
+        	"msToDrainAccuracy": 150,
+        	"maxAccuracyAdd": 56
+        }
+    },
+	"firemode1":
+	{
+        "damage": {
+                    "damage":       25,
+            		"buffs": [
+					{
+						"buff": "standard-emp",
+						"duration": 5000
+					}
+				    ]
+        },
+		"arcangle": 60,
+        "ammocost":     2,
+        "collisionsize": 5.0,
+        "firedelay":    2100,
+        "firingtype":   "semi",
+        "range":        500.0,
+        "recoil":       1.1,
+        "spread":       0.6,
+        "projectilespeed": 5000.0,
+        "projectileclass": "blaster_proj",
+        "meansofdeath": "MOD_ELECTRICAL",
+		"ammobase": "AMMO_ARC_POWERPACK",
+		"ammodefault": "AMMO_ARC_POWERPACK",
         "clipSize":              80,
         "accuracy": {
         	"accuracyRating": 20,
