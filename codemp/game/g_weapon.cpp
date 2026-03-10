@@ -2320,6 +2320,27 @@ void WP_FireGenericArc(gentity_t* ent, int firemode)
 		decay.decayRate = fDecayRate;	
 		JKG_DoDirectDamage(fireMode, target, ent, ent, forward, tr.endpos, DAMAGE_NORMAL, WP_GetWeaponMOD(ent, firemode), &decay);
 	}
+
+	if (iDamage > 0)
+	{
+		gentity_t* tent;
+		/* Always render a shot beam from the muzzle to where we hit, the beam will continue if the shot continues */
+		tent = G_TempEntity(origin, EV_WEAPON_ARC_FIRE);
+		VectorCopy(forward, tent->s.angles);
+		tent->s.weapon = ent->client->ps.weapon;
+		tent->s.otherEntityNum = ent->s.number;
+		tent->s.owner = ent->s.number;
+		tent->s.weaponVariation = ent->client->ps.weaponVariation;
+		tent->s.firingMode = firemode;
+		tent->s.ammoType = ent->s.ammoType;
+
+		/*
+		tent->s.eventParm = DirToByte(tr.plane.normal);
+		tent->s.shouldtarget = qtrue;
+		tent->s.owner = ent->s.number;
+		*/
+
+	}
 }
 
 /**************************************************
