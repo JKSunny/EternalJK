@@ -978,7 +978,7 @@ int get_mdv_stride( void ) {
 
 void R_BuildMDXM( model_t *mod, mdxmHeader_t *mdxm )
 {
-	if( !vk.vboGhoul2Active )
+	if ( !vk.vboGhoul2Active )
 		return;
 
 #ifdef USE_RTX
@@ -1255,6 +1255,9 @@ void R_BuildMDXM( model_t *mod, mdxmHeader_t *mdxm )
 
 void R_BuildMD3( model_t *mod, mdvModel_t *mdvModel ) 
 {
+	if ( !vk.vboMdvActive )
+		return;
+
 	mdvVertex_t    *v;
 	mdvSt_t        *st;
 	mdvSurface_t   *surf;
