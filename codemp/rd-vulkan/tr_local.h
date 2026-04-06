@@ -53,6 +53,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 	#define USE_VBO_GHOUL2
 	#define USE_VBO_MDV	
 	#define USE_VBO_SS
+	#define USE_VBO_GRID		/* put SF_GRID to VBO */
 #endif
 
 
@@ -2454,7 +2455,9 @@ void		R_CreateDefaultShadingCmds( image_t *image );
 //
 // tr_surface.c
 //
+#ifdef USE_VBO_GRID
 void		RB_SurfaceGridEstimate(srfGridMesh_t *cv, int *numVertexes, int *numIndexes);
+#endif
 
 /*
 ====================================================================
