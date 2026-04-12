@@ -107,7 +107,7 @@
 					}
 				    ]
         },
-		"arcangle": 60,
+		"arcangle": 40,
         "ammocost":     2,
         "collisionsize": 5.0,
         "firedelay":    2100,
