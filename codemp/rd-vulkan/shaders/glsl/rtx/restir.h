@@ -33,7 +33,6 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "path_tracer_rgen.h"
 
 #define RESTIR_INVALID_ID       0xFFFF
-#define RESTIR_ENV_ID           0xFFFE
 
 #define RESTIR_SPACIAL_DISTANCE 32
 #define RESTIR_SPACIAL_SAMPLES  8
@@ -114,7 +113,7 @@ unpack_reservoir(uvec4 packed, out Reservoir r)
 uint
 get_light_current_idx(uint index)
 {
-	if (index < global_ubo.num_static_lights || index == RESTIR_INVALID_ID || index == RESTIR_ENV_ID)
+	if (index < global_ubo.num_static_lights || index == RESTIR_INVALID_ID)
 	{
 		return index;
 	}
@@ -141,7 +140,6 @@ get_unshadowed_path_contrib(
 		float phong_weight,
 		vec2 rng)
 {
-	if(light_idx == RESTIR_ENV_ID) return get_unshadowed_env_path_contrib(normal,view_direction, phong_exp, phong_scale, phong_weight, rng);
 	LightPolygon light = get_light_polygon(light_idx);
 
 	float m = 0.0f;
@@ -209,55 +207,42 @@ process_selected_light_restir(
 	specular = vec3(0);
 	vis = 1.0;
 
-	if(light_idx != RESTIR_ENV_ID)
+	LightPolygon light = get_light_polygon(light_idx);
+
+	vec3 light_normal;
+
+	switch(uint(light.type))
 	{
-		LightPolygon light = get_light_polygon(light_idx);
-
-		vec3 light_normal;
-
-		switch(uint(light.type))
-		{
-			case LIGHT_POLYGON:
-				pos_on_light_polygonal = sample_projected_triangle(position, light.positions, light_position , light_normal, polygonal_light_pdfw);
-				break;
-			case LIGHT_SPHERE:
-				pos_on_light_polygonal = sample_projected_sphere(position, light.positions, light_position , light_normal, polygonal_light_pdfw);
-				break;
-			case LIGHT_SPOT:
-				pos_on_light_polygonal = sample_projected_spotlight(position, light.positions, light_position , light_normal, polygonal_light_pdfw);
-				break;
-		}
-
-		L = normalize(pos_on_light_polygonal - position);
-
-		if(dot(L, geo_normal) <= 0)
-			polygonal_light_pdfw = 0;
-
-		if(polygonal_light_pdfw > 0){
-			float LdotNL = max(0, -dot(light_normal, L));
-			float spotlight = sqrt(LdotNL);
-			float inv_pdfw = 1.0 / polygonal_light_pdfw;
-
-			if(light.color.r >= 0)
-			{
-				contrib_polygonal = light.color * (inv_pdfw * spotlight * light.light_style_scale);
-			}
-			else
-			{
-				contrib_polygonal = env_map(L, true) * inv_pdfw * global_ubo.pt_env_scale;
-				polygonal_light_is_sky = true;
-			}
-		}
-
+		case LIGHT_POLYGON:
+			pos_on_light_polygonal = sample_projected_triangle(position, light.positions, light_position , light_normal, polygonal_light_pdfw);
+			break;
+		case LIGHT_SPHERE:
+			pos_on_light_polygonal = sample_projected_sphere(position, light.positions, light_position , light_normal, polygonal_light_pdfw);
+			break;
+		case LIGHT_SPOT:
+			pos_on_light_polygonal = sample_projected_spotlight(position, light.positions, light_position , light_normal, polygonal_light_pdfw);
+			break;
 	}
-	else
-	{
-		vec2 disk = sample_disk(light_position);
-		disk.xy *= global_ubo.sun_tan_half_angle;
-		L = normalize(global_ubo.sun_direction + global_ubo.sun_tangent * disk.x + global_ubo.sun_bitangent * disk.y);
-		polygonal_light_pdfw = global_ubo.sun_solid_angle;
-		pos_on_light_polygonal = position + L * 10000;
-		contrib_polygonal = env_map(L, false) * polygonal_light_pdfw * global_ubo.pt_env_scale;
+
+	L = normalize(pos_on_light_polygonal - position);
+
+	if(dot(L, geo_normal) <= 0)
+		polygonal_light_pdfw = 0;
+
+	if(polygonal_light_pdfw > 0){
+		float LdotNL = max(0, -dot(light_normal, L));
+		float spotlight = sqrt(LdotNL);
+		float inv_pdfw = 1.0 / polygonal_light_pdfw;
+
+		if(light.color.r >= 0)
+		{
+			contrib_polygonal = light.color * (inv_pdfw * spotlight * light.light_style_scale);
+		}
+		else
+		{
+			contrib_polygonal = env_map(L, true) * inv_pdfw * global_ubo.pt_env_scale;
+			polygonal_light_is_sky = true;
+		}
 	}
 
 	contrib_polygonal *= weight;
@@ -340,14 +325,6 @@ get_direct_illumination_restir(
 
 	rng = get_rng(RNG_NEE_LIGHT_SELECTION(0));
 
-#if 1
-	uint add_sun = (global_ubo.sun_visible != 0) && ((cluster_idx == ~0u) || (light_buffer.sky_visibility[cluster_idx >> 5] & (1 << (cluster_idx & 31))) != 0) ? 1 : 0;
-#else
-	uint add_sun = 1;
-#endif
-
-	uint sun_idx = add_sun > 0 ? list_end : -1;
-	list_end += add_sun;
 	float list_size = float(list_end - list_start);
 	float partitions = ceil(list_size / float(RESTIR_SAMPLING_M));
 	float inv_pdf = list_size;
@@ -370,7 +347,7 @@ get_direct_illumination_restir(
 		if (n_idx >= list_end)
 			break;
 
-		current_light_idx = n_idx != sun_idx ? light_buffer.light_list_lights[n_idx] : RESTIR_ENV_ID;
+		current_light_idx = light_buffer.light_list_lights[n_idx];
 
 		if(current_light_idx == ~0u) continue;
 
