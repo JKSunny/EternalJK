@@ -243,21 +243,26 @@ direct_lighting_restir(ivec2 ipos, bool is_odd_checkerboard, out vec3 high_freq,
 			if (sample_across_fields)
 			{
 				ivec2 sample_pos_flat = flat_pos + pos;
+				if (sample_pos_flat.x < 0 || sample_pos_flat.x >= global_ubo.prev_width
+					|| sample_pos_flat.y < 0 || sample_pos_flat.y >= global_ubo.prev_height)
+					continue;
 
 				if(global_ubo.pt_restir == 2)
 				{
-					sample_pos_flat.x = min((sample_pos_flat.x & ~1) + (sample_pos_flat.y & 1), global_ubo.width - 1);
+					sample_pos_flat.x = min((sample_pos_flat.x & ~1) + (sample_pos_flat.y & 1), global_ubo.prev_width - 1);
 				}
 				else if(global_ubo.pt_restir == 3)
 				{
 					sample_pos_flat &= ~1;
 				}
-				sample_pos = flat_to_checker(sample_pos_flat, global_ubo.width);
+				sample_pos = flat_to_checker(sample_pos_flat, global_ubo.prev_width);
 			}
 			else
 			{
-				sample_pos.x = clamp(pos_prev_or.x + pos.x, field_left, field_right - 1);
-				sample_pos.y = clamp(pos_prev_or.y + pos.y, 0, int(global_ubo.height - 1));
+				sample_pos = pos_prev_or + pos;
+				if (sample_pos.x < field_left || sample_pos.x >= field_right
+					|| sample_pos.y < 0 || sample_pos.y >= global_ubo.prev_height)
+					continue;
 
 				if(global_ubo.pt_restir == 2)
 				{
