@@ -190,7 +190,7 @@ get_unshadowed_path_contrib(
 }
 
 
-void
+bool
 process_selected_light_restir(
 		uint light_idx,
 		vec2 light_position,
@@ -283,7 +283,7 @@ process_selected_light_restir(
 	if(null_light)
 	{
 		vis = 0.0f;
-		return;
+		return false;
 	}
 
 	vec3 radiance = vis * contrib_polygonal;
@@ -312,6 +312,8 @@ process_selected_light_restir(
 
 	float diffuse_brdf = NdotL / M_PI;
 	diffuse = radiance * diffuse_brdf * (vec3(1.0) - F);
+
+	return true;
 }
 
 
@@ -324,6 +326,7 @@ get_direct_illumination_restir(
 	float phong_exp,
 	float phong_scale,
 	float phong_weight,
+	bool is_gradient,
 	Reservoir prev_r,
 	out Reservoir reservoir)
 {
@@ -368,6 +371,34 @@ get_direct_illumination_restir(
 		if(current_light_idx == ~0u) continue;
 
 		p_hat = get_unshadowed_path_contrib(current_light_idx, position, normal, view_direction, phong_exp, phong_scale, phong_weight, rng2);
+		
+		// Apply CDF adjustment based on light shadowing statistics from one of the previous frames.
+		// See comments in function `get_direct_illumination` in `path_tracer_rgen.h`
+		if(global_ubo.pt_light_stats != 0 
+			&& p_hat > 0 
+			&& current_light_idx < global_ubo.num_static_lights)
+		{
+			uint buffer_idx = global_ubo.current_frame_idx;
+			// Regular pixels get shadowing stats from the previous frame;
+			// Gradient pixels get the stats from two frames ago because they need to match
+			// the light sampling from the previous frame.
+			buffer_idx += is_gradient ? (NUM_LIGHT_STATS_BUFFERS - 2) : (NUM_LIGHT_STATS_BUFFERS - 1);
+			buffer_idx = buffer_idx % NUM_LIGHT_STATS_BUFFERS;
+
+			uint addr = get_light_stats_addr(cluster_idx, current_light_idx, get_primary_direction(normal));
+
+			uint num_hits = light_stats_bufers[buffer_idx].stats[addr];
+			uint num_misses = light_stats_bufers[buffer_idx].stats[addr + 1];
+			uint num_total = num_hits + num_misses;
+
+			if(num_total > 0)
+			{
+				// Adjust the mass, but set a lower limit on the factor to avoid
+				// extreme changes in the sampling.
+				p_hat *= max(float(num_hits) / float(num_total), 0.1);
+			}
+		}
+		
 		// Add sample even if 0, so M will be correct
 		update_reservoir(current_light_idx, p_hat * inv_pdf, rng2, 1, p_hat, rng, reservoir);
 	}

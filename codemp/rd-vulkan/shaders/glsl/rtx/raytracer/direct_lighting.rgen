@@ -165,6 +165,7 @@ direct_lighting_restir(ivec2 ipos, bool is_odd_checkerboard, out vec3 high_freq,
 			phong_exp,
 			phong_scale,
 			phong_weight,
+			is_gradient,
 			prev_r,
 			r);
 	}
@@ -328,7 +329,7 @@ direct_lighting_restir(ivec2 ipos, bool is_odd_checkerboard, out vec3 high_freq,
 
 	if(r.y != RESTIR_INVALID_ID)
 	{
-		process_selected_light_restir(
+		bool null_light = !process_selected_light_restir(
 			r.y,
 			r.y_pos,
 			r.W,
@@ -354,6 +355,37 @@ direct_lighting_restir(ivec2 ipos, bool is_odd_checkerboard, out vec3 high_freq,
 
 		high_freq += direct_diffuse;
 		o_specular += direct_specular;
+
+		/* 
+			Accumulate light shadowing statistics to guide importance sampling on the next frame.
+			Inspired by paper called "Adaptive Shadow Testing for Ray Tracing" by G. Ward, EUROGRAPHICS 1994.
+
+			The algorithm counts the shadowed and unshadowed rays towards each light, per cluster,
+			per surface orientation in each cluster. Orientation helps improve accuracy in cases 
+			when a single cluster has different parts which have the same light mostly shadowed and 
+			mostly unshadowed.
+
+			On the next frame, the light CDF is built using the counts from this frame, or the frame
+			before that in case of gradient rays. See light_lists.h for more info.
+
+			Only applies to polygonal polygon lights (i.e. no model or beam lights) because the spherical
+			polygon lights do not have polygonal indices, and it would be difficult to map them 
+			between frames.
+		*/
+		if(global_ubo.pt_light_stats != 0 
+			&& !null_light
+			&& r.y >= 0
+			&& r.y < global_ubo.num_static_lights)
+		{
+			uint addr = get_light_stats_addr(cluster_idx, r.y, get_primary_direction(normal));
+
+			// Offset 0 is unshadowed rays,
+			// Offset 1 is shadowed rays
+			if(vis == 0) addr += 1;
+
+			// Increment the ray counter
+			atomicAdd(light_stats_bufers[global_ubo.current_frame_idx % NUM_LIGHT_STATS_BUFFERS].stats[addr], 1);
+		}
 
 		if(vis == 0.0f) r.W = 0.0f;
 	}
