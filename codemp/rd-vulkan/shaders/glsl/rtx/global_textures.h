@@ -186,6 +186,7 @@ enum VK_RTX_IMAGES {
 // global texture
 layout( set = 2, binding = 0 ) uniform sampler2D texure_array[];
 
+#define SAMPLER_r8ui    usampler2D
 #define SAMPLER_r16ui   usampler2D
 #define SAMPLER_r32ui   usampler2D
 #define SAMPLER_rg32ui  usampler2D
@@ -199,6 +200,7 @@ layout( set = 2, binding = 0 ) uniform sampler2D texure_array[];
 #define SAMPLER_r8      sampler2D
 #define SAMPLER_rg8     sampler2D
 
+#define IMAGE_r8ui    uimage2D
 #define IMAGE_r16ui   uimage2D
 #define IMAGE_r32ui   uimage2D
 #define IMAGE_rg32ui  uimage2D
