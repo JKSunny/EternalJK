@@ -38,7 +38,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 layout(constant_id = 0) const uint spec_enable_caustics = 0;
 
 void
-direct_lighting_restir(ivec2 ipos, bool is_odd_checkerboard, out vec3 high_freq, out vec3 o_specular)
+direct_lighting_restir(ivec2 ipos, out vec3 high_freq, out vec3 o_specular)
 {
 	high_freq = vec3(0);
 	o_specular = vec3(0);
@@ -423,7 +423,7 @@ direct_lighting_restir(ivec2 ipos, bool is_odd_checkerboard, out vec3 high_freq,
 }
 
 void
-direct_lighting(ivec2 ipos, bool is_odd_checkerboard, out vec3 high_freq, out vec3 o_specular)
+direct_lighting(ivec2 ipos, out vec3 high_freq, out vec3 o_specular)
 {
 	high_freq = vec3(0);
 	o_specular = vec3(0);
@@ -533,13 +533,11 @@ main()
 	if(gl_LaunchIDEXT.z != 0)
 		ipos.x += global_ubo.width / 2;
 
-	bool is_odd_checkerboard = (gl_LaunchIDEXT.z != 0) || (push_constants.gpu_index == 1);
-
 	vec3 high_freq, specular;
 	if(global_ubo.pt_restir > 0)
-		direct_lighting_restir(ipos, is_odd_checkerboard, high_freq, specular);
+		direct_lighting_restir(ipos, high_freq, specular);
 	else
-		direct_lighting(ipos, is_odd_checkerboard, high_freq, specular);
+		direct_lighting(ipos, high_freq, specular);
 
 	high_freq *= STORAGE_SCALE_HF;
 	specular *= STORAGE_SCALE_SPEC;
