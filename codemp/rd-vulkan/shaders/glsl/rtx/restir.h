@@ -142,18 +142,34 @@ get_unshadowed_path_contrib(
 {
 	LightPolygon light = get_light_polygon(light_idx);
 
-	float m = 0.0f;
+	vec3 position_light = vec3(0);
+	vec3 light_normal;
+	float pdfw;
 	switch(uint(light.type))
 	{
 		case LIGHT_POLYGON:
-			m = projected_tri_area(light.positions, position, normal, view_direction, phong_exp, phong_scale, phong_weight);
+			position_light = sample_projected_triangle(position, light.positions, rng, light_normal, pdfw);
 			break;
 		case LIGHT_SPHERE:
-			m = projected_sphere_area(light.positions, position, normal, view_direction, phong_exp, phong_scale, phong_weight);
+			position_light = sample_projected_sphere(position, light.positions, rng, light_normal, pdfw);
 			break;
 		case LIGHT_SPOT:
-			m = projected_spotlight_area(light.positions, position, normal, view_direction, phong_exp, phong_scale, phong_weight);
+			position_light = sample_projected_spotlight(position, light.positions, rng, light_normal, pdfw);
 			break;
+	}
+
+	float m = 0.0f;
+	vec3 L = normalize(position_light - position);
+	if(dot(L, normal) <= 0)
+		pdfw = 0;
+
+	if (pdfw > 0)
+	{
+		float LdotNL = max(0, -dot(light_normal, L));
+		float spotlight = sqrt(LdotNL);
+		float inv_pdfw = 1.0 / pdfw;
+
+		m = inv_pdfw * spotlight;
 	}
 
 	float light_lum = luminance(light.color);
