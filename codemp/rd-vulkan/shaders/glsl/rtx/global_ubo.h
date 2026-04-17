@@ -218,7 +218,8 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 	GLOBAL_UBO_VAR_LIST_DO( VEC2,    projection_fov_scale			) \
 	GLOBAL_UBO_VAR_LIST_DO( VEC2,    projection_fov_scale_prev		) \
 	\
-	GLOBAL_UBO_VAR_LIST_DO( VEC3,    pad1							) \
+	GLOBAL_UBO_VAR_LIST_DO( VEC2,    pad1							) \
+	GLOBAL_UBO_VAR_LIST_DO( INT,     restir_m_clamp					) \
 	GLOBAL_UBO_VAR_LIST_DO( INT,     pt_projection					) \
 	\
 	GLOBAL_UBO_VAR_LIST_DO( FLOAT,   sky_transmittance				) \

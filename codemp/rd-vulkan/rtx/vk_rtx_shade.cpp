@@ -1066,6 +1066,14 @@ static void vk_rtx_prepare_ubo( trRefdef_t *refdef, world_t *world, mnode_t *vie
 	ubo->screen_image_height = vk.extent_screen_images.height;
 	//ubo->water_normal_texture = water_normal_texture - r_images;
 	ubo->pt_swap_checkerboard = 0;
+	ubo->restir_m_clamp = pt_restir_m_clamp->integer;
+	if (pt_restir->integer == 3)
+	{
+		// adjust clamp for "very cheap" mode
+		ubo->restir_m_clamp /= 2;
+	}
+	ubo->restir_m_clamp = MAX(ubo->restir_m_clamp, 1); // don't break things
+
 	vk.extent_render_prev = vk.extent_render;
 	vk.gpu_slice_width_prev = vk.gpu_slice_width;
 
