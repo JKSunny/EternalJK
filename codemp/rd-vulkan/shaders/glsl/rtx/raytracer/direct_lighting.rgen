@@ -301,10 +301,6 @@ direct_lighting_restir(ivec2 ipos, bool is_odd_checkerboard, out vec3 high_freq,
 		if(vis == 0.0f) r.W = 0.0f;
 	}
 
-	//Normalize reservoir
-	float m_clamp = RESTIR_M_CLAMP;
-	r.w_sum = (m_clamp * r.w_sum) / r.M;
-
 	o_specular = demodulate_specular(primary_base_reflectivity, o_specular);
 
 	high_freq = clamp_output(high_freq);
