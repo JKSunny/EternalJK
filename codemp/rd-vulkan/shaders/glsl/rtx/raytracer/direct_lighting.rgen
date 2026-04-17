@@ -206,6 +206,29 @@ direct_lighting_restir(ivec2 ipos, bool is_odd_checkerboard, out vec3 high_freq,
 		if(prev_r.y == RESTIR_INVALID_ID) sp_samples += 2;
 
 		int samples = min(RESTIR_SPACIAL_SAMPLES, int(sp_samples) * 2);
+
+
+		/* Limit influence of spatial samples.
+		 * Two observations:
+		 * 1. Generally, the denoiser doesn't like it if things are too much correlated between
+		 *    frame, and produces a better image with a certain variance between frames;
+		 * 2. The additional spatiotemporal samples seem to result in higher weights(W) used
+		 *    in the final samples, and hence increased perceived brightness of the image,
+		 *    compared to lighting w/o spatial samples or a reference image.
+		 *    (This also seems to result in newly revealed to appear darker at first.)
+		 *    It appears as if the "max W" was intended as mitigation to this,
+		 *    but that has it's own problems.
+		 *
+		 * Now, this capping of the influence of spatial samples is a new attempt to mitigate the
+		 * these issues, while hopefully retaining some of the benefits of spatial sampling - notably,
+		 * collecting additional samples when current frame and/or temporal sampling failed.
+		 *
+		 * (Unfortunately, I haven't quite figured out why the light weight W seems to end up too
+		 * high after spatial sampling, so it's quite possible there's a less hacky way to deal
+		 * with that.)
+		 */
+		uint spatial_M_cap = samples * uint(global_ubo.pt_restir_spatial_cap);
+
 		ivec2 pos;
 		#pragma unroll
 		for(int i=0; i < samples ; i++)
@@ -280,7 +303,8 @@ direct_lighting_restir(ivec2 ipos, bool is_odd_checkerboard, out vec3 high_freq,
 					}
 
 					//Combine reservoirs
-					update_reservoir(st_r.y, p_hat * st_r.W * st_r.M, st_r.y_pos, st_r.M, p_hat, rng, spatial_r);
+					uint st_r_M = min(st_r.M, spatial_M_cap);
+					update_reservoir(st_r.y, p_hat * st_r.W * st_r_M, st_r.y_pos, st_r_M, p_hat, rng, spatial_r);
 					processed ++;
 					if(sp_samples == processed) break;
 				}
