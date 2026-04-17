@@ -331,7 +331,7 @@ direct_lighting_restir(ivec2 ipos, bool is_odd_checkerboard, out vec3 high_freq,
 		process_selected_light_restir(
 			r.y,
 			r.y_pos,
-			min(r.W, global_ubo.pt_restir_max_w),
+			r.W,
 			position,
 			normal,
 			geo_normal,
