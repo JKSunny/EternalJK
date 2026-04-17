@@ -876,7 +876,7 @@ static void evaluate_reference_mode( reference_mode_t *ref_mode )
 
 		ref_mode->enable_accumulation = qtrue;
 		ref_mode->enable_denoiser = qfalse;
-		ref_mode->num_bounce_rays = 2;
+		ref_mode->num_bounce_rays = 2; // todo: https://github.com/res2k/Q2RTX/commit/3c31a67d73b985cd4d698b2e2cdc751a2386748b
 		ref_mode->temporal_blend_factor = 1.f / min(max(1, num_accumulated_frames - num_warmup_frames), num_frames_to_accumulate);
 		ref_mode->reflect_refract = max(4, cvar_pt_reflect_refract->integer);
 
