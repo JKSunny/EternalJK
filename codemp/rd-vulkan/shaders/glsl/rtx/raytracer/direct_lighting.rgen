@@ -164,7 +164,6 @@ direct_lighting_restir(ivec2 ipos, bool is_odd_checkerboard, out vec3 high_freq,
 			phong_exp,
 			phong_scale,
 			phong_weight,
-			0,
 			prev_r,
 			r);
 	}

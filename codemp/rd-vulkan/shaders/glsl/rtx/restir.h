@@ -326,7 +326,6 @@ get_direct_illumination_restir(
 	float phong_exp,
 	float phong_scale,
 	float phong_weight,
-	int bounce,
 	Reservoir prev_r,
 	out Reservoir reservoir)
 {
@@ -342,7 +341,7 @@ get_direct_illumination_restir(
 	uint list_start = light_buffer.light_list_offsets[cluster_idx];
 	uint list_end   = light_buffer.light_list_offsets[cluster_idx + 1];
 
-	rng = get_rng(RNG_NEE_LIGHT_SELECTION(bounce));
+	rng = get_rng(RNG_NEE_LIGHT_SELECTION(0));
 
 #if 1
 	uint add_sun = (global_ubo.sun_visible != 0) && ((cluster_idx == ~0u) || (light_buffer.sky_visibility[cluster_idx >> 5] & (1 << (cluster_idx & 31))) != 0) ? 1 : 0;
@@ -365,8 +364,8 @@ get_direct_illumination_restir(
 	uint current_light_idx;
 
 	vec2 rng2 = vec2(
-		get_rng(RNG_NEE_TRI_X(bounce)),
-		get_rng(RNG_NEE_TRI_Y(bounce)));
+		get_rng(RNG_NEE_TRI_X(0)),
+		get_rng(RNG_NEE_TRI_Y(0)));
 
 	#pragma unroll
 	for(uint i = 0, n_idx = list_start; i < RESTIR_SAMPLING_M; i++, n_idx += stride)
