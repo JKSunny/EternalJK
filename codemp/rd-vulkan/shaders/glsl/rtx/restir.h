@@ -39,8 +39,9 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define RESTIR_SPACIAL_SAMPLES  8
 
 #define RESTIR_SAMPLING_M       4
-#define RESTIR_M_CLAMP          32
-#define RESTIR_M_VC_CLAMP       16
+#define RESTIR_M_DEF_CLAMP      32
+#define RESTIR_M_VC_CLAMP       16 // "very cheap", presumably
+#define RESTIR_M_CLAMP          (global_ubo.pt_restir != 3 ? RESTIR_M_DEF_CLAMP : RESTIR_M_VC_CLAMP)
 
 struct Reservoir
 {
@@ -107,7 +108,7 @@ unpack_reservoir(uvec4 packed, out Reservoir r)
 	if(isnan(r.W) || isinf(r.W)) r.W = 0.0;
 	r.y_pos = unpackHalf2x16(packed.y);
 	r.p_hat = 0.0;
-	r.M = r.y == RESTIR_INVALID_ID ? 0 : (global_ubo.pt_restir != 3 ? RESTIR_M_CLAMP : RESTIR_M_VC_CLAMP);
+	r.M = r.y == RESTIR_INVALID_ID ? 0 : RESTIR_M_CLAMP;
 	r.w_sum = 0;
 }
 
