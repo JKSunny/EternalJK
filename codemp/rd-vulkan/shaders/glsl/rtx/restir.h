@@ -44,12 +44,15 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 struct Reservoir
 {
-    uint y;
-    uint M;
-    float w_sum;
-    float W;
-    float p_hat;
-    vec2 y_pos;
+    // Persisted between frames
+    uint y;      // selected light
+    float W;     // weight of light
+    vec2 y_pos;  // light sampling position
+
+    // not persisted
+    uint M;      // number of sampled lights so far
+    float w_sum; // sum of weights of lights so far
+    float p_hat; // importance of selected light
 };
 
 void
