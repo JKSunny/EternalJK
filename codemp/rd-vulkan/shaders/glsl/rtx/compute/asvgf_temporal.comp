@@ -54,7 +54,7 @@ shared float s_depth_width[GROUP_SIZE/GRAD_DWN][GROUP_SIZE/GRAD_DWN];
 #include "../utils.glsl"
 #include "asvgf.glsl"
 #include "../brdf.glsl"
-#include "checkerboard.glsl"
+#include "../checkerboard.glsl"
 
 // Preload the color data into shared memory
 void
