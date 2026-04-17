@@ -54,6 +54,7 @@ shared float s_depth_width[GROUP_SIZE/GRAD_DWN][GROUP_SIZE/GRAD_DWN];
 #include "../utils.glsl"
 #include "asvgf.glsl"
 #include "../brdf.glsl"
+#include "checkerboard.glsl"
 
 // Preload the color data into shared memory
 void
@@ -95,30 +96,6 @@ get_shared_data(ivec2 offset, out float depth, out vec3 normal, out float lum_hf
 
 	normal = unpackHalf4x16(normal_lum).xyz;
 	lum_hf = unpackHalf4x16(normal_lum).w;
-}
-
-// Convert a checkerboarded pixel position (left and right fields) to flat-screen position
-ivec2 checker_to_flat(ivec2 pos, int width)
-{
-	uint half_width = width / 2;
-    bool is_even_checkerboard = pos.x < half_width;
-
-	return ivec2(
-		is_even_checkerboard 
-			? (pos.x * 2) + (pos.y & 1)
-			: ((pos.x - half_width) * 2) + ((pos.y & 1) ^ 1),
-		pos.y);
-}
-
-// Convert a flat-screen (regular) pixel position to checkerboarded (left and right fields)
-ivec2 flat_to_checker(ivec2 pos, int width)
-{
-	uint half_width = width / 2;
-    bool is_even_checkerboard = (pos.x & 1) == (pos.y & 1);
-
-    return ivec2(
-    	(pos.x / 2) + (is_even_checkerboard ? 0 : half_width),
-    	pos.y);
 }
 
 void
