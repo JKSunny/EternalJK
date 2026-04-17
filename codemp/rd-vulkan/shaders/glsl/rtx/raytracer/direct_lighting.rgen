@@ -208,12 +208,10 @@ direct_lighting_restir(ivec2 ipos, bool is_odd_checkerboard, out vec3 high_freq,
 
 			sample_pos.x = clamp(pos_prev_or.x + pos.x, field_left, field_right - 1);
 			sample_pos.y = clamp(pos_prev_or.y + pos.y, 0, int(global_ubo.height - 1));
-			ivec2 sample_pos_r = sample_pos;
 
 			if(global_ubo.pt_restir == 2)
 			{
 				sample_pos.x = min((sample_pos.x & ~1) + (sample_pos.y & 1), field_right - 1);
-				sample_pos_r = sample_pos;
 			}
 			else if(global_ubo.pt_restir == 3)
 			{

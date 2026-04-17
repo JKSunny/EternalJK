@@ -358,13 +358,11 @@ get_direct_illumination_restir(
 	int stride = int(partitions);
 	rng = rng_part - floor(rng_part);
 
-	uint current_idx, current_light_idx;
+	uint current_light_idx;
 
 	vec2 rng2 = vec2(
 		get_rng(RNG_NEE_TRI_X(bounce)),
 		get_rng(RNG_NEE_TRI_Y(bounce)));
-
-	float samples = 1.;
 
 	#pragma unroll
 	for(uint i = 0, n_idx = list_start; i < RESTIR_SAMPLING_M; i++, n_idx += stride)
