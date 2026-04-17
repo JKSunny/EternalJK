@@ -378,8 +378,8 @@ get_direct_illumination_restir(
 		if(current_light_idx == ~0u) continue;
 
 		p_hat = get_unshadowed_path_contrib(current_light_idx, position, normal, view_direction, phong_exp, phong_scale, phong_weight, rng2);
-		if(p_hat > 0)
-			update_reservoir(current_light_idx, p_hat * inv_pdf, rng2, 1, p_hat, rng, reservoir);
+		// Add sample even if 0, so M will be correct
+		update_reservoir(current_light_idx, p_hat * inv_pdf, rng2, 1, p_hat, rng, reservoir);
 	}
 
 	reservoir.M = RESTIR_SAMPLING_M;
