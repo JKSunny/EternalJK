@@ -2170,6 +2170,7 @@ void RB_SurfaceEntity( const surfaceType_t *surfType ) {
 		RB_SurfaceOrientedQuad();
 		break;
 	case RT_BEAM:
+		allow_merge = qfalse;
 		RB_SurfaceBeam();
 		break;
 	case RT_ELECTRICITY:
@@ -2209,6 +2210,8 @@ void RB_SurfaceEntity( const surfaceType_t *surfType ) {
 
 				RB_SurfaceEntity(surfType);
 			}
+
+			allow_merge = qfalse;
 		}
 		break;
 	default:
