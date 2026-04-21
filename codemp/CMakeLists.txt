@@ -370,7 +370,7 @@ if(BuildMPEngine OR BuildMPDed)
 	source_group("sys" FILES ${MPEngineAndDedSysFiles})
 endif(BuildMPEngine OR BuildMPDed)
 
-#        Engine/Executable (jamp.exe)
+#        Engine/Executable (jkgalaxies.exe)
 
 if(BuildMPEngine)
 	set(MPEngineLibraries ${MPEngineAndDedLibraries})
@@ -637,7 +637,7 @@ if(BuildMPEngine)
 	target_link_libraries(${MPEngine} ${MPEngineLibraries})
 endif(BuildMPEngine)
 
-#        Dedicated Server (Engine) (jampded.exe)
+#        Dedicated Server (Engine) (jkgalaxiesded.exe)
 
 if(BuildMPDed)
 
