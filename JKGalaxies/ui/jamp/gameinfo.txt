@@ -18,16 +18,18 @@ joingametypes {
 }
 
 maps {
-  { "Bespin Shafts" "jkg_ctf_bespin" }
+  { "^5Bespin Shafts" "jkg_ctf_bespin" }
 
   { "^5Lower Coruscant" "jkg_coruscant_lower" }
   { "^5Nightfall" "jkg_nightfall" }
   { "^5Tatooine Spaceport" "jkg_spaceport" }
   { "^5Taris Horizons" "jkg_taris" }
+  { "^5Jawa Fortress" "jkg_jawa_fortress" }
+  { "^5Imperial Base" "jkg_imperialbase" }
+  { "^5Imperial Base" "jkg_imperialbasectf" }
 
   { "^1Homestead" "sunset6" }
   { "^1Tatooine Arena" "jkg_arena_tatooine_versus" }
-  { "^1Jawa Fortress" "jkg_jawa_fortress" }
   { "^1Dune Sea" "jkg_tusken_dunesea" }
   { "^1Mos Eisley" "jkg_mos_eisley" }
   { "^1Mos Eisley" "jkg_mos_eisley_night" }
@@ -40,4 +42,6 @@ maps {
   { "^1Korriban Tombs" "jkg_korriban" }
   { "^1Dantooine Hills" "jkg_dantooine" }
   { "^1Otoh Gunga" "otoh_gunga" }
+  { "^1Wayfarer Cargo Heist" "jkg_cargoheist2" }
+  { "^1Swoop Gang Hideout" "jkg_instance1" }
 }
