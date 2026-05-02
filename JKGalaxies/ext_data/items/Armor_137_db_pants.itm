@@ -1,0 +1,10 @@
+{
+	"name":         "Sand Bandit Pants",
+	"internal":     "dbandit_pants",
+	"itemtype":     "armor",
+	"armor":		"dbandit_pants",
+	"weight":		"3",
+	"cost":			"350",
+	"itemIcon":		"gfx/item_icons/dbandit_pants.tga",
+	"itemDescription": "Missing Description"
+}

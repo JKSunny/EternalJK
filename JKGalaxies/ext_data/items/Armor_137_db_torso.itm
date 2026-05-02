@@ -1,0 +1,10 @@
+{
+	"name":         "Sand Bandit Jacket",
+	"internal":     "dbandit_torso",
+	"itemtype":     "armor",
+	"armor":		"dbandit_torso",
+	"weight":		"3",
+	"cost":			"325",
+	"itemIcon":		"gfx/item_icons/dbandit_torso.tga",
+	"itemDescription": "Missing Description"
+}

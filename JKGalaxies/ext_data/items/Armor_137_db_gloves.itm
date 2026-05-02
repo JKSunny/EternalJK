@@ -1,0 +1,10 @@
+{
+	"name":         "Sand Bandit Arm Wraps",
+	"internal":     "dbandit_gloves",
+	"itemtype":     "armor",
+	"armor":		"dbandit_gloves",
+	"weight":		"3",
+	"cost":			"225",
+	"itemIcon":		"gfx/item_icons/dbandit_arms.tga",
+	"itemDescription": "Missing Description"
+}
