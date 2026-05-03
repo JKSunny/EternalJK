@@ -38,7 +38,7 @@ option(BuildSkipCryptography "Remove unused Cryptography." ON)
 
 option(BuildMPEngine "Whether to create projects for the MP client (jkgalaxies.exe)" ON)
 option(BuildMPDed "Whether to create projects for the MP dedicated server (jkgalaxiesded.exe)" ON)
-option(BuildMPGame "Whether to create projects for the MP server-side gamecode (jampgamex86.dll)" ON)
+option(BuildMPGame "Whether to create projects for the MP server-side gamecode (gamex86.dll)" ON)
 option(BuildMPCGame "Whether to create projects for the MP clientside gamecode (cgamex86.dll)" ON)
 option(BuildMPUI "Whether to create projects for the MP UI code (uix86.dll)" ON)
 option(BuildMPRend2 "Whether to create projects for the EXPERIMENTAL MP rend2 renderer (rd-rend2_x86.dll)" ON)
@@ -88,7 +88,7 @@ check_type_size("void*" CMAKE_SIZEOF_VOID_P)
 
 
 # ${Architecture} must match ARCH_STRING in q_platform.h,
-# and is used in DLL names (jagamex86.dll, jagamex86.dylib, jagamei386.so).
+# and is used in DLL names (gamex86.dll, gamex86.dylib, gamei386.so).
 if(WIN32)
 	set(X86 ON)
 	if(CMAKE_SIZEOF_VOID_P MATCHES "8")

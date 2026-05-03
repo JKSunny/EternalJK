@@ -1,0 +1,10 @@
+{
+	"name":         "Sand Bandit Shoes",
+	"internal":     "dbandit_boots",
+	"itemtype":     "armor",
+	"armor":		"dbandit_boots",
+	"weight":		"3",
+	"cost":			"250",
+	"itemIcon":		"gfx/item_icons/dbandit_boots.tga",
+	"itemDescription": "Missing Description"
+}

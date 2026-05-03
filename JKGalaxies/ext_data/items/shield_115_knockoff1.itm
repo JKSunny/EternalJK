@@ -5,5 +5,6 @@
 	"itemIcon":	"gfx/Item_Icons/psd_knockoff_s_glow",
 	"cost":		"115",
 	"shield": "shield_knockoff1",
+	"tier":			0,
 	"itemDescription": "This shield doesn't seem to match any known manufacturer's shield, but some parts of the casing resembles the Atgar Personal Shield. It appears to be cobbled together with other various parts by a mechanic."
 }

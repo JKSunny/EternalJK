@@ -1946,6 +1946,20 @@ void CG_EntityEvent( centity_t *cent, vec3_t position ) {
 		}
 		break;
 
+	case EV_WEAPON_ARC_FIRE:
+		DEBUGNAME("EV_WEAPON_ARC_FIRE");
+		//CG_GenericArcFire(cent);
+		vec3_t origin;
+		vec3_t forward;
+
+		VectorCopy(cent->lerpOrigin, origin);
+		AngleVectors(cent->currentState.angles, forward, NULL, NULL);
+
+		// Example: spawn lightning arc effect
+		//trap->FX_PlayEffectID(cgs.effects.arcLightning, origin, forward, -1, -1, qfalse);
+		trap->FX_PlayEffectID(trap->FX_RegisterEffect("env/lightning.efx"), origin, forward, -1, -1, qfalse);
+		break;
+
 	case EV_ZOOM:
 		DEBUGNAME("EV_ZOOM");
 		if (es->number == cg.snap->ps.clientNum)

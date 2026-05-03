@@ -1,0 +1,10 @@
+{
+	"name":         "Sand Bandit Helmet (No Mouth Cover)",
+	"internal":     "dbandit_hhelmet",
+	"itemtype":     "armor",
+	"armor":		"dbandit_hhead",
+	"weight":		"3",
+	"cost":			"350",
+	"itemIcon":		"gfx/item_icons/dbandit_hhead.tga",
+	"itemDescription": "Missing Description"
+}

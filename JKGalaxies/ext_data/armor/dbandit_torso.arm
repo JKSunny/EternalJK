@@ -1,0 +1,52 @@
+{
+	"ref":		"dbandit_torso",
+	"slot":		"torso",
+	"armor":		75,
+	"movemodifier":	1.0,
+
+	"visuals": {
+		"model":	"models/players/Bandit_Desert/model.glm*default",
+		"modelGroup":	"Bandit_Desert",
+
+		"armorOnSurfaces": [
+			"torso",
+			"hips_torso",
+			"hips_belt",
+			"torso_jacket"
+		],
+
+		"bodyOffSurfaces": [
+			"torso",
+			"torsoa",
+			"torsoa_lower",
+			"torsob",
+			"torsob_lower",
+			"torsoc",
+			"torsoc_lower",
+			"torsod",
+			"torsod_lower",
+			"torsoe",
+			"torsoe_lower",
+			"torsof",
+			"torsof_lower",
+			"torsog",
+			"torsog_lower",
+			"torso_holster",
+			"torso_strap",
+			"torso_bandolier",
+			"torso_body_augment",
+			"torso_waist",
+			"torso_augment",
+			"torso_shoulder_pad",
+			"hips_torso",
+			"torso_body",
+			"torso_collar",
+			"torso_pauldron",
+			"torso_vest",
+			"torso_armor",
+			"l_arm_pocket",
+			"l_arm_key",
+			"torso_cowelbase"
+		]
+	}
+}

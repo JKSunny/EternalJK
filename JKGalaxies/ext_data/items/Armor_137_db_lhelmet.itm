@@ -1,0 +1,10 @@
+{
+	"name":         "Sand Bandit Helmet (No Goggles)",
+	"internal":     "dbandit_lhelmet",
+	"itemtype":     "armor",
+	"armor":		"dbandit_lhead",
+	"weight":		"3",
+	"cost":			"350",
+	"itemIcon":		"gfx/item_icons/dbandit_lhead.tga",
+	"itemDescription": "Missing Description"
+}

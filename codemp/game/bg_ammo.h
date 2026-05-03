@@ -68,6 +68,7 @@ struct ammo_t {
 		complexAmmoOverride<double> speed;
 		complexAmmoOverride<double> armorPenetration;
 		complexAmmoOverride<double> heatGenerated;
+		complexAmmoOverride<double> arcAngle;
 
 		std::vector<complexAmmoBuffOverride> buffs;
 

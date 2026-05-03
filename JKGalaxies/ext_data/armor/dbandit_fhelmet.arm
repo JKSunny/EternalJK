@@ -1,0 +1,32 @@
+{
+	"ref":		"dbandit_fhead",
+	"slot":		"head",
+	"armor":		70,
+	"movemodifier":	1.0,
+
+	"visuals": {
+		"model":	"models/players/Bandit_Desert/model.glm*default",
+		"modelGroup":	"Bandit_Desert",
+
+		"armorOnSurfaces": [
+			"head_coif",
+			"head_goggles",
+			"head_cover"
+		],
+
+		"bodyOffSurfaces": [
+			"head_helmet",
+			"head_haira",
+			"head_hairb",
+			"head_l_hairback",
+			"heada_mouth",
+			"headb_mouth",
+			"headc_mouth",
+			"heada_teeth",
+			"headb_teeth",
+			"headc_teeth",
+			"head_com",
+			"head_fins"
+		]
+	}
+}

@@ -782,6 +782,8 @@ static void JKG_ParseAmmoOverrides(ammo_t* ammo, cJSON* json) {
 	JKG_ParseAmmoOverride_Float(json, "speed", ammo->overrides.speed);
 	JKG_ParseAmmoOverride_Float(json, "armorPenetration", ammo->overrides.armorPenetration);
 	JKG_ParseAmmoOverride_Float(json, "heatGenerated", ammo->overrides.heatGenerated);
+	JKG_ParseAmmoOverride_Float(json, "arcangle", ammo->overrides.arcAngle);
+	
 
 #ifndef UI_EXPORTS	// UI hasn't got a clue what buffs are
 	JKG_ParseBuffOverrides(ammo, json, "buffs");
@@ -790,6 +792,10 @@ static void JKG_ParseAmmoOverrides(ammo_t* ammo, cJSON* json) {
 	JKG_ParseSimpleOverrideInt(ammo->overrides.useGravity, "useGravity", json);
 
 	JKG_ParseSimpleOverrideInt(ammo->overrides.hitscan, "hitscan", json);
+	if (ammo->overrides.hitscan.first && ammo->overrides.arcAngle.bIsPresent) //can't have both, arcscan overwrites hitscans
+	{
+		ammo->overrides.hitscan.first = 0; ammo->overrides.hitscan.second = 0;
+	}
 
 	JKG_ParseAmmoOverrideVisuals(ammo, cJSON_GetObjectItem(json, "visuals"));
 }
