@@ -219,3 +219,5 @@ codemp/git.h
 
 # .orig files are used by kdiff, not necessary to include 'em
 *.orig
+
+codemp/rd-vulkan/shaders/tools/compile_threaded.exe
