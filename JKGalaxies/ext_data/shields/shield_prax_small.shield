@@ -21,7 +21,7 @@
 	"brokenSoundEffect":	"sound/shield/shield_broken5",
 	"equippedSoundEffect":	"sound/shield/shield_equipped",
 	"chargedSoundEffect":	"sound/shield/shield_charged6",
-    "blockedMODs": ["MOD_VIBROBLADE", "MOD_SLUGTHROWER", "MOD_BLEEDING"],
+    "blockedMODs": ["MOD_VIBROBLADE", "MOD_SLUGTHROWER", "MOD_BLEEDING", "MOD_EXPLOSION"],
     "allowedMODs": ["MOD_BLASTER", "MOD_DISRUPTOR", "MOD_PULSE", "MOD_ION", "MOD_IONBLASTER", 
-                    "MOD_ELECTRICAL", "MOD_FIRE", "MOD_EXPLOSION", "MOD_STUNNED"]
+                    "MOD_ELECTRICAL", "MOD_FIRE", "MOD_STUNNED"]
 }

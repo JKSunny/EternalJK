@@ -47,6 +47,13 @@ qboolean JKG_ParseShieldOverrideTypes(cJSON* json, shieldData_t &shieldData, std
 				continue;
 			}
 
+			if (mod == JKG_GetMeansOfDamageIndex("MOD_ACP"))
+			{
+				Com_Printf(S_COLOR_YELLOW "ACP means of damage is not allowed for shield overrides, invalid syntax in : %s\n", cJSON_ToString(jsonNode));
+				status = qfalse;
+				continue;
+			}
+
 			if (list.data() == shieldData.blockedMODs.data())
 				shieldData.blockedMODs.push_back(mod);
 			else if (list.data() == shieldData.allowedMODs.data())

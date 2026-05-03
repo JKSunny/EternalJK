@@ -8,6 +8,6 @@
 	"brokenSoundEffect":	"sound/shield/shield_broken2",
 	"equippedSoundEffect":	"sound/shield/shield_equipped4",
 	"chargedSoundEffect":	"sound/shield/shield_charged5",
-    "blockedMODs": ["MOD_VIBROBLADE", "MOD_SLUGTHROWER", "MOD_BLEEDING"],
+    "blockedMODs": ["MOD_VIBROBLADE", "MOD_SLUGTHROWER", "MOD_BLEEDING", "MOD_BLEEDING", "MOD_EXPLOSION"],
     "allowedMODs": ["MOD_DISRUPTOR", "MOD_PULSE"]
 }
