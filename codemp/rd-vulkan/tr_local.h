@@ -1039,6 +1039,7 @@ typedef struct trRefdef_s {
 //=================================================================================
 
 // skins allow models to be retextured without modifying the model file
+#ifndef USE_OPENJK
 typedef struct {
 	char		name[MAX_QPATH];
 	shader_t	*shader;
@@ -1049,6 +1050,9 @@ typedef struct skin_s {
 	int				numSurfaces;
 	skinSurface_t	*surfaces[128];
 } skin_t;
+#else
+typedef _skinSurface_t skinSurface_t;
+#endif
 
 typedef struct fog_s {
 	int				originalBrushNumber;
