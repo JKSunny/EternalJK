@@ -5,5 +5,6 @@
 	"itemIcon":	"gfx/Item_Icons/psd_knockoff_bloody_glow",
 	"cost":		"80",
 	"shield":	"shield_knockoff2",
+	"tier":			0,
 	"itemDescription": "This shield doesn't seem to match any known manufacturer's shield, it appears to be cobbled together from various mechanical parts. It has dried blood encrusted on the outside of its casing and seems rather well worn."
 }
