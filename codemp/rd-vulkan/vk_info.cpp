@@ -455,6 +455,14 @@ void vk_info_f( void ) {
     ri.Printf( PRINT_ALL, "VBO buffers: %i, \n", tr.numVBOs );
     ri.Printf( PRINT_ALL, "IBO buffers: %i, \n", tr.numIBOs );
 #endif
+    const char *yesno[] = {"no ", "yes"};
+#ifdef USE_UPLOAD_QUEUE
+    const int use_staging_queue = 1;
+#else
+    const int use_staging_queue = 0;
+#endif
+    ri.Printf( PRINT_ALL, "Use texture staging upload queue: %s\n", yesno[use_staging_queue] );
+
 #else
     ri.Printf(PRINT_ALL, "vk_info statistics are not enabled in this build.\n");
 #endif
