@@ -8,6 +8,7 @@ on:
       - beta
       - pbr
       - pbr-inspector
+      - vulkan-resource-opt
     paths-ignore:
       - "**.md"
       - ".gitignore"
@@ -362,6 +363,38 @@ jobs:
           automatic_release_tag: "latest-beta"
           prerelease: true
           title: Beta Build
+          files: |
+            *.zip
+            *.tar.gz
+
+  create-opt-test:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/vulkan-resource-opt'
+    needs: [msvc, ubuntu, macos, macos-m1]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Create binary archives
+        run: |
+          7z a -r EternalJK-windows-x86.zip                   ./EternalJK-windows-x86-Release-Non-Portable/*
+          7z a -r EternalJK-windows-x86_64.zip                ./EternalJK-windows-x86_64-Release-Non-Portable/*
+          mv ./EternalJK-linux-x86-Release-Non-Portable/*     ./EternalJK-linux-x86.tar.gz
+          mv ./EternalJK-linux-x86_64-Release-Non-Portable/*  ./EternalJK-linux-x86_64.tar.gz
+          mv ./EternalJK-macos-x86_64-Release-Non-Portable/*  ./EternalJK-macos-x86_64.tar.gz
+          mv ./EternalJK-macos-arm64-Release-Non-Portable/*   ./EternalJK-macos-arm64.tar.gz
+
+      - name: Create latest vulkan-resource-opt build
+        uses: crowbarmaster/GH-Automatic-Releases@latest
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          automatic_release_tag: "latest-resource-optimization"
+          prerelease: true
+          title: Resource Optimization Build
           files: |
             *.zip
             *.tar.gz
