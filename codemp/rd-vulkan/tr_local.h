@@ -338,8 +338,6 @@ typedef struct image_s {
 	bool					mipmap;						// deprecated
 	bool					allowPicmip;				// deprecated
 
-	short					iLastLevelUsedOn;
-
 	uint32_t				type;
 	uint32_t				layers;
 	VkImage					handle;
@@ -2044,6 +2042,12 @@ typedef struct convolveCubemapCommand_s {
 
 #define NUM_SCRATCH_IMAGES 32
 
+typedef struct {
+    image_t **items;
+    uint32_t count;
+    uint32_t capacity;
+} image_pool_t;
+
 typedef struct trGlobals_s {
 	qboolean				registered;			// cleared at shutdown, set at beginRegistration
 	qboolean				inited;				// cleared at shutdown, set at vk_create_window
@@ -2143,11 +2147,11 @@ typedef struct trGlobals_s {
 	model_t					*models[MAX_MOD_KNOWN];
 	int						numModels;
 
-	int						numImages;
-	image_t					*images[MAX_DRAWIMAGES];
+	image_pool_t			images;
 
 	world_t					bspModels[MAX_SUB_BSP];
 	int						numBSPModels;
+	int						currentLevel;
 
 	int						numVBOs;
 	VBO_t					*vbos[4069];
@@ -2214,13 +2218,6 @@ struct glconfigExt_t
 	qboolean	doStencilShadowsInOneDrawcall;
 	const char	*originalExtensionString;
 };
-
-int		 R_Images_StartIteration( void );
-image_t *R_Images_GetNextIteration( void );
-void	 R_Images_Clear( void );
-void	 R_Images_DeleteLightMaps( void );
-void	 R_Images_DeleteImage( image_t *pImage );
-
 
 extern backEndState_t	backEnd;
 extern trGlobals_t		tr;
@@ -2540,15 +2537,17 @@ qhandle_t	RE_RegisterServerModel( const char *name );
 qhandle_t	RE_RegisterModel( const char *name );
 qhandle_t	RE_RegisterSkin( const char *name );
 
-void		RE_RegisterMedia_LevelLoadBegin( const char *psMapName, ForceReload_e eForceReload );
-void		RE_RegisterMedia_LevelLoadEnd( void );
-int			RE_RegisterMedia_GetLevel( void );
-qboolean	RE_RegisterModels_LevelLoadEnd( qboolean bDeleteEverythingNotUsedThisLevel = qfalse );
-void*		RE_RegisterModels_Malloc( int iSize, void *pvDiskBufferIfJustLoaded, const char *psModelFileName, qboolean *pqbAlreadyFound, memtag_t eTag );
-void		RE_RegisterModels_StoreShaderRequest( const char *psModelFileName, const char *psShaderName, int *piShaderIndexPoke );
-void		RE_RegisterModels_Info_f( void );
-qboolean	RE_RegisterImages_LevelLoadEnd( void );
-void		RE_RegisterImages_Info_f( void );
+
+
+//void		RE_RegisterMedia_LevelLoadBegin( const char *psMapName, ForceReload_e eForceReload );
+//void		RE_RegisterMedia_LevelLoadEnd( void );
+//int			RE_RegisterMedia_GetLevel( void );
+//qboolean	RE_RegisterModels_LevelLoadEnd( qboolean bDeleteEverythingNotUsedThisLevel = qfalse );
+//void*		RE_RegisterModels_Malloc( int iSize, void *pvDiskBufferIfJustLoaded, const char *psModelFileName, qboolean *pqbAlreadyFound, memtag_t eTag );
+//void		RE_RegisterModels_StoreShaderRequest( const char *psModelFileName, const char *psShaderName, int *piShaderIndexPoke );
+//void		RE_RegisterModels_Info_f( void );
+//qboolean	RE_RegisterImages_LevelLoadEnd( void );
+
 
 
 qboolean	R_GetEntityToken( char *buffer, int size );
@@ -3199,7 +3198,6 @@ Ghoul2 Insert Start
 void			Multiply_3x4Matrix( mdxaBone_t *out, mdxaBone_t *in2, mdxaBone_t *in );
 extern qboolean R_LoadMDXM ( model_t *mod, void *buffer, const char *name, qboolean &bAlreadyCached );
 extern qboolean R_LoadMDXA ( model_t *mod, void *buffer, const char *name, qboolean &bAlreadyCached );
-void			RE_InsertModelIntoHash( const char *name, model_t *mod );
 void			ResetGhoul2RenderableSurfaceHeap( void );
 /*
 Ghoul2 Insert End
@@ -3265,9 +3263,11 @@ qboolean	R_LightCullBounds( const dlight_t *dl, const vec3_t mins, const vec3_t 
 #endif
 
 // image
-image_t		*noLoadImage( const char *name, imgFlags_t flags );
+void		R_InitImagesPool();
+void		R_InitImageScratch( void );
+void		R_DestroyImageScratch(void);
+
 char		*GenerateImageMappingName( const char *name );
-void		R_Add_AllocatedImage( image_t *image );
 
 void		vk_bind( image_t *image );
 void		vk_flush_staging_buffer( qboolean final );
