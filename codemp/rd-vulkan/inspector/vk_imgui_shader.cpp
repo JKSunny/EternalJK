@@ -583,9 +583,9 @@ static void vk_imgui_draw_inspector_shader_visualize( int index ) {
 			ImGui::BeginGroup();
 			ImGui::Dummy( ImVec2( 0.0f, 1.0f ) );
 
-			vk_imgui_draw_inspector_shader_visualize_texture( tr.images[mat->albedo], va( "Albedo: %d", mat->albedo ) );
+			vk_imgui_draw_inspector_shader_visualize_texture( tr.images.items[mat->albedo], va( "Albedo: %d", mat->albedo ) );
 
-			vk_imgui_draw_inspector_shader_visualize_texture( tr.images[mat->emissive], va( "Emissive: %d", mat->emissive ) );
+			vk_imgui_draw_inspector_shader_visualize_texture( tr.images.items[mat->emissive], va( "Emissive: %d", mat->emissive ) );
 
 			ImGui::EndGroup();
 		}

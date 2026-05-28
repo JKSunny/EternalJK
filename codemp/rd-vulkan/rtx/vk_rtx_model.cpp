@@ -101,7 +101,7 @@ void vk_rtx_extract_model_lights_mdv( model_t *model, mdvModel_t *mdvModel )
 		if ( material->emissive <= 0 )
 			continue;
 
-		if ( tr.images[material->emissive] == NULL )
+		if ( tr.images.items[material->emissive] == NULL )
 			continue;
 
 		num_lights += MIN( 50, (surf->numIndexes / 3));
@@ -131,14 +131,14 @@ void vk_rtx_extract_model_lights_mdv( model_t *model, mdvModel_t *mdvModel )
 	{
 		// problem, these are per entity ..
 		rtx_material_t *material = vk_rtx_get_mdv_material( surf );
-		const image_t *emissive_image = tr.images[material->emissive];
+		const image_t *emissive_image = tr.images.items[material->emissive];
 		if ( material == NULL )
 			continue;
 
 		if ( material->emissive <= 0 )
 			continue;
 
-		if ( tr.images[material->emissive] == NULL )
+		if ( tr.images.items[material->emissive] == NULL )
 			continue;
 
 		const int num_triangles = (surf->numIndexes / 3);

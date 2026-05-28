@@ -5357,8 +5357,8 @@ shader_t *GeneratePermanentShader( )
 	{
 		uint32_t emissive = vk_rtx_find_emissive_texture( newShader, NULL );
 
-		if ( emissive && !tr.images[emissive]->processing_complete )
-			vk_rtx_extract_emissive_texture_info( tr.images[emissive] );
+		if ( emissive && !tr.images.items[emissive]->processing_complete )
+			vk_rtx_extract_emissive_texture_info( tr.images.items[emissive] );
 	}
 #endif
 
