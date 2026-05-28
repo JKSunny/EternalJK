@@ -1012,7 +1012,7 @@ collect_frames_emissive_info( shader_t *shader, rtx_material_t *material, bool *
 	if ( !emissive_image_index )
 		return false;
 
-	const image_t *image = tr.images[emissive_image_index];
+	const image_t *image = tr.images.items[emissive_image_index];
 
 	if ( !image )
 		return false;
