@@ -52,7 +52,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #if defined (_DEBUG)
 #if defined (_WIN32)
 #define USE_VK_VALIDATION
-#define USE_VK_OBJECT_TRACKER
+//#define USE_VK_OBJECT_TRACKER
 #define USE_DEBUG_REPORT
 //#define USE_DEBUG_UTILS
 #endif
@@ -1491,7 +1491,6 @@ size_t	vk_imgui_profiler_insert_task( const char *name, uint32_t color, double s
 #endif
 
 #ifdef USE_VK_OBJECT_TRACKER
-
 	void		vk_dump_tracked_objects( void );
 
 	void		vk_create_tracked_buffer( VkDevice device, const VkBufferCreateInfo* createInfo, VkBuffer* outBuffer, const char* debugName, const char* file, int line, const char* function );
@@ -1514,4 +1513,4 @@ size_t	vk_imgui_profiler_insert_task( const char *name, uint32_t color, double s
 	#define VK_ALLOCATE_MEMORY(device, info, outMemory, name)			qvkAllocateMemory( device, info, NULL, outMemory )
 	#define VK_ALLOCATE_MEMORY_CHECK(device, info, outMemory, name)		VK_CHECK( qvkAllocateMemory( device, info, NULL, outMemory ) )
 	#define VK_FREE_MEMORY(device, memory)								qvkFreeMemory( device, memory, NULL )
-#endif
+#endif // USE_VK_OBJECT_TRACKER
