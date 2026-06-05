@@ -1,7 +1,7 @@
 @echo off
 
 set "VSCMD_START_DIR=%CD%"
-call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\Common7\Tools\VsDevCmd.bat"
+call "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\VsDevCmd.bat"
 
 set tools_dir=tools
 set bh=%tools_dir%\bin2hex.exe
