@@ -1165,7 +1165,9 @@ void RE_Shutdown( qboolean destroyWindow, qboolean restarting ) {
 		Com_Memset(&glState, 0, sizeof(glState));
 
 		if (destroyWindow && !restarting) {
+#ifndef USE_OPENJK	// deprecated for EJK too
 			ri.VK_destroyWindow();
+#endif
 			Com_Memset(&glConfig, 0, sizeof(glConfig));
 		}
 	}

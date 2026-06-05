@@ -330,7 +330,7 @@ static rserr_t GLimp_SetMode(glconfig_t *glConfig, const windowDesc_t *windowDes
 	int display = 0;
 	int x = SDL_WINDOWPOS_UNDEFINED, y = SDL_WINDOWPOS_UNDEFINED;
 
-	Com_Printf("grahpis mode: %d", (int)windowDesc->api);
+	Com_Printf("graphics mode: %d", (int)windowDesc->api);
 	switch (windowDesc->api)
 	{
 		case GRAPHICS_API_OPENGL:
@@ -956,17 +956,4 @@ qboolean WIN_VK_createSurfaceImpl(void *instance, void **surface)
 		screen,
 		reinterpret_cast<VkInstance>( instance ),
 		reinterpret_cast<VkSurfaceKHR*>( surface ) ) );
-}
-
-void WIN_VK_destroyWindow(void)
-{
-#if 0
-	IN_Shutdown();
-
-	SDL_QuitSubSystem(SDL_INIT_VIDEO);
-
-	SDL_DestroyWindow(screen);
-	screen = NULL;
-#endif
-	return;
 }

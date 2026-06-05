@@ -351,7 +351,6 @@ typedef struct refimport_s {
 	qboolean		(*VK_IsMinimized)					( void );
 	void			*(*VK_GetInstanceProcAddress)		( void );
 	qboolean		(*VK_createSurfaceImpl)				( void *instance, void **surface );
-	void			(*VK_destroyWindow)					( void);
 } refimport_t;
 
 // this is the only function actually exported at the linker level
