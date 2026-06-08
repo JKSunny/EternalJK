@@ -92,7 +92,6 @@ void vk_imgui_bind_rtx_draw_image( void )
 	if ( !vk.rtxActive ) 
 		return;
 
-	uint32_t i, j;
 	Vk_Sampler_Def sd;
 	VkSampler	sampler;
 

@@ -698,7 +698,7 @@ static void process_regular_entity(
 
 static void prepare_entities( EntityUploadInfo *upload_info, const trRefdef_t *refdef ) 
 {
-	uint32_t		i, j;
+	uint32_t i;
 
 	entity_frame_num = !entity_frame_num;
 

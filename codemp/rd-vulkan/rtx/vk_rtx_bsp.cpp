@@ -2000,7 +2000,7 @@ void vk_rtx_update_dynamic_geometry( VkCommandBuffer cmd_buf, vk_geometry_data_t
 
 static void vk_rtx_reset_world_geometry( vk_geometry_data_t *geom )
 {
-	uint32_t i, j;
+	uint32_t i;
 
 	if ( geom == NULL )
 		return;
@@ -2134,9 +2134,9 @@ static void vk_rtx_inject_light_poly_debug( vk_geometry_data_t *geom, world_t& w
 static void
 mark_clusters_with_sky( const vk_geometry_data_t* geom, uint8_t* clusters_with_sky)
 {
-	uint32_t i;
+	uint32_t prim_idx;
 
-	for (uint32_t prim_idx = 0; prim_idx < geom->geom_opaque.prim_counts[0]; prim_idx++)
+	for ( prim_idx = 0; prim_idx < geom->geom_opaque.prim_counts[0]; prim_idx++ )
 	{
 		uint32_t prim = geom->geom_opaque.prim_offsets[0] + prim_idx;
 

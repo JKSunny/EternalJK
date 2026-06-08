@@ -71,8 +71,6 @@ static rtx_material_t *vk_rtx_get_mdv_material(mdvSurface_t* surf)
 		if ( !index || tr.shaders[index] == NULL )
 			continue;
 
-		uint32_t material_index, material_flags;
-
 		material = vk_rtx_shader_to_material( tr.shaders[index] );
 
 		if ( material != NULL )
@@ -84,7 +82,7 @@ static rtx_material_t *vk_rtx_get_mdv_material(mdvSurface_t* surf)
 
 void vk_rtx_extract_model_lights_mdv( model_t *model, mdvModel_t *mdvModel )
 {
-	uint32_t i, j, tri_idx;
+	uint32_t i, tri_idx;
 	mdvSurface_t   *surf;
 
 	int num_lights = 0;
@@ -198,13 +196,13 @@ void vk_rtx_extract_model_lights_mdv( model_t *model, mdvModel_t *mdvModel )
 }
 
 #ifdef USE_RTX_GLOBAL_MODEL_VBO
-void vk_rtx_bind_model( int index )
+void vk_rtx_bind_model( int index, VBO_t *vbo, IBO_t *ibo )
 {
 	if ( !vk.model_instance.descriptor.vbos || !vk.model_instance.descriptor.ibos )
 		return;
 
-	vk_rtx_write_model_descriptor( index, vk.model_instance.descriptor.vbos, tr.vbos[ index - 1 ]->buffer, tr.vbos[ index - 1 ]->size );
-	vk_rtx_write_model_descriptor( index, vk.model_instance.descriptor.ibos, tr.ibos[ index - 1 ]->buffer, tr.ibos[ index - 1 ]->size );
+	vk_rtx_write_model_descriptor( index, vk.model_instance.descriptor.vbos, vbo->buffer, vbo->size );
+	vk_rtx_write_model_descriptor( index, vk.model_instance.descriptor.ibos, ibo->buffer, ibo->size );
 }
 #endif
 

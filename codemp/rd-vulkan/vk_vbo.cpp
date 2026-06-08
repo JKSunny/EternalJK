@@ -1256,7 +1256,7 @@ void R_BuildMDXM( model_t *mod, mdxmHeader_t *mdxm )
 
 
 		vk_rtx_extract_model_lights_mdxm( mod );
-		vk_rtx_bind_model( vbo->index );
+		vk_rtx_bind_model( vbo->index, vbo, ibo );
 #endif
 
 		// find the next LOD
@@ -1423,7 +1423,7 @@ void R_BuildMD3( model_t *mod, mdvModel_t *mdvModel )
 
 #if defined(USE_RTX) && defined(USE_RTX_GLOBAL_MODEL_VBO)
 	vk_rtx_extract_model_lights_mdv( mod, mdvModel );
-	vk_rtx_bind_model( vbo->index );
+	vk_rtx_bind_model( vbo->index, vbo, ibo );
 #endif
 
 	ri.Hunk_FreeTempMemory(indexOffsets);

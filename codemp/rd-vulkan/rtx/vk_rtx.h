@@ -652,7 +652,7 @@ VkResult	vk_rtx_model_vbo_create_pipelines( void );
 VkResult	vk_rtx_model_vbo_destroy_pipelines( void );
 void		vkpt_instance_geometry( VkCommandBuffer cmd_buf, uint32_t num_instances, qboolean update_world_animations );
 #ifdef USE_RTX_GLOBAL_MODEL_VBO
-void		vk_rtx_bind_model( int index );
+void		vk_rtx_bind_model( int index, VBO_t *vbo, IBO_t *ibo );
 #else
 void		vk_rtx_build_mdxm_vbo( model_t *mod, mdxmHeader_t *mdxm );
 #endif

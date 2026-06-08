@@ -367,7 +367,8 @@ void vk_rtx_bind_descriptor_buffer_element(vkdescriptor_t *descriptor, uint32_t 
 	if ( buffer == NULL )
 		return;	// need to bind empty buffer
 
-    for (uint32_t i = 0; i < descriptor->size; ++i) {
+    for ( i = 0; i < descriptor->size; ++i ) 
+	{
         if (descriptor->bindings[i].binding != binding || descriptor->bindings[i].stageFlags != stage)
             continue;
 
