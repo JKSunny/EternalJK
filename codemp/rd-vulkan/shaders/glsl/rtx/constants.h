@@ -104,6 +104,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define MATERIAL_FLAG_WARP							0x00800000 // bit 23
 #define MATERIAL_FLAG_WEAPON						0x01000000 // bit 24
 #define MATERIAL_FLAG_HANDEDNESS					0x02000000 // bit 25
+#define MATERIAL_FLAG_MASKED						0x04000000
 #define MATERIAL_FLAG_LIGHT							0x08000000 // bit 27
 
 #define MATERIAL_LIGHT_STYLE_MASK    0x0003f000

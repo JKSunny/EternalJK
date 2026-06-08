@@ -47,7 +47,6 @@ void pt_logic_rchit(inout RayPayloadGeometry ray_payload, int primitiveID, int i
 	ray_payload.hit_distance = hitT;
 }
 
-#ifndef USE_SIMPLE
 bool pt_logic_masked(int primitiveID, int instanceID, int geometryIndex, uint instanceCustomIndex, vec2 bary)
 {
 	int model_index;
@@ -61,15 +60,35 @@ bool pt_logic_masked(int primitiveID, int instanceID, int geometryIndex, uint in
 
 	MaterialInfo minfo = get_material_info(triangle.material_id);
 
-	if (minfo.mask_texture == 0)
+	if (minfo.base_texture == 0)
 		return true;
-	
+
+	if (minfo.alpha_test_func == 0u)
+		return true;
+
 	vec2 tex_coord = triangle.tex_coords0 * vec3(1.0 - bary.x - bary.y, bary.x, bary.y);
-
-	//perturb_tex_coord(triangle.material_id, global_ubo.time, tex_coord);	
-
-	vec4 mask_value = global_textureLod(minfo.mask_texture, tex_coord, /* mip_level = */ 0);
-
-	return mask_value.x >= 0.5;
-}
+#if 0
+	perturb_tex_coord(triangle.material_id, global_ubo.time, tex_coord);	
+	vec4 mask_value = global_textureLod(minfo.base_texture, tex_coord, /* mip_level = */ 0);
+	return mask_value.a >= 0.5;
 #endif
+	vec4 texel = global_textureLod(minfo.base_texture, tex_coord, 0);
+
+	switch (minfo.alpha_test_func)
+	{
+		// GLS_ATEST_GT_0
+		case 1u:
+			return texel.a > 0.0;
+
+		// GLS_ATEST_LT_80
+		case 2u:
+			return texel.a < minfo.alpha_test_value;
+
+		// GLS_ATEST_GE_80 / GLS_ATEST_GE_C0
+		case 3u:
+			return texel.a >= minfo.alpha_test_value;
+	}
+
+	return true;
+
+}

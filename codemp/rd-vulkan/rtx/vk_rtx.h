@@ -172,6 +172,8 @@ typedef struct {
 	uint32_t	emissive_factor;
 	int			surface_light;	// q3map_surfacelight fallback
 	uint32_t	flags;
+	uint32_t	alpha_test_func;
+	float		alpha_test_value;
 } rtx_material_t;
 
 typedef struct light_poly_s {
@@ -215,14 +217,16 @@ typedef struct EntityUploadInfo
 	uint32_t num_instances;
 	uint32_t num_prims;
 	uint32_t opaque_prim_count;
-	uint32_t transparent_model_vertex_offset;
-	uint32_t transparent_model_vertex_num;
-	uint32_t viewer_model_vertex_offset;
-	uint32_t viewer_model_vertex_num;
-	uint32_t viewer_weapon_vertex_offset;
-	uint32_t viewer_weapon_vertex_num;
-	uint32_t explosions_vertex_offset;
-	uint32_t explosions_vertex_num;
+	uint32_t transparent_prim_offset;
+	uint32_t transparent_prim_count;
+	uint32_t masked_prim_offset;
+	uint32_t masked_prim_count;
+	uint32_t viewer_model_prim_offset;
+	uint32_t viewer_model_prim_count;
+	uint32_t viewer_weapon_prim_offset;
+	uint32_t viewer_weapon_prim_count;
+	uint32_t explosions_prim_offset;
+	uint32_t explosions_prim_count;
 	qboolean weapon_left_handed;
 } EntityUploadInfo;
 
@@ -351,6 +355,7 @@ typedef struct {
 typedef enum {
 	BLAS_TYPE_OPAQUE,
 	BLAS_TYPE_TRANSPARENT,
+	BLAS_TYPE_MASKED,
 	BLAS_TYPE_COUNT
 } vk_blas_type;
 
@@ -577,6 +582,7 @@ uint32_t	RB_GetNextTexEncoded( shader_t *shader, int stage );
 //qboolean	RB_IsLight( shader_t *shader );
 qboolean	RB_SkipObject( shader_t *shader );
 qboolean	RB_IsTransparent( shader_t *shader );
+qboolean	RB_IsMasked( shader_t *shader );
 void		vk_rtx_update_shader_material( shader_t *shader, shader_t *updatedShader );
 rtx_material_t	*vk_rtx_shader_to_material( shader_t *shader );
 VkResult	vk_rtx_upload_materials( LightBuffer *lbo );

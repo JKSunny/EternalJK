@@ -114,12 +114,19 @@ void vkpt_pt_create_all_dynamic( VkCommandBuffer cmd_buf, int idx, const EntityU
 	uint64_t offset_vertex = offset_vertex_base;
 	uint64_t offset_index = 0;
 
-	vk_rtx_create_blas( &batch, 
-		&vk.buf_positions_instanced, offset_vertex, 
-		NULL, offset_index, 		
-		upload_info->opaque_prim_count * 3, 0,
-		&vk.model_instance.blas.dynamic[idx], 
-		qtrue, qtrue, qfalse, 0, "instanced opaque" );
+	// opaque
+	vk_rtx_create_blas( &batch, &vk.buf_positions_instanced, offset_vertex,  NULL, offset_index, 		
+		upload_info->opaque_prim_count * 3, 0, &vk.model_instance.blas.dynamic[idx], qtrue, qtrue, qfalse, 0, "instanced opaque" );
+	
+	// transparent
+	offset_vertex = offset_vertex_base + upload_info->transparent_prim_offset * sizeof(prim_positions_t);
+	vk_rtx_create_blas( &batch, &vk.buf_positions_instanced, offset_vertex,  NULL, offset_index, 		
+		upload_info->transparent_prim_count * 3, 0, &vk.model_instance.blas.transparent_models[idx], qtrue, qtrue, qfalse, 0, "instanced transparent" );
+
+	// masked
+	offset_vertex = offset_vertex_base + upload_info->masked_prim_offset * sizeof(prim_positions_t);
+	vk_rtx_create_blas( &batch, &vk.buf_positions_instanced, offset_vertex,  NULL, offset_index, 		
+		upload_info->masked_prim_count * 3, 0, &vk.model_instance.blas.masked_models[idx], qtrue, qtrue, qfalse, 0, "instanced masked" );
 
 	if ( batch.numBuilds > 0)
 		qvkCmdBuildAccelerationStructuresKHR( cmd_buf, batch.numBuilds, batch.buildInfos, batch.rangeInfoPtrs );
@@ -207,7 +214,7 @@ void vkpt_pt_instance_model_blas( const model_geometry_t* geom, const mat4_t tra
 	++g_num_instances;
 }
 
-static void vkpt_pt_create_toplevel( VkCommandBuffer cmd_buf, uint32_t idx, world_t &worldData ) 
+static void vkpt_pt_create_toplevel( VkCommandBuffer cmd_buf, uint32_t idx, const EntityUploadInfo *upload_info ) 
 {
 	//
 	// model/entity instances
@@ -215,6 +222,14 @@ static void vkpt_pt_create_toplevel( VkCommandBuffer cmd_buf, uint32_t idx, worl
 	append_blas( g_instances, &g_num_instances,		
 		&vk.model_instance.blas.dynamic[idx], VERTEX_BUFFER_INSTANCED, 0, 
 		AS_FLAG_OPAQUE, VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_KHR, SBTO_OPAQUE );
+
+	append_blas( g_instances, &g_num_instances,		
+		&vk.model_instance.blas.transparent_models[idx], VERTEX_BUFFER_INSTANCED, upload_info->transparent_prim_offset, 
+		AS_FLAG_TRANSPARENT, VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_KHR, SBTO_OPAQUE );
+
+	append_blas( g_instances, &g_num_instances,		
+		&vk.model_instance.blas.masked_models[idx], VERTEX_BUFFER_INSTANCED, upload_info->masked_prim_offset, 
+		AS_FLAG_OPAQUE, VK_GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT_KHR | VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR, SBTO_MASKED );
 
 	uint32_t num_instances_geometry = g_num_instances;
 
@@ -371,6 +386,7 @@ add_dlights(const dlight_t* dlights, int num_dlights, light_poly_t* light_list, 
 
 #define MESH_FILTER_TRANSPARENT 1
 #define MESH_FILTER_OPAQUE 2
+#define MESH_FILTER_MASKED 4
 #define MESH_FILTER_ALL 3
 
 // bad sunny, rework this
@@ -546,7 +562,8 @@ static void process_regular_entity(
 	int* num_instanced_prim, 
 
 	int mesh_filter, 
-	qboolean* contains_transparent 
+	qboolean* contains_transparent,
+	qboolean* contains_masked
 )
 {
 	qboolean is_mdxm = qfalse;
@@ -590,6 +607,28 @@ static void process_regular_entity(
 
 		if (!material_id)
 			continue;
+
+		if ( RB_IsMasked( shader ) )
+		{
+			if (contains_masked)
+				*contains_masked = qtrue;
+
+			if (!(mesh_filter & MESH_FILTER_MASKED))
+				continue;
+		}
+		else if ( RB_IsTransparent( shader ) )
+		{
+			if(contains_transparent)
+				*contains_transparent = qtrue;
+
+			if(!(mesh_filter & MESH_FILTER_TRANSPARENT))
+				continue;
+		}
+		else
+		{
+			if (!(mesh_filter & MESH_FILTER_OPAQUE))
+				continue;
+		}
 
 		entity_hash_t hash;
 		hash.entity = entity->e.id;
@@ -666,6 +705,7 @@ static void prepare_entities( EntityUploadInfo *upload_info, const trRefdef_t *r
 	InstanceBuffer *instance_buffer = &vk.uniform_instance_buffer;
 
 	static int transparent_model_indices[MAX_REFENTITIES];
+	static int masked_model_indices[MAX_REFENTITIES];
 	static int viewer_model_indices[MAX_REFENTITIES];
 	static int viewer_weapon_indices[MAX_REFENTITIES];
 	static int explosion_indices[MAX_REFENTITIES];
@@ -722,6 +762,7 @@ static void prepare_entities( EntityUploadInfo *upload_info, const trRefdef_t *r
 						continue;
 					
 					qboolean contains_transparent = qfalse;
+					qboolean contains_masked = qfalse;
 
 					switch ( model->type )
 					{
@@ -734,8 +775,14 @@ static void prepare_entities( EntityUploadInfo *upload_info, const trRefdef_t *r
 						case MOD_MDXM:
 						case MOD_BAD:
 							{
-								process_regular_entity( i, refdef, entity, model, qfalse, qfalse, &model_instance_idx, &instance_idx, &num_instanced_prim, MESH_FILTER_OPAQUE, &contains_transparent );
+								process_regular_entity( i, refdef, entity, model, qfalse, qfalse, &model_instance_idx, &instance_idx, &num_instanced_prim, 
+									MESH_FILTER_OPAQUE, &contains_transparent, &contains_masked );
 							
+								if (contains_transparent)
+									transparent_model_indices[transparent_model_num++] = i;
+								if (contains_masked)
+									masked_model_indices[masked_model_num++] = i;
+
 								if (model->num_light_polys > 0)
 								{
 									mat4_t transform;
@@ -750,9 +797,6 @@ static void prepare_entities( EntityUploadInfo *upload_info, const trRefdef_t *r
 							break;
 					}
 
-					if ( contains_transparent )
-						transparent_model_indices[transparent_model_num++] = i;
-
 					break;
 				}
 			default:
@@ -762,11 +806,35 @@ static void prepare_entities( EntityUploadInfo *upload_info, const trRefdef_t *r
 	}
 
 	upload_info->opaque_prim_count = num_instanced_prim;
-	//upload_info->transparent_prim_offset = num_instanced_prim;
+	upload_info->transparent_prim_count = num_instanced_prim;
 
 	// transparent
+	for (int i = 0; i < transparent_model_num; i++)
 	{
+		const int entityNum = transparent_model_indices[i];
+		trRefEntity_t *entity = refdef->entities + transparent_model_indices[i];
+
+		model_t *model = R_GetModelByHandle( entity->e.hModel );
+		process_regular_entity(entityNum, refdef, entity, model, qfalse, qfalse, &model_instance_idx, &instance_idx, &num_instanced_prim,
+			MESH_FILTER_TRANSPARENT, NULL, NULL );
 	}
+
+	upload_info->transparent_prim_count = num_instanced_prim - upload_info->transparent_prim_offset;
+	upload_info->masked_prim_offset = num_instanced_prim;
+
+	// masked
+	for (int i = 0; i < masked_model_num; i++)
+	{
+		const int entityNum = masked_model_indices[i];
+		trRefEntity_t *entity = refdef->entities + masked_model_indices[i];
+
+		model_t *model = R_GetModelByHandle( entity->e.hModel );
+		process_regular_entity(entityNum, refdef, entity, model, qfalse, qtrue, &model_instance_idx, &instance_idx, &num_instanced_prim,
+			MESH_FILTER_MASKED, NULL, NULL);
+	}
+
+	upload_info->masked_prim_count = num_instanced_prim - upload_info->masked_prim_offset;
+
 
 	// viewer models
 	{
@@ -1607,7 +1675,7 @@ static void vk_begin_trace_rays( world_t &worldData, trRefdef_t *refdef, referen
 
 		BEGIN_PERF_MARKER( trace_cmd_buf, PROFILER_BVH_UPDATE );
 		vkpt_pt_create_all_dynamic( trace_cmd_buf, vk.current_frame_index, upload_info );
-		vkpt_pt_create_toplevel( trace_cmd_buf, vk.current_frame_index, worldData );
+		vkpt_pt_create_toplevel( trace_cmd_buf, vk.current_frame_index, upload_info );
 		vkpt_pt_update_descripter_set_bindings( vk.current_frame_index );
 		END_PERF_MARKER( trace_cmd_buf, PROFILER_BVH_UPDATE );
 
@@ -1819,10 +1887,13 @@ void vk_rtx_begin_scene( trRefdef_t *refdef, drawSurf_t *drawSurfs, int numDrawS
 	{
 		vkpt_pt_instance_model_blas( &tr.world->geometry.world_static.geom_opaque,					g_identity_transform, VERTEX_BUFFER_WORLD, -1, 0 );
 		vkpt_pt_instance_model_blas( &tr.world->geometry.world_static.geom_transparent,				g_identity_transform, VERTEX_BUFFER_WORLD, -1, 0 );
+		vkpt_pt_instance_model_blas( &tr.world->geometry.world_static.geom_masked,					g_identity_transform, VERTEX_BUFFER_WORLD, -1, 0 );
 		vkpt_pt_instance_model_blas( &tr.world->geometry.world_dynamic_material.geom_opaque,		g_identity_transform, VERTEX_BUFFER_WORLD_D_MATERIAL, -1, 0 );
 		//vkpt_pt_instance_model_blas( &tr.world->geometry.world_dynamic_material.geom_transparent,	g_identity_transform, VERTEX_BUFFER_WORLD_D_MATERIAL, -1, 0 );
+		vkpt_pt_instance_model_blas( &tr.world->geometry.world_dynamic_material.geom_masked,		g_identity_transform, VERTEX_BUFFER_WORLD_D_MATERIAL, -1, 0 );
 		vkpt_pt_instance_model_blas( &tr.world->geometry.world_dynamic_geometry.geom_opaque,		g_identity_transform, VERTEX_BUFFER_WORLD_D_GEOMETRY, -1, 0 );
 		//vkpt_pt_instance_model_blas( &tr.world->geometry.world_dynamic_geometry.geom_transparent,	g_identity_transform, VERTEX_BUFFER_WORLD_D_GEOMETRY, -1, 0 );
+		vkpt_pt_instance_model_blas( &tr.world->geometry.world_dynamic_geometry.geom_masked,		g_identity_transform, VERTEX_BUFFER_WORLD_D_GEOMETRY, -1, 0 );
 		vkpt_pt_instance_model_blas( &tr.world->geometry.sky_static.geom_opaque,					g_identity_transform, VERTEX_BUFFER_SKY, -1, 0 );
 
 #ifdef DEBUG_POLY_LIGHTS

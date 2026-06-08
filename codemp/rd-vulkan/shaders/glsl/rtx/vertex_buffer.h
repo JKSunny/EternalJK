@@ -30,7 +30,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 #define MAX_LIGHT_POLYS         4096
 #define LIGHT_POLY_VEC4S        4
-#define MATERIAL_UINTS			5
+#define MATERIAL_UINTS			6
 
 // should match the same constant declared in material.h
 #define MAX_PBR_MATERIALS		4096
@@ -179,7 +179,8 @@ STRUCT (
 	UINT	( normals_texture )
 	UINT	( emissive_texture )
 	UINT	( physical_texture )
-	UINT	( mask_texture )
+	UINT    ( alpha_test_func )
+	FLOAT   ( alpha_test_value )
 	//FLOAT	( bump_scale )
 	//FLOAT	( roughness_override )
 	//FLOAT	( metalness_factor )
@@ -504,6 +505,7 @@ MaterialInfo get_material_info( uint material_id )
 	data[1] = get_material_uint( material_index, 1 );
 	data[2] = get_material_uint( material_index, 2 );
 	data[3] = get_material_uint( material_index, 3 );
+	data[5] = get_material_uint(material_index, 5);
 
 	MaterialInfo minfo;
 	minfo.base_texture		= data[0] & 0xffff;	// albedo
@@ -520,6 +522,12 @@ MaterialInfo get_material_info( uint material_id )
 
 	minfo.emissive_factor 	= 1.0f;
 	minfo.base_factor		= 1.0f;
+
+	minfo.alpha_test_func	= data[5] & 0xffffu;
+	minfo.alpha_test_value	= unpackHalf2x16(data[5]).y;
+
+	//minfo.alpha_test_func	= 3;
+	//minfo.alpha_test_value	= 0.5;
 
 	return minfo;
 }

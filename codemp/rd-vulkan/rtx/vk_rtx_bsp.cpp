@@ -1374,7 +1374,7 @@ static void collect_cluster_lights( world_t &worldData )
 
 static int filter_opaque( shader_t *shader )
 {
-	if ( RB_IsTransparent( shader ) ) 
+	if ( RB_IsTransparent( shader ) || RB_IsMasked( shader ) ) 
 		return 0;
 
 	return 1;
@@ -1382,7 +1382,15 @@ static int filter_opaque( shader_t *shader )
 
 static int filter_transparent( shader_t *shader )
 {
-	if ( !RB_IsTransparent( shader ) ) 
+	if ( !RB_IsTransparent( shader ) || RB_IsMasked( shader ) ) 
+		return 0;
+
+	return 1;
+}
+
+static int filter_masked( shader_t *shader )
+{
+	if ( !RB_IsMasked( shader ) || RB_IsTransparent( shader ) ) 
 		return 0;
 
 	return 1;
@@ -1390,11 +1398,11 @@ static int filter_transparent( shader_t *shader )
 
 static int filter_static( shader_t *shader )
 {
-	qboolean as_dynamic = RB_IsDynamicGeometry( shader );
-	qboolean as_dynamic_data = RB_IsDynamicMaterial( shader );
+	qboolean is_geom_dynamic = RB_IsDynamicGeometry( shader );
+	qboolean is_mat_dynamic = RB_IsDynamicMaterial( shader );
 	qboolean is_sky = RB_IsSky(shader);
 
-	if ( !as_dynamic && !as_dynamic_data && !is_sky )
+	if ( !is_geom_dynamic && !is_mat_dynamic && !is_sky )
 		return 1;
 
 	return 0;
@@ -2288,6 +2296,10 @@ void R_PreparePT( world_t &worldData )
 	first_prim = prim_ctr;
 	vk_rtx_collect_surfaces( &prim_ctr, world_static, BLAS_TYPE_TRANSPARENT, worldData, worldData.nodes, -1, filter_static, filter_transparent );
 		vkpt_append_model_geometry(&world_static->geom_transparent, prim_ctr - first_prim, first_prim, "bsp static transparent");
+	vk_rtx_set_geomertry_accel_offsets( world_static, BLAS_TYPE_MASKED );
+	first_prim = prim_ctr;
+	vk_rtx_collect_surfaces( &prim_ctr, world_static, BLAS_TYPE_MASKED, worldData, worldData.nodes, -1, filter_static, filter_masked );
+		vkpt_append_model_geometry(&world_static->geom_masked, prim_ctr - first_prim, first_prim, "bsp static masked");
 	world_static->num_primitives = prim_ctr;
 
 
@@ -2300,8 +2312,11 @@ void R_PreparePT( world_t &worldData )
 	first_prim = prim_ctr;
 	vk_rtx_collect_surfaces( &prim_ctr, world_dynamic_material, BLAS_TYPE_TRANSPARENT, worldData, worldData.nodes, -1, filter_dynamic_material, filter_transparent );
 		vkpt_append_model_geometry(&world_dynamic_material->geom_transparent, prim_ctr - first_prim, first_prim, "bsp d material transparent");
+	vk_rtx_set_geomertry_accel_offsets( world_dynamic_material, BLAS_TYPE_MASKED );
+	first_prim = prim_ctr;
+	vk_rtx_collect_surfaces( &prim_ctr, world_dynamic_material, BLAS_TYPE_MASKED, worldData, worldData.nodes, -1, filter_dynamic_material, filter_masked );
+		vkpt_append_model_geometry(&world_dynamic_material->geom_masked, prim_ctr - first_prim, first_prim, "bsp d material masked");
 	world_dynamic_material->num_primitives = prim_ctr;
-
 
 	// dynamic geometry
 	prim_ctr = 0;
@@ -2312,8 +2327,11 @@ void R_PreparePT( world_t &worldData )
 	first_prim = prim_ctr;
 	vk_rtx_collect_surfaces( &prim_ctr, world_dynamic_geometry, BLAS_TYPE_TRANSPARENT, worldData, worldData.nodes, -1, filter_dynamic_geometry, filter_transparent );
 		vkpt_append_model_geometry(&world_dynamic_geometry->geom_transparent, prim_ctr - first_prim, first_prim, "bsp d geomatry transparent");
+	vk_rtx_set_geomertry_accel_offsets( world_dynamic_geometry, BLAS_TYPE_MASKED );
+	first_prim = prim_ctr;
+	vk_rtx_collect_surfaces( &prim_ctr, world_dynamic_geometry, BLAS_TYPE_MASKED, worldData, worldData.nodes, -1, filter_dynamic_geometry, filter_masked );
+		vkpt_append_model_geometry(&world_dynamic_geometry->geom_masked, prim_ctr - first_prim, first_prim, "bsp d geomatry masked");
 	world_dynamic_geometry->num_primitives = prim_ctr;
-	
 
 	// sub brush models
 	prim_ctr = 0;

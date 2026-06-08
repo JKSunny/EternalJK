@@ -77,6 +77,21 @@ qboolean RB_IsTransparent( shader_t *shader )
 	return qfalse;
 }
 
+qboolean RB_IsMasked( shader_t *shader ) 
+{
+	rtx_material_t *mat;
+
+	mat = vk_rtx_get_material( (uint32_t)shader->index );
+
+	if ( !mat )
+		return qfalse;
+
+	if ( (mat->flags & MATERIAL_FLAG_MASKED) == MATERIAL_FLAG_MASKED )
+		return qtrue;
+
+    return qfalse;
+}
+
 qboolean RB_IsSky(shader_t* shader)
 {
 	return (qboolean)(shader->isSky || shader->sun || (shader->surfaceFlags & (SURF_NODLIGHT | SURF_SKY)));
@@ -321,6 +336,8 @@ rtx_material_t *vk_rtx_shader_to_material( shader_t *shader )
 	if ( mat->index >= (int)MATERIAL_INDEX_MASK || mat->remappedIndex >= (int)MATERIAL_INDEX_MASK  )
 		ri.Error( ERR_DROP, "%s() - MATERIAL_INDEX_MASK(4095) hit. Need to finaly seperate material_index from material_flags", __func__ );
 
+	uint32_t alphaBlend = 0;
+
 	for ( i = 0; i < MAX_RTX_STAGES; i++ ) 
 	{
 		pStage = shader->stages[i];
@@ -338,6 +355,44 @@ rtx_material_t *vk_rtx_shader_to_material( shader_t *shader )
 
 			Com_Memcpy( mat->specular_scale, pStage->specularScale, sizeof(vec4_t));
 		}
+	}
+
+	// blend
+	if (shader->stages[0] != NULL && shader->stages[0]->active) 
+	{
+		uint32_t state_bits = shader->stages[0]->stateBits;
+
+		if (state_bits & GLS_ATEST_BITS)
+			mat->flags |= MATERIAL_FLAG_MASKED;
+
+		uint32_t atest_bits = state_bits & GLS_ATEST_BITS;
+
+		switch (atest_bits)
+		{
+			case GLS_ATEST_GT_0:
+				mat->alpha_test_func = 1;
+				mat->alpha_test_value = 0.0f;
+				break;
+			case GLS_ATEST_LT_80:
+				mat->alpha_test_func = 2;
+				mat->alpha_test_value = 0.5f;
+				break;
+			case GLS_ATEST_GE_80:
+				mat->alpha_test_func = 3;
+				mat->alpha_test_value = 0.5f;
+				break;
+			case GLS_ATEST_GE_C0:
+				mat->alpha_test_func = 3;
+				mat->alpha_test_value = 0.75f;
+				break;
+			default:
+				mat->alpha_test_func = 0;
+				mat->alpha_test_value = 0.0f;
+				break;
+		}
+	}else{
+		mat->alpha_test_func = 0;
+		mat->alpha_test_value = 0.0f;
 	}
 
 	MAT_SetIndex( mat );
@@ -370,6 +425,9 @@ VkResult vk_rtx_upload_materials( LightBuffer *lbo )
 		data[3] |=	floatToHalf( mat->specular_scale[3] ) << 16;
 
 		data[4] =	mat->remappedIndex;
+
+		data[5]  = mat->alpha_test_func & 0xffff;
+		data[5] |= floatToHalf(mat->alpha_test_value) << 16;
 
 		mat->uploaded[vk.current_frame_index] = qtrue;
 	}
