@@ -299,12 +299,143 @@ void vk_rtx_update_shader_material( shader_t *shader, shader_t *updatedShader )
 	}
 }
 
+uint32_t vk_get_rtx_material_stage_tex_mode( Vk_Pipeline_Def *def )
+{
+    switch ( def->shader_type ) {
+        case TYPE_MULTI_TEXTURE_MUL2:
+        case TYPE_MULTI_TEXTURE_MUL2_ENV:
+        case TYPE_MULTI_TEXTURE_MUL3:
+        case TYPE_MULTI_TEXTURE_MUL3_ENV:
+        case TYPE_BLEND2_MUL:
+        case TYPE_BLEND2_MUL_ENV:
+        case TYPE_BLEND3_MUL:
+        case TYPE_BLEND3_MUL_ENV:
+            return 0;
+            break;
+
+        case TYPE_MULTI_TEXTURE_ADD2_IDENTITY:
+        case TYPE_MULTI_TEXTURE_ADD2_IDENTITY_ENV:
+        case TYPE_MULTI_TEXTURE_ADD3_IDENTITY:
+        case TYPE_MULTI_TEXTURE_ADD3_IDENTITY_ENV:
+            return 1;
+            break;
+
+        case TYPE_MULTI_TEXTURE_ADD2:
+        case TYPE_MULTI_TEXTURE_ADD2_ENV:
+        case TYPE_MULTI_TEXTURE_ADD3:
+        case TYPE_MULTI_TEXTURE_ADD3_ENV:
+        case TYPE_BLEND2_ADD:
+        case TYPE_BLEND2_ADD_ENV:
+        case TYPE_BLEND3_ADD:
+        case TYPE_BLEND3_ADD_ENV:
+            return 2;
+            break;
+
+        case TYPE_BLEND2_ALPHA:
+        case TYPE_BLEND2_ALPHA_ENV:
+        case TYPE_BLEND3_ALPHA:
+        case TYPE_BLEND3_ALPHA_ENV:
+            return 3;
+            break;
+
+        case TYPE_BLEND2_ONE_MINUS_ALPHA:
+        case TYPE_BLEND2_ONE_MINUS_ALPHA_ENV:
+        case TYPE_BLEND3_ONE_MINUS_ALPHA:
+        case TYPE_BLEND3_ONE_MINUS_ALPHA_ENV:
+            return 4;
+            break;
+
+        case TYPE_BLEND2_MIX_ALPHA:
+        case TYPE_BLEND2_MIX_ALPHA_ENV:
+        case TYPE_BLEND3_MIX_ALPHA:
+        case TYPE_BLEND3_MIX_ALPHA_ENV:
+            return 5;
+            break;
+
+        case TYPE_BLEND2_MIX_ONE_MINUS_ALPHA:
+        case TYPE_BLEND2_MIX_ONE_MINUS_ALPHA_ENV:
+        case TYPE_BLEND3_MIX_ONE_MINUS_ALPHA:
+        case TYPE_BLEND3_MIX_ONE_MINUS_ALPHA_ENV:
+            return 6;
+            break;
+
+        case TYPE_BLEND2_DST_COLOR_SRC_ALPHA:
+        case TYPE_BLEND2_DST_COLOR_SRC_ALPHA_ENV:
+        case TYPE_BLEND3_DST_COLOR_SRC_ALPHA:
+        case TYPE_BLEND3_DST_COLOR_SRC_ALPHA_ENV:
+            return 7;
+            break;
+
+        default:
+			return 100;
+            break;
+    }
+}
+
+uint32_t vk_get_rtx_material_stage_tex_count( const Vk_Pipeline_Def *def )
+{
+    switch ( def->shader_type ) {
+
+        case TYPE_MULTI_TEXTURE_MUL2:
+        case TYPE_MULTI_TEXTURE_ADD2_IDENTITY:
+        case TYPE_MULTI_TEXTURE_ADD2:
+        case TYPE_MULTI_TEXTURE_MUL2_ENV:
+        case TYPE_MULTI_TEXTURE_ADD2_IDENTITY_ENV:
+        case TYPE_MULTI_TEXTURE_ADD2_ENV:
+
+        case TYPE_BLEND2_MUL:
+        case TYPE_BLEND2_ADD:
+        case TYPE_BLEND2_ALPHA:
+        case TYPE_BLEND2_ONE_MINUS_ALPHA:
+        case TYPE_BLEND2_MIX_ALPHA:
+        case TYPE_BLEND2_MIX_ONE_MINUS_ALPHA:
+        case TYPE_BLEND2_DST_COLOR_SRC_ALPHA:
+
+        case TYPE_BLEND2_MUL_ENV:
+        case TYPE_BLEND2_ADD_ENV:
+        case TYPE_BLEND2_ALPHA_ENV:
+        case TYPE_BLEND2_ONE_MINUS_ALPHA_ENV:
+        case TYPE_BLEND2_MIX_ALPHA_ENV:
+        case TYPE_BLEND2_MIX_ONE_MINUS_ALPHA_ENV:
+        case TYPE_BLEND2_DST_COLOR_SRC_ALPHA_ENV:
+            return 1; // 2 textures
+
+        case TYPE_MULTI_TEXTURE_MUL3:
+        case TYPE_MULTI_TEXTURE_ADD3_IDENTITY:
+        case TYPE_MULTI_TEXTURE_ADD3:
+        case TYPE_MULTI_TEXTURE_MUL3_ENV:
+        case TYPE_MULTI_TEXTURE_ADD3_IDENTITY_ENV:
+        case TYPE_MULTI_TEXTURE_ADD3_ENV:
+
+        case TYPE_BLEND3_MUL:
+        case TYPE_BLEND3_ADD:
+        case TYPE_BLEND3_ALPHA:
+        case TYPE_BLEND3_ONE_MINUS_ALPHA:
+        case TYPE_BLEND3_MIX_ALPHA:
+        case TYPE_BLEND3_MIX_ONE_MINUS_ALPHA:
+        case TYPE_BLEND3_DST_COLOR_SRC_ALPHA:
+
+        case TYPE_BLEND3_MUL_ENV:
+        case TYPE_BLEND3_ADD_ENV:
+        case TYPE_BLEND3_ALPHA_ENV:
+        case TYPE_BLEND3_ONE_MINUS_ALPHA_ENV:
+        case TYPE_BLEND3_MIX_ALPHA_ENV:
+        case TYPE_BLEND3_MIX_ONE_MINUS_ALPHA_ENV:
+        case TYPE_BLEND3_DST_COLOR_SRC_ALPHA_ENV:
+            return 2; // 3 textures
+
+        default:
+            return 0; // 1 texture
+    }
+}
+
 rtx_material_t *vk_rtx_shader_to_material( shader_t *shader )
 {
 	shader_t			*state;
 	const shaderStage_t *pStage;
 	rtx_material_t		*mat;
-	uint32_t			i;
+	uint32_t			i, j;
+	Vk_Pipeline_Def			def;
 
 	state = (shader->remappedShader) ? shader->remappedShader : NULL;
 
@@ -325,7 +456,8 @@ rtx_material_t *vk_rtx_shader_to_material( shader_t *shader )
 	
 	mat->remappedIndex	= (state) ? (uint32_t)state->index : 0U;
 	mat->active			= qtrue;
-	mat->albedo			= RB_GetNextTexEncoded( shader, 0 );
+	//mat->albedo			= RB_GetNextTexEncoded( shader, 0 );
+	mat->albedo			= 0u;
 	mat->emissive		= vk_rtx_find_emissive_texture( shader, mat );
 
 	if ( mat->emissive ) {
@@ -338,6 +470,7 @@ rtx_material_t *vk_rtx_shader_to_material( shader_t *shader )
 
 	uint32_t alphaBlend = 0;
 
+	memset(mat->stage, 0, sizeof(MaterialStage) * MAX_RTX_STAGES);
 	for ( i = 0; i < MAX_RTX_STAGES; i++ ) 
 	{
 		pStage = shader->stages[i];
@@ -345,6 +478,24 @@ rtx_material_t *vk_rtx_shader_to_material( shader_t *shader )
 		if ( !pStage || !pStage->active )
 			break;
 
+		Com_Memset( &def, 0, sizeof(Vk_Pipeline_Def) );
+		vk_get_pipeline_def(pStage->vk_pipeline[0], &def);
+
+		// stage/bundle
+		mat->num_stages++;
+		mat->stage[i].tex_mode = vk_get_rtx_material_stage_tex_mode( &def );
+		mat->stage[i].tex_count = vk_get_rtx_material_stage_tex_count( &def );
+
+		for ( j = 0; j <= mat->stage[i].tex_count; j++ ) { 
+			if ( pStage->bundle[j].image[0] == NULL )
+				continue;
+
+			mat->stage[i].bundle[j].image = pStage->bundle[j].image[0]->index;
+			mat->stage[i].bundle[j].rgbGen = (uint32_t)pStage->bundle[j].rgbGen;
+			mat->stage[i].bundle[j].alphaGen = (uint32_t)pStage->bundle[j].alphaGen;
+		}
+
+		// physical
 		if ( pStage->vk_pbr_flags ) 
 		{
 			if ( pStage->vk_pbr_flags & PBR_HAS_NORMALMAP )
@@ -414,7 +565,7 @@ VkResult vk_rtx_upload_materials( LightBuffer *lbo )
 
 		uint32_t *data = lbo->material_table + i * MATERIAL_UINTS;
 		memset(data, 0, sizeof(uint32_t) * MATERIAL_UINTS);
-		if ( mat->albedo )		data[0] |= mat->albedo;
+		if ( mat->albedo )		data[0] |= 0u;	// deprecated
 		if ( mat->emissive )	data[0] |= mat->emissive << 16;
 		if ( mat->normals )		data[1] |= mat->normals;
 		if ( mat->phyiscal )	data[1] |= mat->phyiscal << 16;
@@ -430,6 +581,10 @@ VkResult vk_rtx_upload_materials( LightBuffer *lbo )
 		data[5] |= floatToHalf(mat->alpha_test_value) << 16;
 
 		mat->uploaded[vk.current_frame_index] = qtrue;
+
+		// stages
+		MaterialStage *stage = lbo->material_stages + i * MAX_RTX_STAGES;
+		Com_Memcpy(stage, mat->stage, sizeof(MaterialStage) * mat->num_stages);
 	}
 
 	return VK_SUCCESS;

@@ -84,16 +84,33 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define VERTEX_BUFFER_LIST_DO( type, dim, name, size ) \
 type name[ ALIGN_SIZE_4( size, dim ) ];
 
+STRUCT (  
+	UINT	( image )
+	UINT	( rgbGen )
+	UINT	( alphaGen )
+	UINT	( pad2 )
+, MaterialBundle )
+#define MATERIALBUNDLE(n) MaterialBundle n;
+
+STRUCT (  
+	MATERIALBUNDLE	( bundle[3] )
+	UINT			( tex_mode )
+	UINT			( tex_count )
+	UINT			( pad0 )
+	UINT			( pad1 )
+, MaterialStage )
+#define MATERIALSTAGE(n) MaterialStage n;
+
 STRUCT ( 
-	UINT	( material_table[MAX_PBR_MATERIALS * MATERIAL_UINTS] )
-	VEC4	( light_polys[MAX_LIGHT_POLYS * LIGHT_POLY_VEC4S] )
-	UINT	( light_list_offsets[MAX_LIGHT_LISTS] )
-	UINT	( light_list_lights[MAX_LIGHT_LIST_NODES] )
-	FLOAT	( light_styles[MAX_LIGHT_STYLES] )
-	UINT	( cluster_debug_mask[MAX_LIGHT_LISTS / 32] )
-	UINT	( sky_visibility[MAX_LIGHT_LISTS / 32] )
+	UINT			( material_table[MAX_PBR_MATERIALS * MATERIAL_UINTS] )
+	MATERIALSTAGE	( material_stages[MAX_PBR_MATERIALS * MAX_RTX_STAGES] )
+	VEC4			( light_polys[MAX_LIGHT_POLYS * LIGHT_POLY_VEC4S] )
+	UINT			( light_list_offsets[MAX_LIGHT_LISTS] )
+	UINT			( light_list_lights[MAX_LIGHT_LIST_NODES] )
+	FLOAT			( light_styles[MAX_LIGHT_STYLES] )
+	UINT			( cluster_debug_mask[MAX_LIGHT_LISTS / 32] )
+	UINT			( sky_visibility[MAX_LIGHT_LISTS / 32] )
 , LightBuffer )
-// UINT	( sky_visibility[MAX_LIGHT_LISTS / 32] )
 
 #undef VERTEX_BUFFER_LIST_DO
 
@@ -176,6 +193,7 @@ STRUCT (
 
 STRUCT (  
 	UINT	( base_texture )
+	MATERIALSTAGE	( stage[MAX_RTX_STAGES] )
 	UINT	( normals_texture )
 	UINT	( emissive_texture )
 	UINT	( physical_texture )
@@ -459,35 +477,17 @@ store_triangle(Triangle t, uint buffer_idx, uint prim_id)
 }
 #endif
 
-uint get_material_uint( in uint material_index, in uint offset ) {
-	return light_buffer.material_table[nonuniformEXT(material_index * MATERIAL_UINTS + offset)];
-	//return lbo.material_table[nonuniformEXT(idx)] & 0xffff;
-	//return (lbo.material_table[nonuniformEXT(idx)] + 0) >> 16;
+uint get_model_instance_shader_uint( in uint instance, in uint offset ) {
+	return instance_buffer.model_instance_shader_data[nonuniformEXT(instance * INSTANCE_SHADER_UINTS + offset)];
 }
 
-TextureData unpackTextureData(in uint data){
-	TextureData d;
-	d.tex0 = int(data);
-	
-	//d.tex1 = int((data & TEX1_IDX_MASK) >> TEX_SHIFT_BITS);
-	d.tex1 = TEX0_IDX_MASK;
-	
-	if(d.tex0 == TEX0_IDX_MASK) 
-		d.tex0 = -1;
-	if(d.tex1 == TEX0_IDX_MASK) 
-		d.tex1 = -1;
-#if 0
-	d.tex0Blend = (data & TEX0_BLEND_MASK);
-	d.tex1Blend = (data & TEX1_BLEND_MASK);
-	d.tex0Color = (data & TEX0_COLOR_MASK) != 0;
-	d.tex1Color = (data & TEX1_COLOR_MASK) != 0;
-#else
-	d.tex0Blend = TEX0_NORMAL_BLEND_MASK;
-	d.tex1Blend = TEX1_NORMAL_BLEND_MASK;
-	d.tex0Color = false;
-	d.tex1Color = false;	
-#endif
-	return d;
+uint get_material_uint( in uint material_index, in uint offset ) {
+	return light_buffer.material_table[nonuniformEXT(material_index * MATERIAL_UINTS + offset)];
+}
+
+MaterialStage get_material_stage( in uint material_index, in uint stage )
+{
+	return light_buffer.material_stages[nonuniformEXT(material_index * MAX_RTX_STAGES + stage)];
 }
 
 MaterialInfo get_material_info( uint material_id ) 
@@ -508,7 +508,13 @@ MaterialInfo get_material_info( uint material_id )
 	data[5] = get_material_uint(material_index, 5);
 
 	MaterialInfo minfo;
-	minfo.base_texture		= data[0] & 0xffff;	// albedo
+	minfo.stage[0] = get_material_stage(material_index, 0);
+	minfo.stage[1] = get_material_stage(material_index, 1);
+	minfo.stage[2] = get_material_stage(material_index, 2);
+	minfo.stage[3] = get_material_stage(material_index, 3);
+
+	//minfo.base_texture		= data[0] & 0xffff;	// albedo
+	minfo.base_texture		= minfo.stage[0].bundle[0].image;
 	minfo.emissive_texture	= data[0] >> 16;	// emissive/glow
 	minfo.normals_texture	= data[1] & 0xffff;	// normalmap
 	minfo.physical_texture	= data[1] >> 16;	// rmo (physical)

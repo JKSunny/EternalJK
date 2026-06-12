@@ -267,14 +267,15 @@ STRUCT (
 #define BSPMESHINSTANCE(n) BspMeshInstance n;
 
 STRUCT ( 
-	UINT			( animated_model_indices	[SHADER_MAX_ENTITIES]		)
-	MODELINSTANCE	( model_instances			[SHADER_MAX_ENTITIES]		)
-	UINT			( model_current_to_prev		[SHADER_MAX_ENTITIES]		)
-	UINT			( model_prev_to_current		[SHADER_MAX_ENTITIES]		)
-	UINT			( mlight_prev_to_current	[MAX_MODEL_LIGHTS]			)
-	UINT            ( tlas_instance_prim_offsets[MAX_TLAS_INSTANCES]		)
-	INT             ( tlas_instance_model_indices[MAX_TLAS_INSTANCES]		)					  
-	BONESREF		( model_mdxm_bones			[SHADER_MAX_ENTITIES]		)
+	UINT			( animated_model_indices		[SHADER_MAX_ENTITIES]		)
+	MODELINSTANCE	( model_instances				[SHADER_MAX_ENTITIES]		)
+	UINT			( model_current_to_prev			[SHADER_MAX_ENTITIES]		)
+	UINT			( model_prev_to_current			[SHADER_MAX_ENTITIES]		)
+	UINT			( mlight_prev_to_current		[MAX_MODEL_LIGHTS]			)
+	UINT            ( tlas_instance_prim_offsets	[MAX_TLAS_INSTANCES]		)
+	INT             ( tlas_instance_model_indices	[MAX_TLAS_INSTANCES]		)					  
+	BONESREF		( model_mdxm_bones				[SHADER_MAX_ENTITIES]		)
+	UINT			( model_instance_shader_data	[SHADER_MAX_ENTITIES * INSTANCE_SHADER_UINTS] )
 , InstanceBuffer ) 
 
 #define GLOBAL_UBO_VAR_LIST_DO( type, name ) type(name)

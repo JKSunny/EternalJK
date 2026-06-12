@@ -270,6 +270,29 @@ static inline void transform_point(const float* p, const float* matrix, float* r
 	VectorCopy(transformed, result); // vec4 -> vec3
 }
 
+static void fill_model_instance_shader_data( InstanceBuffer *uniform_instance_buffer, int current_instance_index, const trRefEntity_t* entity, shader_t *shader )
+{
+	uint32_t forceRGBGen = 0;
+
+	if ( entity->e.renderfx & ( RF_DISINTEGRATE1 | RF_DISINTEGRATE2 ) )
+		// missing origin/threshold. see vk_compute_disintegration()
+		if ( backEnd.currentEntity->e.renderfx & RF_DISINTEGRATE1 )
+			forceRGBGen = (uint32_t)CGEN_DISINTEGRATION_1;
+		else
+			forceRGBGen = (uint32_t)CGEN_DISINTEGRATION_2;
+
+	else if ( entity->e.renderfx & RF_RGB_TINT )
+		forceRGBGen = CGEN_ENTITY;
+
+	uint32_t *data = &uniform_instance_buffer->model_instance_shader_data[current_instance_index * INSTANCE_SHADER_UINTS];
+	data[0] =
+		  ((uint32_t)entity->e.shaderRGBA[0]      )
+		| ((uint32_t)entity->e.shaderRGBA[1] <<  8)
+		| ((uint32_t)entity->e.shaderRGBA[2] << 16)
+		| ((uint32_t)entity->e.shaderRGBA[3] << 24);
+	data[1] = forceRGBGen;
+}
+
 static void fill_model_instance( ModelInstance* instance, const trRefEntity_t* entity, const maliasmesh_t *mesh, shader_t *shader,
 	const float* transform, qboolean is_viewer_weapon, qboolean is_double_sided,
 	qboolean is_mdxm, uint32_t material_id )
@@ -641,6 +664,7 @@ static void process_regular_entity(
 		//ModelInstance* mi = uniform_instance_buffer->model_instances + current_instance_index;
 		ModelInstance* mi = &uniform_instance_buffer->model_instances[current_instance_index];
 
+		fill_model_instance_shader_data( uniform_instance_buffer, current_instance_index, entity, shader );
 		fill_model_instance( mi, entity, mesh, 
 							 shader,  transform, is_viewer_weapon, is_double_sided, 
 							 is_mdxm, material_id 

@@ -296,7 +296,10 @@ main()
 	vec3 geo_tangent;
 	
 	// Get the primary surface material parameters
+	uint instance_index = get_instance_index(ray_payload_geometry);
+
     get_material(
+		instance_index,
     	triangle,
     	bary,
     	tex_coord,

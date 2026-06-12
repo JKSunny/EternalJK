@@ -147,6 +147,18 @@ Triangle get_hit_triangle(RayPayloadGeometry rp)
 		rp.primitive_id);
 }
 
+uint get_instance_index(RayPayloadGeometry rp)
+{
+	int instance_idx = rp.buffer_and_instance_idx >> 16;
+	uint buffer_idx = rp.buffer_and_instance_idx & 0xffff;
+
+	if (buffer_idx != VERTEX_BUFFER_INSTANCED)
+		return ~0u;
+	
+	Triangle t = load_triangle(buffer_idx, rp.primitive_id);
+	return t.instance_index;
+}
+
 vec3
 get_hit_barycentric( RayPayloadGeometry rp )
 {
@@ -738,8 +750,173 @@ bool get_is_gradient(ivec2 ipos)
 	return false;
 }
 
+vec4 unpack_rgba8(uint p)
+{
+    return vec4(
+        float((p >>  0) & 255u),
+        float((p >>  8) & 255u),
+        float((p >> 16) & 255u),
+        float((p >> 24) & 255u)
+    ) * (1.0 / 255.0);
+}
+
+vec4 calc_color( in uint instance_index, in MaterialStage stage, in uint bundle ) 
+{
+	vec4 base_color = vec4(1.0);
+	vec4 shaderRGBA = vec4(0.0);
+	uint forceRGBGen = 0u;
+
+	if (instance_index != ~0u)
+	{
+		shaderRGBA = unpack_rgba8(get_model_instance_shader_uint(instance_index, 0));
+		forceRGBGen = get_model_instance_shader_uint(instance_index, 1);
+	}
+
+	uint rgbGen = (forceRGBGen != 0u) ? forceRGBGen : stage.bundle[bundle].rgbGen;
+
+	// CGEN_ENTITY || CGEN_LIGHTING_DIFFUSE_ENTITY
+	if (rgbGen == 3 || rgbGen == 10)
+	{
+		base_color = shaderRGBA;
+	}
+
+	return base_color;
+}
+
+vec4 sample_material_stage(
+	uint instance_index,
+	uint stage_idx,
+    MaterialStage stage,
+    vec2 uv,
+    vec2 uvx,
+    vec2 uvy,
+    float mip)
+{
+#define SAMPLE_TEX(img) \
+    ((mip >= 0.0) ? \
+        global_textureLod(img, uv, mip) : \
+        global_textureGrad(img, uv, uvx, uvy))
+
+    vec4 c0 = calc_color(instance_index, stage, 0);
+    vec4 c1 = calc_color(instance_index, stage, 1);
+    vec4 c2 = calc_color(instance_index, stage, 2);
+
+    if (stage.bundle[0].image != 0u)
+        c0 *= SAMPLE_TEX(stage.bundle[0].image);
+
+    if (stage.tex_count >= 1u && stage.bundle[1].image != 0u)
+        c1 *= SAMPLE_TEX(stage.bundle[1].image);
+
+    if (stage.tex_count >= 2u && stage.bundle[2].image != 0u)
+        c2 *= SAMPLE_TEX(stage.bundle[2].image);
+
+#undef SAMPLE_TEX
+
+    switch (stage.tex_mode)
+    {
+        default:
+        case 0u: // MODULATE
+            if (stage.tex_count == 0u)
+                return c0;
+            if (stage.tex_count == 1u)
+                return c0 * c1;
+            return c0 * c1 * c2;
+
+        case 1u: // ADD_IDENTITY
+        case 2u: // ADD
+            if (stage.tex_count == 0u)
+                return c0;
+
+            if (stage.tex_count == 1u)
+            {
+                return vec4(
+                    c0.rgb + c1.rgb,
+                    c0.a * c1.a);
+            }
+
+            return vec4(
+                c0.rgb + c1.rgb + c2.rgb,
+                c0.a * c1.a * c2.a);
+
+        case 3u: // ALPHA
+            c0 *= c0.a;
+
+            if (stage.tex_count == 0u)
+                return c0;
+
+            c1 *= c1.a;
+
+            if (stage.tex_count == 1u)
+            {
+                return vec4(
+                    c0.rgb + c1.rgb,
+                    c0.a * c1.a);
+            }
+
+            c2 *= c2.a;
+
+            return vec4(
+                c0.rgb + c1.rgb + c2.rgb,
+                c0.a * c1.a * c2.a);
+
+        case 4u: // ONE_MINUS_ALPHA
+            c0 *= (1.0 - c0.a);
+
+            if (stage.tex_count == 0u)
+                return c0;
+
+            c1 *= (1.0 - c1.a);
+
+            if (stage.tex_count == 1u)
+            {
+                return vec4(
+                    c0.rgb + c1.rgb,
+                    c0.a * c1.a);
+            }
+
+            c2 *= (1.0 - c2.a);
+
+            return vec4(
+                c0.rgb + c1.rgb + c2.rgb,
+                c0.a * c1.a * c2.a);
+
+        case 5u: // MIX_ALPHA
+            if (stage.tex_count == 0u)
+                return c0;
+
+            if (stage.tex_count == 1u)
+                return mix(c0, c1, c1.a);
+
+            return mix(
+                mix(c0, c1, c1.a),
+                c2,
+                c2.a);
+
+        case 6u: // MIX_ONE_MINUS_ALPHA
+            if (stage.tex_count == 0u)
+                return c0;
+
+            if (stage.tex_count == 1u)
+                return mix(c1, c0, c1.a);
+
+            return mix(
+                c2,
+                mix(c1, c0, c1.a),
+                c2.a);
+
+        case 7u: // DST_COLOR_SRC_ALPHA
+            if (stage.tex_count == 0u)
+                return c0;
+
+            if (stage.tex_count == 1u)
+                return (c1 + c1.a) * c0;
+
+            return (c2 + c2.a) * (c1 + c1.a) * c0;
+    }
+}
 
 void get_material( 
+	uint instance_index,
 	Triangle triangle,
 	vec3 bary,
 	vec2 tex_coord[4],
@@ -756,7 +933,6 @@ void get_material(
 	out float specular_factor) 
 {
 	MaterialInfo minfo = get_material_info( triangle.material_id );
-	//TextureData	minfo_additional = unpackTextureData( triangle.tex0 );
 
 	float effective_mip = mip_level;
 	float normalMapLen;
@@ -816,19 +992,18 @@ void get_material(
 	metallic = 0;
     roughness = 1;
 
-	vec4 image1 = vec4(1);
-
 	// no multi-stage support yet
-    if (minfo.base_texture != 0)
-    {
-		if (mip_level >= 0)
-		    image1 = global_textureLod(minfo.base_texture, tex_coord[0], mip_level);
-		else
-		    image1 = global_textureGrad(minfo.base_texture, tex_coord[0], tex_coord_x[0], tex_coord_y[0]);
-	}
+	vec4 stage0 = sample_material_stage(
+		instance_index,
+		0,
+		minfo.stage[0],
+		tex_coord[0],
+		tex_coord_x[0],
+		tex_coord_y[0],
+		mip_level);
 
-	base_color = image1.rgb * minfo.base_factor;
-	base_color = clamp(base_color, vec3(0), vec3(1));
+	base_color = stage0.rgb * minfo.base_factor;
+	base_color = clamp(base_color, vec3(0.0), vec3(1.0));
 
 	float spec_mix_bias = 0.08;
 	float avgrgb = 0.8;

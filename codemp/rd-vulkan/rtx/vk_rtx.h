@@ -163,6 +163,8 @@ typedef struct {
 	uint32_t	index;
 	uint32_t	remappedIndex;
 	qboolean	active;
+	MaterialStage	stage[MAX_RTX_STAGES];
+	uint32_t		num_stages;
 	qboolean	uploaded[VK_MAX_SWAPCHAIN_SIZE];
 	uint32_t	albedo;
 	uint32_t	emissive;	// glow
