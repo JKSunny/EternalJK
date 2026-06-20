@@ -60,6 +60,15 @@ static void vk_bind_primitive_buffer( vkdescriptor_t *descriptor, uint32_t bindi
 	vk_rtx_bind_descriptor_buffer_element(descriptor, binding, stage, VERTEX_BUFFER_INSTANCED,			vk.buf_primitive_instanced.buffer );
 }
 
+static void vk_bind_texel_buffer( vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage, VkBufferView view )
+{
+	const uint32_t count = 1;
+
+	vk_rtx_add_descriptor_buffer( descriptor, count, binding, stage, VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER );
+	vk_rtx_set_descriptor_update_size( descriptor, binding, stage, count );
+	vk_rtx_bind_descriptor_buffer_view( descriptor, binding, stage, view );
+}
+
 static void vk_bind_uniform_buffer( vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage, VkBuffer buffer )
 {
 	const uint32_t count = 1;
@@ -138,10 +147,25 @@ static void vk_create_vertex_buffer_descriptor( world_t& worldData, uint32_t ind
 
 static void vk_create_rt_descriptor( uint32_t index, uint32_t prev_index ) 
 {
+	VkAccelerationStructureKHR tlas[TLAS_COUNT];
+	Com_Memset(tlas, 0, sizeof(VkAccelerationStructureKHR) * TLAS_COUNT);
+	tlas[TLAS_INDEX_GEOMETRY] = vk.tlas_geometry[index].accel;
+	tlas[TLAS_INDEX_EFFECTS] = vk.tlas_effects[index].accel;
+
 	vkdescriptor_t *descriptor = vk_rtx_init_descriptor( &vk.rt_descriptor_set[index] );
 
-	vk_rtx_add_descriptor_as( descriptor, RAY_GEN_DESCRIPTOR_SET_IDX, VK_SHADER_STAGE_RAYGEN_BIT_KHR );
-	vk_rtx_bind_descriptor_as( descriptor, RAY_GEN_DESCRIPTOR_SET_IDX, VK_SHADER_STAGE_RAYGEN_BIT_KHR, &vk.tlas_geometry[index].accel );
+	vk_rtx_add_descriptor_as( descriptor, RAY_GEN_ACCEL_STRUCTURE_BINDING_IDX, VK_SHADER_STAGE_RAYGEN_BIT_KHR, TLAS_COUNT );
+	vk_rtx_bind_descriptor_as( descriptor, RAY_GEN_ACCEL_STRUCTURE_BINDING_IDX, VK_SHADER_STAGE_RAYGEN_BIT_KHR, tlas, TLAS_COUNT );
+
+	VkBufferView particle_color_buffer_view = get_transparency_particle_color_buffer_view();
+	VkBufferView beam_color_buffer_view		= get_transparency_beam_color_buffer_view();
+	VkBufferView sprite_info_buffer_view	= get_transparency_sprite_info_buffer_view();
+	VkBufferView beam_intersect_buffer_view = get_transparency_beam_intersect_buffer_view();
+
+	vk_bind_texel_buffer( descriptor, RAY_GEN_PARTICLE_COLOR_BUFFER_BINDING_IDX,	VK_SHADER_STAGE_ANY_HIT_BIT_KHR,		particle_color_buffer_view );
+	vk_bind_texel_buffer( descriptor, RAY_GEN_BEAM_COLOR_BUFFER_BINDING_IDX,		VK_SHADER_STAGE_ANY_HIT_BIT_KHR,		beam_color_buffer_view );
+	vk_bind_texel_buffer( descriptor, RAY_GEN_SPRITE_INFO_BUFFER_BINDING_IDX,		VK_SHADER_STAGE_ANY_HIT_BIT_KHR,		sprite_info_buffer_view );
+	vk_bind_texel_buffer( descriptor, RAY_GEN_BEAM_INTERSECT_BUFFER_BINDING_IDX,	VK_SHADER_STAGE_INTERSECTION_BIT_KHR,	beam_intersect_buffer_view );
 
 	vk_rtx_create_descriptor( descriptor );
 	vk_rtx_update_descriptor( descriptor );

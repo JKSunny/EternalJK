@@ -19,6 +19,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 #include "path_tracer.h"	// contains global_ubo.h -> constants.h
 #include "utils.glsl"
+#include "raytracer/path_tracer_transparency.glsl"
 
 #define GLOBAL_TEXTURES_DESC_SET_IDX 1
 #include "global_textures.h"
@@ -26,7 +27,10 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define VERTEX_BUFFER_DESC_SET_IDX 4
 #define VERTEX_READONLY 1
 #include "vertex_buffer.h"
-layout( set = 0, binding = RAY_GEN_DESCRIPTOR_SET_IDX ) uniform accelerationStructureEXT topLevelAS;
+
+#define RAY_GEN_DESCRIPTOR_SET_IDX 0
+layout( set = 0, binding = RAY_GEN_DESCRIPTOR_SET_IDX ) 
+uniform accelerationStructureEXT topLevelAS[TLAS_COUNT];
 
 #include "read_visbuf.glsl"
 #include "compute/asvgf.glsl"
@@ -70,10 +74,8 @@ layout( set = 0, binding = RAY_GEN_DESCRIPTOR_SET_IDX ) uniform accelerationStru
 
 #define MAX_OUTPUT_VALUE 1000
 
-// this ..
-#define RT_PAYLOAD_GEOMETRY 0
-
 layout(location = RT_PAYLOAD_GEOMETRY) rayPayloadEXT RayPayloadGeometry ray_payload_geometry;
+layout(location = RT_PAYLOAD_EFFECTS) rayPayloadEXT RayPayloadEffects ray_payload_effects;
 
 uint rng_seed;
 
@@ -256,15 +258,96 @@ void trace_geometry_ray( Ray ray, bool cull_back_faces, uint cullMask )
 	ray_payload_geometry.buffer_and_instance_idx = 0;
 	ray_payload_geometry.hit_distance = 0;
 
-	traceRayEXT( topLevelAS, rayFlags, cullMask,
+	traceRayEXT( topLevelAS[TLAS_INDEX_GEOMETRY], rayFlags, cullMask,
 			SBT_RCHIT_GEOMETRY /*sbtRecordOffset*/, 0 /*sbtRecordStride*/, SBT_RMISS_EMPTY /*missIndex*/,
 			ray.origin, ray.t_min, ray.direction, ray.t_max, RT_PAYLOAD_GEOMETRY);
+}
+
+// Loops over the defined fog volumes and finds the two closest ones along the ray.
+// They are stored in the order of min distance in rp.fog1 (closer) and rp.fog2 (further away).
+// If the ray starts in a fog volume, that volume will be rp.fog1 with t_min = ray.t_min.
+void find_fog_volumes(inout RayPayloadEffects rp, Ray ray)
+{
+	return;
+#if 0
+	vec3 inv_dir = vec3(1.0) / ray.direction;
+	for (int i = 0; i < MAX_FOG_VOLUMES; i++)
+	{
+		const ShaderFogVolume volume = global_ubo.fog_volumes[i];
+
+		if (volume.is_active == 0)
+			return;
+
+		vec3 t1 = (volume.mins - ray.origin) * inv_dir;
+		vec3 t2 = (volume.maxs - ray.origin) * inv_dir;
+		float t_in = vmax(min(t1, t2));
+		float t_out = vmin(max(t1, t2));
+		t_in = max(t_in, ray.t_min);
+		t_out = min(t_out, ray.t_max);
+
+		if (t_out > t_in)
+		{
+			vec2 first_t_min_max = unpackHalf2x16(rp.fog1.w);
+			vec2 second_t_min_max = unpackHalf2x16(rp.fog2.w);
+
+			bool replaces_first = t_in < first_t_min_max.x || first_t_min_max.y == 0;
+			bool replaces_second = t_in < second_t_min_max.x || second_t_min_max.y == 0;
+
+			if (replaces_first || replaces_second)
+			{
+				uvec4 packed;
+				packed.xy = packHalf4x16(vec4(volume.color * global_ubo.pt_fog_brightness, 0));
+				packed.z = packHalf2x16(vec2(t_in, t_out));
+
+				// Convert the volumetric density function into a 1D function along the ray
+				float density_variable = dot(volume.density.xyz, ray.direction) * 0.5;
+				float density_constant = dot(volume.density.xyz, ray.origin) + volume.density.w;
+				// Scale the density stored here because typical values are very small, in fp16 denormal range
+				packed.w = packHalf2x16(vec2(density_variable, density_constant) * 65536.0);
+
+				if (replaces_first)
+				{
+					// Push fog1 to fog2, replace fog1 with the new volume
+					rp.fog2 = rp.fog1;
+					rp.fog1 = packed;
+				}
+				else // if (replaces_second) -- must be true
+				{
+					// Replace fog2 with the new volume
+					rp.fog2 = packed;
+				}
+			}
+		}
+	}
+#endif
 }
 
 vec4
 trace_effects_ray(Ray ray, bool skip_procedural) 
 {
-	return vec4(0.0);
+	uint rayFlags = 0;
+	if (skip_procedural)
+		rayFlags |= gl_RayFlagsSkipProceduralPrimitives;
+	
+	uint instance_mask = AS_FLAG_EFFECTS;
+
+	ray_payload_effects.transparency = uvec2(0);
+	ray_payload_effects.distances = 0;
+	ray_payload_effects.fog1 = uvec4(0);
+	ray_payload_effects.fog2 = uvec4(0);
+	ray_payload_effects.rayTmax = ray.t_max;
+
+	if (!skip_procedural)
+		find_fog_volumes(ray_payload_effects, ray);
+
+	traceRayEXT( topLevelAS[TLAS_INDEX_EFFECTS], rayFlags, instance_mask,
+			SBT_RCHIT_EFFECTS /*sbtRecordOffset*/, 0 /*sbtRecordStride*/, SBT_RMISS_EMPTY /*missIndex*/,
+			ray.origin, ray.t_min, ray.direction, ray.t_max, RT_PAYLOAD_EFFECTS);
+
+	if (skip_procedural)
+		return get_payload_transparency(ray_payload_effects);
+
+	return get_payload_transparency_with_fog(ray_payload_effects, ray.t_max);
 }
 
 Ray get_shadow_ray( vec3 p1, vec3 p2, float tmin )
@@ -292,7 +375,7 @@ trace_shadow_ray(Ray ray, int cull_mask)
 	ray_payload_geometry.buffer_and_instance_idx = 0;
 	ray_payload_geometry.hit_distance = -1;
 
-	traceRayEXT( topLevelAS, rayFlags, cull_mask,
+	traceRayEXT( topLevelAS[TLAS_INDEX_GEOMETRY], rayFlags, cull_mask,
 			SBT_RCHIT_GEOMETRY /*sbtRecordOffset*/, 0 /*sbtRecordStride*/, SBT_RMISS_EMPTY /*missIndex*/,
 			ray.origin, ray.t_min, ray.direction, ray.t_max, RT_PAYLOAD_GEOMETRY);
 
@@ -311,7 +394,7 @@ trace_caustic_ray( Ray ray, int surface_medium )
 	uint rayFlags = gl_RayFlagsCullBackFacingTrianglesEXT | gl_RayFlagsOpaqueEXT | gl_RayFlagsSkipProceduralPrimitives;
 	uint instance_mask = AS_FLAG_TRANSPARENT;
 
-	traceRayEXT(topLevelAS, rayFlags, instance_mask, SBT_RCHIT_GEOMETRY, 0, SBT_RMISS_EMPTY,
+	traceRayEXT(topLevelAS[TLAS_INDEX_GEOMETRY], rayFlags, instance_mask, SBT_RCHIT_GEOMETRY, 0, SBT_RMISS_EMPTY,
 			ray.origin, ray.t_min, ray.direction, ray.t_max, RT_PAYLOAD_GEOMETRY);
 
 	float extinction_distance = ray.t_max - ray.t_min;

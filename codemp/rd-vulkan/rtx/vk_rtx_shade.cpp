@@ -128,6 +128,21 @@ void vkpt_pt_create_all_dynamic( VkCommandBuffer cmd_buf, int idx, const EntityU
 	vk_rtx_create_blas( &batch, &vk.buf_positions_instanced, offset_vertex,  NULL, offset_index, 		
 		upload_info->masked_prim_count * 3, 0, &vk.model_instance.blas.masked_models[idx], qtrue, qtrue, qfalse, 0, "instanced masked" );
 
+	// sprites / beams
+	vkbuffer_t* buffer_vertex = NULL;
+	vkbuffer_t* buffer_index = NULL;
+	uint32_t num_vertices = 0;
+	uint32_t num_indices = 0;
+
+	vkbuffer_t *buffer_aabb = NULL;
+	uint64_t offset_aabb = 0;
+	uint32_t num_aabbs = 0;
+	//vkpt_get_beam_aabb_buffer(&buffer_aabb, &offset_aabb, &num_aabbs);
+	//vk_rtx_create_blas_aabb(&batch, buffer_aabb, offset_aabb, num_aabbs, &vk.model_instance.blas.beams + idx, true, true);
+	
+	vkpt_get_transparency_buffers(VKPT_TRANSPARENCY_SPRITES, &buffer_vertex, &offset_vertex, &buffer_index, &offset_index, &num_vertices, &num_indices);
+	vk_rtx_create_blas(&batch, buffer_vertex, offset_vertex, buffer_index, offset_index, num_vertices, num_indices, &vk.model_instance.blas.sprites[idx], qtrue, qtrue, qfalse, 0, "sprites");
+
 	if ( batch.numBuilds > 0)
 		qvkCmdBuildAccelerationStructuresKHR( cmd_buf, batch.numBuilds, batch.buildInfos, batch.rangeInfoPtrs );
 
@@ -149,10 +164,11 @@ static void append_blas( vk_geometry_instance_t *instances, uint32_t *num_instan
 		0.0f, 0.0f, 1.0f, 0.0f };
 	Com_Memcpy( &instance.transform, &transform, sizeof(mat3x4_t) );
 
-	instance.instance_id		= vbo_index;
-	instance.mask				= mask;
-	instance.instance_offset	= sbt_offset;
-	instance.flags				= flags;
+	instance.instance_id				= vbo_index;
+	instance.mask						= mask;
+	instance.instance_offset			= sbt_offset;
+	instance.flags						= flags;
+	instance.acceleration_structure		= 0;
 	
 	VkAccelerationStructureDeviceAddressInfoKHR  info;
 	info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR;
@@ -233,6 +249,15 @@ static void vkpt_pt_create_toplevel( VkCommandBuffer cmd_buf, uint32_t idx, cons
 
 	uint32_t num_instances_geometry = g_num_instances;
 
+	// effects
+	//if (pt_enable_sprites->integer != 0)
+	{
+		append_blas( g_instances, &g_num_instances, &vk.model_instance.blas.sprites[idx], 0, 0,
+			AS_FLAG_EFFECTS, VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR, SBTO_SPRITE );
+	}
+
+	uint32_t num_instances_effects = g_num_instances - num_instances_geometry;
+
 	void *instance_data = buffer_map(vk.buf_instances + idx);
 	memcpy(instance_data, &g_instances, sizeof(vk_geometry_instance_t) * g_num_instances);
 
@@ -242,8 +267,12 @@ static void vkpt_pt_create_toplevel( VkCommandBuffer cmd_buf, uint32_t idx, cons
 	accel_build_batch_t batch;
 	Com_Memset( &batch, 0, sizeof(accel_build_batch_t) );
 
+	vk.scratch_buf_ptr = 0;
 	vk_rtx_destroy_tlas( &vk.tlas_geometry[idx] );
 	vk_rtx_create_tlas( &batch, &vk.tlas_geometry[idx], vk.buf_instances[idx].address, num_instances_geometry );
+
+	vk_rtx_destroy_tlas( &vk.tlas_effects[idx] );
+	vk_rtx_create_tlas( &batch, &vk.tlas_effects[idx], vk.buf_instances[idx].address + num_instances_geometry * sizeof(vk_geometry_instance_t), num_instances_effects);
 
 	qvkCmdBuildAccelerationStructuresKHR( cmd_buf, batch.numBuilds, batch.buildInfos, batch.rangeInfoPtrs );
 
@@ -1628,8 +1657,25 @@ static void vk_rtx_end_command_buffer(
 
 static VkResult vkpt_pt_update_descripter_set_bindings( int idx )
 {
-	vk_rtx_bind_descriptor_as( &vk.rt_descriptor_set[idx], RAY_GEN_DESCRIPTOR_SET_IDX, VK_SHADER_STAGE_RAYGEN_BIT_KHR, &vk.tlas_geometry[idx].accel );
+	VkAccelerationStructureKHR tlas[TLAS_COUNT];
+	Com_Memset(tlas, 0, sizeof(VkAccelerationStructureKHR) * TLAS_COUNT);
+	tlas[TLAS_INDEX_GEOMETRY] = vk.tlas_geometry[idx].accel;
+	tlas[TLAS_INDEX_EFFECTS] = vk.tlas_effects[idx].accel;
+
+	vk_rtx_bind_descriptor_as( &vk.rt_descriptor_set[idx], RAY_GEN_ACCEL_STRUCTURE_BINDING_IDX, VK_SHADER_STAGE_RAYGEN_BIT_KHR, tlas, TLAS_COUNT );
+
+	VkBufferView particle_color_buffer_view = get_transparency_particle_color_buffer_view();
+	VkBufferView beam_color_buffer_view		= get_transparency_beam_color_buffer_view();
+	VkBufferView sprite_info_buffer_view	= get_transparency_sprite_info_buffer_view();
+	VkBufferView beam_intersect_buffer_view = get_transparency_beam_intersect_buffer_view();
+
+	vk_rtx_bind_descriptor_buffer_view( &vk.rt_descriptor_set[idx], RAY_GEN_PARTICLE_COLOR_BUFFER_BINDING_IDX,	VK_SHADER_STAGE_ANY_HIT_BIT_KHR,			particle_color_buffer_view );
+	vk_rtx_bind_descriptor_buffer_view( &vk.rt_descriptor_set[idx], RAY_GEN_BEAM_COLOR_BUFFER_BINDING_IDX,		VK_SHADER_STAGE_ANY_HIT_BIT_KHR,			beam_color_buffer_view );
+	vk_rtx_bind_descriptor_buffer_view( &vk.rt_descriptor_set[idx], RAY_GEN_SPRITE_INFO_BUFFER_BINDING_IDX,		VK_SHADER_STAGE_ANY_HIT_BIT_KHR,			sprite_info_buffer_view );
+	vk_rtx_bind_descriptor_buffer_view( &vk.rt_descriptor_set[idx], RAY_GEN_BEAM_INTERSECT_BUFFER_BINDING_IDX,	VK_SHADER_STAGE_INTERSECTION_BIT_KHR,		beam_intersect_buffer_view );
+
 	vk_rtx_update_descriptor( &vk.rt_descriptor_set[idx] );
+
 
 	return VK_SUCCESS;
 }
@@ -1680,6 +1726,9 @@ static void vk_begin_trace_rays( world_t &worldData, trRefdef_t *refdef, referen
 
 	{
 		VkCommandBuffer trace_cmd_buf = vkpt_begin_command_buffer(&vk.cmd_buffers_graphics);
+
+
+		update_transparency(trace_cmd_buf, refdef, ubo->V);
 
 		// Copy the UBO contents from the staging buffer.
 		// Actual contents are uploaded to the staging UBO below, right before executing the command buffer.

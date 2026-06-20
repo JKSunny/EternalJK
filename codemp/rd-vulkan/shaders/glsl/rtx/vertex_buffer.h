@@ -39,7 +39,11 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 // BINDING OFFSETS
 // top level acceleration structure
-#define RAY_GEN_DESCRIPTOR_SET_IDX							0
+#define RAY_GEN_ACCEL_STRUCTURE_BINDING_IDX			0
+#define RAY_GEN_PARTICLE_COLOR_BUFFER_BINDING_IDX	1
+#define RAY_GEN_BEAM_COLOR_BUFFER_BINDING_IDX		2
+#define RAY_GEN_SPRITE_INFO_BUFFER_BINDING_IDX		3
+#define RAY_GEN_BEAM_INTERSECT_BUFFER_BINDING_IDX	4
 
 #define PRIMITIVE_BUFFER_BINDING_IDX						1
 #define POSITION_BUFFER_BINDING_IDX							2
@@ -197,6 +201,7 @@ STRUCT (
 	UINT	( normals_texture )
 	UINT	( emissive_texture )
 	UINT	( physical_texture )
+	UINT    ( discard_mode )
 	UINT    ( alpha_test_func )
 	FLOAT   ( alpha_test_value )
 	//FLOAT	( bump_scale )
@@ -529,11 +534,10 @@ MaterialInfo get_material_info( uint material_id )
 	minfo.emissive_factor 	= 1.0f;
 	minfo.base_factor		= 1.0f;
 
-	minfo.alpha_test_func	= data[5] & 0xffffu;
-	minfo.alpha_test_value	= unpackHalf2x16(data[5]).y;
-
-	//minfo.alpha_test_func	= 3;
-	//minfo.alpha_test_value	= 0.5;
+	uint at = data[5];
+	minfo.alpha_test_func  =  at        & 0x3u;
+	minfo.discard_mode     = (at >> 2u) & 0x3u;
+	minfo.alpha_test_value = unpackHalf2x16(at).y;
 
 	return minfo;
 }

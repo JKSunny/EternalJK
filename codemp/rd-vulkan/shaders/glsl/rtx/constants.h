@@ -74,13 +74,16 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define AS_INSTANCE_FLAG_SKY						(1 << 22)
 #define AS_INSTANCE_MASK_OFFSET (AS_INSTANCE_FLAG_SKY - 1)
 
-// cullMask
+// Geometry TLAS flags
 #define AS_FLAG_OPAQUE          (1 << 0)
 #define AS_FLAG_TRANSPARENT     (1 << 1)
 #define AS_FLAG_VIEWER_MODELS   (1 << 2)
 #define AS_FLAG_VIEWER_WEAPON   (1 << 3)
 #define AS_FLAG_SKY             (1 << 4)
 #define AS_FLAG_CUSTOM_SKY      (1 << 5)
+
+// Effects TLAS flags
+#define AS_FLAG_EFFECTS         (1 << 0)
 
 #define MATERIAL_KIND_MASK							0xf0000000
 #define MATERIAL_KIND_INVALID						0x00000000
@@ -139,18 +142,39 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define MAX_LIGHT_STYLES        64
 #define MAX_MODEL_LIGHTS		16384
 
+#define TLAS_INDEX_GEOMETRY      0
+#define TLAS_INDEX_EFFECTS       1
+#define TLAS_COUNT               2
+
 // Variables that have "_lf", "_hf" or "_spec" suffix apply to the low-frequency, high-frequency or specular lighting channels, respectively.
+
+#define RT_PAYLOAD_GEOMETRY      0
+#define RT_PAYLOAD_EFFECTS       1
 
 // shader groups
 #define SBT_RGEN					0
 #define SBT_RMISS_EMPTY				1
 #define SBT_RCHIT_GEOMETRY			2
 #define SBT_RAHIT_MASKED			3
-#define SBT_ENTRIES_PER_PIPELINE	4
+
+#define SBT_RCHIT_EFFECTS			4
+#define SBT_RAHIT_PARTICLE			5
+#define SBT_RAHIT_EXPLOSION			6
+#define SBT_RAHIT_SPRITE			7
+
+#define SBT_RINT_BEAM				8
+#define SBT_ENTRIES_PER_PIPELINE	9
+// vkpt_pt_create_pipelines() relies on all 'transparency' SBT entries coming after SBT_FIRST_TRANSPARENCY
+#define SBT_FIRST_TRANSPARENCY SBT_RCHIT_EFFECTS
 
 // SBT indices for geometry and shadow rays
 #define SBTO_OPAQUE     (SBT_RCHIT_GEOMETRY - SBT_RCHIT_GEOMETRY)
 #define SBTO_MASKED     (SBT_RAHIT_MASKED - SBT_RCHIT_GEOMETRY)
+// SBT indices for effect rays
+#define SBTO_PARTICLE   (SBT_RAHIT_PARTICLE - SBT_RCHIT_EFFECTS)
+#define SBTO_EXPLOSION  (SBT_RAHIT_EXPLOSION - SBT_RCHIT_EFFECTS)
+#define SBTO_SPRITE     (SBT_RAHIT_SPRITE - SBT_RCHIT_EFFECTS)
+#define SBTO_BEAM       (SBT_RINT_BEAM - SBT_RCHIT_EFFECTS)
 
 #define UINT_MAX                                    0xffffffff
 #define UINT_TOP_16BITS_MASK                        0xffff0000

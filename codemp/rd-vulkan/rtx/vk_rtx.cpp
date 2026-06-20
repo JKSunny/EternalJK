@@ -272,6 +272,8 @@ void vk_rtx_initialize( void )
 	vk_rtx_create_descriptor( &vk.imageDescriptor );
 
 	vk_rtx_clear_material_list();
+
+	initialize_transparency();
 }
 
 void vk_rtx_shutdown( void ) 
@@ -282,6 +284,8 @@ void vk_rtx_shutdown( void )
 	vk_rtx_destroy_shaders();
 	vk_rtx_destroy_buffers();
 	vk_rtx_destroy_primary_rays_resources();
+
+	destroy_transparency();
 
 	vk.scratch_buf_ptr = 0;
 }

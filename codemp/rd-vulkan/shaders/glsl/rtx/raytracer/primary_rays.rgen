@@ -468,9 +468,13 @@ main()
 			transparent = alpha_blend(vec4(0,0,1,0.1), transparent);
 		}
 	}
-
+#if 0
 	// Blend in the emissive component from the primary surface, with zero alpha
 	transparent = alpha_blend_premultiplied(transparent, vec4(primary_emissive * throughput, 0));
+#else
+	// Add the world effects
+	transparent = alpha_blend_premultiplied(effects, transparent);
+#endif
 
 	imageStore(IMG_PT_TRANSPARENT, ipos, transparent);
 }

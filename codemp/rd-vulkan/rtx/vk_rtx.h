@@ -176,6 +176,7 @@ typedef struct {
 	uint32_t	flags;
 	uint32_t	alpha_test_func;
 	float		alpha_test_value;
+	uint32_t	discard_mode;
 } rtx_material_t;
 
 typedef struct light_poly_s {
@@ -284,6 +285,7 @@ typedef struct {
 	union {
 		VkDescriptorImageInfo							*image;
 		VkDescriptorBufferInfo							*buffer;
+		VkBufferView									*buffer_view;
 		VkWriteDescriptorSetAccelerationStructureKHR	as;
 	};
 	uint32_t dstArrayElement;
@@ -485,9 +487,10 @@ vkdescriptor_t *vk_rtx_init_descriptor( vkdescriptor_t *descriptor );
 void		vk_rtx_update_descriptor( vkdescriptor_t *descriptor );
 void		vk_rtx_add_descriptor_sampler( vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage, uint32_t count, VkImageLayout layout );
 void		vk_rtx_add_descriptor_image( vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage );
-void		vk_rtx_add_descriptor_as( vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage );
-void		vk_rtx_bind_descriptor_as( vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage, VkAccelerationStructureKHR *as );
+void		vk_rtx_add_descriptor_as( vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage, uint32_t count );
+void		vk_rtx_bind_descriptor_as( vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage, VkAccelerationStructureKHR *as, uint32_t count );
 uint32_t	vk_rtx_add_descriptor_buffer( vkdescriptor_t *descriptor, uint32_t count, uint32_t binding, VkShaderStageFlagBits stage, VkDescriptorType type );
+void		vk_rtx_bind_descriptor_buffer_view( vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage, VkBufferView view );
 void		vk_rtx_bind_descriptor_buffer( vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage, VkBuffer buffer );
 void		vk_rtx_bind_descriptor_image_sampler( vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage, VkSampler sampler, VkImageView view, uint32_t index );
 void		vk_rtx_create_descriptor( vkdescriptor_t *descriptor );
@@ -536,7 +539,6 @@ void		vkpt_vertex_buffer_ensure_primbuf_size(uint32_t prim_count);
 // acceleration structure
 void		vk_rtx_reset_world_geometries( world_t *world );
 //void		vk_rtx_append_blas( vk_blas_t *blas, int instance_id, uint32_t type, uint32_t offset, uint32_t flags );
-void		vk_rtx_create_blas_bsp( accel_build_batch_t *batch, vk_geometry_data_t *geom );
 void		vk_rtx_create_blas( accel_build_batch_t *batch,  
 								 vkbuffer_t *vertex_buffer, VkDeviceAddress vertex_offset,
 								 vkbuffer_t *index_buffer, VkDeviceAddress index_offset,
@@ -630,6 +632,38 @@ VkResult	vk_rtx_shadow_map_render(	VkCommandBuffer cmd_buf, world_t &worldData, 
 VkImageView	vk_rtx_shadow_map_get_view( void );
 VkImage		vk_rtx_shadow_map_get_image( void );
 void		vk_rtx_shadow_map_setup( const sun_light_t *light, const float *bbox_min, const float *bbox_max, float *VP, float *depth_scale, qboolean random_sampling );
+
+// transparency/sprite/beam/particle
+bool initialize_transparency(void);
+void destroy_transparency(void);
+
+void update_transparency(VkCommandBuffer command_buffer, const trRefdef_t *refdef, const float* view_matrix );
+
+typedef enum {
+	VKPT_TRANSPARENCY_PARTICLES,
+	VKPT_TRANSPARENCY_SPRITES,
+
+	VKPT_TRANSPARENCY_COUNT
+} vkpt_transparency_t;
+
+void vkpt_get_transparency_buffers(
+	vkpt_transparency_t ttype, 
+	vkbuffer_t** vertex_buffer,
+	uint64_t* vertex_offset, 
+	vkbuffer_t** index_buffer,
+	uint64_t* index_offset,
+	uint32_t* num_vertices,
+	uint32_t* num_indices);
+void vkpt_get_beam_aabb_buffer(
+	vkbuffer_t** aabb_buffer,
+	uint64_t* aabb_offset,
+	uint32_t* num_aabbs);
+
+VkBufferView get_transparency_particle_color_buffer_view(void);
+VkBufferView get_transparency_beam_color_buffer_view(void);
+VkBufferView get_transparency_sprite_info_buffer_view(void);
+VkBufferView get_transparency_beam_intersect_buffer_view(void);
+void get_transparency_counts(int* particle_num, int* beam_num, int* sprite_num);
 
 // god rays
 qboolean	vk_rtx_god_rays_enabled( const sun_light_t* sun_light );

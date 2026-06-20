@@ -429,6 +429,23 @@ uint32_t vk_get_rtx_material_stage_tex_count( const Vk_Pipeline_Def *def )
     }
 }
 
+static uint32_t vk_get_rtx_material_stage_discard_mode( uint32_t state_bits )
+{
+	if ((state_bits & GLS_DEPTHMASK_TRUE) != 0)
+		return 0;	// allow_discard = 0
+
+	const uint32_t src = state_bits & GLS_SRCBLEND_BITS;
+	const uint32_t dst = state_bits & GLS_DSTBLEND_BITS;
+
+	if (src == GLS_SRCBLEND_SRC_ALPHA && dst == GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA)
+		return 1;
+
+	if (src == GLS_SRCBLEND_ONE && dst == GLS_DSTBLEND_ONE)
+		return 2;
+
+	return 0;
+}
+
 rtx_material_t *vk_rtx_shader_to_material( shader_t *shader )
 {
 	shader_t			*state;
@@ -541,7 +558,10 @@ rtx_material_t *vk_rtx_shader_to_material( shader_t *shader )
 				mat->alpha_test_value = 0.0f;
 				break;
 		}
+
+		mat->discard_mode = vk_get_rtx_material_stage_discard_mode( state_bits );
 	}else{
+		mat->discard_mode = 0;
 		mat->alpha_test_func = 0;
 		mat->alpha_test_value = 0.0f;
 	}
@@ -577,7 +597,8 @@ VkResult vk_rtx_upload_materials( LightBuffer *lbo )
 
 		data[4] =	mat->remappedIndex;
 
-		data[5]  = mat->alpha_test_func & 0xffff;
+		data[5] |= (mat->alpha_test_func & 0x3);      // bits 0-1
+		data[5] |= (mat->discard_mode & 0x3) << 2;    // bits 2-3
 		data[5] |= floatToHalf(mat->alpha_test_value) << 16;
 
 		mat->uploaded[vk.current_frame_index] = qtrue;

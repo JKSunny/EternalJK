@@ -178,6 +178,12 @@ void vk_rtx_destroy_shaders( void )
 	SHADER_MODULE_DO( SHADER_PATH_TRACER_RMISS,						path_tracer_rmiss		) \
 	SHADER_MODULE_DO( SHADER_PATH_TRACER_RCHIT,						path_tracer_rchit		) \
 	SHADER_MODULE_DO( SHADER_PATH_TRACER_MASKED_RAHIT,				path_tracer_masked_rahit) \
+	\
+	SHADER_MODULE_DO( SHADER_PATH_TRACER_PARTICLE_RAHIT,			path_tracer_particle_rahit) \
+	SHADER_MODULE_DO( SHADER_PATH_TRACER_EXPLOSION_RAHIT,			path_tracer_explosion_rahit) \
+	SHADER_MODULE_DO( SHADER_PATH_TRACER_SPRITE_RAHIT,				path_tracer_sprite_rahit) \
+	SHADER_MODULE_DO( SHADER_PATH_TRACER_BEAM_RAHIT,				path_tracer_beam_rahit) \
+	SHADER_MODULE_DO( SHADER_PATH_TRACER_BEAM_RINT,					path_tracer_beam_rint) \
 
 enum {
 #define SHADER_MODULE_DO( _index, ... ) _index,
@@ -242,10 +248,23 @@ void vk_rtx_create_pipelines( void )
 	SHADER_STAGE( 1, SHADER_PATH_TRACER_RMISS,			VK_SHADER_STAGE_MISS_BIT_KHR		)
 	SHADER_STAGE( 2, SHADER_PATH_TRACER_RCHIT,			VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR )
 	SHADER_STAGE( 3, SHADER_PATH_TRACER_MASKED_RAHIT,	VK_SHADER_STAGE_ANY_HIT_BIT_KHR		)
+	// Stages used by all pipelines that consider transparency
+	SHADER_STAGE( 4, SHADER_PATH_TRACER_PARTICLE_RAHIT, VK_SHADER_STAGE_ANY_HIT_BIT_KHR		)
+	SHADER_STAGE( 5, SHADER_PATH_TRACER_EXPLOSION_RAHIT,VK_SHADER_STAGE_ANY_HIT_BIT_KHR		)
+	SHADER_STAGE( 6, SHADER_PATH_TRACER_SPRITE_RAHIT,   VK_SHADER_STAGE_ANY_HIT_BIT_KHR		)
+	// Must be last
+	SHADER_STAGE( 7, SHADER_PATH_TRACER_BEAM_RAHIT,     VK_SHADER_STAGE_ANY_HIT_BIT_KHR		)
+	SHADER_STAGE( 8, SHADER_PATH_TRACER_BEAM_RINT,      VK_SHADER_STAGE_INTERSECTION_BIT_KHR)
+	
+	const unsigned num_base_shader_stages = 5;
+	const unsigned num_transparent_no_beam_shader_stages = 8;
 
 	for ( uint32_t index = 0; index < PIPELINE_COUNT; index++ )
 	{
-		unsigned int num_shader_stages = ARRAY_LEN(shader_stages);
+		bool needs_beams = index <= PIPELINE_REFLECT_REFRACT_2;
+		bool needs_transparency = needs_beams || index == PIPELINE_INDIRECT_LIGHTING_FIRST;
+
+		unsigned int num_shader_stages = needs_beams ? ARRAY_LEN(shader_stages) : (needs_transparency ? num_transparent_no_beam_shader_stages : num_base_shader_stages);
 
 		switch (index)
 		{
@@ -322,7 +341,54 @@ void vk_rtx_create_pipelines( void )
 		group->anyHitShader			= 3;
 		group->intersectionShader	= VK_SHADER_UNUSED_KHR;
 
-		unsigned int num_shader_groups = ARRAY_LEN(rt_shader_group_info);
+
+		// effects
+		group						= &rt_shader_group_info[SBT_RCHIT_EFFECTS];
+		group->pNext				= NULL;
+		group->sType				= VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
+		group->type					= VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
+		group->generalShader		= VK_SHADER_UNUSED_KHR;
+		group->closestHitShader		= VK_SHADER_UNUSED_KHR;
+		group->anyHitShader			= VK_SHADER_UNUSED_KHR;
+		group->intersectionShader	= VK_SHADER_UNUSED_KHR;
+
+		group						= &rt_shader_group_info[SBT_RAHIT_PARTICLE];
+		group->pNext				= NULL;
+		group->sType				= VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
+		group->type					= VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
+		group->generalShader		= VK_SHADER_UNUSED_KHR;
+		group->closestHitShader		= VK_SHADER_UNUSED_KHR;
+		group->anyHitShader			= 4;
+		group->intersectionShader	= VK_SHADER_UNUSED_KHR;
+
+		group						= &rt_shader_group_info[SBT_RAHIT_EXPLOSION];
+		group->pNext				= NULL;
+		group->sType				= VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
+		group->type					= VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
+		group->generalShader		= VK_SHADER_UNUSED_KHR;
+		group->closestHitShader		= VK_SHADER_UNUSED_KHR;
+		group->anyHitShader			= 5;
+		group->intersectionShader	= VK_SHADER_UNUSED_KHR;
+
+		group						= &rt_shader_group_info[SBT_RAHIT_SPRITE];
+		group->pNext				= NULL;
+		group->sType				= VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
+		group->type					= VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
+		group->generalShader		= VK_SHADER_UNUSED_KHR;
+		group->closestHitShader		= VK_SHADER_UNUSED_KHR;
+		group->anyHitShader			= 6;
+		group->intersectionShader	= VK_SHADER_UNUSED_KHR;
+
+		group						= &rt_shader_group_info[SBT_RINT_BEAM];
+		group->pNext				= NULL;
+		group->sType				= VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
+		group->type					= VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR;
+		group->generalShader		= VK_SHADER_UNUSED_KHR;
+		group->closestHitShader		= VK_SHADER_UNUSED_KHR;
+		group->anyHitShader			= 7;
+		group->intersectionShader	= 8;
+
+		unsigned int num_shader_groups = needs_beams ? ARRAY_LEN(rt_shader_group_info) : (needs_transparency ? SBT_RINT_BEAM : SBT_FIRST_TRANSPARENCY);
 
 		VkPipelineLibraryCreateInfoKHR library_info;
 		VkRayTracingPipelineCreateInfoKHR rt_pipeline_info;

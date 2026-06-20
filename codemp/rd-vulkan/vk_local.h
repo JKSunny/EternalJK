@@ -482,7 +482,11 @@ extern PFN_vkCreateRayTracingPipelinesKHR					qvkCreateRayTracingPipelinesKHR;
 extern PFN_vkCmdTraceRaysKHR								qvkCmdTraceRaysKHR;
 extern PFN_vkGetRayTracingShaderGroupHandlesKHR				qvkGetRayTracingShaderGroupHandlesKHR;
 
+extern PFN_vkBindBufferMemory2								qvkBindBufferMemory2;
 extern PFN_vkCmdFillBuffer									qvkCmdFillBuffer;
+
+extern PFN_vkCreateBufferView								qvkCreateBufferView;
+extern PFN_vkDestroyBufferView								qvkDestroyBufferView;
 
 extern PFN_vkCmdBeginDebugUtilsLabelEXT						qvkCmdBeginDebugUtilsLabelEXT;
 extern PFN_vkCmdEndDebugUtilsLabelEXT						qvkCmdEndDebugUtilsLabelEXT;
@@ -969,6 +973,8 @@ typedef struct {
 			vk_blas_t	viewer_models[VK_MAX_SWAPCHAIN_SIZE];
 			vk_blas_t	viewer_weapon[VK_MAX_SWAPCHAIN_SIZE];
 			vk_blas_t	explosions[VK_MAX_SWAPCHAIN_SIZE];
+			vk_blas_t   beams[VK_MAX_SWAPCHAIN_SIZE];
+			vk_blas_t   sprites[VK_MAX_SWAPCHAIN_SIZE];
 		} blas;
 	} model_instance;
 
@@ -977,6 +983,7 @@ typedef struct {
 
 	// Top AS (Buffers) for each swapchain image
 	vk_tlas_t		tlas_geometry[VK_MAX_SWAPCHAIN_SIZE];
+	vk_tlas_t		tlas_effects[VK_MAX_SWAPCHAIN_SIZE];
 
 	// stores offset and stuff for in shader lookup
 	vkbuffer_t		buf_instances[VK_MAX_SWAPCHAIN_SIZE];

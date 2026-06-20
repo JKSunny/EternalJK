@@ -21,9 +21,9 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #extension GL_GOOGLE_include_directive    : enable
 
 #define NO_GLOBAL_UBO
-#include "../path_tracer.h"	// contains global_ubo.h -> constants.h
+//#include "../path_tracer.h"	// contains global_ubo.h -> constants.h
 
-layout(location = 0) rayPayloadInEXT RayPayloadGeometry ray_payload_geometry;
+//layout(location = RT_PAYLOAD_GEOMETRY) rayPayloadInEXT RayPayloadGeometry ray_payload_geometry;
 
 void
 main()
