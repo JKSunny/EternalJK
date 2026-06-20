@@ -405,7 +405,7 @@ add_dlights(const dlight_t* dlights, int num_dlights, light_poly_t* light_list, 
 		hash.entity = i + 1; //entity ID
 		hash.mesh = 0xAA;
 
-		//if(light->cluster >= 0)
+		if(light->cluster >= 0)
 		{
 			//Super wasteful but we want to have all lights in the same list.
 
@@ -1310,9 +1310,6 @@ static void vk_rtx_prepare_ubo( trRefdef_t *refdef, world_t *world, mnode_t *vie
 	VectorCopy( sky_matrix[1], ubo->environment_rotation_matrix + 4 );
 	VectorCopy( sky_matrix[2], ubo->environment_rotation_matrix + 8 );
 
-	//add_dlights( refdef->dlights, refdef->num_dlights, ubo );
-	//add_dlights( backEnd.viewParms.dlights, backEnd.viewParms.num_dlights, ubo );
-
 	ubo->pt_cameras = 0;
 	//ubo->num_cameras = 0;
 }
@@ -1977,6 +1974,7 @@ void vk_rtx_begin_scene( trRefdef_t *refdef, drawSurf_t *drawSurfs, int numDrawS
 #if 0
 		vkpt_build_beam_lights(model_lights, &num_model_lights, MAX_MODEL_LIGHTS, bsp_world_model, fd->entities, fd->num_entities, prev_adapted_luminance, light_entity_ids[entity_frame_num], &num_model_lights);
 #endif
+		vk_rtx_build_saber_lights( model_lights, &num_model_lights, MAX_MODEL_LIGHTS, tr.world, refdef, prev_adapted_luminance, light_entity_ids[entity_frame_num] );
 		add_dlights(refdef->dlights, refdef->num_dlights, model_lights, &num_model_lights, MAX_MODEL_LIGHTS, tr.world, light_entity_ids[entity_frame_num]);
 	}
 

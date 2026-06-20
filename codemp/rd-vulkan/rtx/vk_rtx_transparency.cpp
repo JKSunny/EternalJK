@@ -24,6 +24,9 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include "tr_local.h"
 
+
+#define MAX_SABER_LIGHTS 128
+
 #define TR_PARTICLE_MAX_NUM    16384
 #define TR_BEAM_MAX_NUM        1024
 #define TR_SPRITE_MAX_NUM      1024
@@ -308,6 +311,94 @@ void get_transparency_counts(int* particle_num, int* beam_num, int* sprite_num)
 	*sprite_num = transparency.sprite_num;
 }
 
+bool vkpt_build_cylinder_light(light_poly_t* light_list, int* num_lights, int max_lights, world_t *worldData, vec3_t begin, vec3_t end, vec3_t color, float radius, entity_hash_t hash, int *light_entity_ids)
+{
+	vec3_t dir, norm_dir;
+	VectorSubtract(end, begin, dir);
+	VectorCopy(dir, norm_dir);
+	VectorNormalize(norm_dir);
+
+	vec3_t up = { 0.f, 0.f, 1.f };
+	vec3_t left = { 1.f, 0.f, 0.f };
+	if (fabsf(norm_dir[2]) < 0.9f)
+	{
+		CrossProduct(up, norm_dir, left);
+		VectorNormalize(left);
+		CrossProduct(norm_dir, left, up);
+		VectorNormalize(up);
+	}
+	else
+	{
+		CrossProduct(norm_dir, left, up);
+		VectorNormalize(up);
+		CrossProduct(up, norm_dir, left);
+		VectorNormalize(left);
+	}
+
+
+	vec3_t vertices[6] = {
+		{ 0.f, 1.f, 0.f },
+		{ 0.866f, -0.5f, 0.f },
+		{ -0.866f, -0.5f, 0.f },
+		{ 0.f, -1.f, 1.f },
+		{ -0.866f, 0.5f, 1.f },
+		{ 0.866f, 0.5f, 1.f },
+	};
+
+	const int indices[18] = {
+		0, 4, 2,
+		2, 4, 3,
+		2, 3, 1,
+		1, 3, 5,
+		1, 5, 0,
+		0, 5, 4
+	};
+
+	for (int vert = 0; vert < 6; vert++)
+	{
+		vec3_t transformed;
+		VectorCopy(begin, transformed);
+		VectorMA(transformed, vertices[vert][0] * radius, up, transformed);
+		VectorMA(transformed, vertices[vert][1] * radius, left, transformed);
+		VectorMA(transformed, vertices[vert][2], dir, transformed);
+		VectorCopy(transformed, vertices[vert]);
+	}
+
+	for (int tri = 0; tri < 6; tri++)
+	{
+		if (*num_lights >= max_lights)
+			return false;
+
+		int i0 = indices[tri * 3 + 0];
+		int i1 = indices[tri * 3 + 1];
+		int i2 = indices[tri * 3 + 2];
+
+		light_poly_t* light = light_list + *num_lights;
+
+		VectorCopy(vertices[i0], light->positions + 0);
+		VectorCopy(vertices[i1], light->positions + 3);
+		VectorCopy(vertices[i2], light->positions + 6);
+		get_triangle_off_center(light->positions, light->off_center, NULL, 1.f);
+
+		light->cluster = BSP_PointLeaf(worldData->nodes, light->off_center)->cluster;
+		light->material = NULL;
+		light->style = 0;
+		light->type = LIGHT_POLYGON;
+
+		VectorCopy(color, light->color);
+
+		if (light->cluster >= 0)
+		{
+			hash.mesh = tri;
+			light_entity_ids[(*num_lights)] = *(uint32_t*)&hash;
+			(*num_lights)++;
+		}
+	}
+
+	return true;
+}
+
+
 static void do_sprite( vec3_t *vertex_positions, vec3_t origin, float radius )
 {
 	float	s, c;
@@ -353,6 +444,106 @@ static inline void write_sprite_info( uint32_t *sprite_info, const rtx_material_
         ((uint32_t)e->shaderRGBA[1] <<  8) |
         ((uint32_t)e->shaderRGBA[2] << 16) |
         ((uint32_t)e->shaderRGBA[3] << 24);
+}
+
+// borrowed from CG_RGBForSaberColor in cg_palyer.c
+static void vk_rtx_get_saber_lights_color( vec3_t rgb, refEntity_t *e )
+{
+	// e->customSkin = saber color type sett in cg_player.c
+	switch ( (saber_colors_t)e->customSkin )
+	{
+		case SABER_RED:
+			VectorSet( rgb, 1.0f, 0.2f, 0.2f );
+			break;
+		case SABER_ORANGE:
+			VectorSet( rgb, 1.0f, 0.5f, 0.1f );
+			break;
+		case SABER_YELLOW:
+			VectorSet( rgb, 1.0f, 1.0f, 0.2f );
+			break;
+		case SABER_GREEN:
+			VectorSet( rgb, 0.2f, 1.0f, 0.2f );
+			break;
+		case SABER_BLUE:
+			VectorSet( rgb, 0.2f, 0.4f, 1.0f );
+			break;
+		case SABER_PURPLE:
+			VectorSet( rgb, 0.9f, 0.2f, 1.0f );
+			break;
+		case SABER_BLACK:
+			VectorSet( rgb, 1.0f, 1.0f, 1.0f );
+			break;
+		case SABER_RGB:
+			VectorSet( rgb, 
+				e->shaderRGBA[0] / 255.0f,
+				e->shaderRGBA[1] / 255.0f,
+				e->shaderRGBA[2] / 255.0f
+			);
+			break;
+		case SABER_FLAME1:
+		case SABER_ELEC1:
+		case SABER_FLAME2:
+		case SABER_ELEC2:
+#if 0
+			if ( cnum < MAX_CLIENTS ) {
+				int i;
+
+				if ( bnum == 0 )
+					VectorCopy( ci->rgb1, rgb );
+				else
+					VectorCopy( ci->rgb2, rgb );
+				for ( i = 0; i < 3; i++ )
+					rgb[i] /= 255;
+			}
+			else
+#endif
+				VectorSet( rgb, 0.2f, 0.4f, 1.0f );
+			break;
+		default:
+			VectorSet( rgb, 0.2f, 0.4f, 1.0f );
+			break;
+	}
+}
+
+
+void vk_rtx_build_saber_lights( light_poly_t *light_list, int *num_lights, 
+	int max_lights, world_t *worldData, const trRefdef_t *refdef, float adapted_luminance, int *light_entity_ids )
+{
+	uint32_t i;
+
+	int num_sabers = 0;
+
+	static trRefEntity_t *sabers[MAX_SABER_LIGHTS];
+
+	for ( i = 0; i < refdef->num_entities; i++ )
+	{
+		if ( num_sabers == MAX_SABER_LIGHTS )
+			break;
+
+		if (refdef->entities[i].e.reType == RT_SABER_GLOW)
+			sabers[num_sabers++] = refdef->entities + i;
+	}
+
+	if ( num_sabers == 0 )
+		return;
+
+	for ( i = 0; i < num_sabers; i++ )
+	{
+		trRefEntity_t *saber = sabers[i];
+        refEntity_t *e = &saber->e;
+
+		entity_hash_t hash;
+		hash.entity = (sabers[i] - refdef->entities) + 1; //entity ID
+		hash.model = RT_SABER_GLOW;
+
+        vec3_t begin, end, color;
+        VectorCopy(e->origin, begin);
+        VectorMA(e->origin, e->saberLength, e->axis[0], end);
+
+		vk_rtx_get_saber_lights_color( color, e );
+
+        vkpt_build_cylinder_light( light_list, num_lights, max_lights, worldData, begin, end, color, e->radius, hash, light_entity_ids );
+	}
 }
 
 static void write_sprite_geometry(const float* view_matrix, const trRefdef_t *refdef) 

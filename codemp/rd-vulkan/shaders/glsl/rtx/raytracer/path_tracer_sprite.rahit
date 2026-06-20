@@ -44,10 +44,5 @@ void main()
 		update_payload_transparency(ray_payload, transparency, gl_HitTEXT);
 	}
 
-    //update_payload_transparency(
-    //    ray_payload,
-    //    transparency,
-    //    gl_HitTEXT);
-
 	ignoreIntersectionEXT;
 }

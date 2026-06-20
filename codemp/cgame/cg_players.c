@@ -5767,6 +5767,9 @@ static void CG_RGBForSaberColor( saber_colors_t color, vec3_t rgb, int cnum, int
 
 static void CG_DoSaberLight( saberInfo_t *saber, int cnum, int bnum )//rgb
 {
+#ifdef USE_RTX
+	return;
+#endif
 	vec3_t		positions[MAX_BLADES*2], mid={0}, rgbs[MAX_BLADES*2], rgb={0};
 	float		lengths[MAX_BLADES*2]={0}, totallength = 0, numpositions = 0, dist, diameter = 0;
 	int			i, j;
@@ -5945,7 +5948,9 @@ void CG_DoSaber( vec3_t origin, vec3_t dir, float length, float lengthMax, float
 	{	// always add a light because sabers cast a nice glow before they slice you in half!!  or something...
 		float light = length*1.4f + Q_flrand(0.0f, 1.0f)*3.0f; //rgb
 		CG_RGBForSaberColor( color, rgb , cnum, bnum ); //rgb
+#ifndef USE_RTX
 		trap->R_AddLightToScene( mid, light, rgb[0], rgb[1], rgb[2] ); //rgb
+#endif
 	}
 
 	Com_Memset( &saber, 0, sizeof( refEntity_t ));
@@ -5992,6 +5997,9 @@ void CG_DoSaber( vec3_t origin, vec3_t dir, float length, float lengthMax, float
 			saber.shaderRGBA[i] = rgb[i];
 		saber.shaderRGBA[3] = 0xff;
 	}
+#ifdef USE_RTX
+	saber.customSkin = (int32_t)color; // forward saber color type
+#endif
 	//rgb
 
 	saber.renderfx = rfx;
@@ -6130,7 +6138,9 @@ void CG_DoSFXSaber( vec3_t blade_muz, vec3_t blade_tip, vec3_t trail_tip, vec3_t
 	if ( doLight ) {
 		CG_RGBForSaberColor(color, rgb, cnum, bnum);
 		VectorScale(rgb, 0.66f, rgb);
+#ifndef USE_RTX
 		trap->R_AddLightToScene(mid, (blade_len*2.0f) + (Q_flrand(0.0f, 1.0f)*10.0f), rgb[0], rgb[1], rgb[2]);
+#endif
 	}
 
 	// Distance Scale
@@ -6219,7 +6229,9 @@ void CG_DoSFXSaber( vec3_t blade_muz, vec3_t blade_tip, vec3_t trail_tip, vec3_t
 				saber.shaderRGBA[i] = rgb[i] * effectalpha;
 			saber.shaderRGBA[3] = 255 * effectalpha;
 		}
-
+#ifdef USE_RTX
+			saber.customSkin = (int32_t)color; // forward saber color type
+#endif
 		trap->R_AddRefEntityToScene( &saber/*, cnum*/ );
 	}
 
@@ -6267,7 +6279,9 @@ void CG_DoSFXSaber( vec3_t blade_muz, vec3_t blade_tip, vec3_t trail_tip, vec3_t
 				saber.shaderRGBA[i] = rgb[i] * effectalpha;
 			saber.shaderRGBA[3] = 255 * effectalpha;
 		}
-
+#ifdef USE_RTX
+			saber.customSkin = (int32_t)color; // forward saber color type
+#endif
 		trap->R_AddRefEntityToScene( &saber/*, cnum*/ );
 	}
 
