@@ -247,7 +247,12 @@ STRUCT (
 	UINT	( prim_offset_curr_pose_prev_frame )
 	UINT	( prim_offset_prev_pose_prev_frame )
 
-	INT		( is_mdxm )
+	INT		( mdxm_matrix_offset_curr )
+	INT		( mdxm_matrix_offset_prev )
+	UINT	( pad0 )
+	UINT	( pad1 )
+
+	UINT	( pad2 )
 	INT		( idx_offset )
 	FLOAT	( pose_lerp_curr_frame )
 	FLOAT	( pose_lerp_prev_frame )
@@ -274,7 +279,6 @@ STRUCT (
 	UINT			( mlight_prev_to_current		[MAX_MODEL_LIGHTS]			)
 	UINT            ( tlas_instance_prim_offsets	[MAX_TLAS_INSTANCES]		)
 	INT             ( tlas_instance_model_indices	[MAX_TLAS_INSTANCES]		)					  
-	BONESREF		( model_mdxm_bones				[SHADER_MAX_ENTITIES]		)
 	UINT			( model_instance_shader_data	[SHADER_MAX_ENTITIES * INSTANCE_SHADER_UINTS] )
 , InstanceBuffer ) 
 

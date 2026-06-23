@@ -2449,14 +2449,14 @@ void G2_ProcessGeneratedSurfaceBolts(CGhoul2Info &ghoul2, mdxaBone_v &bonePtr, m
 }
 
 #ifdef USE_VBO_GHOUL2
-static inline void vk_set_ghoul2_vbo_mesh( const CRenderSurface &RS, CRenderableSurface *surf, const int lod, const int surfaceIndex, shader_t *shader )
+static inline void vk_set_ghoul2_vbo_mesh( const CRenderSurface &RS, CRenderableSurface *surf, const int lod, const int surfaceIndex, shader_t *shader, int bone_offset )
 {
 	if ( !vk.vboGhoul2Active )
 		return;
 
 #ifdef USE_RTX
 	if ( vk.rtxActive )
-		return vk_rtx_found_entity_vbo_mesh( &RS.currentModel->data.glm->vboModels[lod].vboMeshes[RS.surfaceNum].rtx_mesh, shader );
+		return vk_rtx_add_entity_mesh( &RS.currentModel->data.glm->vboModels[lod].vboMeshes[RS.surfaceNum].rtx_mesh, shader, bone_offset );
 #endif
 
 	surf->vboMesh = &RS.currentModel->data.glm->vboModels[lod].vboMeshes[RS.surfaceNum];
@@ -2534,7 +2534,7 @@ void RenderSurfaces( CRenderSurface &RS, const trRefEntity_t *ent, int entityNum
 			CRenderableSurface *newSurf = AllocGhoul2RenderableSurface();
 			newSurf->surfaceData = surface;
 #ifdef USE_VBO_GHOUL2
-			vk_set_ghoul2_vbo_mesh( RS, newSurf, RS.lod, surface->thisSurfaceIndex, (shader_t*)shader );
+			vk_set_ghoul2_vbo_mesh( RS, newSurf, RS.lod, surface->thisSurfaceIndex, (shader_t*)shader, -1 );
 #endif
 			newSurf->boneCache = RS.boneCache;
 			R_AddDrawSurf( (surfaceType_t *)newSurf, entityNum, (shader_t *)shader, RS.fogNum, cubemapIndex );
@@ -4881,7 +4881,7 @@ qboolean R_LoadMDXA( model_t *mod, void *buffer, const char *mod_name, qboolean 
 
 #ifdef USE_RTX
 // dedicated duplicate methods for rtx with unused code removed like shadows
-static void vk_rtx_RenderSurfaces( CRenderSurface &RS, const trRefEntity_t *ent, int entityNum ) //also ended up just ripping right from SP.
+static void vk_rtx_RenderSurfaces( CRenderSurface &RS, const trRefEntity_t *ent, int entityNum, int bone_offset ) //also ended up just ripping right from SP.
 {
 	// back track and get the surfinfo struct for this surface
 	mdxmSurface_t			*surface;
@@ -4939,7 +4939,7 @@ static void vk_rtx_RenderSurfaces( CRenderSurface &RS, const trRefEntity_t *ent,
 		if ( !RS.personalModel )
 		{
 #ifdef USE_VBO_GHOUL2
-			vk_set_ghoul2_vbo_mesh( RS, NULL, RS.lod, surface->thisSurfaceIndex, (shader_t*)shader );
+			vk_set_ghoul2_vbo_mesh( RS, NULL, RS.lod, surface->thisSurfaceIndex, (shader_t*)shader, bone_offset );
 #endif
 
 #if 0
@@ -4969,11 +4969,11 @@ static void vk_rtx_RenderSurfaces( CRenderSurface &RS, const trRefEntity_t *ent,
 	for ( i = 0; i < surfInfo->numChildren; i++ )
 	{
 		RS.surfaceNum = surfInfo->childIndexes[i];
-		vk_rtx_RenderSurfaces( RS, ent, entityNum );
+		vk_rtx_RenderSurfaces( RS, ent, entityNum, bone_offset );
 	}
 }
 
-void vk_rtx_AddGhoulSurfaces( trRefEntity_t *ent, int entityNum ) 
+void vk_rtx_AddGhoulSurfaces( trRefEntity_t *ent, int entityNum, int *mdxm_matrix_offset, mat3x4_t *mdxm_matrix_data ) 
 {
 	if ( ent->e.ghoul2 == NULL || !G2API_HaveWeGhoul2Models( *( (CGhoul2Info_v*)ent->e.ghoul2 ) ) )
 		return;
@@ -5071,17 +5071,13 @@ void vk_rtx_AddGhoulSurfaces( trRefEntity_t *ent, int entityNum )
 
 			const int model_index = model->currentModel->data.glm->vboModels[whichLod].vbo->index;
 			CBoneCache *bc = model->mBoneCache;
-#if 0
-			for (int bone = 0; bone < (int)bc->mBones.size(); bone++)
-			{
-				const mdxaBone_t& b = bc->EvalRender(bone);
-				Com_Memcpy( bc->boneMatrices + bone, &b.matrix[0][0], sizeof(mat3x4_t));
-			}
-			Com_Memcpy( &vk.uniform_instance_buffer.model_mdxm_bones[model_index], bc->boneMatrices, sizeof(mat3x4_t) * bc->mBones.size() );
-#else	
+
+			const int bone_offset = *mdxm_matrix_offset;
+			*mdxm_matrix_offset += (int)bc->mBones.size();
+
 			for ( int bone = 0; bone < (int)bc->mBones.size(); bone++ )
-				Com_Memcpy( &vk.uniform_instance_buffer.model_mdxm_bones[model_index][bone], bc->EvalRender( bone ).matrix, sizeof(mat3x4_t) );
-#endif
+				Com_Memcpy( &mdxm_matrix_data[bone_offset + bone], bc->EvalRender( bone ).matrix, sizeof(mat3x4_t) );
+
 			//
 			// meshes (surfaces) for this model
 			//
@@ -5089,7 +5085,7 @@ void vk_rtx_AddGhoulSurfaces( trRefEntity_t *ent, int entityNum )
 
 			CRenderSurface RS( model->mSurfaceRoot, model->mSlist, cust_shader, fogNum, personalModel, model->mBoneCache, ent->e.renderfx, skin, (model_t *)model->currentModel, whichLod, model->mBltlist, NULL, NULL );
 
-			vk_rtx_RenderSurfaces( RS, ent, entityNum );
+			vk_rtx_RenderSurfaces( RS, ent, entityNum, bone_offset );
 		}
 	}
 

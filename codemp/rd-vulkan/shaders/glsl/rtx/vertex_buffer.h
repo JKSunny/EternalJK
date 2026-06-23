@@ -31,6 +31,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define MAX_LIGHT_POLYS         4096
 #define LIGHT_POLY_VEC4S        4
 #define MATERIAL_UINTS			6
+#define MAX_MDXM_MATRICES       32768
 
 // should match the same constant declared in material.h
 #define MAX_PBR_MATERIALS		4096
@@ -68,6 +69,9 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 // light stats
 #define BINDING_OFFSET_LIGHT_STATS_BUFFER					10
 
+// mdxm bones
+#define BINDING_OFFSET_MDXM_BONE_BUFFER					11
+
 // debug relations
 #define USE_MULTI_WORLD_BUFFERS
 
@@ -104,6 +108,10 @@ STRUCT (
 	UINT			( pad1 )
 , MaterialStage )
 #define MATERIALSTAGE(n) MaterialStage n;
+
+STRUCT (
+	MAT3X4			( matrices[MAX_MDXM_MATRICES] )
+, MDXMMatrixBuffer )
 
 STRUCT ( 
 	UINT			( material_table[MAX_PBR_MATERIALS * MATERIAL_UINTS] )
@@ -277,6 +285,7 @@ layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_SUN_COLOR_UBO
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_LIGHT_STATS_BUFFER )			buffer LIGHT_STATS_BUFFERS { uint stats[]; } light_stats_bufers[3];
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_READBACK_BUFFER )			buffer READBACK_BUFFER { ReadbackBuffer readback; };
 layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_LIGHT_BUFFER )				buffer LIGHT_BUFFER { LightBuffer light_buffer; };
+layout( set = VERTEX_BUFFER_DESC_SET_IDX, binding = BINDING_OFFSET_MDXM_BONE_BUFFER )			readonly buffer MDXM_BONE_BUFFER { MDXMMatrixBuffer mdxm_matrix_buffer; };
 
 #undef BUFFER_T
 

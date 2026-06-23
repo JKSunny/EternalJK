@@ -695,9 +695,9 @@ void		vk_rtx_bind_model( int index, VBO_t *vbo, IBO_t *ibo );
 #else
 void		vk_rtx_build_mdxm_vbo( model_t *mod, mdxmHeader_t *mdxm );
 #endif
-void		vk_rtx_found_entity_vbo_mesh( maliasmesh_t *mesh, shader_t *shader );
+void		vk_rtx_add_entity_mesh( maliasmesh_t *mesh, shader_t *shader, int bone_offset );
 void		vk_rtx_AddMD3Surfaces( trRefEntity_t *ent, int entityNum, const model_t *model );
-void		vk_rtx_AddGhoulSurfaces( trRefEntity_t *ent, int entityNum );
+void		vk_rtx_AddGhoulSurfaces( trRefEntity_t *ent, int entityNum, int *mdxm_matrix_offset, mat3x4_t *mdxm_matrix_data );
 
 // debug
 #define PROFILER_LIST \

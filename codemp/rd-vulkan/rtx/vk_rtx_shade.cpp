@@ -32,6 +32,7 @@ static int light_entity_ids[2][MAX_MODEL_LIGHTS];
 static int model_entity_id_count[2];
 static int world_entity_id_count[2];
 static int light_entity_id_count[2];
+static int mdxm_matrix_count[2];
 static ModelInstance model_instances_prev[MAX_REFENTITIES];
 
 static uint32_t g_num_instances = 0;
@@ -323,8 +324,7 @@ static void fill_model_instance_shader_data( InstanceBuffer *uniform_instance_bu
 }
 
 static void fill_model_instance( ModelInstance* instance, const trRefEntity_t* entity, const maliasmesh_t *mesh, shader_t *shader,
-	const float* transform, qboolean is_viewer_weapon, qboolean is_double_sided,
-	qboolean is_mdxm, uint32_t material_id )
+	const float* transform, qboolean is_viewer_weapon, qboolean is_double_sided, uint32_t material_id, int bone_offset )
 {
 	int cluster = -1;
 	if ( tr.world )
@@ -342,7 +342,6 @@ static void fill_model_instance( ModelInstance* instance, const trRefEntity_t* e
 	instance->material = material_id;
 	instance->shell = 0U;
 	instance->cluster = cluster;
-	instance->is_mdxm = is_mdxm ? 1 : 0;
 	instance->source_buffer_idx = mesh->modelIndex; // + VERTEX_BUFFER_FIRST_MODEL ;
 	instance->prim_count = mesh->numIndexes / 3;
 
@@ -351,15 +350,10 @@ static void fill_model_instance( ModelInstance* instance, const trRefEntity_t* e
 	instance->prim_offset_prev_pose_curr_frame = offset_cur;
 	instance->prim_offset_curr_pose_prev_frame = instance->prim_offset_curr_pose_curr_frame;
 	instance->prim_offset_prev_pose_prev_frame = instance->prim_offset_prev_pose_curr_frame;
-
-#if 1
 	instance->pose_lerp_curr_frame = entity->e.backlerp;
 	instance->pose_lerp_prev_frame = instance->pose_lerp_curr_frame;
-#else
-	instance->iqm_matrix_offset_curr_frame = 0;
-	instance->iqm_matrix_offset_prev_frame = instance->iqm_matrix_offset_curr_frame;
-#endif
-
+	instance->mdxm_matrix_offset_curr = bone_offset;
+	instance->mdxm_matrix_offset_prev = instance->mdxm_matrix_offset_curr;
 	instance->alpha_and_frame = floatToHalf(1.0f);
 	instance->render_buffer_idx = 0; // to be filled later
 	instance->render_prim_offset = 0;
@@ -435,36 +429,49 @@ add_dlights(const dlight_t* dlights, int num_dlights, light_poly_t* light_list, 
 	}
 }
 
-
 #define MESH_FILTER_TRANSPARENT 1
 #define MESH_FILTER_OPAQUE 2
 #define MESH_FILTER_MASKED 4
 #define MESH_FILTER_ALL 3
 
-// bad sunny, rework this
-uint32_t			enitity_num_meshes = 0;
-static maliasmesh_t	*enitity_meshes[1024];
-static shader_t		*enitity_meshes_shader[1024];
+typedef struct {
+	maliasmesh_t	*mesh;
+	shader_t		*shader;
+	int				bone_offset;
+} vk_rtx_entity_mesh_t;
 
-void vk_rtx_found_entity_vbo_mesh( maliasmesh_t *mesh, shader_t *shader ) 
+static vk_rtx_entity_mesh_t entity_meshes[SHADER_MAX_ENTITIES];
+static uint32_t entity_mesh_count = 0;
+
+void vk_rtx_add_entity_mesh( maliasmesh_t *mesh, shader_t *shader, int bone_offset ) 
 {
-	enitity_meshes[enitity_num_meshes] = mesh;
-	enitity_meshes_shader[enitity_num_meshes++] = shader;
+	vk_rtx_entity_mesh_t *entity_mesh = &entity_meshes[entity_mesh_count++];
+	entity_mesh->mesh			= mesh;
+	entity_mesh->shader			= shader;
+	entity_mesh->bone_offset	= bone_offset;
+
+	//Com_Printf("mesh_count: %u bone offset: %u\n", entity_mesh_count, bone_offset);
 }
 
-static qboolean vk_rtx_find_entity_vbo_meshes( const model_t* model, const uint32_t entityNum, trRefEntity_t *entity )
+static qboolean vk_rtx_collect_entity_meshes( const model_t* model, const uint32_t entityNum, trRefEntity_t *entity, int *mdxm_matrix_offset, mat3x4_t *mdxm_matrix_data )
 {
-	Com_Memset( &enitity_meshes, NULL, sizeof(maliasmesh_t*) * 1024 );
-	Com_Memset( &enitity_meshes_shader, NULL, sizeof(shader_t*) * 1024 );
-	enitity_num_meshes = 0;
+	Com_Memset( &entity_meshes, NULL, sizeof(vk_rtx_entity_mesh_t) * SHADER_MAX_ENTITIES );
+	entity_mesh_count = 0;
 
-	if ( model->type == MOD_MDXM || model->type == MOD_BAD  )
-		vk_rtx_AddGhoulSurfaces( entity, entityNum );
+	switch (model->type)
+	{
+		case MOD_MDXM:
+		case MOD_BAD:
+			vk_rtx_AddGhoulSurfaces( entity, entityNum, mdxm_matrix_offset, mdxm_matrix_data );
+			break;
+		case MOD_MESH:
+			vk_rtx_AddMD3Surfaces( entity, entityNum, model );
+			break;
+		default:
+			break;
+	}
 
-	else if ( model->type == MOD_MESH )
-		vk_rtx_AddMD3Surfaces( entity, entityNum, model );
-
-	return enitity_num_meshes > 0 ? qtrue : qfalse;
+	return entity_mesh_count > 0 ? qtrue : qfalse;
 }
 
 static void instance_model_lights(int num_light_polys, const light_poly_t* light_polys, const float* transform)
@@ -576,13 +583,10 @@ static void process_bsp_entity(
 	mi->prim_offset_prev_pose_curr_frame = 0;
 	mi->prim_offset_curr_pose_prev_frame = 0;
 	mi->prim_offset_prev_pose_prev_frame = 0;
-#if 1
 	mi->pose_lerp_curr_frame = 0.f;
 	mi->pose_lerp_prev_frame = 0.f;
-#else
-	mi->iqm_matrix_offset_curr_frame = -1;
-	mi->iqm_matrix_offset_prev_frame = -1;
-#endif
+	mi->mdxm_matrix_offset_curr = -1;
+	mi->mdxm_matrix_offset_prev = -1;
 	mi->alpha_and_frame = (entity->e.frame << 16) | floatToHalf(model_alpha);
 	mi->render_buffer_idx = VERTEX_BUFFER_SUB_MODELS;
 	mi->render_prim_offset = bmodel->geometry.prim_offsets[0];
@@ -615,15 +619,12 @@ static void process_regular_entity(
 
 	int mesh_filter, 
 	qboolean* contains_transparent,
-	qboolean* contains_masked
+	qboolean* contains_masked,
+	int* mdxm_matrix_offset,
+	mat3x4_t *mdxm_matrix_data
 )
 {
-	qboolean is_mdxm = qfalse;
-
-	if ( model->type == MOD_MDXM || model->type == MOD_BAD )
-		is_mdxm = qtrue;
-
-	if ( !vk_rtx_find_entity_vbo_meshes( model, entityNum, entity ) )
+	if ( !vk_rtx_collect_entity_meshes( model, entityNum, entity, mdxm_matrix_offset, mdxm_matrix_data ) )
 		return;
 
 	InstanceBuffer *uniform_instance_buffer = &vk.uniform_instance_buffer;
@@ -641,10 +642,9 @@ static void process_regular_entity(
 
 	bool use_static_blas = false;
 
-	for ( i = 0; i < enitity_num_meshes; i++ ) 
+	for ( i = 0; i < entity_mesh_count; i++ ) 
 	{
-		maliasmesh_t *mesh = enitity_meshes[i];
-		shader_t *shader = enitity_meshes_shader[i];
+		vk_rtx_entity_mesh_t *entity_mesh = &entity_meshes[i];
 
 		if ( current_instance_index >= SHADER_MAX_ENTITIES )
 			return assert(!"Model entity count overflow");
@@ -652,15 +652,15 @@ static void process_regular_entity(
 		if (!use_static_blas && current_animated_index >= SHADER_MAX_ENTITIES)
 			return assert(!"Total entity count overflow");
 
-		if ( mesh->indexOffset < 0 ) // failed to upload the vertex data - don't instance this mesh
+		if (  entity_mesh->mesh->indexOffset < 0 ) // failed to upload the vertex data - don't instance this mesh
 			return;
 
-		uint32_t material_id = compute_mesh_material_flags( entity, mesh->modelIndex, shader );
+		uint32_t material_id = compute_mesh_material_flags( entity, entity_mesh->mesh->modelIndex, entity_mesh->shader );
 
 		if (!material_id)
 			continue;
 
-		if ( RB_IsMasked( shader ) )
+		if ( RB_IsMasked( entity_mesh->shader ) )
 		{
 			if (contains_masked)
 				*contains_masked = qtrue;
@@ -668,7 +668,7 @@ static void process_regular_entity(
 			if (!(mesh_filter & MESH_FILTER_MASKED))
 				continue;
 		}
-		else if ( RB_IsTransparent( shader ) )
+		else if ( RB_IsTransparent( entity_mesh->shader ) )
 		{
 			if(contains_transparent)
 				*contains_transparent = qtrue;
@@ -684,7 +684,7 @@ static void process_regular_entity(
 
 		entity_hash_t hash;
 		hash.entity = entity->e.id;
-		hash.model = mesh->modelIndex;
+		hash.model =  entity->e.hModel;
 		hash.mesh = i;
 		hash.bsp = 0;
 
@@ -693,10 +693,10 @@ static void process_regular_entity(
 		//ModelInstance* mi = uniform_instance_buffer->model_instances + current_instance_index;
 		ModelInstance* mi = &uniform_instance_buffer->model_instances[current_instance_index];
 
-		fill_model_instance_shader_data( uniform_instance_buffer, current_instance_index, entity, shader );
-		fill_model_instance( mi, entity, mesh, 
-							 shader,  transform, is_viewer_weapon, is_double_sided, 
-							 is_mdxm, material_id 
+		fill_model_instance_shader_data( uniform_instance_buffer, current_instance_index, entity,  entity_mesh->shader );
+		fill_model_instance( mi, entity, entity_mesh->mesh, 
+							  entity_mesh->shader,  transform, is_viewer_weapon, is_double_sided, 
+							  material_id, entity_mesh->bone_offset 
 		);
 
 
@@ -722,7 +722,7 @@ static void process_regular_entity(
 			mi->render_prim_offset = current_num_instanced_prim;
 
 			current_animated_index++;
-			current_num_instanced_prim += mesh->numIndexes / 3;
+			current_num_instanced_prim += entity_mesh->mesh->numIndexes / 3;
 		}
 
 		current_instance_index++;
@@ -771,7 +771,7 @@ static void prepare_entities( EntityUploadInfo *upload_info, const trRefdef_t *r
 	int model_instance_idx = 0;
 	int num_instanced_prim = 0; /* need to track this here to find lights */
 	int instance_idx = 0;
-	int iqm_matrix_offset = 0;
+	int mdxm_matrix_offset = 0;
 
 	for ( i = 0; i < refdef->num_entities; i++ )
 	{
@@ -829,7 +829,7 @@ static void prepare_entities( EntityUploadInfo *upload_info, const trRefdef_t *r
 						case MOD_BAD:
 							{
 								process_regular_entity( i, refdef, entity, model, qfalse, qfalse, &model_instance_idx, &instance_idx, &num_instanced_prim, 
-									MESH_FILTER_OPAQUE, &contains_transparent, &contains_masked );
+									MESH_FILTER_OPAQUE, &contains_transparent, &contains_masked, &mdxm_matrix_offset, vk.mdxm_matrices_shadow );
 							
 								if (contains_transparent)
 									transparent_model_indices[transparent_model_num++] = i;
@@ -868,8 +868,8 @@ static void prepare_entities( EntityUploadInfo *upload_info, const trRefdef_t *r
 		trRefEntity_t *entity = refdef->entities + transparent_model_indices[i];
 
 		model_t *model = R_GetModelByHandle( entity->e.hModel );
-		process_regular_entity(entityNum, refdef, entity, model, qfalse, qfalse, &model_instance_idx, &instance_idx, &num_instanced_prim,
-			MESH_FILTER_TRANSPARENT, NULL, NULL );
+		process_regular_entity( entityNum, refdef, entity, model, qfalse, qfalse, &model_instance_idx, &instance_idx, &num_instanced_prim,
+			MESH_FILTER_TRANSPARENT, NULL, NULL, &mdxm_matrix_offset, vk.mdxm_matrices_shadow );
 	}
 
 	upload_info->transparent_prim_count = num_instanced_prim - upload_info->transparent_prim_offset;
@@ -882,8 +882,8 @@ static void prepare_entities( EntityUploadInfo *upload_info, const trRefdef_t *r
 		trRefEntity_t *entity = refdef->entities + masked_model_indices[i];
 
 		model_t *model = R_GetModelByHandle( entity->e.hModel );
-		process_regular_entity(entityNum, refdef, entity, model, qfalse, qtrue, &model_instance_idx, &instance_idx, &num_instanced_prim,
-			MESH_FILTER_MASKED, NULL, NULL);
+		process_regular_entity( entityNum, refdef, entity, model, qfalse, qtrue, &model_instance_idx, &instance_idx, &num_instanced_prim,
+			MESH_FILTER_MASKED, NULL, NULL, &mdxm_matrix_offset, vk.mdxm_matrices_shadow );
 	}
 
 	upload_info->masked_prim_count = num_instanced_prim - upload_info->masked_prim_offset;
@@ -922,13 +922,43 @@ static void prepare_entities( EntityUploadInfo *upload_info, const trRefdef_t *r
 				memcpy(mi_curr->transform_prev, mi_prev->transform, sizeof(mi_curr->transform_prev));
 				mi_curr->prim_offset_curr_pose_prev_frame = mi_prev->prim_offset_curr_pose_curr_frame;
 				mi_curr->prim_offset_prev_pose_prev_frame = mi_prev->prim_offset_prev_pose_curr_frame;
-#if 1
 				mi_curr->pose_lerp_prev_frame = mi_prev->pose_lerp_curr_frame;
-#else
-				mi_curr->iqm_matrix_offset_prev_frame = mi_prev->iqm_matrix_offset_curr_frame;
-#endif
+				mi_curr->mdxm_matrix_offset_prev = mi_prev->mdxm_matrix_offset_curr;
 			}
 		}
+	}
+
+	mdxm_matrix_count[entity_frame_num] = mdxm_matrix_offset;
+	if (mdxm_matrix_count[entity_frame_num] > 0)
+	{
+		// If we had some matrices previously...
+		if (mdxm_matrix_count[!entity_frame_num] > 0)
+		{
+			// Copy over the previous frame MDXM matrices into an offset location in the current frame buffer
+			memcpy(vk.mdxm_matrices_shadow + (mdxm_matrix_count[entity_frame_num]),
+				vk.mdxm_matrices_prev, mdxm_matrix_count[!entity_frame_num] * sizeof(mat3x4_t));
+		
+			// Patch the previous matrix offsets to point at the new locations
+			for (int i = 0; i < model_entity_id_count[entity_frame_num]; i++)
+			{
+				ModelInstance* instance = &instance_buffer->model_instances[i];
+				if (instance->mdxm_matrix_offset_prev >= 0) {
+					// Offset = current matrix count
+					instance->mdxm_matrix_offset_prev += mdxm_matrix_count[entity_frame_num];
+				}
+			}
+		}
+
+		// Store the current matrices for the next frame
+		memcpy(vk.mdxm_matrices_prev, vk.mdxm_matrices_shadow, mdxm_matrix_count[entity_frame_num] * sizeof(mat3x4_t));
+
+		// Upload the current matrices to the staging buffer
+		MDXMMatrixBuffer* mdxm_matrix_staging = (MDXMMatrixBuffer*)buffer_map(&vk.buf_mdxm_matrices_staging[vk.current_frame_index]);
+
+		int total_matrix_count = (mdxm_matrix_count[entity_frame_num] + mdxm_matrix_count[!entity_frame_num]);
+		memcpy(mdxm_matrix_staging, vk.mdxm_matrices_shadow, total_matrix_count * sizeof(mat3x4_t));
+
+		buffer_unmap(&vk.buf_mdxm_matrices_staging[vk.current_frame_index]);
 	}
 
 	// Save the current model instances for the next frame
@@ -1598,7 +1628,7 @@ static VkResult vkpt_final_blit_simple( VkCommandBuffer cmd_buf )
 	return VK_SUCCESS;
 }
 
-VkResult
+static VkResult
 vkpt_light_buffer_upload_staging( VkCommandBuffer cmd_buf )
 {
 	vkbuffer_t *staging = vk.buf_light_staging + vk.current_frame_index;
@@ -1615,6 +1645,20 @@ vkpt_light_buffer_upload_staging( VkCommandBuffer cmd_buf )
 		qvkCmdFillBuffer(cmd_buf, vk.buf_light_stats[buffer_idx].buffer, 0, vk.buf_light_stats[buffer_idx].size, 0);
 	}
 
+	return VK_SUCCESS;
+}
+
+static VkResult
+vkpt_mdxm_matrix_buffer_upload_staging( VkCommandBuffer cmd_buf )
+{
+	vkbuffer_t* staging = vk.buf_mdxm_matrices_staging + vk.current_frame_index;
+
+	assert(!staging->is_mapped);
+
+	VkBufferCopy copyRegion = { 0, 0, sizeof(MDXMMatrixBuffer) };
+
+	qvkCmdCopyBuffer(cmd_buf, staging->buffer, vk.buf_mdxm_matrices.buffer, 1, &copyRegion);
+	
 	return VK_SUCCESS;
 }
 
@@ -1700,6 +1744,7 @@ static void vk_begin_trace_rays( world_t &worldData, trRefdef_t *refdef, referen
 		VkCommandBuffer transfer_cmd_buf = vkpt_begin_command_buffer(&vk.cmd_buffers_transfer);
 
 		vkpt_light_buffer_upload_staging( transfer_cmd_buf );
+		vkpt_mdxm_matrix_buffer_upload_staging( transfer_cmd_buf );
 
 		for ( int gpu = 0; gpu < vk.device_count; gpu++ )	// multi-gpu not implemented
 		{

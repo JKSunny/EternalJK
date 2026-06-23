@@ -713,6 +713,20 @@ void vk_rtx_create_buffers( void )
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT );	
 	}
 
+	// mdxm bones
+	vk_rtx_buffer_create(&vk.buf_mdxm_matrices, sizeof(MDXMMatrixBuffer),
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+	for ( i = 0; i < vk.swapchain_image_count; i++ )
+	{
+		vk_rtx_buffer_create(vk.buf_mdxm_matrices_staging + i, sizeof(MDXMMatrixBuffer),
+			VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+	}
+	vk.mdxm_matrices_shadow = (mat3x4_t*)Z_Malloc(sizeof(MDXMMatrixBuffer), TAG_GENERAL);
+	vk.mdxm_matrices_prev = (mat3x4_t*)Z_Malloc(sizeof(MDXMMatrixBuffer), TAG_GENERAL);
+
 	// light & material buffer
 	vk_rtx_buffer_create( &vk.buf_light, sizeof(LightBuffer),
 		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
@@ -754,6 +768,7 @@ void vk_rtx_destroy_buffers( void )
 	vk_rtx_buffer_destroy( &vk.buf_readback );
 	vk_rtx_buffer_destroy( &vk.buf_tonemap );
 	vk_rtx_buffer_destroy( &vk.buf_light );
+	vk_rtx_buffer_destroy( &vk.buf_mdxm_matrices );
 	vk_rtx_buffer_destroy( &vk.buf_sun_color );
 
 	for ( i = 0; i < vk.swapchain_image_count; i++ ) 
@@ -761,8 +776,11 @@ void vk_rtx_destroy_buffers( void )
 		vk_rtx_buffer_destroy( &vk.buf_instances[i] );
 		vk_rtx_buffer_destroy( vk.buf_readback_staging + i );
 		vk_rtx_buffer_destroy( vk.buf_light_staging + i );
+		vk_rtx_buffer_destroy( vk.buf_mdxm_matrices_staging + i );
 	}
 
+	Z_Free( (void**)&vk.mdxm_matrices_shadow );
+	Z_Free( (void**)&vk.mdxm_matrices_prev );
 
 	vk_rtx_destroy_accel_all();
 	vkpt_light_buffers_destroy();

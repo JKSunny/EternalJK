@@ -999,6 +999,11 @@ typedef struct {
 	vkbuffer_t		buf_light_stats[NUM_LIGHT_STATS_BUFFERS];
 	vkbuffer_t		buf_light_counts_history[LIGHT_COUNT_HISTORY];
 
+	vkbuffer_t		buf_mdxm_matrices;
+	vkbuffer_t		buf_mdxm_matrices_staging[VK_MAX_SWAPCHAIN_SIZE];
+	mat3x4_t*		mdxm_matrices_shadow;
+	mat3x4_t*		mdxm_matrices_prev;
+
 	vkbuffer_t		buf_tonemap;
 
 	vkbuffer_t		buf_sun_color;

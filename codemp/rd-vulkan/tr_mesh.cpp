@@ -538,7 +538,7 @@ void vk_rtx_AddMD3Surfaces( trRefEntity_t *ent, int entityNum, const model_t *mo
 		// don't add third_person objects if not viewing through a portal
 		// sunny, cant we just return immediately when personalModel is set .. ?
 		if ( !personalModel )
-			vk_rtx_found_entity_vbo_mesh( &mdv_model->vboSurfaces[i].rtx_mesh, shader );
+			vk_rtx_add_entity_mesh( &mdv_model->vboSurfaces[i].rtx_mesh, shader, -1 );
 
 		surface++;
 	}
