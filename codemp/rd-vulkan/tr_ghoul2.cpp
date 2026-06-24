@@ -2449,13 +2449,13 @@ void G2_ProcessGeneratedSurfaceBolts(CGhoul2Info &ghoul2, mdxaBone_v &bonePtr, m
 }
 
 #ifdef USE_VBO_GHOUL2
-static inline void vk_set_ghoul2_vbo_mesh( const CRenderSurface &RS, CRenderableSurface *surf, const int lod, const int surfaceIndex, shader_t *shader, int bone_offset )
+static inline void vk_set_ghoul2_vbo_mesh( const CRenderSurface &RS, CRenderableSurface *surf, const int lod, const int surfaceIndex, shader_t *shader, int bone_offset, const qboolean rtx )
 {
 	if ( !vk.vboGhoul2Active )
 		return;
 
 #ifdef USE_RTX
-	if ( vk.rtxActive )
+	if ( rtx )
 		return vk_rtx_add_entity_mesh( &RS.currentModel->data.glm->vboModels[lod].vboMeshes[RS.surfaceNum].rtx_mesh, shader, bone_offset );
 #endif
 
@@ -2534,7 +2534,8 @@ void RenderSurfaces( CRenderSurface &RS, const trRefEntity_t *ent, int entityNum
 			CRenderableSurface *newSurf = AllocGhoul2RenderableSurface();
 			newSurf->surfaceData = surface;
 #ifdef USE_VBO_GHOUL2
-			vk_set_ghoul2_vbo_mesh( RS, newSurf, RS.lod, surface->thisSurfaceIndex, (shader_t*)shader, -1 );
+			// used enabled w rtx?
+			vk_set_ghoul2_vbo_mesh( RS, newSurf, RS.lod, surface->thisSurfaceIndex, (shader_t*)shader, -1, qfalse );
 #endif
 			newSurf->boneCache = RS.boneCache;
 			R_AddDrawSurf( (surfaceType_t *)newSurf, entityNum, (shader_t *)shader, RS.fogNum, cubemapIndex );
@@ -2663,12 +2664,12 @@ void RenderSurfaces( CRenderSurface &RS, const trRefEntity_t *ent, int entityNum
 			{ //we need numVerts*2 xyz slots free in tess to do shadow, if this surf is going to exceed that then let's try the lowest lod -rww
 				mdxmSurface_t *lowsurface = (mdxmSurface_t *)G2_FindSurface(RS.currentModel, RS.surfaceNum, RS.currentModel->numLods-1);
 				newSurf->surfaceData = lowsurface;
-				//vk_set_ghoul2_vbo_mesh( RS, newSurf, RS.currentModel->numLods-1, lowsurface->thisSurfaceIndex );
+				vk_set_ghoul2_vbo_mesh( RS, newSurf, RS.currentModel->numLods-1, lowsurface->thisSurfaceIndex, (shader_t*)shader, -1, qfalse );
 			}
 			else
 			{
 				newSurf->surfaceData = surface;
-				//vk_set_ghoul2_vbo_mesh( RS, newSurf, RS.lod, surface->thisSurfaceIndex );
+				vk_set_ghoul2_vbo_mesh( RS, newSurf, RS.lod, surface->thisSurfaceIndex, (shader_t*)shader, -1, qfalse );
 			}
 			newSurf->boneCache = RS.boneCache;
 			R_AddDrawSurf( (surfaceType_t *)newSurf, entityNum, tr.shadowShader, 0, 0 );
@@ -2682,7 +2683,7 @@ void RenderSurfaces( CRenderSurface &RS, const trRefEntity_t *ent, int entityNum
 		{		// set the surface info to point at the where the transformed bone list is going to be for when the surface gets rendered out
 			CRenderableSurface *newSurf = AllocGhoul2RenderableSurface();
 			newSurf->surfaceData = surface;
-			//vk_set_ghoul2_vbo_mesh( RS, newSurf, RS.lod, surface->thisSurfaceIndex );
+			vk_set_ghoul2_vbo_mesh( RS, newSurf, RS.lod, surface->thisSurfaceIndex, (shader_t*)shader, -1, qfalse );
 			newSurf->boneCache = RS.boneCache;
 			R_AddDrawSurf( (surfaceType_t *)newSurf, entityNum, tr.projectionShadowShader, 0, 0 );
 		}
@@ -4939,7 +4940,7 @@ static void vk_rtx_RenderSurfaces( CRenderSurface &RS, const trRefEntity_t *ent,
 		if ( !RS.personalModel )
 		{
 #ifdef USE_VBO_GHOUL2
-			vk_set_ghoul2_vbo_mesh( RS, NULL, RS.lod, surface->thisSurfaceIndex, (shader_t*)shader, bone_offset );
+			vk_set_ghoul2_vbo_mesh( RS, NULL, RS.lod, surface->thisSurfaceIndex, (shader_t*)shader, bone_offset, qtrue );
 #endif
 
 #if 0

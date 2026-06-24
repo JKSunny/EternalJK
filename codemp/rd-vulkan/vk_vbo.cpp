@@ -611,7 +611,7 @@ IBO_t *R_CreateIBO( const char *name, const byte *vbo_data, int vbo_size )
 	desc.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 #if defined(USE_RTX) && defined(USE_RTX_GLOBAL_MODEL_VBO)
 	if ( vk.rtxActive )
-		desc.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+		desc.usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 #endif
 	VK_CREATE_BUFFER(vk.device, &desc, &tr.ibos[tr.numIBOs]->buffer, "ibo device-local buffer");
 
@@ -619,9 +619,11 @@ IBO_t *R_CreateIBO( const char *name, const byte *vbo_data, int vbo_size )
 	desc.size = vbo_size;
 	desc.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 	VK_CREATE_BUFFER(vk.device, &desc, &staging_vertex_buffer, "ibo staging vertex");
+#if 0
 #if defined(USE_RTX) && defined(USE_RTX_GLOBAL_MODEL_VBO)
 	if ( vk.rtxActive )
 		desc.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+#endif
 #endif
 
 	// memory requirements
@@ -714,7 +716,7 @@ VBO_t *R_CreateVBO( const char *name, const byte *vbo_data, int vbo_size )
 	desc.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 #if defined(USE_RTX) && defined(USE_RTX_GLOBAL_MODEL_VBO)
 	if ( vk.rtxActive )
-		desc.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+		desc.usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 #endif
 	VK_CREATE_BUFFER( vk.device, &desc, &tr.vbos[tr.numVBOs]->buffer, "vbo device local" );
 	
@@ -722,9 +724,11 @@ VBO_t *R_CreateVBO( const char *name, const byte *vbo_data, int vbo_size )
 	desc.size = vbo_size;
 	desc.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 	VK_CREATE_BUFFER(vk.device, &desc, &staging_vertex_buffer, "vbo staging vertex");
+#if 0
 #if defined(USE_RTX) && defined(USE_RTX_GLOBAL_MODEL_VBO)
 	if ( vk.rtxActive )
 		desc.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+#endif
 #endif
 
 	// memory requirements
@@ -1253,8 +1257,6 @@ void R_BuildMDXM( model_t *mod, mdxmHeader_t *mdxm )
 		ri.Hunk_FreeTempMemory ( baseVertexes );
 
 #if defined(USE_RTX) && defined(USE_RTX_GLOBAL_MODEL_VBO)
-
-
 		vk_rtx_extract_model_lights_mdxm( mod );
 		vk_rtx_bind_model( vbo->index, vbo, ibo );
 #endif

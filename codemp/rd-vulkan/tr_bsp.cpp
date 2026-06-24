@@ -3248,7 +3248,8 @@ void RE_LoadWorldMap_Actual( const char *name, world_t &worldData, int index )
 
 	#ifdef VK_CUBEMAP
 		// load cubemaps
-		if ( r_cubeMapping->integer )
+		//if ( r_cubeMapping->integer )
+		if ( vk.cubemapActive )
 		{
 			// Try loading an env.json file first
 			R_LoadEnvironmentJson( worldData.baseName );

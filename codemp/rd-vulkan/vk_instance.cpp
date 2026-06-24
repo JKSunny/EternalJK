@@ -1072,7 +1072,7 @@ static qboolean vk_create_device( VkPhysicalDevice physical_device, int device_i
 		features.sampleRateShading = VK_FALSE;
 		features.dualSrcBlend = VK_FALSE;
 		features.logicOp = VK_FALSE;
-		features.multiDrawIndirect = VK_FALSE;
+		features.multiDrawIndirect = VK_TRUE;
 		features.drawIndirectFirstInstance = VK_FALSE;
 		features.depthClamp = VK_FALSE;
 		features.depthBiasClamp = VK_FALSE;

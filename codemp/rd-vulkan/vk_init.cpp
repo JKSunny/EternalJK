@@ -544,9 +544,14 @@ void vk_initialize( void )
 #endif
 
 #ifdef USE_RTX
-	// Raytracing
+	// Raytracing, at one point there will be a single r_rtx cvar ..
 	if ( vk.rtxActive )
+	{
 		vk.msaaActive = qfalse;
+		vk.cubemapActive = qfalse;
+		vk.normalMappingActive = qtrue;
+		vk.specularMappingActive = qtrue;
+	}
 	else if ( r_ext_multisample->integer  )
 		vk.msaaActive = qtrue;
 #else

@@ -1575,11 +1575,6 @@ static void R_AddEntitySurfaces( const trRefdef_t *refdef )
 	int				i;
 	trRefEntity_t	*ent;
 
-#ifdef USE_RTX
-	if ( vk.rtxActive )
-		return;
-#endif
-
 	if (!r_drawentities->integer) {
 		return;
 	}
@@ -1594,7 +1589,6 @@ static void R_AddEntitySurfaces( const trRefdef_t *refdef )
 	}
 }
 
-
 /*
 ====================
 R_GenerateDrawSurfs
@@ -1602,6 +1596,14 @@ R_GenerateDrawSurfs
 */
 static void R_GenerateDrawSurfs( viewParms_t *viewParms, trRefdef_t *refdef )
 {
+#ifdef USE_RTX
+	if ( vk.rtxActive && tr.refdef.rdflags == RDF_NOWORLDMODEL ) 
+	{
+		R_AddEntitySurfaces( refdef );
+		return;
+	}
+#endif
+
 	R_AddWorldSurfaces( viewParms, refdef );
 
 	R_AddPolygonSurfaces( refdef );
@@ -1617,6 +1619,11 @@ static void R_GenerateDrawSurfs( viewParms_t *viewParms, trRefdef_t *refdef )
 
 	// we know the size of the clipping volume. Now set the rest of the projection matrix.
 	R_SetupProjectionZ( &tr.viewParms );
+
+#ifdef USE_RTX
+	if ( vk.rtxActive && tr.refdef.rdflags != RDF_NOWORLDMODEL ) 
+		return;
+#endif
 
 	R_AddEntitySurfaces( refdef );
 

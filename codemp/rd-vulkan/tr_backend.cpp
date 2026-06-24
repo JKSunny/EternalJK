@@ -1245,7 +1245,7 @@ const void	*RB_DrawSurfs( const void *data ) {
 		}
 	#endif
 
-		//RB_RenderDrawSurfList( cmd->drawSurfs, cmd->numDrawSurfs );
+		RB_RenderDrawSurfList( cmd->drawSurfs, cmd->numDrawSurfs );
 	}
 
 	return (const void*)(cmd + 1);
