@@ -999,13 +999,9 @@ void R_BuildMDXM( model_t *mod, mdxmHeader_t *mdxm )
 	if ( !vk.vboGhoul2Active )
 		return;
 
-#ifdef USE_RTX
-	if ( !vk.rtxActive )
+#if defined(USE_RTX) && !defined(USE_RTX_GLOBAL_MODEL_VBO)
+	if ( vk.rtxActive )
 		return;
-
-	#ifndef USE_RTX_GLOBAL_MODEL_VBO
-		return;
-	#endif
 #endif
 
 	mdxmVBOModel_t		*vboModel;

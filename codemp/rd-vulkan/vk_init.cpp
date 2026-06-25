@@ -543,8 +543,14 @@ void vk_initialize( void )
 		vk.cubemapActive = qtrue;
 #endif
 
+	//if (r_ext_multisample->integer && !r_ext_supersample->integer)
+	if ( r_ext_multisample->integer  )
+		vk.msaaActive = qtrue;
+
+	// MSAA
+	vkMaxSamples = MIN( props.limits.sampledImageColorSampleCounts, props.limits.sampledImageDepthSampleCounts);
+
 #ifdef USE_RTX
-	// Raytracing, at one point there will be a single r_rtx cvar ..
 	if ( vk.rtxActive )
 	{
 		vk.msaaActive = qfalse;
@@ -552,16 +558,7 @@ void vk_initialize( void )
 		vk.normalMappingActive = qtrue;
 		vk.specularMappingActive = qtrue;
 	}
-	else if ( r_ext_multisample->integer  )
-		vk.msaaActive = qtrue;
-#else
-	//if (r_ext_multisample->integer && !r_ext_supersample->integer)
-	if ( r_ext_multisample->integer  )
-		vk.msaaActive = qtrue;
 #endif
-
-	// MSAA
-	vkMaxSamples = MIN( props.limits.sampledImageColorSampleCounts, props.limits.sampledImageDepthSampleCounts);
 
 	if ( vk.msaaActive ) {
 		VkSampleCountFlags mask = vkMaxSamples;

@@ -687,6 +687,7 @@ void		vk_rtx_extract_model_lights_mdxm( model_t *model );
 void		vk_rtx_extract_model_lights_mdv( model_t *model, mdvModel_t *mdvModel );
 void		vk_rtx_write_model_descriptor( int index, VkDescriptorSet descriptor, VkBuffer buffer, VkDeviceSize size );
 void		vk_rtx_create_model_vbo_ibo_descriptor( void );
+void		vk_rtx_destroy_model_vbo_ibo_descriptor( void );
 VkResult	vk_rtx_model_vbo_create_pipelines( void );
 VkResult	vk_rtx_model_vbo_destroy_pipelines( void );
 void		vkpt_instance_geometry( VkCommandBuffer cmd_buf, uint32_t num_instances, qboolean update_world_animations );

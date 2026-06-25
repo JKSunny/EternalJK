@@ -283,6 +283,7 @@ void vk_rtx_shutdown( void )
 
 	vk_rtx_destroy_shaders();
 	vk_rtx_destroy_buffers();
+	vk_rtx_destroy_model_vbo_ibo_descriptor();
 	vk_rtx_destroy_primary_rays_resources();
 
 	destroy_transparency();

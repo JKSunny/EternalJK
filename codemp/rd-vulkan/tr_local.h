@@ -2449,6 +2449,7 @@ extern cvar_t	*com_cl_running;
 #endif
 
 #ifdef USE_RTX
+extern  cvar_t  *r_rtx;
 extern  cvar_t  *pt_restir;
 extern  cvar_t  *pt_caustics;
 extern  cvar_t  *pt_dof;

@@ -245,6 +245,7 @@ cvar_t	*com_cl_running;
 #endif
 
 #ifdef USE_RTX
+cvar_t	*r_rtx;
 cvar_t	*pt_restir;
 cvar_t	*pt_caustics;
 cvar_t	*pt_dof;
@@ -1065,6 +1066,7 @@ void R_Register( void )
 #endif
 
 #ifdef USE_RTX
+	r_rtx								= ri.Cvar_Get("r_rtx",								"0",	CVAR_ARCHIVE | CVAR_LATCH, "Enable RTX");
 	pt_restir							= ri.Cvar_Get("pt_restir",							"1",	CVAR_NONE, "Switch for experimental direct light sampling algorithms. Default value is 1.\n - 0 — RIS light sampling.\n - 1 — ReSTIR, high quality.\n - 2 — ReSTIR El-Cheapo, uses half of the shadow rays. \n - 3 — ReSTIR El-Very-Cheapo, uses one quarter of the shadow rays.");
 	pt_caustics							= ri.Cvar_Get("pt_caustics",						"1",	CVAR_NONE, "");
 	pt_dof								= ri.Cvar_Get("pt_dof",								"0",	CVAR_NONE, "");

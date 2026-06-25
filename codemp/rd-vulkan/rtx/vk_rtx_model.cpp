@@ -206,6 +206,29 @@ void vk_rtx_bind_model( int index, VBO_t *vbo, IBO_t *ibo )
 }
 #endif
 
+void vk_rtx_destroy_model_vbo_ibo_descriptor(void)
+{
+	if ( null_buffer.buffer != VK_NULL_HANDLE )
+		vk_rtx_buffer_destroy( &null_buffer );
+
+	if ( vk.model_instance.layout != VK_NULL_HANDLE )
+	{
+		qvkDestroyDescriptorSetLayout( vk.device, vk.model_instance.layout, NULL );
+		vk.model_instance.layout = VK_NULL_HANDLE;
+	}
+
+	if ( vk.model_instance.pool != VK_NULL_HANDLE )
+	{
+		qvkDestroyDescriptorPool( vk.device, vk.model_instance.pool, NULL );
+		vk.model_instance.pool = VK_NULL_HANDLE;
+	}
+
+	vk.model_instance.descriptor.vbos = VK_NULL_HANDLE;
+#ifdef USE_RTX_GLOBAL_MODEL_VBO
+	vk.model_instance.descriptor.vbos = VK_NULL_HANDLE;
+#endif
+}
+
 void vk_rtx_create_model_vbo_ibo_descriptor( void ) 
 {
 	VkDescriptorPoolSize pool_size[] = {

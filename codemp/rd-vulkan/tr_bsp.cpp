@@ -915,8 +915,11 @@ static shader_t *ShaderForShaderNum( int shaderNum, const int *lightmapNum, cons
 	{
 		styles = vertexStyles;
 	}
-
+#ifdef USE_RTX
+	if ( r_vertexLight->integer || vk.rtxActive )
+#else
 	if ( r_vertexLight->integer )
+#endif
 	{
 		lightmapNum = lightmapsVertex;
 		styles = vertexStyles;
@@ -2715,7 +2718,11 @@ static void R_LoadEntities( const lump_t *l, world_t &worldData ) {
 				break;
 			}
 			*vs++ = 0;
-			if (r_vertexLight->integer) {
+#ifdef USE_RTX
+			if ( r_vertexLight->integer || vk.rtxActive ) {
+#else
+			if ( r_vertexLight->integer ) {
+#endif
 				R_RemapShader(value, s, "0");
 			}
 			continue;

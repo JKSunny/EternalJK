@@ -582,9 +582,7 @@ qboolean vk_select_surface_format( VkPhysicalDevice physical_device, VkSurfaceKH
 		}
 	}
 
-#if 1
 #ifdef USE_RTX
-	//if ( vk.rtxActive )	// sunny, not set here ..
 	{
 		qboolean surface_format_found = qfalse;
 		if ( r_hdr->integer != 0 ) {
@@ -597,8 +595,7 @@ qboolean vk_select_surface_format( VkPhysicalDevice physical_device, VkSurfaceKH
 		} else {
 			vk.rtx_surf_is_hdr = qfalse;
 		}
-		// sunny, disable for now. use quake3e method above
-#if 1
+
 		if ( !surface_format_found ) {
 			// HDR disabled, or fallback to SDR
 			surface_format_found = pick_surface_format_sdr( &vk.base_format, candidates, format_count );
@@ -607,10 +604,8 @@ qboolean vk_select_surface_format( VkPhysicalDevice physical_device, VkSurfaceKH
 			 ri.Printf( PRINT_ERROR, "no acceptable surface format available!\n" );
 			return qfalse;
 		}
-#endif
 		//vk.base_format = vk.present_format;
 	}
-#endif
 #endif
 
     free(candidates);
@@ -925,7 +920,11 @@ static qboolean vk_create_device( VkPhysicalDevice physical_device, int device_i
 			Com_Printf(" \n\n RAYTRACING SUPPORT: \n\n ");
 		}
 		else
+		{
+			vk.rtxSupport = qfalse;
 			vk.rtxActive = qfalse;
+			Com_Printf( S_COLOR_RED "\n\n RAYTRACING IS NOT SUPPORTED! \n\n");
+		}
 #endif
 
 #ifdef _DEBUG
@@ -1218,7 +1217,7 @@ __initStart:
 
 #ifdef USE_RTX
 	// Raytracing
-	if ( r_vertexLight->value == 2 )
+	if ( r_rtx->integer )
 		vk.rtxActive = qtrue;
 #endif
 

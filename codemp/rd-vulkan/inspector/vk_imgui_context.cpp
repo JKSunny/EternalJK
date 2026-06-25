@@ -296,18 +296,19 @@ void vk_imgui_initialize( void )
 
 void vk_imgui_shutdown( void )
 {
+	ImGui_ImplVulkan_RemoveTexture( inspector.render_mode.image );
+
+#ifdef USE_RTX
+	if ( vk.rtxActive )
+		inspector.render_mode.rtx_image = VK_NULL_HANDLE;
+#endif
+
 	qvkDestroyDescriptorPool( vk.device, imguiPool, nullptr );
 	ImGui_ImplVulkan_Shutdown();
     ImGui_ImplSDL2_Shutdown();
     ImGui::DestroyContext( ImContext );
 
 	Com_Memset( &imguiGlobal, 0, sizeof(imguiGlobal) );
-
-	ImGui_ImplVulkan_RemoveTexture( inspector.render_mode.image );
-
-#ifdef USE_RTX
-	ImGui_ImplVulkan_RemoveTexture( inspector.render_mode.rtx_image );
-#endif
 }
 
 static void vk_imgui_get_input_state( void )

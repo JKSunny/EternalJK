@@ -778,9 +778,10 @@ void vk_rtx_destroy_buffers( void )
 		vk_rtx_buffer_destroy( vk.buf_light_staging + i );
 		vk_rtx_buffer_destroy( vk.buf_mdxm_matrices_staging + i );
 	}
-
-	Z_Free( (void**)&vk.mdxm_matrices_shadow );
-	Z_Free( (void**)&vk.mdxm_matrices_prev );
+	
+	// ~sunny, redundant
+	//Z_Free( &vk.mdxm_matrices_shadow );
+	//Z_Free( &vk.mdxm_matrices_prev );
 
 	vk_rtx_destroy_accel_all();
 	vkpt_light_buffers_destroy();
