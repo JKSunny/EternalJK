@@ -110,6 +110,11 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define MATERIAL_FLAG_MASKED						0x04000000
 #define MATERIAL_FLAG_LIGHT							0x08000000 // bit 27
 
+#define RTX_BLEND_SKIP								~0U
+#define RTX_BLEND_OPAQUE							0
+#define RTX_BLEND_ALPHA								1
+#define RTX_BLEND_ADDITIVE							2
+
 #define MATERIAL_LIGHT_STYLE_MASK    0x0003f000
 #define MATERIAL_LIGHT_STYLE_SHIFT   12
 #define MATERIAL_INDEX_MASK          0x00000fff	// bits 0–11; just 4095 material indexes? can cause issues some day?

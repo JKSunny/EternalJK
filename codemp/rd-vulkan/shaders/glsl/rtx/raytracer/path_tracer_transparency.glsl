@@ -57,60 +57,79 @@ void blend_fogs(in RayPayloadEffects rp, float t1, float t2, inout vec4 accumula
 	}
 }
 
-void update_payload_transparency(inout RayPayloadEffects rp, vec4 color, float hitT)
-{
-	vec4 accumulated_color = unpackHalf4x16(rp.transparency);
-	vec2 distances = unpackHalf2x16(rp.distances);
+void update_payload_transparency( inout RayPayloadEffects rp, vec4 color, uint blend_mode, float hitT ) {
+    vec4 alpha_accum    = unpackHalf4x16(rp.transparency);
+    vec4 additive_accum = unpackHalf4x16(rp.additive);
+    vec2 distances      = unpackHalf2x16(rp.distances);
 
-	if(hitT < distances.x || distances.x == 0)
-	{
-		if (distances.x > 0)
-		{
-			blend_fogs(rp, hitT, distances.x, accumulated_color);
-		}
-		accumulated_color = alpha_blend_premultiplied(color, accumulated_color);
-		distances.x = hitT;
-	}
-	else
-	{
-		if (hitT > distances.y && distances.y > 0)
-		{
-			blend_fogs(rp, distances.y, hitT, accumulated_color);
-		}
-		accumulated_color = alpha_blend_premultiplied(accumulated_color, color);
-	}
-	
-	distances.y = max(distances.y, hitT);
+    // ADDITIVE: order independent
+    if (blend_mode == RTX_BLEND_ADDITIVE)
+    {
+        additive_accum.rgb += color.rgb;
 
-	rp.transparency = packHalf4x16(accumulated_color);
-	rp.distances = packHalf2x16(distances);
+        rp.additive = packHalf4x16(additive_accum);
+
+        if (distances.x == 0.0)
+            distances.x = hitT;
+
+        distances.y = max(distances.y, hitT);
+
+        rp.distances = packHalf2x16(distances);
+        return;
+    }
+
+    // ALPHA: ordered OIT
+    if (hitT < distances.x || distances.x == 0.0)
+    {
+        alpha_accum = alpha_blend_premultiplied(color, alpha_accum);
+        distances.x = hitT;
+    }
+    else
+    {
+        alpha_accum = alpha_blend_premultiplied(alpha_accum, color);
+    }
+
+    distances.y = max(distances.y, hitT);
+
+    rp.transparency = packHalf4x16(alpha_accum);
+    rp.additive     = packHalf4x16(additive_accum);
+    rp.distances    = packHalf2x16(distances);
 }
 
-vec4 get_payload_transparency(in RayPayloadEffects rp)
+EffectsResult get_payload_transparency(in RayPayloadEffects rp)
 {
-	return unpackHalf4x16(rp.transparency);
+	EffectsResult result;
+    result.alpha    = unpackHalf4x16(rp.transparency);
+    result.additive = unpackHalf4x16(rp.additive).rgb;
+
+    return result;
 }
 
-vec4 get_payload_transparency_with_fog(in RayPayloadEffects rp, float t_max)
+EffectsResult get_payload_transparency_with_fog(in RayPayloadEffects rp, float t_max)
 {
-	vec2 distances = unpackHalf2x16(rp.distances);
+    EffectsResult result;
 
-	vec4 accumulator = vec4(0);
-	float current_dist = t_max;
+    vec2 distances = unpackHalf2x16(rp.distances);
 
-	if (distances.y > 0)
-	{
-		blend_fogs(rp, distances.y, t_max, accumulator);
+    vec4 alpha_accumulator = vec4(0);
+    float current_dist = t_max;
 
-		vec4 ray_transparency = unpackHalf4x16(rp.transparency);
-		accumulator = alpha_blend_premultiplied(ray_transparency, accumulator);
+    if (distances.y > 0)
+    {
+        blend_fogs(rp, distances.y, t_max, alpha_accumulator);
 
-		current_dist = distances.x;
-	}
+        vec4 ray_transparency = unpackHalf4x16(rp.transparency);
+        alpha_accumulator = alpha_blend_premultiplied( ray_transparency, alpha_accumulator);
 
-	blend_fogs(rp, 0, current_dist, accumulator);
+        current_dist = distances.x;
+    }
 
-	return accumulator;
+    blend_fogs(rp, 0, current_dist, alpha_accumulator);
+
+    result.alpha = alpha_accumulator;
+    result.additive = unpackHalf4x16(rp.additive).rgb;
+
+    return result;
 }
 
 #endif // PATH_TRACER_TRANSPARENCY_GLSL_

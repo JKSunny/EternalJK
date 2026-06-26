@@ -240,8 +240,8 @@ indirect_lighting(
 		if (found_intersection(ray_payload_geometry))
 			bounce_ray.t_max = ray_payload_geometry.hit_distance;
 
-		vec4 transparency = trace_effects_ray(bounce_ray, /* skip_procedural = */ true);
-		bounce_contrib += transparency.rgb * transparency.a * bounce_throughput * (1.0 - direct_specular_weight);
+		EffectsResult effects = trace_effects_ray(bounce_ray, /* skip_procedural = */ true);
+		bounce_contrib += (effects.alpha.rgb * effects.alpha.a + effects.additive) * bounce_throughput * (1.0 - direct_specular_weight);
 	}
 
 	Triangle triangle;

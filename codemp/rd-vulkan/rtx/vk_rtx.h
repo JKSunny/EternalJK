@@ -176,7 +176,7 @@ typedef struct {
 	uint32_t	flags;
 	uint32_t	alpha_test_func;
 	float		alpha_test_value;
-	uint32_t	discard_mode;
+	uint32_t	blend_mode;
 } rtx_material_t;
 
 typedef struct light_poly_s {

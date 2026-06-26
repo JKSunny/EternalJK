@@ -86,12 +86,12 @@ bool pt_logic_masked(int primitiveID, int instanceID, int geometryIndex, uint in
 #endif
 	vec4 texel = global_textureLod(minfo.base_texture, tex_coord, 0);
 
-	if (minfo.discard_mode == 1u)
+	if (minfo.blend_mode == RTX_BLEND_ALPHA)
 	{
 		if (texel.a == 0.0)
 			return true;
 	}
-	else if (minfo.discard_mode == 2u)
+	else if (minfo.blend_mode == RTX_BLEND_ADDITIVE)
 	{
 		if (dot(texel.rgb, texel.rgb) == 0.0)
 			return true;
@@ -126,72 +126,90 @@ vec4 unpack_rgba8(uint p)
     ) * (1.0 / 255.0);
 }
 
-vec4 pt_logic_sprite(int primitiveID, vec2 bary)
+TransparencyHit make_empty_hit()
 {
-	const vec3 barycentric = vec3(1.0 - bary.x - bary.y, bary.x, bary.y);
-	vec4 shaderRGBA = vec4(0.0);
+    return TransparencyHit(vec4(0.0), RTX_BLEND_SKIP);
+}
 
-	vec2 uv;
-	if((primitiveID & 1) == 0)
-		uv = vec2(1.0, 0.0) * barycentric.x + vec2(0.0, 0.0) * barycentric.y + vec2(0.0, 1.0) * barycentric.z;
-	else
-		uv = vec2(0.0, 1.0) * barycentric.x + vec2(1.0, 1.0) * barycentric.y + vec2(1.0, 0.0) * barycentric.z;
+TransparencyHit pt_logic_sprite(int primitiveID, vec2 bary)
+{
+    const vec3 barycentric = vec3(1.0 - bary.x - bary.y, bary.x, bary.y);
 
-	const int sprite_index = primitiveID / 2;
+    vec2 uv;
+    if ((primitiveID & 1) == 0)
+        uv = vec2(1.0, 0.0) * barycentric.x + vec2(0.0, 0.0) * barycentric.y + vec2(0.0, 1.0) * barycentric.z;
+    else
+        uv = vec2(0.0, 1.0) * barycentric.x + vec2(1.0, 1.0) * barycentric.y + vec2(1.0, 0.0) * barycentric.z;
 
-	uvec4 info = texelFetch(sprite_texure_buffer, sprite_index);
+    const int sprite_index = primitiveID / 2;
 
-	MaterialInfo minfo = get_material_info( info.x );
+    uvec4 info = texelFetch(sprite_texure_buffer, sprite_index);
+    MaterialInfo minfo = get_material_info(info.x);
 
-	if (minfo.base_texture == 0)
-		return vec4(0.0);
+    if (minfo.base_texture == 0)
+        return make_empty_hit();
 
-	shaderRGBA = unpack_rgba8(info.y);
+    vec4 shaderRGBA = unpack_rgba8(info.y);
 
-	vec4 color = global_textureLod(minfo.base_texture, uv, 0);
-	color.rgb *= shaderRGBA.rgb;
-	if (shaderRGBA.a > 0.0) {
-		color.rgb *= shaderRGBA.a;
-		color.a *= shaderRGBA.a;
-	}
-	
-	if (minfo.discard_mode == 1u)
-	{
-		if (color.a == 0.0)
-			return vec4(0.0);
-	}
-	
-	if (minfo.discard_mode == 2u)
-	{
-		if (dot(color.rgb, color.rgb) == 0.0)
-			return vec4(0.0);
+    vec4 color = global_textureLod(minfo.base_texture, uv, 0);
 
-		color.a = 1e-6;
-	}else {
-		color.rgb *= color.a;
-	}
+    // entity tint
+    color.rgb *= shaderRGBA.rgb;
 
-	bool pass = true;
+    if (shaderRGBA.a > 0.0)
+    {
+        color.rgb *= shaderRGBA.a;
+        color.a   *= shaderRGBA.a;
+    }
 
-	switch (minfo.alpha_test_func)
-	{
-		case 1u: pass = color.a > 0.0; break;
-		case 2u: pass = color.a < minfo.alpha_test_value; break;
-		case 3u: pass = color.a >= minfo.alpha_test_value; break;
-	}
+    // alpha test uses texture alpha (unchanged)
+    bool pass = true;
+    switch (minfo.alpha_test_func)
+    {
+        case 1u: pass = color.a > 0.0; break;
+        case 2u: pass = color.a < minfo.alpha_test_value; break;
+        case 3u: pass = color.a >= minfo.alpha_test_value; break;
+    }
 
-	if (!pass)
-		return vec4(0.0);
-#if 0
-	float lum = luminance(color.rgb);
-	if(lum > 0)
-	{
-		float lum2 = pow(lum, 2.2);
-		color.rgb = color.rgb * (lum2 / lum) * color.a * alpha;
-	
-		color.rgb *= global_ubo.prev_adapted_luminance * 2000;
-	}
-#endif
+    if (!pass)
+        return make_empty_hit();
 
-	return color;
+    switch (minfo.blend_mode)
+    {
+        case RTX_BLEND_ALPHA:
+        {
+            if (color.a <= 0.0)
+                return make_empty_hit();
+
+            // correct premultiplied alpha
+            color.rgb *= color.a;
+            break;
+        }
+
+        case RTX_BLEND_ADDITIVE:
+        {
+            vec3 c = color.rgb;
+
+            float lum = luminance(c);
+            if (lum > 0.0)
+            {
+                float lum2 = pow(lum, 2.2);
+
+                // reshape energy distribution (preserves hue but adjusts intensity curve)
+                c *= (lum2 / lum);
+
+                // entity/texture alpha already folded into color.rgb earlier
+                c *= global_ubo.prev_adapted_luminance * 2000.0;
+            }
+
+            color.rgb = c;
+
+            // additive has no coverage
+            color.a = 0.0;
+
+            break;
+        }
+    }
+
+    return TransparencyHit(color, minfo.blend_mode);
 }

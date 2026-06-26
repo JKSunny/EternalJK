@@ -322,7 +322,7 @@ void find_fog_volumes(inout RayPayloadEffects rp, Ray ray)
 #endif
 }
 
-vec4
+EffectsResult 
 trace_effects_ray(Ray ray, bool skip_procedural) 
 {
 	uint rayFlags = 0;
@@ -332,6 +332,7 @@ trace_effects_ray(Ray ray, bool skip_procedural)
 	uint instance_mask = AS_FLAG_EFFECTS;
 
 	ray_payload_effects.transparency = uvec2(0);
+	ray_payload_effects.additive     = uvec2(0);
 	ray_payload_effects.distances = 0;
 	ray_payload_effects.fog1 = uvec4(0);
 	ray_payload_effects.fog2 = uvec4(0);

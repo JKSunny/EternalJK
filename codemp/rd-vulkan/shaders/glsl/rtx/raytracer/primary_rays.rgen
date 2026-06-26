@@ -167,7 +167,7 @@ main()
 	 	triangle = get_hit_triangle(ray_payload_geometry);
 	}
 
-	vec4 effects = trace_effects_ray(ray, /* skip_procedural = */ false);
+	EffectsResult  effects = trace_effects_ray(ray, /* skip_procedural = */ false);
 
 	direction = ray.direction;
 
@@ -178,12 +178,8 @@ main()
 		vec3 env = env_map(ray.direction, false);	
 		env *= global_ubo.pt_env_scale;
 
-#if 0
-		vec4 transparent = alpha_blend( unpackHalf4x16( ray_payload_geometry.transparency ), vec4( env, 1 ) );
-#else
-		//vec4 transparent = alpha_blend( ray_payload_geometry.transparency, vec4( env, 1 ) );
-		vec4 transparent = alpha_blend(effects, vec4(env, 1));
-#endif
+		vec4 transparent = alpha_blend(effects.alpha, vec4(env, 1));
+		transparent.rgb += effects.additive;
 
 		if(is_readback_pixel)
 		{
@@ -473,7 +469,8 @@ main()
 	transparent = alpha_blend_premultiplied(transparent, vec4(primary_emissive * throughput, 0));
 #else
 	// Add the world effects
-	transparent = alpha_blend_premultiplied(effects, transparent);
+	transparent = alpha_blend_premultiplied(effects.alpha, transparent);
+	transparent.rgb += effects.additive;
 #endif
 
 	imageStore(IMG_PT_TRANSPARENT, ipos, transparent);

@@ -209,7 +209,7 @@ STRUCT (
 	UINT	( normals_texture )
 	UINT	( emissive_texture )
 	UINT	( physical_texture )
-	UINT    ( discard_mode )
+	UINT    ( blend_mode )
 	UINT    ( alpha_test_func )
 	FLOAT   ( alpha_test_value )
 	//FLOAT	( bump_scale )
@@ -545,7 +545,7 @@ MaterialInfo get_material_info( uint material_id )
 
 	uint at = data[5];
 	minfo.alpha_test_func  =  at        & 0x3u;
-	minfo.discard_mode     = (at >> 2u) & 0x3u;
+	minfo.blend_mode       = (at >> 2u) & 0x3u;
 	minfo.alpha_test_value = unpackHalf2x16(at).y;
 
 	return minfo;
