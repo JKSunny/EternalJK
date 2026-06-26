@@ -1159,6 +1159,8 @@ static void vk_begin_render_pass( VkRenderPass renderPass, VkFramebuffer frameBu
             case RENDER_PASS_INSPECTOR:
                      clear_values[0].color = { { 0.0f, 0.0f, 0.0f, 1.0f } };
                 break;
+            default:
+                break;
         }
 #endif
 #ifndef USE_REVERSED_DEPTH

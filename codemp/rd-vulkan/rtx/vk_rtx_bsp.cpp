@@ -60,6 +60,15 @@ static void vk_bind_primitive_buffer( vkdescriptor_t *descriptor, uint32_t bindi
 	vk_rtx_bind_descriptor_buffer_element(descriptor, binding, stage, VERTEX_BUFFER_INSTANCED,			vk.buf_primitive_instanced.buffer );
 }
 
+static void vk_bind_texel_buffer( vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage, VkBufferView view )
+{
+	const uint32_t count = 1;
+
+	vk_rtx_add_descriptor_buffer( descriptor, count, binding, stage, VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER );
+	vk_rtx_set_descriptor_update_size( descriptor, binding, stage, count );
+	vk_rtx_bind_descriptor_buffer_view( descriptor, binding, stage, view );
+}
+
 static void vk_bind_uniform_buffer( vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage, VkBuffer buffer )
 {
 	const uint32_t count = 1;
@@ -98,6 +107,7 @@ static void vk_create_vertex_buffer_descriptor( world_t& worldData, uint32_t ind
 	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_LIGHT_BUFFER,				VK_SHADER_STAGE_ALL, vk.buf_light.buffer );
 	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_TONEMAP_BUFFER,				VK_SHADER_STAGE_ALL, vk.buf_tonemap.buffer );
 	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_SUN_COLOR_BUFFER,			VK_SHADER_STAGE_ALL, vk.buf_sun_color.buffer );
+	vk_bind_storage_buffer( descriptor, BINDING_OFFSET_MDXM_BONE_BUFFER,			VK_SHADER_STAGE_ALL, vk.buf_mdxm_matrices.buffer );
 	vk_bind_uniform_buffer( descriptor, BINDING_OFFSET_SUN_COLOR_UBO,				VK_SHADER_STAGE_ALL, vk.buf_sun_color.buffer );
 
 	// light stats
@@ -138,10 +148,25 @@ static void vk_create_vertex_buffer_descriptor( world_t& worldData, uint32_t ind
 
 static void vk_create_rt_descriptor( uint32_t index, uint32_t prev_index ) 
 {
+	VkAccelerationStructureKHR tlas[TLAS_COUNT];
+	Com_Memset(tlas, 0, sizeof(VkAccelerationStructureKHR) * TLAS_COUNT);
+	tlas[TLAS_INDEX_GEOMETRY] = vk.tlas_geometry[index].accel;
+	tlas[TLAS_INDEX_EFFECTS] = vk.tlas_effects[index].accel;
+
 	vkdescriptor_t *descriptor = vk_rtx_init_descriptor( &vk.rt_descriptor_set[index] );
 
-	vk_rtx_add_descriptor_as( descriptor, RAY_GEN_DESCRIPTOR_SET_IDX, VK_SHADER_STAGE_RAYGEN_BIT_KHR );
-	vk_rtx_bind_descriptor_as( descriptor, RAY_GEN_DESCRIPTOR_SET_IDX, VK_SHADER_STAGE_RAYGEN_BIT_KHR, &vk.tlas_geometry[index].accel );
+	vk_rtx_add_descriptor_as( descriptor, RAY_GEN_ACCEL_STRUCTURE_BINDING_IDX, VK_SHADER_STAGE_RAYGEN_BIT_KHR, TLAS_COUNT );
+	vk_rtx_bind_descriptor_as( descriptor, RAY_GEN_ACCEL_STRUCTURE_BINDING_IDX, VK_SHADER_STAGE_RAYGEN_BIT_KHR, tlas, TLAS_COUNT );
+
+	VkBufferView particle_color_buffer_view = get_transparency_particle_color_buffer_view();
+	VkBufferView beam_color_buffer_view		= get_transparency_beam_color_buffer_view();
+	VkBufferView sprite_info_buffer_view	= get_transparency_sprite_info_buffer_view();
+	VkBufferView beam_intersect_buffer_view = get_transparency_beam_intersect_buffer_view();
+
+	vk_bind_texel_buffer( descriptor, RAY_GEN_PARTICLE_COLOR_BUFFER_BINDING_IDX,	VK_SHADER_STAGE_ANY_HIT_BIT_KHR,		particle_color_buffer_view );
+	vk_bind_texel_buffer( descriptor, RAY_GEN_BEAM_COLOR_BUFFER_BINDING_IDX,		VK_SHADER_STAGE_ANY_HIT_BIT_KHR,		beam_color_buffer_view );
+	vk_bind_texel_buffer( descriptor, RAY_GEN_SPRITE_INFO_BUFFER_BINDING_IDX,		VK_SHADER_STAGE_ANY_HIT_BIT_KHR,		sprite_info_buffer_view );
+	vk_bind_texel_buffer( descriptor, RAY_GEN_BEAM_INTERSECT_BUFFER_BINDING_IDX,	VK_SHADER_STAGE_INTERSECTION_BIT_KHR,	beam_intersect_buffer_view );
 
 	vk_rtx_create_descriptor( descriptor );
 	vk_rtx_update_descriptor( descriptor );
@@ -1374,7 +1399,7 @@ static void collect_cluster_lights( world_t &worldData )
 
 static int filter_opaque( shader_t *shader )
 {
-	if ( RB_IsTransparent( shader ) ) 
+	if ( RB_IsTransparent( shader ) || RB_IsMasked( shader ) ) 
 		return 0;
 
 	return 1;
@@ -1382,7 +1407,15 @@ static int filter_opaque( shader_t *shader )
 
 static int filter_transparent( shader_t *shader )
 {
-	if ( !RB_IsTransparent( shader ) ) 
+	if ( !RB_IsTransparent( shader ) || RB_IsMasked( shader ) ) 
+		return 0;
+
+	return 1;
+}
+
+static int filter_masked( shader_t *shader )
+{
+	if ( !RB_IsMasked( shader ) || RB_IsTransparent( shader ) ) 
 		return 0;
 
 	return 1;
@@ -1390,11 +1423,11 @@ static int filter_transparent( shader_t *shader )
 
 static int filter_static( shader_t *shader )
 {
-	qboolean as_dynamic = RB_IsDynamicGeometry( shader );
-	qboolean as_dynamic_data = RB_IsDynamicMaterial( shader );
+	qboolean is_geom_dynamic = RB_IsDynamicGeometry( shader );
+	qboolean is_mat_dynamic = RB_IsDynamicMaterial( shader );
 	qboolean is_sky = RB_IsSky(shader);
 
-	if ( !as_dynamic && !as_dynamic_data && !is_sky )
+	if ( !is_geom_dynamic && !is_mat_dynamic && !is_sky )
 		return 1;
 
 	return 0;
@@ -1992,7 +2025,7 @@ void vk_rtx_update_dynamic_geometry( VkCommandBuffer cmd_buf, vk_geometry_data_t
 
 static void vk_rtx_reset_world_geometry( vk_geometry_data_t *geom )
 {
-	uint32_t i, j;
+	uint32_t i;
 
 	if ( geom == NULL )
 		return;
@@ -2126,9 +2159,9 @@ static void vk_rtx_inject_light_poly_debug( vk_geometry_data_t *geom, world_t& w
 static void
 mark_clusters_with_sky( const vk_geometry_data_t* geom, uint8_t* clusters_with_sky)
 {
-	uint32_t i;
+	uint32_t prim_idx;
 
-	for (uint32_t prim_idx = 0; prim_idx < geom->geom_opaque.prim_counts[0]; prim_idx++)
+	for ( prim_idx = 0; prim_idx < geom->geom_opaque.prim_counts[0]; prim_idx++ )
 	{
 		uint32_t prim = geom->geom_opaque.prim_offsets[0] + prim_idx;
 
@@ -2288,6 +2321,10 @@ void R_PreparePT( world_t &worldData )
 	first_prim = prim_ctr;
 	vk_rtx_collect_surfaces( &prim_ctr, world_static, BLAS_TYPE_TRANSPARENT, worldData, worldData.nodes, -1, filter_static, filter_transparent );
 		vkpt_append_model_geometry(&world_static->geom_transparent, prim_ctr - first_prim, first_prim, "bsp static transparent");
+	vk_rtx_set_geomertry_accel_offsets( world_static, BLAS_TYPE_MASKED );
+	first_prim = prim_ctr;
+	vk_rtx_collect_surfaces( &prim_ctr, world_static, BLAS_TYPE_MASKED, worldData, worldData.nodes, -1, filter_static, filter_masked );
+		vkpt_append_model_geometry(&world_static->geom_masked, prim_ctr - first_prim, first_prim, "bsp static masked");
 	world_static->num_primitives = prim_ctr;
 
 
@@ -2300,8 +2337,11 @@ void R_PreparePT( world_t &worldData )
 	first_prim = prim_ctr;
 	vk_rtx_collect_surfaces( &prim_ctr, world_dynamic_material, BLAS_TYPE_TRANSPARENT, worldData, worldData.nodes, -1, filter_dynamic_material, filter_transparent );
 		vkpt_append_model_geometry(&world_dynamic_material->geom_transparent, prim_ctr - first_prim, first_prim, "bsp d material transparent");
+	vk_rtx_set_geomertry_accel_offsets( world_dynamic_material, BLAS_TYPE_MASKED );
+	first_prim = prim_ctr;
+	vk_rtx_collect_surfaces( &prim_ctr, world_dynamic_material, BLAS_TYPE_MASKED, worldData, worldData.nodes, -1, filter_dynamic_material, filter_masked );
+		vkpt_append_model_geometry(&world_dynamic_material->geom_masked, prim_ctr - first_prim, first_prim, "bsp d material masked");
 	world_dynamic_material->num_primitives = prim_ctr;
-
 
 	// dynamic geometry
 	prim_ctr = 0;
@@ -2312,8 +2352,11 @@ void R_PreparePT( world_t &worldData )
 	first_prim = prim_ctr;
 	vk_rtx_collect_surfaces( &prim_ctr, world_dynamic_geometry, BLAS_TYPE_TRANSPARENT, worldData, worldData.nodes, -1, filter_dynamic_geometry, filter_transparent );
 		vkpt_append_model_geometry(&world_dynamic_geometry->geom_transparent, prim_ctr - first_prim, first_prim, "bsp d geomatry transparent");
+	vk_rtx_set_geomertry_accel_offsets( world_dynamic_geometry, BLAS_TYPE_MASKED );
+	first_prim = prim_ctr;
+	vk_rtx_collect_surfaces( &prim_ctr, world_dynamic_geometry, BLAS_TYPE_MASKED, worldData, worldData.nodes, -1, filter_dynamic_geometry, filter_masked );
+		vkpt_append_model_geometry(&world_dynamic_geometry->geom_masked, prim_ctr - first_prim, first_prim, "bsp d geomatry masked");
 	world_dynamic_geometry->num_primitives = prim_ctr;
-	
 
 	// sub brush models
 	prim_ctr = 0;

@@ -543,20 +543,22 @@ void vk_initialize( void )
 		vk.cubemapActive = qtrue;
 #endif
 
-#ifdef USE_RTX
-	// Raytracing
-	if ( vk.rtxActive )
-		vk.msaaActive = qfalse;
-	else if ( r_ext_multisample->integer  )
-		vk.msaaActive = qtrue;
-#else
 	//if (r_ext_multisample->integer && !r_ext_supersample->integer)
 	if ( r_ext_multisample->integer  )
 		vk.msaaActive = qtrue;
-#endif
 
 	// MSAA
 	vkMaxSamples = MIN( props.limits.sampledImageColorSampleCounts, props.limits.sampledImageDepthSampleCounts);
+
+#ifdef USE_RTX
+	if ( vk.rtxActive )
+	{
+		vk.msaaActive = qfalse;
+		vk.cubemapActive = qfalse;
+		vk.normalMappingActive = qtrue;
+		vk.specularMappingActive = qtrue;
+	}
+#endif
 
 	if ( vk.msaaActive ) {
 		VkSampleCountFlags mask = vkMaxSamples;

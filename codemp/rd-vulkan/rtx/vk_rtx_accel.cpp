@@ -180,14 +180,14 @@ void vk_rtx_create_blas( accel_build_batch_t *batch,
 	VkDeviceSize stride = sizeof(vec3_t);
 
 	blas->vertex_address = vertex_buffer->address + vertex_offset;
-	blas->index_address = index_buffer ? (index_buffer->address + (index_offset * sizeof(uint32_t))) : 0;
+	blas->index_address = index_buffer ? (index_buffer->address + index_offset) : 0;
 
 	triangles.vertexData.deviceAddress = blas->vertex_address;
 	triangles.vertexStride = stride;
 	triangles.maxVertex = num_vertices - 1;
 	triangles.indexData.hostAddress = VK_NULL_HANDLE;
 	triangles.indexData.deviceAddress = blas->index_address;
-	triangles.indexType = index_buffer ? VK_INDEX_TYPE_UINT32 : VK_INDEX_TYPE_NONE_KHR;
+	triangles.indexType = index_buffer ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_NONE_KHR;
 
 	VkAccelerationStructureGeometryDataKHR geometry_data;
 	Com_Memset( &geometry_data, 0, sizeof(VkAccelerationStructureGeometryDataKHR) );
@@ -232,8 +232,8 @@ void vk_rtx_create_blas( accel_build_batch_t *batch,
 
 	if ( doAlloc ) 
 	{
-		int num_vertices_to_allocate = num_vertices;
-		int num_indices_to_allocate = num_indices;
+		uint32_t num_vertices_to_allocate = num_vertices;
+		uint32_t num_indices_to_allocate = num_indices;
 		blas->create_num_vertices = num_vertices_to_allocate;
 		blas->create_num_indices = num_indices_to_allocate;
 
@@ -266,6 +266,8 @@ void vk_rtx_create_blas( accel_build_batch_t *batch,
 		blas->match.fast_build = fast_build;
 		blas->match.vertex_count = num_vertices_to_allocate;
 		blas->match.index_count = num_indices_to_allocate;
+		blas->match.aabb_count = 0;
+		blas->match.instance_count = 0;
 	}
 
 	// set where the build lands
@@ -279,7 +281,6 @@ void vk_rtx_create_blas( accel_build_batch_t *batch,
 
 	// build range
 	Com_Memset( &blas->range, 0, sizeof(VkAccelerationStructureBuildRangeInfoKHR) );
-
 	blas->range.primitiveCount = MAX(num_vertices, num_indices) / 3;
 
 	batch->rangeInfos[buildIdx] = blas->range;
@@ -362,8 +363,11 @@ void vk_rtx_create_tlas( accel_build_batch_t *batch, vk_tlas_t *as, VkDeviceAddr
 
 	// Update build information
 	batch->buildInfos[buildIdx].dstAccelerationStructure = as->accel;
-	batch->buildInfos[buildIdx].scratchData.deviceAddress = vk.buf_accel_scratch.address;
+	batch->buildInfos[buildIdx].scratchData.deviceAddress = vk.buf_accel_scratch.address + vk.scratch_buf_ptr;
 	assert(vk.buf_accel_scratch.address);
+
+	vk.scratch_buf_ptr += sizeInfo.buildScratchSize;
+	vk.scratch_buf_ptr = align(vk.scratch_buf_ptr, vk.minAccelerationStructureScratchOffsetAlignment);
 
 	VkAccelerationStructureBuildRangeInfoKHR offset;
 	Com_Memset( &offset, 0, sizeof(VkAccelerationStructureBuildRangeInfoKHR) );
@@ -418,6 +422,7 @@ void vk_rtx_destroy_accel_all() {
 		vk_rtx_destroy_blas( &vk.model_instance.blas.explosions[i] );
 
 		vk_rtx_destroy_tlas( &vk.tlas_geometry[i] );
+		vk_rtx_destroy_tlas( &vk.tlas_effects[i] );
 	}
 }
 

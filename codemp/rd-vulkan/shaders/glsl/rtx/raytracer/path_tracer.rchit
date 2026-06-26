@@ -21,8 +21,15 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #extension GL_GOOGLE_include_directive    : enable
 
 #include "../path_tracer.h"	// contains global_ubo.h -> constants.h
+#include "../utils.glsl"
 
-#define USE_SIMPLE
+#define GLOBAL_TEXTURES_DESC_SET_IDX 1
+#include "../global_textures.h"
+
+#define VERTEX_BUFFER_DESC_SET_IDX 4
+#define VERTEX_READONLY 1
+#include "../vertex_buffer.h"
+
 #include "path_tracer_hit_shaders.h"
 
 layout(location = 0) rayPayloadInEXT RayPayloadGeometry ray_payload;

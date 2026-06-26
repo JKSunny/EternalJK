@@ -55,6 +55,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 	#define USE_VBO_GHOUL2
 	#define USE_VBO_MDV	
 	#define USE_VBO_SS
+	#define USE_VBO_GRID		/* put SF_GRID to VBO */
 #endif
 
 
@@ -1097,6 +1098,7 @@ typedef struct trRefdef_s {
 //=================================================================================
 
 // skins allow models to be retextured without modifying the model file
+#ifndef USE_OPENJK
 typedef struct {
 	char		name[MAX_QPATH];
 	shader_t	*shader;
@@ -1107,6 +1109,9 @@ typedef struct skin_s {
 	int				numSurfaces;
 	skinSurface_t	*surfaces[128];
 } skin_t;
+#else
+typedef _skinSurface_t skinSurface_t;
+#endif
 
 typedef struct fog_s {
 	int				originalBrushNumber;
@@ -2444,12 +2449,14 @@ extern cvar_t	*com_cl_running;
 #endif
 
 #ifdef USE_RTX
+extern  cvar_t  *r_rtx;
 extern  cvar_t  *pt_restir;
 extern  cvar_t  *pt_caustics;
 extern  cvar_t  *pt_dof;
 extern  cvar_t  *pt_projection;
 extern  cvar_t  *tm_blend_enable;
 extern  cvar_t  *pt_debug_poly_lights;
+extern  cvar_t  *pt_restir_m_clamp;
 
 #define UBO_CVAR_DO( _handle, _value ) \
 	extern cvar_t *sun_##_handle;
@@ -2598,7 +2605,9 @@ void		R_CreateDefaultShadingCmds( image_t *image );
 //
 // tr_surface.c
 //
+#ifdef USE_VBO_GRID
 void		RB_SurfaceGridEstimate(srfGridMesh_t *cv, int *numVertexes, int *numIndexes);
+#endif
 
 /*
 ====================================================================

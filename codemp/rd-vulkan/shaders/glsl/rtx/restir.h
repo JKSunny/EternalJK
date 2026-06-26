@@ -33,23 +33,23 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "path_tracer_rgen.h"
 
 #define RESTIR_INVALID_ID       0xFFFF
-#define RESTIR_ENV_ID           0xFFFE
 
 #define RESTIR_SPACIAL_DISTANCE 32
 #define RESTIR_SPACIAL_SAMPLES  8
 
 #define RESTIR_SAMPLING_M       4
-#define RESTIR_M_CLAMP          32
-#define RESTIR_M_VC_CLAMP       16
 
 struct Reservoir
 {
-    uint y;
-    uint M;
-    float w_sum;
-    float W;
-    float p_hat;
-    vec2 y_pos;
+    // Persisted between frames
+    uint y;      // selected light
+    float W;     // weight of light
+    vec2 y_pos;  // light sampling position
+
+    // not persisted
+    uint M;      // number of sampled lights so far
+    float w_sum; // sum of weights of lights so far
+    float p_hat; // importance of selected light
 };
 
 void
@@ -104,7 +104,7 @@ unpack_reservoir(uvec4 packed, out Reservoir r)
 	if(isnan(r.W) || isinf(r.W)) r.W = 0.0;
 	r.y_pos = unpackHalf2x16(packed.y);
 	r.p_hat = 0.0;
-	r.M = r.y == RESTIR_INVALID_ID ? 0 : (global_ubo.pt_restir != 3 ? RESTIR_M_CLAMP : RESTIR_M_VC_CLAMP);
+	r.M = r.y == RESTIR_INVALID_ID ? 0 : global_ubo.restir_m_clamp;
 	r.w_sum = 0;
 }
 
@@ -113,7 +113,7 @@ unpack_reservoir(uvec4 packed, out Reservoir r)
 uint
 get_light_current_idx(uint index)
 {
-	if (index < global_ubo.num_static_lights || index == RESTIR_INVALID_ID || index == RESTIR_ENV_ID)
+	if (index < global_ubo.num_static_lights || index == RESTIR_INVALID_ID)
 	{
 		return index;
 	}
@@ -140,21 +140,36 @@ get_unshadowed_path_contrib(
 		float phong_weight,
 		vec2 rng)
 {
-	if(light_idx == RESTIR_ENV_ID) return get_unshadowed_env_path_contrib(normal,view_direction, phong_exp, phong_scale, phong_weight, rng);
 	LightPolygon light = get_light_polygon(light_idx);
 
-	float m = 0.0f;
+	vec3 position_light = vec3(0);
+	vec3 light_normal;
+	float pdfw;
 	switch(uint(light.type))
 	{
 		case LIGHT_POLYGON:
-			m = projected_tri_area(light.positions, position, normal, view_direction, phong_exp, phong_scale, phong_weight);
+			position_light = sample_projected_triangle(position, light.positions, rng, light_normal, pdfw);
 			break;
 		case LIGHT_SPHERE:
-			m = projected_sphere_area(light.positions, position, normal, view_direction, phong_exp, phong_scale, phong_weight);
+			position_light = sample_projected_sphere(position, light.positions, rng, light_normal, pdfw);
 			break;
 		case LIGHT_SPOT:
-			m = projected_spotlight_area(light.positions, position, normal, view_direction, phong_exp, phong_scale, phong_weight);
+			position_light = sample_projected_spotlight(position, light.positions, rng, light_normal, pdfw);
 			break;
+	}
+
+	float m = 0.0f;
+	vec3 L = normalize(position_light - position);
+	if(dot(L, normal) <= 0)
+		pdfw = 0;
+
+	if (pdfw > 0)
+	{
+		float LdotNL = max(0, -dot(light_normal, L));
+		float spotlight = sqrt(LdotNL);
+		float inv_pdfw = 1.0 / pdfw;
+
+		m = inv_pdfw * spotlight;
 	}
 
 	float light_lum = luminance(light.color);
@@ -175,7 +190,7 @@ get_unshadowed_path_contrib(
 }
 
 
-void
+bool
 process_selected_light_restir(
 		uint light_idx,
 		vec2 light_position,
@@ -208,55 +223,42 @@ process_selected_light_restir(
 	specular = vec3(0);
 	vis = 1.0;
 
-	if(light_idx != RESTIR_ENV_ID)
+	LightPolygon light = get_light_polygon(light_idx);
+
+	vec3 light_normal;
+
+	switch(uint(light.type))
 	{
-		LightPolygon light = get_light_polygon(light_idx);
-
-		vec3 light_normal;
-
-		switch(uint(light.type))
-		{
-			case LIGHT_POLYGON:
-				pos_on_light_polygonal = sample_projected_triangle(position, light.positions, light_position , light_normal, polygonal_light_pdfw);
-				break;
-			case LIGHT_SPHERE:
-				pos_on_light_polygonal = sample_projected_sphere(position, light.positions, light_position , light_normal, polygonal_light_pdfw);
-				break;
-			case LIGHT_SPOT:
-				pos_on_light_polygonal = sample_projected_spotlight(position, light.positions, light_position , light_normal, polygonal_light_pdfw);
-				break;
-		}
-
-		L = normalize(pos_on_light_polygonal - position);
-
-		if(dot(L, geo_normal) <= 0)
-			polygonal_light_pdfw = 0;
-
-		if(polygonal_light_pdfw > 0){
-			float LdotNL = max(0, -dot(light_normal, L));
-			float spotlight = sqrt(LdotNL);
-			float inv_pdfw = 1.0 / polygonal_light_pdfw;
-
-			if(light.color.r >= 0)
-			{
-				contrib_polygonal = light.color * (inv_pdfw * spotlight * light.light_style_scale);
-			}
-			else
-			{
-				contrib_polygonal = env_map(L, true) * inv_pdfw * global_ubo.pt_env_scale;
-				polygonal_light_is_sky = true;
-			}
-		}
-
+		case LIGHT_POLYGON:
+			pos_on_light_polygonal = sample_projected_triangle(position, light.positions, light_position , light_normal, polygonal_light_pdfw);
+			break;
+		case LIGHT_SPHERE:
+			pos_on_light_polygonal = sample_projected_sphere(position, light.positions, light_position , light_normal, polygonal_light_pdfw);
+			break;
+		case LIGHT_SPOT:
+			pos_on_light_polygonal = sample_projected_spotlight(position, light.positions, light_position , light_normal, polygonal_light_pdfw);
+			break;
 	}
-	else
-	{
-		vec2 disk = sample_disk(light_position);
-		disk.xy *= global_ubo.sun_tan_half_angle;
-		L = normalize(global_ubo.sun_direction + global_ubo.sun_tangent * disk.x + global_ubo.sun_bitangent * disk.y);
-		polygonal_light_pdfw = global_ubo.sun_solid_angle;
-		pos_on_light_polygonal = position + L * 10000;
-		contrib_polygonal = env_map(L, false) * polygonal_light_pdfw * global_ubo.pt_env_scale;
+
+	L = normalize(pos_on_light_polygonal - position);
+
+	if(dot(L, geo_normal) <= 0)
+		polygonal_light_pdfw = 0;
+
+	if(polygonal_light_pdfw > 0){
+		float LdotNL = max(0, -dot(light_normal, L));
+		float spotlight = sqrt(LdotNL);
+		float inv_pdfw = 1.0 / polygonal_light_pdfw;
+
+		if(light.color.r >= 0)
+		{
+			contrib_polygonal = light.color * (inv_pdfw * spotlight * light.light_style_scale);
+		}
+		else
+		{
+			contrib_polygonal = env_map(L, true) * inv_pdfw * global_ubo.pt_env_scale;
+			polygonal_light_is_sky = true;
+		}
 	}
 
 	contrib_polygonal *= weight;
@@ -281,7 +283,7 @@ process_selected_light_restir(
 	if(null_light)
 	{
 		vis = 0.0f;
-		return;
+		return false;
 	}
 
 	vec3 radiance = vis * contrib_polygonal;
@@ -310,6 +312,8 @@ process_selected_light_restir(
 
 	float diffuse_brdf = NdotL / M_PI;
 	diffuse = radiance * diffuse_brdf * (vec3(1.0) - F);
+
+	return true;
 }
 
 
@@ -322,7 +326,7 @@ get_direct_illumination_restir(
 	float phong_exp,
 	float phong_scale,
 	float phong_weight,
-	int bounce,
+	bool is_gradient,
 	Reservoir prev_r,
 	out Reservoir reservoir)
 {
@@ -338,16 +342,8 @@ get_direct_illumination_restir(
 	uint list_start = light_buffer.light_list_offsets[cluster_idx];
 	uint list_end   = light_buffer.light_list_offsets[cluster_idx + 1];
 
-	rng = get_rng(RNG_NEE_LIGHT_SELECTION(bounce));
+	rng = get_rng(RNG_NEE_LIGHT_SELECTION(0));
 
-#if 1
-	uint add_sun = (global_ubo.sun_visible != 0) && ((cluster_idx == ~0u) || (light_buffer.sky_visibility[cluster_idx >> 5] & (1 << (cluster_idx & 31))) != 0) ? 1 : 0;
-#else
-	uint add_sun = 1;
-#endif
-
-	uint sun_idx = add_sun > 0 ? list_end : -1;
-	list_end += add_sun;
 	float list_size = float(list_end - list_start);
 	float partitions = ceil(list_size / float(RESTIR_SAMPLING_M));
 	float inv_pdf = list_size;
@@ -358,13 +354,11 @@ get_direct_illumination_restir(
 	int stride = int(partitions);
 	rng = rng_part - floor(rng_part);
 
-	uint current_idx, current_light_idx;
+	uint current_light_idx;
 
 	vec2 rng2 = vec2(
-		get_rng(RNG_NEE_TRI_X(bounce)),
-		get_rng(RNG_NEE_TRI_Y(bounce)));
-
-	float samples = 1.;
+		get_rng(RNG_NEE_TRI_X(0)),
+		get_rng(RNG_NEE_TRI_Y(0)));
 
 	#pragma unroll
 	for(uint i = 0, n_idx = list_start; i < RESTIR_SAMPLING_M; i++, n_idx += stride)
@@ -372,13 +366,41 @@ get_direct_illumination_restir(
 		if (n_idx >= list_end)
 			break;
 
-		current_light_idx = n_idx != sun_idx ? light_buffer.light_list_lights[n_idx] : RESTIR_ENV_ID;
+		current_light_idx = light_buffer.light_list_lights[n_idx];
 
 		if(current_light_idx == ~0u) continue;
 
 		p_hat = get_unshadowed_path_contrib(current_light_idx, position, normal, view_direction, phong_exp, phong_scale, phong_weight, rng2);
-		if(p_hat > 0)
-			update_reservoir(current_light_idx, p_hat * inv_pdf, rng2, 1, p_hat, rng, reservoir);
+		
+		// Apply CDF adjustment based on light shadowing statistics from one of the previous frames.
+		// See comments in function `get_direct_illumination` in `path_tracer_rgen.h`
+		if(global_ubo.pt_light_stats != 0 
+			&& p_hat > 0 
+			&& current_light_idx < global_ubo.num_static_lights)
+		{
+			uint buffer_idx = global_ubo.current_frame_idx;
+			// Regular pixels get shadowing stats from the previous frame;
+			// Gradient pixels get the stats from two frames ago because they need to match
+			// the light sampling from the previous frame.
+			buffer_idx += is_gradient ? (NUM_LIGHT_STATS_BUFFERS - 2) : (NUM_LIGHT_STATS_BUFFERS - 1);
+			buffer_idx = buffer_idx % NUM_LIGHT_STATS_BUFFERS;
+
+			uint addr = get_light_stats_addr(cluster_idx, current_light_idx, get_primary_direction(normal));
+
+			uint num_hits = light_stats_bufers[buffer_idx].stats[addr];
+			uint num_misses = light_stats_bufers[buffer_idx].stats[addr + 1];
+			uint num_total = num_hits + num_misses;
+
+			if(num_total > 0)
+			{
+				// Adjust the mass, but set a lower limit on the factor to avoid
+				// extreme changes in the sampling.
+				p_hat *= max(float(num_hits) / float(num_total), 0.1);
+			}
+		}
+		
+		// Add sample even if 0, so M will be correct
+		update_reservoir(current_light_idx, p_hat * inv_pdf, rng2, 1, p_hat, rng, reservoir);
 	}
 
 	reservoir.M = RESTIR_SAMPLING_M;

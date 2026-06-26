@@ -163,6 +163,8 @@ typedef struct {
 	uint32_t	index;
 	uint32_t	remappedIndex;
 	qboolean	active;
+	MaterialStage	stage[MAX_RTX_STAGES];
+	uint32_t		num_stages;
 	qboolean	uploaded[VK_MAX_SWAPCHAIN_SIZE];
 	uint32_t	albedo;
 	uint32_t	emissive;	// glow
@@ -172,6 +174,9 @@ typedef struct {
 	uint32_t	emissive_factor;
 	int			surface_light;	// q3map_surfacelight fallback
 	uint32_t	flags;
+	uint32_t	alpha_test_func;
+	float		alpha_test_value;
+	uint32_t	blend_mode;
 } rtx_material_t;
 
 typedef struct light_poly_s {
@@ -215,14 +220,16 @@ typedef struct EntityUploadInfo
 	uint32_t num_instances;
 	uint32_t num_prims;
 	uint32_t opaque_prim_count;
-	uint32_t transparent_model_vertex_offset;
-	uint32_t transparent_model_vertex_num;
-	uint32_t viewer_model_vertex_offset;
-	uint32_t viewer_model_vertex_num;
-	uint32_t viewer_weapon_vertex_offset;
-	uint32_t viewer_weapon_vertex_num;
-	uint32_t explosions_vertex_offset;
-	uint32_t explosions_vertex_num;
+	uint32_t transparent_prim_offset;
+	uint32_t transparent_prim_count;
+	uint32_t masked_prim_offset;
+	uint32_t masked_prim_count;
+	uint32_t viewer_model_prim_offset;
+	uint32_t viewer_model_prim_count;
+	uint32_t viewer_weapon_prim_offset;
+	uint32_t viewer_weapon_prim_count;
+	uint32_t explosions_prim_offset;
+	uint32_t explosions_prim_count;
 	qboolean weapon_left_handed;
 } EntityUploadInfo;
 
@@ -278,6 +285,7 @@ typedef struct {
 	union {
 		VkDescriptorImageInfo							*image;
 		VkDescriptorBufferInfo							*buffer;
+		VkBufferView									*buffer_view;
 		VkWriteDescriptorSetAccelerationStructureKHR	as;
 	};
 	uint32_t dstArrayElement;
@@ -351,6 +359,7 @@ typedef struct {
 typedef enum {
 	BLAS_TYPE_OPAQUE,
 	BLAS_TYPE_TRANSPARENT,
+	BLAS_TYPE_MASKED,
 	BLAS_TYPE_COUNT
 } vk_blas_type;
 
@@ -478,9 +487,10 @@ vkdescriptor_t *vk_rtx_init_descriptor( vkdescriptor_t *descriptor );
 void		vk_rtx_update_descriptor( vkdescriptor_t *descriptor );
 void		vk_rtx_add_descriptor_sampler( vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage, uint32_t count, VkImageLayout layout );
 void		vk_rtx_add_descriptor_image( vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage );
-void		vk_rtx_add_descriptor_as( vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage );
-void		vk_rtx_bind_descriptor_as( vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage, VkAccelerationStructureKHR *as );
+void		vk_rtx_add_descriptor_as( vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage, uint32_t count );
+void		vk_rtx_bind_descriptor_as( vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage, VkAccelerationStructureKHR *as, uint32_t count );
 uint32_t	vk_rtx_add_descriptor_buffer( vkdescriptor_t *descriptor, uint32_t count, uint32_t binding, VkShaderStageFlagBits stage, VkDescriptorType type );
+void		vk_rtx_bind_descriptor_buffer_view( vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage, VkBufferView view );
 void		vk_rtx_bind_descriptor_buffer( vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage, VkBuffer buffer );
 void		vk_rtx_bind_descriptor_image_sampler( vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage, VkSampler sampler, VkImageView view, uint32_t index );
 void		vk_rtx_create_descriptor( vkdescriptor_t *descriptor );
@@ -529,7 +539,6 @@ void		vkpt_vertex_buffer_ensure_primbuf_size(uint32_t prim_count);
 // acceleration structure
 void		vk_rtx_reset_world_geometries( world_t *world );
 //void		vk_rtx_append_blas( vk_blas_t *blas, int instance_id, uint32_t type, uint32_t offset, uint32_t flags );
-void		vk_rtx_create_blas_bsp( accel_build_batch_t *batch, vk_geometry_data_t *geom );
 void		vk_rtx_create_blas( accel_build_batch_t *batch,  
 								 vkbuffer_t *vertex_buffer, VkDeviceAddress vertex_offset,
 								 vkbuffer_t *index_buffer, VkDeviceAddress index_offset,
@@ -577,6 +586,7 @@ uint32_t	RB_GetNextTexEncoded( shader_t *shader, int stage );
 //qboolean	RB_IsLight( shader_t *shader );
 qboolean	RB_SkipObject( shader_t *shader );
 qboolean	RB_IsTransparent( shader_t *shader );
+qboolean	RB_IsMasked( shader_t *shader );
 void		vk_rtx_update_shader_material( shader_t *shader, shader_t *updatedShader );
 rtx_material_t	*vk_rtx_shader_to_material( shader_t *shader );
 VkResult	vk_rtx_upload_materials( LightBuffer *lbo );
@@ -623,6 +633,41 @@ VkImageView	vk_rtx_shadow_map_get_view( void );
 VkImage		vk_rtx_shadow_map_get_image( void );
 void		vk_rtx_shadow_map_setup( const sun_light_t *light, const float *bbox_min, const float *bbox_max, float *VP, float *depth_scale, qboolean random_sampling );
 
+// transparency/sprite/beam/particle
+bool initialize_transparency(void);
+void destroy_transparency(void);
+
+void update_transparency(VkCommandBuffer command_buffer, const trRefdef_t *refdef, const float* view_matrix );
+
+typedef enum {
+	VKPT_TRANSPARENCY_PARTICLES,
+	VKPT_TRANSPARENCY_SPRITES,
+
+	VKPT_TRANSPARENCY_COUNT
+} vkpt_transparency_t;
+
+void vkpt_get_transparency_buffers(
+	vkpt_transparency_t ttype, 
+	vkbuffer_t** vertex_buffer,
+	uint64_t* vertex_offset, 
+	vkbuffer_t** index_buffer,
+	uint64_t* index_offset,
+	uint32_t* num_vertices,
+	uint32_t* num_indices);
+void vkpt_get_beam_aabb_buffer(
+	vkbuffer_t** aabb_buffer,
+	uint64_t* aabb_offset,
+	uint32_t* num_aabbs);
+
+VkBufferView get_transparency_particle_color_buffer_view(void);
+VkBufferView get_transparency_beam_color_buffer_view(void);
+VkBufferView get_transparency_sprite_info_buffer_view(void);
+VkBufferView get_transparency_beam_intersect_buffer_view(void);
+void get_transparency_counts(int* particle_num, int* beam_num, int* sprite_num);
+void vk_rtx_build_saber_lights( light_poly_t *light_list, int *num_lights, 
+	int max_lights, world_t *worldData, const trRefdef_t *refdef, float adapted_luminance, int *light_entity_ids );
+
+
 // god rays
 qboolean	vk_rtx_god_rays_enabled( const sun_light_t* sun_light );
 VkResult	vk_rtx_god_rays_initialize( void );
@@ -642,17 +687,18 @@ void		vk_rtx_extract_model_lights_mdxm( model_t *model );
 void		vk_rtx_extract_model_lights_mdv( model_t *model, mdvModel_t *mdvModel );
 void		vk_rtx_write_model_descriptor( int index, VkDescriptorSet descriptor, VkBuffer buffer, VkDeviceSize size );
 void		vk_rtx_create_model_vbo_ibo_descriptor( void );
+void		vk_rtx_destroy_model_vbo_ibo_descriptor( void );
 VkResult	vk_rtx_model_vbo_create_pipelines( void );
 VkResult	vk_rtx_model_vbo_destroy_pipelines( void );
 void		vkpt_instance_geometry( VkCommandBuffer cmd_buf, uint32_t num_instances, qboolean update_world_animations );
 #ifdef USE_RTX_GLOBAL_MODEL_VBO
-void		vk_rtx_bind_model( int index );
+void		vk_rtx_bind_model( int index, VBO_t *vbo, IBO_t *ibo );
 #else
 void		vk_rtx_build_mdxm_vbo( model_t *mod, mdxmHeader_t *mdxm );
 #endif
-void		vk_rtx_found_entity_vbo_mesh( maliasmesh_t *mesh, shader_t *shader );
+void		vk_rtx_add_entity_mesh( maliasmesh_t *mesh, shader_t *shader, int bone_offset );
 void		vk_rtx_AddMD3Surfaces( trRefEntity_t *ent, int entityNum, const model_t *model );
-void		vk_rtx_AddGhoulSurfaces( trRefEntity_t *ent, int entityNum );
+void		vk_rtx_AddGhoulSurfaces( trRefEntity_t *ent, int entityNum, int *mdxm_matrix_offset, mat3x4_t *mdxm_matrix_data );
 
 // debug
 #define PROFILER_LIST \

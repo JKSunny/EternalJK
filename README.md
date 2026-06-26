@@ -27,8 +27,6 @@ Many thanks to all the contributors that worked & are still working hard on impr
 
 ### Raytracing support
 > **NOTE** This is Work-in-progress, its lacking features and is unstable. \
-> E.g. switching map requires a full restart because buffer clearing is not implemented yet. \
-> - To-do list will follow.
 
 I wanted to learn more on the topic of RayTracing. \
 The current implementation is not yet complete, but the essential functionality should be there. \
@@ -56,7 +54,7 @@ I can highly recommend you to give their great effort a try if you have not done
 > This should however be looked at and transitioned to Q2RTX method of tlas and blas creation *(top/bottom level accel structure)*
 
 > ⚠️ **GETTING STARTED** \
-> Set cvar r_normalMapping 1, r_specularMapping 1, r_cubeMapping 0, r_hdr 0, r_fullscreen 1 and r_vertexLight 2 
+> Set cvar r_rtx 1, r_fullscreen 1
 > Everything is define guarded using **USE_RTX** in the codebase
 
 > ⚠️ **IMPORTANT** Requires assets from [Q2RTX on Steam](https://store.steampowered.com/app/1089130/Quake_II_RTX/) \

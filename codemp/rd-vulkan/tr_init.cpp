@@ -245,12 +245,14 @@ cvar_t	*com_cl_running;
 #endif
 
 #ifdef USE_RTX
+cvar_t	*r_rtx;
 cvar_t	*pt_restir;
 cvar_t	*pt_caustics;
 cvar_t	*pt_dof;
 cvar_t	*pt_projection;
 cvar_t	*tm_blend_enable;
 cvar_t	*pt_debug_poly_lights;
+cvar_t	*pt_restir_m_clamp;
 
 #define UBO_CVAR_DO( _handle, _value ) cvar_t *sun_##_handle;
 	UBO_CVAR_LIST
@@ -1064,13 +1066,18 @@ void R_Register( void )
 #endif
 
 #ifdef USE_RTX
+	r_rtx								= ri.Cvar_Get("r_rtx",								"0",	CVAR_ARCHIVE | CVAR_LATCH, "Enable RTX");
 	pt_restir							= ri.Cvar_Get("pt_restir",							"1",	CVAR_NONE, "Switch for experimental direct light sampling algorithms. Default value is 1.\n - 0 — RIS light sampling.\n - 1 — ReSTIR, high quality.\n - 2 — ReSTIR El-Cheapo, uses half of the shadow rays. \n - 3 — ReSTIR El-Very-Cheapo, uses one quarter of the shadow rays.");
 	pt_caustics							= ri.Cvar_Get("pt_caustics",						"1",	CVAR_NONE, "");
 	pt_dof								= ri.Cvar_Get("pt_dof",								"0",	CVAR_NONE, "");
 	pt_projection						= ri.Cvar_Get("pt_projection",						"0",	CVAR_NONE, "");
 	tm_blend_enable						= ri.Cvar_Get("tm_blend_enable",					"1",	CVAR_NONE, "");
 	pt_debug_poly_lights				= ri.Cvar_Get("pt_debug_poly_lights",				"0",	CVAR_NONE, "");
-	
+	/* Note: Higher values results in pixel having higher correlation between frames;
+	 * however, this can work against the denoiser, as it's temporal filtering would
+	 * really likes pixels that vary over time... */
+	pt_restir_m_clamp					= ri.Cvar_Get("pt_restir_m_clamp",					"8",	CVAR_NONE, "");
+
 #define UBO_CVAR_DO( _handle, _value ) sun_##_handle = ri.Cvar_Get( #_handle,	#_value, CVAR_NONE, "" );
 	UBO_CVAR_LIST
 #undef UBO_CVAR_DO

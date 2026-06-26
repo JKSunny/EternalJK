@@ -81,4 +81,10 @@ for %%f in (%glsl_rt%*.rahit) do (
     del /Q "%tmpf%"
 )
 
+for %%f in (%glsl_rt%*.rint) do (
+    "%cl%" -S rint --target-env vulkan1.2 -V -o "%tmpf%" "%%f" %flags%
+    "%bh%" "%tmpf%" %outf% %%~nf_rint
+    del /Q "%tmpf%"
+)
+
 pause

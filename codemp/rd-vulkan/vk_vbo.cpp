@@ -611,7 +611,7 @@ IBO_t *R_CreateIBO( const char *name, const byte *vbo_data, int vbo_size )
 	desc.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 #if defined(USE_RTX) && defined(USE_RTX_GLOBAL_MODEL_VBO)
 	if ( vk.rtxActive )
-		desc.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+		desc.usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 #endif
 	VK_CREATE_BUFFER(vk.device, &desc, &tr.ibos[tr.numIBOs]->buffer, "ibo device-local buffer");
 
@@ -619,9 +619,11 @@ IBO_t *R_CreateIBO( const char *name, const byte *vbo_data, int vbo_size )
 	desc.size = vbo_size;
 	desc.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 	VK_CREATE_BUFFER(vk.device, &desc, &staging_vertex_buffer, "ibo staging vertex");
+#if 0
 #if defined(USE_RTX) && defined(USE_RTX_GLOBAL_MODEL_VBO)
 	if ( vk.rtxActive )
 		desc.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+#endif
 #endif
 
 	// memory requirements
@@ -714,7 +716,7 @@ VBO_t *R_CreateVBO( const char *name, const byte *vbo_data, int vbo_size )
 	desc.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 #if defined(USE_RTX) && defined(USE_RTX_GLOBAL_MODEL_VBO)
 	if ( vk.rtxActive )
-		desc.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+		desc.usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 #endif
 	VK_CREATE_BUFFER( vk.device, &desc, &tr.vbos[tr.numVBOs]->buffer, "vbo device local" );
 	
@@ -722,9 +724,11 @@ VBO_t *R_CreateVBO( const char *name, const byte *vbo_data, int vbo_size )
 	desc.size = vbo_size;
 	desc.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 	VK_CREATE_BUFFER(vk.device, &desc, &staging_vertex_buffer, "vbo staging vertex");
+#if 0
 #if defined(USE_RTX) && defined(USE_RTX_GLOBAL_MODEL_VBO)
 	if ( vk.rtxActive )
 		desc.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+#endif
 #endif
 
 	// memory requirements
@@ -992,16 +996,12 @@ int get_mdv_stride( void ) {
 
 void R_BuildMDXM( model_t *mod, mdxmHeader_t *mdxm )
 {
-	if( !vk.vboGhoul2Active )
+	if ( !vk.vboGhoul2Active )
 		return;
 
-#ifdef USE_RTX
-	if ( !vk.rtxActive )
+#if defined(USE_RTX) && !defined(USE_RTX_GLOBAL_MODEL_VBO)
+	if ( vk.rtxActive )
 		return;
-
-	#ifndef USE_RTX_GLOBAL_MODEL_VBO
-		return;
-	#endif
 #endif
 
 	mdxmVBOModel_t		*vboModel;
@@ -1253,10 +1253,8 @@ void R_BuildMDXM( model_t *mod, mdxmHeader_t *mdxm )
 		ri.Hunk_FreeTempMemory ( baseVertexes );
 
 #if defined(USE_RTX) && defined(USE_RTX_GLOBAL_MODEL_VBO)
-
-
 		vk_rtx_extract_model_lights_mdxm( mod );
-		vk_rtx_bind_model( vbo->index );
+		vk_rtx_bind_model( vbo->index, vbo, ibo );
 #endif
 
 		// find the next LOD
@@ -1269,6 +1267,9 @@ void R_BuildMDXM( model_t *mod, mdxmHeader_t *mdxm )
 
 void R_BuildMD3( model_t *mod, mdvModel_t *mdvModel ) 
 {
+	if ( !vk.vboMdvActive )
+		return;
+
 	mdvVertex_t    *v;
 	mdvSt_t        *st;
 	mdvSurface_t   *surf;
@@ -1420,7 +1421,7 @@ void R_BuildMD3( model_t *mod, mdvModel_t *mdvModel )
 
 #if defined(USE_RTX) && defined(USE_RTX_GLOBAL_MODEL_VBO)
 	vk_rtx_extract_model_lights_mdv( mod, mdvModel );
-	vk_rtx_bind_model( vbo->index );
+	vk_rtx_bind_model( vbo->index, vbo, ibo );
 #endif
 
 	ri.Hunk_FreeTempMemory(indexOffsets);
@@ -1608,6 +1609,7 @@ void R_BuildWorldVBO(msurface_t *surf, int surfCount)
 			sf->shader->numIndexes += tris->numIndexes;
 			continue;
 		}
+#ifdef USE_VBO_GRID
 		grid = (srfGridMesh_t *)sf->data;
 		if (grid->surfaceType == SF_GRID && isStaticShader(sf->shader)) {
 			grid->vboItemIndex = ++numStaticSurfaces;
@@ -1626,6 +1628,7 @@ void R_BuildWorldVBO(msurface_t *surf, int surfCount)
 			sf->shader->numIndexes += grid->vboExpectIndices;
 			continue;
 		}
+#endif // USE_VBO_GRID
 	}
 
 	if (numStaticSurfaces == 0) {
@@ -1680,11 +1683,13 @@ void R_BuildWorldVBO(msurface_t *surf, int surfCount)
 			surfList[n++] = sf;
 			continue;
 		}
+#ifdef USE_VBO_GRID
 		grid = (srfGridMesh_t *)sf->data;
 		if (grid->surfaceType == SF_GRID && grid->vboItemIndex) {
 			surfList[n++] = sf;
 			continue;
 		}
+#endif // USE_VBO_GRID
 	}
 
 	if (n != numStaticSurfaces) {
@@ -1705,15 +1710,19 @@ void R_BuildWorldVBO(msurface_t *surf, int surfCount)
 		sf = surfList[i];
 		face = (srfSurfaceFace_t *)sf->data;
 		tris = (srfTriangles_t *)sf->data;
+#ifdef USE_VBO_GRID
 		grid = (srfGridMesh_t *)sf->data;
+#endif
 		if (face->surfaceType == SF_FACE)
 			face->vboItemIndex = i + 1;
 		else if (tris->surfaceType == SF_TRIANGLES) {
 			tris->vboItemIndex = i + 1;
 		}
+#ifdef USE_VBO_GRID
 		else if (grid->surfaceType == SF_GRID) {
 			grid->vboItemIndex = i + 1;
 		}
+#endif
 		else {
 			ri.Error(ERR_DROP, "Unexpected surface type");
 		}
@@ -1729,13 +1738,15 @@ void R_BuildWorldVBO(msurface_t *surf, int surfCount)
 		// tesselate
 		rb_surfaceTable[*sf->data](sf->data); // VBO_PushData() may be called multiple times there
 		// setup colors and texture coordinates
-		VBO_PushData( i + 1, &tess );
+		VBO_PushData( i + 1, &tess);
+#ifdef USE_VBO_GRID
 		if (grid->surfaceType == SF_GRID) {
 			vbo_item_t *vi = vbo->items + i + 1;
 			if (vi->num_vertexes != grid->vboExpectVertices || vi->num_indexes != grid->vboExpectIndices) {
 				ri.Error(ERR_DROP, "Unexpected grid vertexes/indexes count");
 			}
 		}
+#endif // USE_VBO_GRID
 		tess.numIndexes = 0;
 		tess.numVertexes = 0;
 	}

@@ -150,6 +150,36 @@ struct RayPayloadGeometry {
    float hit_distance;
 };
 
+struct EffectsResult
+{
+    vec4 alpha;
+    vec3 additive;
+};
+
+struct TransparencyHit
+{
+    vec4 color;
+    uint blend_mode;
+};
+
+struct RayPayloadEffects {
+   uvec2 transparency; // alpha-blended layers
+   uvec2 additive;     // additive emission
+   uint distances; // half2x16 - min and max
+   uvec4 fog1; // half8x16: .xy = color.rgba; .z = t_min, t_max; .w = density: a and b for (a*t + b)
+   uvec4 fog2; // same as fog1 but for a fog volume further away
+   // Store TMax in the payload because gl_RayTmaxEXT changes while the ray is being traced.
+   // See the GLSL_EXT_ray_tracing spec near "description for gl_RayTminEXT and gl_RayTmaxEXT"
+   // https://github.com/KhronosGroup/GLSL/blob/master/extensions/ext/GLSL_EXT_ray_tracing.txt 
+   float rayTmax; 
+};
+
+struct HitAttributeBeam {
+	/* packed half2x16, with fade value in x component/low 16 bits and
+	 * thickness in y component/high 16 bits */
+	uint fade_and_thickness;
+};
+
 // for shaderSort_t
 const float SS_BAD 									= 0;
 const float SS_PORTAL 								= 1;	// mirrors, portals, viewscreens

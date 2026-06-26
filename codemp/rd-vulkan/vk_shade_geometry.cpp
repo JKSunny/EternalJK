@@ -104,6 +104,10 @@ void vk_update_mvp( const float *m ) {
 
 void vk_set_2d( void ) 
 {
+	if ( backEnd.projection2D ) {
+		return;
+	}
+
 	backEnd.projection2D = qtrue;
 
 	vk_update_mvp(NULL);
@@ -298,6 +302,7 @@ void vk_bind_geometry( uint32_t flags )
 			case SF_MDX:		return vk_vbo_bind_geometry_ghoul2( flags );
 			case SF_VBO_MDVMESH:return vk_vbo_bind_geometry_mdv( flags );
 			case SF_SPRITES:	return vk_vbo_bind_geometry_surface_sprites( flags );
+			default:			break;
 		}
 	}
 
@@ -2855,31 +2860,33 @@ void RB_StageIteratorGeneric( void )
 
 		for (stage = 1; stage < tess.shader->numUnfoggedPasses; stage++)
 		{
-			if (tess.xstages[stage] && tess.xstages[stage]->ss && tess.xstages[stage]->ss->type)
-			{
-				if (!ssFound) {
-					// don't cringe, this is a temporary solution. but slow..
-					// we are still reading from tess.xyz while also writing a group of surfacesprites to it.
-					// which means the next group will read from garbaged surface data.
-					// we duplicate the necessary tess data to ssInput and use that to read from.
-					// yeah ..
-					// surfacesprites currently don't work with vbo enabled.
-					// need to look at the the methods from OpenJK repo
+			pStage = tess.xstages[stage];
 
-					ssInput.numIndexes = tess.numIndexes;
-					ssInput.numVertexes = tess.numVertexes;
+			if ( !pStage || !pStage->ss || !pStage->ss->type )
+				continue;
 
-					memcpy(ssInput.indexes, tess.indexes, sizeof(tess.indexes));
-					memcpy(ssInput.xyz, tess.xyz, sizeof(tess.xyz));
-					memcpy(ssInput.normal, tess.normal, sizeof(tess.normal));
-					memcpy(ssInput.vertexColors, tess.vertexColors, sizeof(tess.vertexColors));
+			if (!ssFound) {
+				// don't cringe, this is a temporary solution. but slow..
+				// we are still reading from tess.xyz while also writing a group of surfacesprites to it.
+				// which means the next group will read from garbaged surface data.
+				// we duplicate the necessary tess data to ssInput and use that to read from.
+				// yeah ..
+				// surfacesprites currently don't work with vbo enabled.
+				// need to look at the the methods from OpenJK repo
 
-					ssFound = qtrue;
-				}
+				ssInput.numIndexes = tess.numIndexes;
+				ssInput.numVertexes = tess.numVertexes;
 
-				// Draw the surfacesprite
-				RB_DrawSurfaceSprites(tess.xstages[stage], &ssInput);
+				memcpy(ssInput.indexes, tess.indexes, sizeof(tess.indexes));
+				memcpy(ssInput.xyz, tess.xyz, sizeof(tess.xyz));
+				memcpy(ssInput.normal, tess.normal, sizeof(tess.normal));
+				memcpy(ssInput.vertexColors, tess.vertexColors, sizeof(tess.vertexColors));
+
+				ssFound = qtrue;
 			}
+
+			// Draw the surfacesprite
+			RB_DrawSurfaceSprites( pStage, &ssInput );
 		}
 	}
 }

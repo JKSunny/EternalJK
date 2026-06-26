@@ -482,7 +482,11 @@ extern PFN_vkCreateRayTracingPipelinesKHR					qvkCreateRayTracingPipelinesKHR;
 extern PFN_vkCmdTraceRaysKHR								qvkCmdTraceRaysKHR;
 extern PFN_vkGetRayTracingShaderGroupHandlesKHR				qvkGetRayTracingShaderGroupHandlesKHR;
 
+extern PFN_vkBindBufferMemory2								qvkBindBufferMemory2;
 extern PFN_vkCmdFillBuffer									qvkCmdFillBuffer;
+
+extern PFN_vkCreateBufferView								qvkCreateBufferView;
+extern PFN_vkDestroyBufferView								qvkDestroyBufferView;
 
 extern PFN_vkCmdBeginDebugUtilsLabelEXT						qvkCmdBeginDebugUtilsLabelEXT;
 extern PFN_vkCmdEndDebugUtilsLabelEXT						qvkCmdEndDebugUtilsLabelEXT;
@@ -784,7 +788,7 @@ typedef struct vk_tess_s {
 	
 	VkBuffer			vertex_buffer;
 	byte				*vertex_buffer_ptr; // pointer to mapped vertex buffer
-	VkDeviceSize		vertex_buffer_offset;
+	VkDeviceSize		vertex_buffer_offset; // moved to uint32_t in q3e:63d6d7402d78254bebe28035006fe600f645c8de
 
 	VkBuffer			indirect_buffer;
 	byte				*indirect_buffer_ptr; // pointer to mapped indirect buffer
@@ -965,9 +969,12 @@ typedef struct {
 		struct {
 			vk_blas_t	dynamic[VK_MAX_SWAPCHAIN_SIZE];
 			vk_blas_t	transparent_models[VK_MAX_SWAPCHAIN_SIZE];
+			vk_blas_t	masked_models[VK_MAX_SWAPCHAIN_SIZE];
 			vk_blas_t	viewer_models[VK_MAX_SWAPCHAIN_SIZE];
 			vk_blas_t	viewer_weapon[VK_MAX_SWAPCHAIN_SIZE];
 			vk_blas_t	explosions[VK_MAX_SWAPCHAIN_SIZE];
+			vk_blas_t   beams[VK_MAX_SWAPCHAIN_SIZE];
+			vk_blas_t   sprites[VK_MAX_SWAPCHAIN_SIZE];
 		} blas;
 	} model_instance;
 
@@ -976,6 +983,7 @@ typedef struct {
 
 	// Top AS (Buffers) for each swapchain image
 	vk_tlas_t		tlas_geometry[VK_MAX_SWAPCHAIN_SIZE];
+	vk_tlas_t		tlas_effects[VK_MAX_SWAPCHAIN_SIZE];
 
 	// stores offset and stuff for in shader lookup
 	vkbuffer_t		buf_instances[VK_MAX_SWAPCHAIN_SIZE];
@@ -990,6 +998,11 @@ typedef struct {
 	vkbuffer_t		buf_light_staging[VK_MAX_SWAPCHAIN_SIZE];
 	vkbuffer_t		buf_light_stats[NUM_LIGHT_STATS_BUFFERS];
 	vkbuffer_t		buf_light_counts_history[LIGHT_COUNT_HISTORY];
+
+	vkbuffer_t		buf_mdxm_matrices;
+	vkbuffer_t		buf_mdxm_matrices_staging[VK_MAX_SWAPCHAIN_SIZE];
+	mat3x4_t*		mdxm_matrices_shadow;
+	mat3x4_t*		mdxm_matrices_prev;
 
 	vkbuffer_t		buf_tonemap;
 
@@ -1436,6 +1449,8 @@ typedef struct {
 		VkDeviceSize staging_size;
 		VkDeviceSize geometry_size;
 	} defaults;
+
+	char driverNote[200];
 
 	struct {
 		VkDescriptorSet *descriptor;

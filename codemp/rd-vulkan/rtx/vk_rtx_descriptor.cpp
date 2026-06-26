@@ -70,10 +70,17 @@ void vk_rtx_update_descriptor( vkdescriptor_t *descriptor )
 				break;
 
 			case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
-				desc[i].descriptorCount = 1;
+				desc[i].descriptorCount = TLAS_COUNT;
 				desc[i].descriptorType	= VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
 				desc[i].pNext			= &descriptor->data[i].as;
 				assert( descriptor->data[i].as.pAccelerationStructures != NULL );
+				break;
+
+			case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+				desc[i].descriptorCount		= 1;
+				desc[i].descriptorType		= VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+				desc[i].pTexelBufferView	= &descriptor->data[i].buffer_view[0];
+				assert( descriptor->data[i].buffer_view != NULL );
 				break;
 		}
 	}
@@ -295,21 +302,20 @@ uint32_t vk_rtx_add_descriptor_buffer(  vkdescriptor_t *descriptor, uint32_t cou
 	return index;
 }
 
-void vk_rtx_add_descriptor_as( vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage ) 
+void vk_rtx_add_descriptor_as( vkdescriptor_t *descriptor, uint32_t binding, VkShaderStageFlagBits stage, uint32_t count ) 
 {
 	uint32_t index;
-	const uint32_t count = 1;
 
 	index = vk_rtx_add_descriptor_layout_binding( descriptor, count, binding, stage, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR );
 
 	descriptor->data[index].as.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
 	descriptor->data[index].as.pNext = VK_NULL_HANDLE;
-	descriptor->data[index].as.accelerationStructureCount = 1;
+	descriptor->data[index].as.accelerationStructureCount = count;
 	descriptor->data[index].as.pAccelerationStructures = VK_NULL_HANDLE;
 }
 
 void vk_rtx_bind_descriptor_as( vkdescriptor_t *descriptor, uint32_t binding,
-								VkShaderStageFlagBits stage, VkAccelerationStructureKHR *as ) 
+								VkShaderStageFlagBits stage, VkAccelerationStructureKHR *as, uint32_t count ) 
 {
 	uint32_t i;
 
@@ -320,7 +326,7 @@ void vk_rtx_bind_descriptor_as( vkdescriptor_t *descriptor, uint32_t binding,
 
 		descriptor->data[i].as.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
 		descriptor->data[i].as.pAccelerationStructures = as;
-		descriptor->data[i].as.accelerationStructureCount = 1;
+		descriptor->data[i].as.accelerationStructureCount = count;
 		return;
 	}
 }
@@ -341,6 +347,21 @@ void vk_rtx_bind_descriptor_image_sampler(	vkdescriptor_t *descriptor, uint32_t 
         descriptor->data[i].image[index].imageView = view;
         return;
     }
+}
+
+void vk_rtx_bind_descriptor_buffer_view( vkdescriptor_t *descriptor, uint32_t binding, 
+									VkShaderStageFlagBits stage, VkBufferView view ) 
+{
+	uint32_t i;
+
+	for ( i = 0; i < descriptor->size; ++i )
+	{
+		if ( descriptor->bindings[i].binding != binding || descriptor->bindings[i].stageFlags != stage ) 
+			continue;
+
+		descriptor->data[i].buffer_view[0] = view;
+		return;
+	}
 }
 
 void vk_rtx_bind_descriptor_buffer( vkdescriptor_t *descriptor, uint32_t binding, 
@@ -367,7 +388,8 @@ void vk_rtx_bind_descriptor_buffer_element(vkdescriptor_t *descriptor, uint32_t 
 	if ( buffer == NULL )
 		return;	// need to bind empty buffer
 
-    for (uint32_t i = 0; i < descriptor->size; ++i) {
+    for ( i = 0; i < descriptor->size; ++i ) 
+	{
         if (descriptor->bindings[i].binding != binding || descriptor->bindings[i].stageFlags != stage)
             continue;
 

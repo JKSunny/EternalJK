@@ -88,7 +88,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 	UBO_CVAR_DO( pt_reflect_refract,				2		)	/* number of reflection or refraction bounces: 0, 1 or 2 */ \
 	UBO_CVAR_DO( pt_restir,							1		)	/* switch for using RIS or ReSTIR, 0 or 1 */ \
 	UBO_CVAR_DO( pt_restir_spatial,					1		)	/* ReSTIR spatial samples */ \
-	UBO_CVAR_DO( pt_restir_max_w,					12.0	)	/* ReSTIR max weight clamp */ \
+	UBO_CVAR_DO( pt_restir_spatial_cap,				1		)	/* Factor used to cap ReSTIR spatial sample weight */ \
 	UBO_CVAR_DO( pt_roughness_override,				-1		)	/* overrides roughness of all materials if non-negative, [0..1] */ \
 	UBO_CVAR_DO( pt_specular_anti_flicker,			2		)	/* fade factor for rough reflections of surfaces far away, [0..inf) */ \
 	UBO_CVAR_DO( pt_specular_mis,					1		)	/* enables the use of MIS between specular direct lighting and BRDF specular rays */ \
@@ -218,7 +218,8 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 	GLOBAL_UBO_VAR_LIST_DO( VEC2,    projection_fov_scale			) \
 	GLOBAL_UBO_VAR_LIST_DO( VEC2,    projection_fov_scale_prev		) \
 	\
-	GLOBAL_UBO_VAR_LIST_DO( VEC3,    pad1							) \
+	GLOBAL_UBO_VAR_LIST_DO( VEC2,    pad1							) \
+	GLOBAL_UBO_VAR_LIST_DO( INT,     restir_m_clamp					) \
 	GLOBAL_UBO_VAR_LIST_DO( INT,     pt_projection					) \
 	\
 	GLOBAL_UBO_VAR_LIST_DO( FLOAT,   sky_transmittance				) \
@@ -246,7 +247,12 @@ STRUCT (
 	UINT	( prim_offset_curr_pose_prev_frame )
 	UINT	( prim_offset_prev_pose_prev_frame )
 
-	INT		( is_mdxm )
+	INT		( mdxm_matrix_offset_curr )
+	INT		( mdxm_matrix_offset_prev )
+	UINT	( pad0 )
+	UINT	( pad1 )
+
+	UINT	( pad2 )
 	INT		( idx_offset )
 	FLOAT	( pose_lerp_curr_frame )
 	FLOAT	( pose_lerp_prev_frame )
@@ -266,14 +272,14 @@ STRUCT (
 #define BSPMESHINSTANCE(n) BspMeshInstance n;
 
 STRUCT ( 
-	UINT			( animated_model_indices	[SHADER_MAX_ENTITIES]		)
-	MODELINSTANCE	( model_instances			[SHADER_MAX_ENTITIES]		)
-	UINT			( model_current_to_prev		[SHADER_MAX_ENTITIES]		)
-	UINT			( model_prev_to_current		[SHADER_MAX_ENTITIES]		)
-	UINT			( mlight_prev_to_current	[MAX_MODEL_LIGHTS]			)
-	UINT            ( tlas_instance_prim_offsets[MAX_TLAS_INSTANCES]		)
-	INT             ( tlas_instance_model_indices[MAX_TLAS_INSTANCES]		)					  
-	BONESREF		( model_mdxm_bones			[SHADER_MAX_ENTITIES]		)
+	UINT			( animated_model_indices		[SHADER_MAX_ENTITIES]		)
+	MODELINSTANCE	( model_instances				[SHADER_MAX_ENTITIES]		)
+	UINT			( model_current_to_prev			[SHADER_MAX_ENTITIES]		)
+	UINT			( model_prev_to_current			[SHADER_MAX_ENTITIES]		)
+	UINT			( mlight_prev_to_current		[MAX_MODEL_LIGHTS]			)
+	UINT            ( tlas_instance_prim_offsets	[MAX_TLAS_INSTANCES]		)
+	INT             ( tlas_instance_model_indices	[MAX_TLAS_INSTANCES]		)					  
+	UINT			( model_instance_shader_data	[SHADER_MAX_ENTITIES * INSTANCE_SHADER_UINTS] )
 , InstanceBuffer ) 
 
 #define GLOBAL_UBO_VAR_LIST_DO( type, name ) type(name)

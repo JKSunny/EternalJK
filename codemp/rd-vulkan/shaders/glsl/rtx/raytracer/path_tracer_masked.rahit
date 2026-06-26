@@ -20,25 +20,21 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #extension GL_GOOGLE_include_directive : enable
 
 #include "../path_tracer.h"	// contains global_ubo.h -> constants.h
-#if 0
-	#include "../utils.glsl"
+#include "../utils.glsl"
 
-	#define GLOBAL_UBO_DESC_SET_IDX 3
-	#include "../global_ubo.h"
+#define GLOBAL_TEXTURES_DESC_SET_IDX 1
+#include "../global_textures.h"
 
-	#define GLOBAL_TEXTURES_DESC_SET_IDX 1
-	#include "../global_textures.h"
+#define VERTEX_BUFFER_DESC_SET_IDX 4
+#define VERTEX_READONLY 1
+#include "../vertex_buffer.h"
 
-	#define VERTEX_BUFFER_DESC_SET_IDX 0
-	#define VERTEX_READONLY 1
-	#include "../vertex_buffer.h"
+#include "path_tracer_hit_shaders.h"
 
-	#include "path_tracer_hit_shaders.h"
-#endif
 hitAttributeEXT vec2 hit_attribs;
 
 void main()
 {
-	//if (!pt_logic_masked(gl_PrimitiveID, gl_InstanceID, gl_GeometryIndexEXT, gl_InstanceCustomIndexEXT, hit_attribs.xy))
+	if (!pt_logic_masked(gl_PrimitiveID, gl_InstanceID, gl_GeometryIndexEXT, gl_InstanceCustomIndexEXT, hit_attribs.xy))
 		ignoreIntersectionEXT;
 }

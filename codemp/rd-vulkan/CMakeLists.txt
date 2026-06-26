@@ -172,6 +172,7 @@ set(MPVulkanRendererRTX
 	"${MPDir}/rd-vulkan/rtx/vk_rtx_shader.cpp"
 	"${MPDir}/rd-vulkan/rtx/vk_rtx_shade.cpp"
 	"${MPDir}/rd-vulkan/rtx/vk_rtx_shadow_map.cpp"
+	"${MPDir}/rd-vulkan/rtx/vk_rtx_transparency.cpp"
 	"${MPDir}/rd-vulkan/rtx/vk_rtx_tonemap.cpp"
 	"${MPDir}/rd-vulkan/rtx/vk_rtx_tonemap.h"
 	"${MPDir}/rd-vulkan/rtx/vk_rtx_uniform.cpp"

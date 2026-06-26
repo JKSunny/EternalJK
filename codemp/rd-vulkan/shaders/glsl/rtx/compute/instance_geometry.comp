@@ -79,9 +79,11 @@ vec4 get_model_float4(uint model_id, uint offset)
 	return result;
 }
 
-mat4x3 GetBoneMatrix( uint model_index, uint index)
+mat4x3 GetBoneMatrix( uint bone_offset, uint index)
 {
-	mat3x4 bone = instance_buffer.model_mdxm_bones[model_index][index];
+	//mat3x4 bone = instance_buffer.model_mdxm_bones[bone_offset + index];
+	mat3x4 bone = mdxm_matrix_buffer.matrices[bone_offset + index];
+
 	return mat4x3(
 		bone[0].x, bone[1].x, bone[2].x,
 		bone[0].y, bone[1].y, bone[2].y,
@@ -138,7 +140,7 @@ get_model_triangle(uint model_id, uint prim_id, uint idx_offset, uint vert_offse
 }
 
 Triangle
-get_mxdm_triangle(uint model_id, uint prim_id, uint idx_offset, uint vert_offset)
+get_mxdm_triangle(uint model_id, uint prim_id, uint idx_offset, uint vert_offset, uint bone_offset )
 {
 	uint idx_base = idx_offset + prim_id * 3;
 
@@ -184,7 +186,7 @@ get_mxdm_triangle(uint model_id, uint prim_id, uint idx_offset, uint vert_offset
 			uint bone_index = ( bone_indices >> (i_bone * 8) ) & 0xFF;
 			float bone_weight = bone_weights[i_bone];
 
-			mat4x3 m = GetBoneMatrix( model_id, bone_index );
+			mat4x3 m = GetBoneMatrix( bone_offset, bone_index );
 			skin_matrix += m * bone_weight;
 		}
 
@@ -221,21 +223,22 @@ void main()
 		Triangle t;
 
 		/* model mdxm/ghoul2 */
-		//if ( mi.iqm_matrix_offset_curr_frame >= 0 )
-		if ( mi.is_mdxm > 0)
+		if ( mi.mdxm_matrix_offset_curr >= 0 )
 		{
 			// Perform bone-based skinning for two frames:
 			// Current frame...
 			t = get_mxdm_triangle( mi.source_buffer_idx, 
-				idx, mi.idx_offset, 0 /*vtx_offset*/ );
-				
+				idx, mi.idx_offset, 0 /*vtx_offset*/, mi.mdxm_matrix_offset_curr );
+#if 1
 			// ... previous frame
 			Triangle t_prev = get_mxdm_triangle(mi.source_buffer_idx,
-				idx, mi.idx_offset, 0 /*vtx_offset*/ );
+				idx, mi.idx_offset, 0 /*vtx_offset*/, mi.mdxm_matrix_offset_prev );
 	
 			// Use only the triangle positions from the previous frame
 			t.positions_prev = t_prev.positions;
-
+#else
+			t.positions_prev = t.positions;
+#endif
 			// Apply the model-to-world transform
 			for (int vtx = 0; vtx < 3; vtx++)
 			{

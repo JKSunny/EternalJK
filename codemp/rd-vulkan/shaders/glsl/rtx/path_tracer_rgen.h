@@ -19,6 +19,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 #include "path_tracer.h"	// contains global_ubo.h -> constants.h
 #include "utils.glsl"
+#include "raytracer/path_tracer_transparency.glsl"
 
 #define GLOBAL_TEXTURES_DESC_SET_IDX 1
 #include "global_textures.h"
@@ -26,7 +27,10 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define VERTEX_BUFFER_DESC_SET_IDX 4
 #define VERTEX_READONLY 1
 #include "vertex_buffer.h"
-layout( set = 0, binding = RAY_GEN_DESCRIPTOR_SET_IDX ) uniform accelerationStructureEXT topLevelAS;
+
+#define RAY_GEN_DESCRIPTOR_SET_IDX 0
+layout( set = 0, binding = RAY_GEN_DESCRIPTOR_SET_IDX ) 
+uniform accelerationStructureEXT topLevelAS[TLAS_COUNT];
 
 #include "read_visbuf.glsl"
 #include "compute/asvgf.glsl"
@@ -70,10 +74,8 @@ layout( set = 0, binding = RAY_GEN_DESCRIPTOR_SET_IDX ) uniform accelerationStru
 
 #define MAX_OUTPUT_VALUE 1000
 
-// this ..
-#define RT_PAYLOAD_GEOMETRY 0
-
 layout(location = RT_PAYLOAD_GEOMETRY) rayPayloadEXT RayPayloadGeometry ray_payload_geometry;
+layout(location = RT_PAYLOAD_EFFECTS) rayPayloadEXT RayPayloadEffects ray_payload_effects;
 
 uint rng_seed;
 
@@ -145,6 +147,18 @@ Triangle get_hit_triangle(RayPayloadGeometry rp)
 		/* instance_idx = */ rp.buffer_and_instance_idx >> 16,
 		/* buffer_idx = */ rp.buffer_and_instance_idx & 0xffff,
 		rp.primitive_id);
+}
+
+uint get_instance_index(RayPayloadGeometry rp)
+{
+	int instance_idx = rp.buffer_and_instance_idx >> 16;
+	uint buffer_idx = rp.buffer_and_instance_idx & 0xffff;
+
+	if (buffer_idx != VERTEX_BUFFER_INSTANCED)
+		return ~0u;
+	
+	Triangle t = load_triangle(buffer_idx, rp.primitive_id);
+	return t.instance_index;
 }
 
 vec3
@@ -244,15 +258,97 @@ void trace_geometry_ray( Ray ray, bool cull_back_faces, uint cullMask )
 	ray_payload_geometry.buffer_and_instance_idx = 0;
 	ray_payload_geometry.hit_distance = 0;
 
-	traceRayEXT( topLevelAS, rayFlags, cullMask,
+	traceRayEXT( topLevelAS[TLAS_INDEX_GEOMETRY], rayFlags, cullMask,
 			SBT_RCHIT_GEOMETRY /*sbtRecordOffset*/, 0 /*sbtRecordStride*/, SBT_RMISS_EMPTY /*missIndex*/,
 			ray.origin, ray.t_min, ray.direction, ray.t_max, RT_PAYLOAD_GEOMETRY);
 }
 
-vec4
+// Loops over the defined fog volumes and finds the two closest ones along the ray.
+// They are stored in the order of min distance in rp.fog1 (closer) and rp.fog2 (further away).
+// If the ray starts in a fog volume, that volume will be rp.fog1 with t_min = ray.t_min.
+void find_fog_volumes(inout RayPayloadEffects rp, Ray ray)
+{
+	return;
+#if 0
+	vec3 inv_dir = vec3(1.0) / ray.direction;
+	for (int i = 0; i < MAX_FOG_VOLUMES; i++)
+	{
+		const ShaderFogVolume volume = global_ubo.fog_volumes[i];
+
+		if (volume.is_active == 0)
+			return;
+
+		vec3 t1 = (volume.mins - ray.origin) * inv_dir;
+		vec3 t2 = (volume.maxs - ray.origin) * inv_dir;
+		float t_in = vmax(min(t1, t2));
+		float t_out = vmin(max(t1, t2));
+		t_in = max(t_in, ray.t_min);
+		t_out = min(t_out, ray.t_max);
+
+		if (t_out > t_in)
+		{
+			vec2 first_t_min_max = unpackHalf2x16(rp.fog1.w);
+			vec2 second_t_min_max = unpackHalf2x16(rp.fog2.w);
+
+			bool replaces_first = t_in < first_t_min_max.x || first_t_min_max.y == 0;
+			bool replaces_second = t_in < second_t_min_max.x || second_t_min_max.y == 0;
+
+			if (replaces_first || replaces_second)
+			{
+				uvec4 packed;
+				packed.xy = packHalf4x16(vec4(volume.color * global_ubo.pt_fog_brightness, 0));
+				packed.z = packHalf2x16(vec2(t_in, t_out));
+
+				// Convert the volumetric density function into a 1D function along the ray
+				float density_variable = dot(volume.density.xyz, ray.direction) * 0.5;
+				float density_constant = dot(volume.density.xyz, ray.origin) + volume.density.w;
+				// Scale the density stored here because typical values are very small, in fp16 denormal range
+				packed.w = packHalf2x16(vec2(density_variable, density_constant) * 65536.0);
+
+				if (replaces_first)
+				{
+					// Push fog1 to fog2, replace fog1 with the new volume
+					rp.fog2 = rp.fog1;
+					rp.fog1 = packed;
+				}
+				else // if (replaces_second) -- must be true
+				{
+					// Replace fog2 with the new volume
+					rp.fog2 = packed;
+				}
+			}
+		}
+	}
+#endif
+}
+
+EffectsResult 
 trace_effects_ray(Ray ray, bool skip_procedural) 
 {
-	return vec4(0.0);
+	uint rayFlags = 0;
+	if (skip_procedural)
+		rayFlags |= gl_RayFlagsSkipProceduralPrimitives;
+	
+	uint instance_mask = AS_FLAG_EFFECTS;
+
+	ray_payload_effects.transparency = uvec2(0);
+	ray_payload_effects.additive     = uvec2(0);
+	ray_payload_effects.distances = 0;
+	ray_payload_effects.fog1 = uvec4(0);
+	ray_payload_effects.fog2 = uvec4(0);
+	ray_payload_effects.rayTmax = ray.t_max;
+
+	if (!skip_procedural)
+		find_fog_volumes(ray_payload_effects, ray);
+
+	traceRayEXT( topLevelAS[TLAS_INDEX_EFFECTS], rayFlags, instance_mask,
+			SBT_RCHIT_EFFECTS /*sbtRecordOffset*/, 0 /*sbtRecordStride*/, SBT_RMISS_EMPTY /*missIndex*/,
+			ray.origin, ray.t_min, ray.direction, ray.t_max, RT_PAYLOAD_EFFECTS);
+
+	if (skip_procedural)
+		return get_payload_transparency(ray_payload_effects);
+
+	return get_payload_transparency_with_fog(ray_payload_effects, ray.t_max);
 }
 
 Ray get_shadow_ray( vec3 p1, vec3 p2, float tmin )
@@ -280,7 +376,7 @@ trace_shadow_ray(Ray ray, int cull_mask)
 	ray_payload_geometry.buffer_and_instance_idx = 0;
 	ray_payload_geometry.hit_distance = -1;
 
-	traceRayEXT( topLevelAS, rayFlags, cull_mask,
+	traceRayEXT( topLevelAS[TLAS_INDEX_GEOMETRY], rayFlags, cull_mask,
 			SBT_RCHIT_GEOMETRY /*sbtRecordOffset*/, 0 /*sbtRecordStride*/, SBT_RMISS_EMPTY /*missIndex*/,
 			ray.origin, ray.t_min, ray.direction, ray.t_max, RT_PAYLOAD_GEOMETRY);
 
@@ -299,7 +395,7 @@ trace_caustic_ray( Ray ray, int surface_medium )
 	uint rayFlags = gl_RayFlagsCullBackFacingTrianglesEXT | gl_RayFlagsOpaqueEXT | gl_RayFlagsSkipProceduralPrimitives;
 	uint instance_mask = AS_FLAG_TRANSPARENT;
 
-	traceRayEXT(topLevelAS, rayFlags, instance_mask, SBT_RCHIT_GEOMETRY, 0, SBT_RMISS_EMPTY,
+	traceRayEXT(topLevelAS[TLAS_INDEX_GEOMETRY], rayFlags, instance_mask, SBT_RCHIT_GEOMETRY, 0, SBT_RMISS_EMPTY,
 			ray.origin, ray.t_min, ray.direction, ray.t_max, RT_PAYLOAD_GEOMETRY);
 
 	float extinction_distance = ray.t_max - ray.t_min;
@@ -738,8 +834,173 @@ bool get_is_gradient(ivec2 ipos)
 	return false;
 }
 
+vec4 unpack_rgba8(uint p)
+{
+    return vec4(
+        float((p >>  0) & 255u),
+        float((p >>  8) & 255u),
+        float((p >> 16) & 255u),
+        float((p >> 24) & 255u)
+    ) * (1.0 / 255.0);
+}
+
+vec4 calc_color( in uint instance_index, in MaterialStage stage, in uint bundle ) 
+{
+	vec4 base_color = vec4(1.0);
+	vec4 shaderRGBA = vec4(0.0);
+	uint forceRGBGen = 0u;
+
+	if (instance_index != ~0u)
+	{
+		shaderRGBA = unpack_rgba8(get_model_instance_shader_uint(instance_index, 0));
+		forceRGBGen = get_model_instance_shader_uint(instance_index, 1);
+	}
+
+	uint rgbGen = (forceRGBGen != 0u) ? forceRGBGen : stage.bundle[bundle].rgbGen;
+
+	// CGEN_ENTITY || CGEN_LIGHTING_DIFFUSE_ENTITY
+	if (rgbGen == 3 || rgbGen == 10)
+	{
+		base_color = shaderRGBA;
+	}
+
+	return base_color;
+}
+
+vec4 sample_material_stage(
+	uint instance_index,
+	uint stage_idx,
+    MaterialStage stage,
+    vec2 uv,
+    vec2 uvx,
+    vec2 uvy,
+    float mip)
+{
+#define SAMPLE_TEX(img) \
+    ((mip >= 0.0) ? \
+        global_textureLod(img, uv, mip) : \
+        global_textureGrad(img, uv, uvx, uvy))
+
+    vec4 c0 = calc_color(instance_index, stage, 0);
+    vec4 c1 = calc_color(instance_index, stage, 1);
+    vec4 c2 = calc_color(instance_index, stage, 2);
+
+    if (stage.bundle[0].image != 0u)
+        c0 *= SAMPLE_TEX(stage.bundle[0].image);
+
+    if (stage.tex_count >= 1u && stage.bundle[1].image != 0u)
+        c1 *= SAMPLE_TEX(stage.bundle[1].image);
+
+    if (stage.tex_count >= 2u && stage.bundle[2].image != 0u)
+        c2 *= SAMPLE_TEX(stage.bundle[2].image);
+
+#undef SAMPLE_TEX
+
+    switch (stage.tex_mode)
+    {
+        default:
+        case 0u: // MODULATE
+            if (stage.tex_count == 0u)
+                return c0;
+            if (stage.tex_count == 1u)
+                return c0 * c1;
+            return c0 * c1 * c2;
+
+        case 1u: // ADD_IDENTITY
+        case 2u: // ADD
+            if (stage.tex_count == 0u)
+                return c0;
+
+            if (stage.tex_count == 1u)
+            {
+                return vec4(
+                    c0.rgb + c1.rgb,
+                    c0.a * c1.a);
+            }
+
+            return vec4(
+                c0.rgb + c1.rgb + c2.rgb,
+                c0.a * c1.a * c2.a);
+
+        case 3u: // ALPHA
+            c0 *= c0.a;
+
+            if (stage.tex_count == 0u)
+                return c0;
+
+            c1 *= c1.a;
+
+            if (stage.tex_count == 1u)
+            {
+                return vec4(
+                    c0.rgb + c1.rgb,
+                    c0.a * c1.a);
+            }
+
+            c2 *= c2.a;
+
+            return vec4(
+                c0.rgb + c1.rgb + c2.rgb,
+                c0.a * c1.a * c2.a);
+
+        case 4u: // ONE_MINUS_ALPHA
+            c0 *= (1.0 - c0.a);
+
+            if (stage.tex_count == 0u)
+                return c0;
+
+            c1 *= (1.0 - c1.a);
+
+            if (stage.tex_count == 1u)
+            {
+                return vec4(
+                    c0.rgb + c1.rgb,
+                    c0.a * c1.a);
+            }
+
+            c2 *= (1.0 - c2.a);
+
+            return vec4(
+                c0.rgb + c1.rgb + c2.rgb,
+                c0.a * c1.a * c2.a);
+
+        case 5u: // MIX_ALPHA
+            if (stage.tex_count == 0u)
+                return c0;
+
+            if (stage.tex_count == 1u)
+                return mix(c0, c1, c1.a);
+
+            return mix(
+                mix(c0, c1, c1.a),
+                c2,
+                c2.a);
+
+        case 6u: // MIX_ONE_MINUS_ALPHA
+            if (stage.tex_count == 0u)
+                return c0;
+
+            if (stage.tex_count == 1u)
+                return mix(c1, c0, c1.a);
+
+            return mix(
+                c2,
+                mix(c1, c0, c1.a),
+                c2.a);
+
+        case 7u: // DST_COLOR_SRC_ALPHA
+            if (stage.tex_count == 0u)
+                return c0;
+
+            if (stage.tex_count == 1u)
+                return (c1 + c1.a) * c0;
+
+            return (c2 + c2.a) * (c1 + c1.a) * c0;
+    }
+}
 
 void get_material( 
+	uint instance_index,
 	Triangle triangle,
 	vec3 bary,
 	vec2 tex_coord[4],
@@ -756,7 +1017,6 @@ void get_material(
 	out float specular_factor) 
 {
 	MaterialInfo minfo = get_material_info( triangle.material_id );
-	//TextureData	minfo_additional = unpackTextureData( triangle.tex0 );
 
 	float effective_mip = mip_level;
 	float normalMapLen;
@@ -816,19 +1076,18 @@ void get_material(
 	metallic = 0;
     roughness = 1;
 
-	vec4 image1 = vec4(1);
-
 	// no multi-stage support yet
-    if (minfo.base_texture != 0)
-    {
-		if (mip_level >= 0)
-		    image1 = global_textureLod(minfo.base_texture, tex_coord[0], mip_level);
-		else
-		    image1 = global_textureGrad(minfo.base_texture, tex_coord[0], tex_coord_x[0], tex_coord_y[0]);
-	}
+	vec4 stage0 = sample_material_stage(
+		instance_index,
+		0,
+		minfo.stage[0],
+		tex_coord[0],
+		tex_coord_x[0],
+		tex_coord_y[0],
+		mip_level);
 
-	base_color = image1.rgb * minfo.base_factor;
-	base_color = clamp(base_color, vec3(0), vec3(1));
+	base_color = stage0.rgb * minfo.base_factor;
+	base_color = clamp(base_color, vec3(0.0), vec3(1.0));
 
 	float spec_mix_bias = 0.08;
 	float avgrgb = 0.8;

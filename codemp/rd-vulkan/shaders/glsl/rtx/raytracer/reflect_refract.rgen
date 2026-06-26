@@ -515,15 +515,10 @@ main()
 	 	triangle = get_hit_triangle(ray_payload_geometry);
 	}
 
-#if 0
-	transparent = alpha_blend(transparent, unpackHalf4x16(ray_payload_geometry.transparency) * vec4(throughput, 1));
-#else
-	//transparent = alpha_blend(transparent, ray_payload_geometry.transparency * vec4(throughput, 1));
 
-	vec4 effects = trace_effects_ray(reflection_ray, /* skip_procedural = */ false);
-
-	transparent = alpha_blend_premultiplied(transparent, effects * vec4(throughput, 1));
-#endif
+	EffectsResult effects = trace_effects_ray(reflection_ray, /* skip_procedural = */ false);
+	transparent = alpha_blend_premultiplied(transparent, effects.alpha * vec4(throughput, 1));
+	transparent.rgb += effects.additive * throughput;
 
 	if(!found_intersection(ray_payload_geometry) || is_sky(triangle.material_id))
 	{
@@ -658,7 +653,10 @@ main()
 	vec3 primary_emissive = vec3(0);
 	float primary_specular_factor = 1;
 
+	uint instance_index = get_instance_index(ray_payload_geometry);
+	
 	get_material(
+		instance_index,
 		triangle, 
 		bary,
 		tex_coord, 
