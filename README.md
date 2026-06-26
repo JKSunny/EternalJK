@@ -87,10 +87,9 @@ Other features: View collapsed shader, text/node based shader editor, profiler a
 ### :name_badge: **PBR RTX Inspector**
 Based on **PBR Inspector** branch.
 
-> **NOTE** This is Work-in-progress, and is unstable. \
-> E.g. switching map requires a full restart because buffer clearing is not implemented yet.
-
 This is an effort to port RayTracing from [Q2RTX](https://github.com/NVIDIA/Q2RTX) by NVIDIA, which builds upon [Q2VKPT](https://brechpunkt.de/q2vkpt/).
+
+> **NOTE** This is Work-in-progress.
 
 > **NOTE** Release unavailable! [build binaries](https://github.com/JACoders/OpenJK/wiki/Compilation-guide) yourself from source
 
