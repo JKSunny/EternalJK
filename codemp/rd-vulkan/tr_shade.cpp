@@ -67,6 +67,7 @@ void RB_BeginSurface( shader_t *shader, int fogNum, int cubemapIndex ) {
 	tess.numPasses = state->numUnfoggedPasses;
 
 	tess.shaderTime = backEnd.refdef.floatTime - tess.shader->timeOffset;
+	tess.entityMergable = (bool)shader->entityMergable;
 	if (tess.shader->clampTime && tess.shaderTime >= tess.shader->clampTime) {
 		tess.shaderTime = tess.shader->clampTime;
 	}
