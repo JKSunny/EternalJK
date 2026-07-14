@@ -2495,6 +2495,7 @@ struct shaderCommands_s
 	shader_t		*shader;
 	float			shaderTime;
 	int				fogNum;
+	bool			entityMergable;
 	int				cubemapIndex;
 	int				numIndexes;
 	int				numVertexes;
