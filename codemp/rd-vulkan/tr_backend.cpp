@@ -239,13 +239,14 @@ static void RB_SubmitDrawSurfs( drawSurf_t *drawSurfs, int numDrawSurfs, float o
 	uint32_t		i; 
 	drawSurf_t		*drawSurf;	
 	shader_t *shader;
-	int entityNum, fogNum, cubemapIndex;
+	int entityNum, fogNum, cubemapIndex, reType;
 
 	shader_t	*oldShader = nullptr;
 	int			oldEntityNum = -1;
 	uint32_t	oldSort = MAX_UINT;
 	float		oldShaderSort = -1;
 	int			oldFogNum = -1;
+	int			oldReType = -1;
 	int			oldCubemapIndex = -1;
 	CBoneCache *oldBoneCache = nullptr;
 
@@ -296,12 +297,12 @@ static void RB_SubmitDrawSurfs( drawSurf_t *drawSurfs, int numDrawSurfs, float o
 		// entities merged into a single batch, like smoke and blood puff sprites
 		
 		push_constant = qfalse;
-		
+		reType = (entityNum == REFENTITYNUM_WORLD) ? -1 : backEnd.refdef.entities[entityNum].e.reType;
 		//if (((oldSort ^ drawSurf->sort) & ~QSORT_REFENTITYNUM_MASK) || !shader->entityMergable) {
 		if (shader != oldShader ||
 			fogNum != oldFogNum ||
-			cubemapIndex != oldCubemapIndex ||
-			( entityNum != oldEntityNum && !shader->entityMergable ) )
+			cubemapIndex != oldCubemapIndex 
+			|| ( entityNum != oldEntityNum && ( !tess.entityMergable || reType != oldReType ) ) )
 		{		
 			//if ( oldShader != NULL )
 				RB_EndSurface();
@@ -320,6 +321,7 @@ static void RB_SubmitDrawSurfs( drawSurf_t *drawSurfs, int numDrawSurfs, float o
 			RB_BeginSurface( shader, fogNum, cubemapIndex );
 			oldShader = shader;
 			oldFogNum = fogNum;
+			oldReType = reType;
 			oldCubemapIndex = cubemapIndex;
 
 			push_constant = qtrue;
@@ -822,7 +824,7 @@ static void RB_RenderLitSurfList( dlight_t *dl )
 		// change the tess parameters if needed
 		// a "entityMergable" shader is a shader that can have surfaces from seperate
 		// entities merged into a single batch, like smoke and blood puff sprites
-		if ( ((oldSort ^ litSurf->sort) & ~QSORT_ENTITYNUM_MASK) || !shader->entityMergable ) 
+		if ( ((oldSort ^ litSurf->sort) & ~QSORT_ENTITYNUM_MASK) || !tess.entityMergable ) 
 		{
 			if ( oldShader != NULL )
 				RB_EndSurface();
