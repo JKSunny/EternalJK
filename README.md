@@ -58,10 +58,6 @@ Implementation of [PBR](https://google.github.io/filament/Filament.html#material
 This adds the ability to apply *normal, roughness, metallic or specular mapping*.
 by introducing the [<kbd>.mtr</kbd>](https://jkhub.org/tutorials/rend2/new-shader-keywords-r98/) file extension which is an override for [<kbd>.shader</kbd>](https://jkhub.org/tutorials/skinning/basics-of-skinning-03-shaders-r192/)
 
-> **NOTE** Incompatible with master or beta branch! cvar r_fbo and r_vbo are enabled hard-coded.
-
-> **NOTE** Release unavailable! [build binaries](https://github.com/JACoders/OpenJK/wiki/Compilation-guide) yourself from source
-
 [![master-todo](https://img.shields.io/badge/todo-list-grey.svg)](https://github.com/users/JKSunny/projects/1/views/1?filterQuery=branch%3APBR)
 [![rend2-what-is](https://img.shields.io/badge/What_is-Rend2-yellow.svg)](https://jkhub.org/forums/topic/7468-rend2-a-modern-renderer/)
 [![rend2-showcase](https://img.shields.io/badge/See-Bespin_Reborn-yellow.svg)](https://jkhub.org/files/file/4164-bespin-duel-reborn/)
@@ -74,10 +70,6 @@ Combines **PBR** and **ImGui** branch. \
 Began as a local codebase to inspect/debug the PBR material system implementation. \
 A basic GUI is added, renders the game in a viewport and allows displaying various PBR layers \
 Other features: View collapsed shader, text/node based shader editor, profiler and a few more bits an bobs.
-
-*Started entity inspector, but this has been commented out.*
-
-> **NOTE** Release unavailable! [build binaries](https://github.com/JACoders/OpenJK/wiki/Compilation-guide) yourself from source - *Initially for personal use only, but here we are*
 
 [![master-todo](https://img.shields.io/badge/todo-list-grey.svg)](https://github.com/users/JKSunny/projects/1/views/1?filterQuery=branch%3A%22PBR+Inspector%22)
 [![pbr-inspector-devlogs](https://img.shields.io/badge/See-Devlog_videos-yellow.svg)](https://www.youtube.com/playlist?list=PLK0BIdk-GT_erDdqgLrzhGbpeIXZVRHL0)
