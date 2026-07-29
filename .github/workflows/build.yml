@@ -335,7 +335,11 @@ jobs:
             *.tar.gz
 
   create-prerelease:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/beta'
+    if: |
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/beta' ||
+       github.ref == 'refs/heads/pbr' ||
+       github.ref == 'refs/heads/pbr-inspector')
     needs: [msvc, ubuntu, macos, macos-m1]
     runs-on: ubuntu-22.04
     steps:
@@ -355,13 +359,32 @@ jobs:
           mv ./EternalJK-macos-x86_64-Release-Non-Portable/*  ./EternalJK-macos-x86_64.tar.gz
           mv ./EternalJK-macos-arm64-Release-Non-Portable/*   ./EternalJK-macos-arm64.tar.gz
 
-      - name: Create latest beta build
+      - name: Set release info
+        id: release
+        shell: bash
+        run: |
+          case "${GITHUB_REF#refs/heads/}" in
+            beta)
+              echo "tag=latest-beta" >> "$GITHUB_OUTPUT"
+              echo "title=Beta Build" >> "$GITHUB_OUTPUT"
+              ;;
+            pbr)
+              echo "tag=latest-pbr" >> "$GITHUB_OUTPUT"
+              echo "title=PBR Build" >> "$GITHUB_OUTPUT"
+              ;;
+            pbr-inspector)
+              echo "tag=latest-pbr-inspector" >> "$GITHUB_OUTPUT"
+              echo "title=PBR Inspector Build" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
+      - name: Create prerelease
         uses: crowbarmaster/GH-Automatic-Releases@latest
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          automatic_release_tag: "latest-beta"
+          automatic_release_tag: ${{ steps.release.outputs.tag }}
           prerelease: true
-          title: Beta Build
+          title: ${{ steps.release.outputs.title }}
           files: |
             *.zip
             *.tar.gz
