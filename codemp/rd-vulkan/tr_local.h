@@ -3104,8 +3104,8 @@ void		vk_create_image( image_t *image, int width, int height, int mip_levels );
 void		vk_clean_staging_buffer( void );
 
 // ghoul2
-void RB_TransformBones( const trRefEntity_t *ent, const trRefdef_t *refdef );
-int RB_GetBoneUboOffset( CRenderableSurface *surf );
+void		RB_TransformBones( const trRefEntity_t *ent, const trRefdef_t *refdef );
+uint32_t	RB_GetBoneUboOffset( CRenderableSurface *surf );
 
 #ifdef VK_CUBEMAP
 void		vk_generate_cubemaps( cubemap_t *cube );
