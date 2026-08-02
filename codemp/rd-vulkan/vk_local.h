@@ -90,36 +90,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 // depth + msaa + msaa-resolve + screenmap.msaa + screenmap.resolve + screenmap.depth + (bloom_extract + blur pairs + dglow_extract + blur pairs) + dglow-msaa + gamma
 #define MAX_ATTACHMENTS_IN_POOL			( 9 + ( ( 1 + VK_NUM_BLUR_PASSES * 2 ) * 2 ) + 1 + 1 + 1 ) // (6+3=9: cubemap.msaa + cubemap.resolve + cubemap.depth) + gamma + refraction_extract
 
-#define VK_DESC_STORAGE					0
-#define VK_DESC_UNIFORM					0
-#define VK_DESC_TEXTURE0				1
-#define VK_DESC_TEXTURE1				2
-#define VK_DESC_TEXTURE2				3
-#define VK_DESC_FOG_COLLAPSE			4
-#ifdef USE_VK_PBR
-#define VK_DESC_PBR_BRDFLUT				5
-#define VK_DESC_PBR_NORMAL				6
-#define VK_DESC_PBR_PHYSICAL			7
-#define VK_DESC_PBR_CUBEMAP				8
-#define VK_DESC_PBR_DELUXE				9
-//#define VK_DESC_PBR_IRRADIANCE		10
-#define VK_DESC_COUNT					10	// use 11 for irradiance testing
-#else
-#define VK_DESC_COUNT					5
-#endif
-
-#define VK_DESC_TEXTURE_BASE			VK_DESC_TEXTURE0
-#define VK_DESC_FOG_ONLY				VK_DESC_TEXTURE1
-#define VK_DESC_FOG_DLIGHT				VK_DESC_TEXTURE1
-
-#define VK_DESC_UNIFORM_MAIN_BINDING		0
-#define VK_DESC_UNIFORM_CAMERA_BINDING		1
-#define VK_DESC_UNIFORM_LIGHT_BINDING		2
-#define VK_DESC_UNIFORM_ENTITY_BINDING		3
-#define VK_DESC_UNIFORM_BONES_BINDING		4
-#define VK_DESC_UNIFORM_FOGS_BINDING		5
-#define VK_DESC_UNIFORM_GLOBAL_BINDING		6
-#define VK_DESC_UNIFORM_COUNT				7
+#include "shaders/glsl/global.h"
 
 //#define MIN_IMAGE_ALIGN				( 128 * 1024 )
 

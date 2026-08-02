@@ -1,4 +1,11 @@
 #version 450
+#extension GL_GOOGLE_include_directive : enable
+
+#include "global.h"
+
+#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
+	#define USE_VBO_MODEL
+#endif
 
 #define VK_DLIGHT_GPU
 #define PI 3.1415926535897932384626433832795
@@ -20,7 +27,7 @@
 #endif
 
 #if defined (USE_FOG)
-	layout(set = 0, binding = 0) uniform UBO {
+	layout(set = VK_DESC_UNIFORM, binding = VK_DESC_UNIFORM_MAIN_BINDING) uniform UBO {
 		// light/env/material parameters:
 		vec4 eyePos;
 		vec4 lightPos;
@@ -47,13 +54,13 @@
 		vkUniformFogEntry_t	fogs[16];
 	};
 
-	layout(set = 0, binding = 5) uniform Fog {
+	layout(set = VK_DESC_UNIFORM, binding = VK_DESC_UNIFORM_FOGS_BINDING) uniform Fog {
 		vkUniformFog_t u_fogs;
 	};
 #endif
 
 #if defined (USE_FOG) || defined(PER_PIXEL_LIGHTING) || defined(USE_LIGHT_VECTOR)
-	layout(set = 0, binding = 1) uniform Camera {
+	layout(set = VK_DESC_UNIFORM, binding = VK_DESC_UNIFORM_CAMERA_BINDING) uniform Camera {
 		vec4 u_ViewOrigin;
 	};
 #endif
@@ -109,7 +116,7 @@
 		vkUniformLightEntry_t	light[64];
 	};
 
-	layout(set = 0, binding = 2) uniform Light {
+	layout(set = VK_DESC_UNIFORM, binding = VK_DESC_UNIFORM_LIGHT_BINDING) uniform Light {
 		#ifdef VK_DLIGHT_GPU
 			vkUniformLight_t u_lights;
 		#else
@@ -117,7 +124,7 @@
 		#endif
 	};
 
-	layout(set = 0, binding = 3) uniform Entity {
+	layout(set = VK_DESC_UNIFORM, binding = VK_DESC_UNIFORM_ENTITY_BINDING) uniform Entity {
 		vec4 u_ambientLight;
 		vec4 u_directedLight;
 		vec4 u_LocalLightOrigin;
@@ -125,7 +132,7 @@
 		mat4 u_ModelMatrix;
 	};
 
-	layout(set = 0, binding = 6) uniform Global {
+	layout(set = VK_DESC_UNIFORM, binding = VK_DESC_UNIFORM_GLOBAL_BINDING) uniform Global {
 		vkBundle_t			u_bundle[3];
 		vkDisintegration_t	u_disintegration;
 		vkDeform_t			u_deform;
@@ -135,15 +142,15 @@
 	};	
 #endif
 
-layout(set = 1, binding = 0) uniform sampler2D texture0;
+layout(set = VK_DESC_TEXTURE0, binding = 0) uniform sampler2D texture0;
 #ifdef USE_TX1
-layout(set = 2, binding = 0) uniform sampler2D texture1;
+layout(set = VK_DESC_TEXTURE1, binding = 0) uniform sampler2D texture1;
 #endif
 #ifdef USE_TX2
-layout(set = 3, binding = 0) uniform sampler2D texture2;
+layout(set = VK_DESC_TEXTURE2, binding = 0) uniform sampler2D texture2;
 #endif
 #ifdef USE_FOG
-layout(set = 4, binding = 0) uniform sampler2D fog_texture;
+layout(set = VK_DESC_FOG_COLLAPSE, binding = 0) uniform sampler2D fog_texture;
 #endif
 
 #ifdef USE_CL0_IDENT
@@ -209,11 +216,11 @@ layout (constant_id = 9) const float identity_color = 1.0;
 	layout (location = 13) in flat int Var_RenderMode;
 	layout (location = 14) in vec4 var_Tangent;
 
-	layout (set = 5, binding = 0) uniform sampler2D brdflut_texture;
-	layout (set = 6, binding = 0) uniform sampler2D normal_texture;
-	layout (set = 7, binding = 0) uniform sampler2D physical_texture;
-	layout (set = 8, binding = 0) uniform samplerCube env_texture;
-	layout (set = 9, binding = 0) uniform sampler2D deluxe_texture;
+	layout (set = VK_DESC_PBR_BRDFLUT,	binding = 0) uniform sampler2D brdflut_texture;
+	layout (set = VK_DESC_PBR_NORMAL,	binding = 0) uniform sampler2D normal_texture;
+	layout (set = VK_DESC_PBR_PHYSICAL,	binding = 0) uniform sampler2D physical_texture;
+	layout (set = VK_DESC_PBR_CUBEMAP,	binding = 0) uniform samplerCube env_texture;
+	layout (set = VK_DESC_PBR_DELUXE,	binding = 0) uniform sampler2D deluxe_texture;
 
 	//layout(set = 10, binding = 0) uniform samplerCube irradiance_texture;
 #endif
