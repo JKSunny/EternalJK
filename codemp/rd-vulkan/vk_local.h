@@ -90,6 +90,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 // depth + msaa + msaa-resolve + screenmap.msaa + screenmap.resolve + screenmap.depth + (bloom_extract + blur pairs + dglow_extract + blur pairs) + dglow-msaa
 #define MAX_ATTACHMENTS_IN_POOL			( 9 + ( ( 1 + VK_NUM_BLUR_PASSES * 2 ) * 2 ) + 1 ) + 1 // (6+3=9: cubemap.msaa + cubemap.resolve + cubemap.depth) + refraction_extract
 
+#define GLOBAL_SHADER_C
 #include "shaders/glsl/global.h"
 
 //#define MIN_IMAGE_ALIGN				( 128 * 1024 )
@@ -517,53 +518,7 @@ typedef struct VK_Pipeline {
 	VkPipeline		handle[RENDER_PASS_COUNT];
 } VK_Pipeline_t;
 
-typedef struct vktcMod_s {
-	vec4_t	matrix;
-	vec4_t	offTurb;
-} vktcMod_t;
-
-typedef struct vktcGen_s {
-	vec3_t	vector0;
-	int32_t	pad0;
-	vec3_t	vector1;
-	int32_t	type;
-} vktcGen_t;
-
-typedef struct vkBundle_s {
-	vec4_t		baseColor;
-	vec4_t		vertColor;
-	vktcMod_t	tcMod;
-	vktcGen_t	tcGen;
-	int32_t		rgbGen;
-	int32_t		alphaGen;
-	int32_t		numTexMods;	// make this to a specialization constant
-	int32_t		pad0;
-} vkBundle_t;
-
-typedef struct vkDisintegration_s {
-	vec3_t	origin;
-	float	threshold;
-} vkDisintegration_t;
-
-typedef struct vkDeform_s {
-	float	base;
-	float	amplitude;
-	float	phase;
-	float	frequency;
-
-	vec3_t	vector;
-	float	time;
-
-	int32_t	type;
-	int32_t	func;
-	vec2_t	pad0;
-} vkDeform_t;
-
 // this structure must be in sync with shader uniforms!
-typedef struct {
-	float	mvp[16];
-} pushConst;
-
 typedef struct vkUniform_s {
 	// light/env/material parameters:
 	vec4_t eyePos;
@@ -587,6 +542,7 @@ typedef struct vkUniform_s {
 	};
 } vkUniform_t;
 
+#ifdef USE_VBO_GHOUL2
 typedef struct vkUniformCamera_s {
 	vec4_t viewOrigin;
 } vkUniformCamera_t;
@@ -623,35 +579,6 @@ typedef struct vkUniformBones_s {
 	mat3x4_t boneMatrices[72];
 } vkUniformBones_t;
 #endif
-
-
-
-
-typedef struct vkUniformFogEntry_s {
-	vec4_t	plane;
-	vec4_t	color;
-	float	depthToOpaque;
-	int		hasPlane;
-	vec2_t	pad0;
-} vkUniformFogEntry_t;
-
-typedef struct vkUniformFog_s {
-	int			num_fogs;
-	vec3_t		pad0;
-	vkUniformFogEntry_t fogs[16];
-} vkUniformFog_t;
-
-
-
-typedef struct vkUniformGlobal_s {
-	vkBundle_t			bundle[3];
-	vkDisintegration_t	disintegration;
-	vkDeform_t			deform;
-	float				portalRange;
-	vec3_t				pad0;
-	vec4_t				specularScale;	
-	vec4_t				normalScale;	
-} vkUniformGlobal_t;
 
 typedef struct {
 	VkSamplerAddressMode address_mode; // clamp/repeat texture addressing mode
