@@ -403,9 +403,9 @@ static void vk_update_light_constants( const trRefdef_t *refdef ) {
 		{
 			const dlight_t* light = refdef->dlights + i;
 
-			VectorCopy(light->origin, uniform.lights[i].origin);
-			VectorScale(light->color, light->radius / 25.f, uniform.lights[i].color);
-			uniform.lights[i].radius = light->radius;
+			VectorCopy(light->origin, uniform.light[i].origin);
+			VectorScale(light->color, light->radius / 25.f, uniform.light[i].color);
+			uniform.light[i].radius = light->radius;
 		}
 
 		size += (i * sizeof(vkUniformLightEntry_t));
