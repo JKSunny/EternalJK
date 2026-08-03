@@ -54,11 +54,7 @@ layout(set = VK_DESC_UNIFORM, binding = VK_DESC_UNIFORM_MAIN_BINDING) uniform UB
 	};
 
 	layout(set = VK_DESC_UNIFORM, binding = VK_DESC_UNIFORM_ENTITY_BINDING) uniform Entity {
-		vec4 u_ambientLight;
-		vec4 u_directedLight;
-		vec4 u_LocalLightOrigin;
-		vec4 u_localViewOrigin;
-		mat4 u_ModelMatrix;
+		vkUniformEntity_t u_entity;
 	};
 
 	layout(set = VK_DESC_UNIFORM, binding = VK_DESC_UNIFORM_GLOBAL_BINDING) uniform Global {
@@ -200,8 +196,8 @@ vec4 CalcColor( int index, in vec3 position, in vec3 normal ) {
 	switch ( u_bundle[index].alphaGen ) {
 		case 6: // AGEN_LIGHTING_SPECULAR
 		{
-			vec3 viewer = normalize( u_localViewOrigin.xyz - position );
-			vec3 lightDirection = ( transpose(u_ModelMatrix) * vec4( u_LocalLightOrigin.xyz, 0.0 ) ).xyz;
+			vec3 viewer = normalize( u_entity.localViewOrigin.xyz - position );
+			vec3 lightDirection = ( transpose(u_entity.modelMatrix) * vec4( u_entity.localLightOrigin.xyz, 0.0 ) ).xyz;
 			vec3 reflected = -reflect( lightDirection, normal );
 			color.a = clamp( dot( reflected, normalize( viewer ) ), 0.0, 1.0 );
 			color.a *= color.a;
@@ -210,7 +206,7 @@ vec4 CalcColor( int index, in vec3 position, in vec3 normal ) {
 		}
 		case 8: // AGEN_PORTAL
 		{
-			vec3 viewer = normalize( u_localViewOrigin.xyz - position );
+			vec3 viewer = normalize( u_entity.localViewOrigin.xyz - position );
 			color.a = clamp( length( viewer ) / u_portalRange, 0.0, 1.0 );
 			break;
 		}
@@ -527,7 +523,7 @@ void main() {
 	if ( hw_fog == 1 ) 
 	{
 		#ifdef USE_VBO_MODEL
-			fog_tex_coord = (u_ModelMatrix * vec4(position, 1.0)).xyz;
+			fog_tex_coord = (u_entity.modelMatrix * vec4(position, 1.0)).xyz;
 		#else
 			fog_tex_coord = position;
 		#endif
@@ -557,20 +553,20 @@ void main() {
 
 #if defined(USE_LIGHT)
 	#if !defined(USE_FAST_LIGHT) || defined(USE_LIGHT_VECTOR)
-		position		= (u_ModelMatrix * vec4(position, 1.0)).xyz;
-		normal			= normalize(mat3(u_ModelMatrix) * normal);
+		position		= (u_entity.modelMatrix * vec4(position, 1.0)).xyz;
+		normal			= normalize(mat3(u_entity.modelMatrix) * normal);
 		#if !defined(USE_FAST_LIGHT)
-			tangent			= normalize(mat3(u_ModelMatrix) * tangent);
+			tangent			= normalize(mat3(u_entity.modelMatrix) * tangent);
 		#endif
 	#endif
 
 	#if defined(USE_LIGHT_VECTOR)
-		vec3 L	= u_LocalLightOrigin.xyz - (position * u_LocalLightOrigin.w);
+		vec3 L	= u_entity.localLightOrigin.xyz - (position * u_entity.localLightOrigin.w);
 
 	#elif defined(PER_PIXEL_LIGHTING)
 		//vec3 L	= in_lightdir.xyz * 2.0 - vec3(1.0);
 		vec3 L	= in_lightdir.xyz;
-		L		= ( u_ModelMatrix * vec4( L, 0.0 ) ).xyz;
+		L		= ( u_entity.modelMatrix * vec4( L, 0.0 ) ).xyz;
 		//L		= normalize( ( L * 0.5 ) + vec3( 0.5 ) );
 	#endif
 #endif
@@ -579,12 +575,12 @@ void main() {
 	float sqrLightDist = dot(L, L);
 	float NL = clamp(dot(normal, L) / sqrt(sqrLightDist), 0.0, 1.0);
 
-	frag_color0.rgb *= u_directedLight.rgb * NL + u_ambientLight.rgb;
+	frag_color0.rgb *= u_entity.directedLight.rgb * NL + u_entity.ambientLight.rgb;
 	#ifdef USE_CL1
-		frag_color1.rgb *= u_directedLight.rgb * NL + u_ambientLight.rgb;
+		frag_color1.rgb *= u_entity.directedLight.rgb * NL + u_entity.ambientLight.rgb;
 	#endif
 	#ifdef USE_CL2
-		frag_color2.rgb *= u_directedLight.rgb * NL + u_ambientLight.rgb;
+		frag_color2.rgb *= u_entity.directedLight.rgb * NL + u_entity.ambientLight.rgb;
 	#endif
 #endif
 

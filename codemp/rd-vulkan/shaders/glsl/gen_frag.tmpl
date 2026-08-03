@@ -77,11 +77,7 @@
 	};
 
 	layout(set = VK_DESC_UNIFORM, binding = VK_DESC_UNIFORM_ENTITY_BINDING) uniform Entity {
-		vec4 u_ambientLight;
-		vec4 u_directedLight;
-		vec4 u_LocalLightOrigin;
-		vec4 u_localViewOrigin;
-		mat4 u_ModelMatrix;
+		vkUniformEntity_t u_entity;
 	};
 
 	layout(set = VK_DESC_UNIFORM, binding = VK_DESC_UNIFORM_GLOBAL_BINDING) uniform Global {
@@ -619,8 +615,8 @@ void main() {
 			ambientColor = vec3 (0.0);
 			attenuation = 1.0;
 		#elif defined(USE_LIGHT_VECTOR)
-			lightColor = u_directedLight.rgb;
-			ambientColor = u_ambientLight.rgb;
+			lightColor = u_entity.directedLight.rgb;
+			ambientColor = u_entity.ambientLight.rgb;
 			diffuse = base;
 			attenuation = 1.0;
 		#elif defined(USE_LIGHT_VERTEX)
