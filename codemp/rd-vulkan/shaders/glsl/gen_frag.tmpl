@@ -3,9 +3,6 @@
 
 #include "global.h"
 
-#define VK_DLIGHT_GPU
-
-
 #ifdef USE_TX2
 #define USE_TX1
 #endif
@@ -30,8 +27,6 @@
 	//#endif
 	};
 
-
-
 	layout(set = VK_DESC_UNIFORM, binding = VK_DESC_UNIFORM_FOGS_BINDING) uniform Fog {
 		vkUniformFog_t u_fogs;
 	};
@@ -44,24 +39,8 @@
 #endif
 
 #if defined(PER_PIXEL_LIGHTING) || defined(USE_LIGHT_VECTOR)
-
-	struct vkUniformLightEntry_t {
-		vec4	origin;
-		vec3	color;
-		float	radius;
-	};
-
-	struct vkUniformLight_t {
-		uint	num_lights;
-		vkUniformLightEntry_t	light[64];
-	};
-
 	layout(set = VK_DESC_UNIFORM, binding = VK_DESC_UNIFORM_LIGHT_BINDING) uniform Light {
-		#ifdef VK_DLIGHT_GPU
-			vkUniformLight_t u_lights;
-		#else
-			vec4 item;
-		#endif
+		vkUniformLight_t u_lights;
 	};
 
 	layout(set = VK_DESC_UNIFORM, binding = VK_DESC_UNIFORM_ENTITY_BINDING) uniform Entity {
