@@ -7,6 +7,8 @@
 #endif
 
 #ifdef GLSL
+    #define VK_DLIGHT_GPU
+
     #define M_PI 3.1415926535897932384626433832795
 
     #if defined(USE_LIGHTMAP) || defined(USE_LIGHT_VECTOR) || defined(USE_LIGHT_VERTEX)
@@ -202,6 +204,29 @@ STRUCT (
     #undef BUMDLE_T
     #undef DISINTEGRATION_T
     #undef DEFORM_T
+#endif
+
+// light
+#ifdef VK_DLIGHT_GPU
+    #define LIGHT_ENTRY_T(n) vkUniformLightEntry_t n;
+
+    STRUCT (  
+	    VEC4				( origin )
+	    VEC3				( color )
+	    FLOAT				( radius )
+    , vkUniformLightEntry_t )
+
+    STRUCT (  
+	    UINT				( num_lights )
+        PAD3                ( pad0 )
+	    LIGHT_ENTRY_T		( light[64] )
+    , vkUniformLight_t )
+
+    #undef LIGHT_ENTRY_T
+#else
+    STRUCT (  
+	    VEC4				( item )
+    , vkUniformLight_t )
 #endif
 
 #endif
