@@ -58,6 +58,12 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #endif
 #endif
 
+typedef float mat4_t[16];
+typedef float mat3x4_t[12];
+typedef unsigned int uvec4_t[4];
+
+#define BUFFER_OFFSET(i) ((char *)NULL + (i))
+
 #ifndef MAX
 #define MAX(x,y) ((x)>(y)?(x):(y))
 #endif
@@ -467,9 +473,6 @@ typedef float mat3[3][3];
 typedef mat3 prim_positions_t;
 #endif
 
-typedef float mat4_t[16];
-typedef float mat3x4_t[12];
-
 void Matrix16Identity( mat4_t out );
 void Matrix16Copy( const mat4_t in, mat4_t out );
 
@@ -576,11 +579,6 @@ typedef struct vkUniform_s {
 	};
 } vkUniform_t;
 
-#ifdef USE_VBO_GHOUL2
-typedef struct vkUniformCamera_s {
-	vec4_t viewOrigin;
-} vkUniformCamera_t;
-
 #ifdef VK_DLIGHT_GPU
 typedef struct vkUniformLightEntry_s {
 	vec4_t	origin;
@@ -598,12 +596,6 @@ typedef struct vkUniformLight_s {
 	vec4_t	item;
 #endif
 } vkUniformLight_t;
-
-#ifdef USE_VBO_GHOUL2
-typedef struct vkUniformBones_s {
-	mat3x4_t boneMatrices[72];
-} vkUniformBones_t;
-#endif
 
 typedef struct {
 	VkSamplerAddressMode address_mode; // clamp/repeat texture addressing mode

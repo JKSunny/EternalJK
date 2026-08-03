@@ -6,6 +6,22 @@
     #define USE_VK_PBR
 #endif
 
+#ifdef GLSL
+    #define M_PI 3.1415926535897932384626433832795
+
+    #if defined(USE_LIGHTMAP) || defined(USE_LIGHT_VECTOR) || defined(USE_LIGHT_VERTEX)
+	    #define USE_LIGHT
+    #endif
+
+    #if defined(USE_LIGHT) && !defined(USE_FAST_LIGHT)
+	    #define PER_PIXEL_LIGHTING 
+    #endif
+#endif
+
+#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
+	#define USE_VBO_MODEL
+#endif
+
 // descriptor idx
 #define VK_DESC_STORAGE					0
 #define VK_DESC_UNIFORM					0
@@ -66,8 +82,8 @@
     #define VEC2(n)		vec2_t n;
     #define VEC3(n)		vec3_t n;
     #define VEC4(n)		vec4_t n;
-    #define MAT4(n)		float n[16];
-    #define MAT3X4(n)	float n[12];
+    #define MAT4(n)		mat4_t n;
+    #define MAT3X4(n)	mat3x4_t n;
     #define UVEC2(n)	unsigned int n[2];
     #define UVEC3(n)	unsigned int n[3];
     #define UVEC4(n)	unsigned int n[4];
@@ -92,7 +108,19 @@ STRUCT(
     MAT4(modelMatrix)
 , vkEntityMatrix_t)
 
+// bones
+STRUCT(
+    MAT3X4( boneMatrices[72] )
+, vkUniformBones_t)
+
+// camera
+STRUCT(
+    VEC4( viewOrigin )
+, vkUniformCamera_t)
+
 // fog
+#define FOG_ENTRY_T(n) vkUniformFogEntry_t n;
+
 STRUCT (  
     VEC4	( plane )
     VEC4	( color )
@@ -101,13 +129,13 @@ STRUCT (
     PAD2	( pad0 )
 , vkUniformFogEntry_t )
 
-#define FOG_ENTRY_T(n) vkUniformFogEntry_t n;
-
 STRUCT (  
 	INT		        ( num_fogs )
     PAD3	        ( pad0 )
     FOG_ENTRY_T     ( fogs[16] )
 , vkUniformFog_t )
+
+#undef FOG_ENTRY_T
 
 // global
 STRUCT (  
@@ -122,37 +150,58 @@ STRUCT (
     INT	    ( type )
 , vktcGen_t )
 
-#define TCMOD_T(n) vktcMod_t n;
-#define TCGEN_T(n) vktcGen_t n;
+#if defined(PER_PIXEL_LIGHTING) || defined(USE_LIGHT_VECTOR) || defined(USE_VBO_MODEL) || defined(IS_REFRACTION_GLSL)
+    #define TCMOD_T(n)          vktcMod_t n;
+    #define TCGEN_T(n)          vktcGen_t n;
+    #define BUMDLE_T(n)         vkBundle_t n;
+    #define DISINTEGRATION_T(n) vkDisintegration_t n;
+    #define DEFORM_T(n)         vkDeform_t n;
 
-STRUCT (  
-    VEC4	( baseColor )
-    VEC4	( vertColor )
-    TCMOD_T	( tcMod )
-    TCGEN_T	( tcGen )
-    INT	    ( rgbGen )
-    INT	    ( alphaGen )
-    INT	    ( numTexMods )
-    PAD1    ( pad0 )
-, vkBundle_t )
+    STRUCT (  
+        VEC4	( baseColor )
+        VEC4	( vertColor )
+        TCMOD_T	( tcMod )
+        TCGEN_T	( tcGen )
+        INT	    ( rgbGen )
+        INT	    ( alphaGen )
+        INT	    ( numTexMods )
+        PAD1    ( pad0 )
+    , vkBundle_t )
 
-STRUCT (  
-    VEC3	( origin )
-    FLOAT	( threshold )
-, vkDisintegration_t )
+    STRUCT (  
+        VEC3	( origin )
+        FLOAT	( threshold )
+    , vkDisintegration_t )
 
-STRUCT (  
-	FLOAT	( base )
-	FLOAT	( amplitude )
-	FLOAT	( phase )
-	FLOAT	( frequency )
+    STRUCT (  
+	    FLOAT	( base )
+	    FLOAT	( amplitude )
+	    FLOAT	( phase )
+	    FLOAT	( frequency )
 
-	VEC3	( vector )
-	FLOAT	( time )
+	    VEC3	( vector )
+	    FLOAT	( time )
 
-	INT		( type )
-	INT		( func )
-    PAD2    ( pad0 )
-, vkDeform_t )
+	    INT		( type )
+	    INT		( func )
+        PAD2    ( pad0 )
+    , vkDeform_t )
+
+    STRUCT (  
+        BUMDLE_T            ( bundle[3] )
+        DISINTEGRATION_T    ( disintegration )
+        DEFORM_T            ( deform )
+        FLOAT               ( portalRange )
+        PAD3                ( pad0 )
+		VEC4				( specularScale )
+		VEC4				( normalScale )
+    , vkUniformGlobal_t )
+
+    #undef TCMOD_T
+    #undef TCGEN_T
+    #undef BUMDLE_T
+    #undef DISINTEGRATION_T
+    #undef DEFORM_T
+#endif
 
 #endif
