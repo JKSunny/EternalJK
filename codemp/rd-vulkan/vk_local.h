@@ -599,15 +599,6 @@ typedef struct vkUniformLight_s {
 #endif
 } vkUniformLight_t;
 
-
-typedef struct vkUniformEntity_s {
-	vec4_t ambientLight;
-	vec4_t directedLight;
-	vec4_t lightOrigin;
-	vec4_t localViewOrigin;
-	mat4_t modelMatrix;
-} vkUniformEntity_t;
-
 #ifdef USE_VBO_GHOUL2
 typedef struct vkUniformBones_s {
 	mat3x4_t boneMatrices[72];
