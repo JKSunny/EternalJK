@@ -20,6 +20,10 @@
     #endif
 #endif
 
+#if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
+	#define USE_VBO_MODEL
+#endif
+
 // descriptor idx
 #define VK_DESC_STORAGE					0
 #define VK_DESC_UNIFORM					0
@@ -60,10 +64,6 @@
 
     #ifdef USE_CL2
 	    #define USE_CL1
-    #endif
-
-    #if defined(USE_VBO_GHOUL2) || defined(USE_VBO_MDV)
-	    #define USE_VBO_MODEL
     #endif
 
     #define STRUCT(content, name) struct name { content };
