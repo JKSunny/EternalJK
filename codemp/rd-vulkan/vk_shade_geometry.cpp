@@ -528,6 +528,79 @@ void vk_create_storage_buffer( vk_storage_buffer_t *out, uint32_t size, const ch
 	VK_SET_OBJECT_NAME( out->memory, va( "%s buffer memory", name ), VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT );
 }
 
+void vk_create_storage_buffer( vk_storage_buffer_t *out, uint32_t size, const void *data, const char *name )
+{
+	VkMemoryRequirements memory_requirements;
+	VkMemoryAllocateInfo alloc_info;
+	VkBufferCreateInfo desc;
+	VkBuffer staging_buffer;
+	VkDeviceMemory staging_memory;
+	VkCommandBuffer command_buffer;
+	VkBufferCopy copy_region;
+	void *staging_ptr;
+	uint32_t memory_type;
+
+	Com_Memset( &desc, 0, sizeof(desc) );
+	desc.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	desc.pNext = NULL;
+	desc.size = size;
+	desc.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+	desc.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+	VK_CREATE_BUFFER( vk.device, &desc, &out->buffer, va( "%s buffer", name ) );
+	qvkGetBufferMemoryRequirements( vk.device, out->buffer, &memory_requirements );
+
+	memory_type = vk_find_memory_type( memory_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT );
+
+	alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	alloc_info.pNext = NULL;
+	alloc_info.allocationSize = memory_requirements.size;
+	alloc_info.memoryTypeIndex = memory_type;
+
+	VK_ALLOCATE_MEMORY_CHECK( vk.device, &alloc_info, &out->memory, va( "%s memory", name ) );
+	VK_CHECK( qvkBindBufferMemory( vk.device, out->buffer, out->memory, 0 ) );
+
+	// staging buffer
+	Com_Memset( &desc, 0, sizeof(desc) );
+	desc.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	desc.pNext = NULL;
+	desc.size = size;
+	desc.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+	desc.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+	VK_CREATE_BUFFER( vk.device, &desc, &staging_buffer, va( "%s staging buffer", name ) );
+	qvkGetBufferMemoryRequirements( vk.device, staging_buffer, &memory_requirements );
+
+	memory_type = vk_find_memory_type( memory_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT );
+
+	alloc_info.allocationSize = memory_requirements.size;
+	alloc_info.memoryTypeIndex = memory_type;
+
+	VK_ALLOCATE_MEMORY_CHECK( vk.device, &alloc_info, &staging_memory, va( "%s staging memory", name ) );
+	VK_CHECK( qvkBindBufferMemory( vk.device, staging_buffer, staging_memory, 0 ) );
+
+	VK_CHECK( qvkMapMemory( vk.device, staging_memory, 0, size, 0, &staging_ptr ) );
+	memcpy( staging_ptr, data, size );
+	qvkUnmapMemory( vk.device, staging_memory );
+
+	command_buffer = vk_begin_command_buffer();
+
+	copy_region.srcOffset = 0;
+	copy_region.dstOffset = 0;
+	copy_region.size = size;
+	qvkCmdCopyBuffer( command_buffer, staging_buffer, out->buffer, 1, &copy_region );
+
+	vk_end_command_buffer( command_buffer, __func__ );
+
+	VK_DESTROY_BUFFER( vk.device, staging_buffer );
+	VK_FREE_MEMORY( vk.device, staging_memory );
+
+	out->buffer_ptr = nullptr;
+
+	VK_SET_OBJECT_NAME( out->buffer, va( "%s buffer", name ), VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT );
+	VK_SET_OBJECT_NAME( out->memory, va( "%s memory", name ), VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT );
+}
+
 void vk_update_attachment_descriptors( void ) {
 
 	if ( vk.color_image_view )
@@ -1261,7 +1334,7 @@ uint32_t vk_append_uniform( const void *uniform, size_t size, uint32_t min_offse
 	return offset;
 }
 
-static uint32_t vk_push_uniform( const vkUniform_t *uniform ) 
+uint32_t vk_push_uniform( const vkUniform_t *uniform ) 
 {
 	const uint32_t offset = vk_append_uniform( uniform, sizeof(*uniform), (VkDeviceSize)vk.uniform_item_size );
 
@@ -1287,6 +1360,20 @@ static uint32_t vk_push_uniform_global( const vkUniformGlobal_t *uniform ) {
 	vk_update_descriptor_offset( VK_DESC_UNIFORM_GLOBAL_BINDING, offset );
 
 	return 0;
+}
+
+VkDrawIndirectCommand *vk_reserve_draw_indirect( uint32_t count, uint32_t *offset )
+{
+	uint32_t size = count * sizeof(VkDrawIndirectCommand);
+
+	*offset = vk.cmd->indirect_buffer_offset;
+
+	if (*offset + size > vk.indirect_buffer_size)
+		return NULL;
+
+	vk.cmd->indirect_buffer_offset += size;
+
+	return (VkDrawIndirectCommand *)(vk.cmd->indirect_buffer_ptr + *offset);
 }
 
 VkDrawIndexedIndirectCommand *vk_reserve_draw_indexed_indirect( uint32_t count, uint32_t *offset )

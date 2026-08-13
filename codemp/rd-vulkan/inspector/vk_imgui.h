@@ -46,6 +46,7 @@ typedef struct {
 	bool		merge_shaders;	// merge shaders with same name and update in bulk
 	int			num_shaders;
 	bool		outline_selected;
+	bool		visualize_lightgrid;
 
 	struct {
 		int				index;

@@ -365,6 +365,13 @@ static void vk_imgui_draw_viewport( void )
 	
 	ImGui::PushStyleVar( ImGuiStyleVar_FramePadding, ImVec2( 1.0f, 1.0f ) );
 	ImGui::Checkbox("selection wireframe", &inspector.outline_selected );
+
+	if ( tr.world )
+	{
+		ImGui::SetCursorScreenPos( ImVec2( pos.x + 175.0f, pos.y + 6.0f ) );
+		ImGui::Checkbox("visualize lightgrid", &inspector.visualize_lightgrid );
+	}
+
 	ImGui::PopStyleVar();
 
 	ImGui::SetCursorScreenPos( ImVec2( pos.x + region.x - 205.0f, pos.y + 4.0f ) );

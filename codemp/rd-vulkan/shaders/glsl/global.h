@@ -251,4 +251,10 @@ STRUCT (
     , vkUniformLight_t )
 #endif
 
+// lightgrid
+STRUCT (  
+    VEC4	( ambientLight )
+    VEC4	( directedLight )
+    VEC4	( lightDir )
+, vkLightGridSample_t )
 #endif

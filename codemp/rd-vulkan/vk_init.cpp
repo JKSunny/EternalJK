@@ -691,6 +691,9 @@ void vk_shutdown( void )
 #ifdef USE_VBO_SS
 	vk_clean_surface_sprites();
 #endif
+#ifdef USE_VK_LIGHTGRID
+	vk_clean_lightgrid();
+#endif
 
     vk_destroy_shader_modules();
 
