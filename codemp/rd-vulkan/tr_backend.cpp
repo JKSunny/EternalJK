@@ -749,6 +749,15 @@ static void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs )
 	// go back to the world modelview matrix
 	Com_Memcpy( vk_world.modelview_transform, backEnd.viewParms.world.modelViewMatrix, 64 );
 	
+#ifdef USE_VK_LIGHTGRID
+#ifdef USE_VK_IMGUI
+	if ( vk_imgui_visualize_lightgrid() || r_showLightgrid->integer )
+#else
+	if ( r_showLightgrid->integer )
+#endif
+		vk_render_lightgrid();
+#endif
+
 	vk_set_depthrange( DEPTH_RANGE_NORMAL );
 }
 

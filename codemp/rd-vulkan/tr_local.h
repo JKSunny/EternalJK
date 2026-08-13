@@ -43,6 +43,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 	#endif
 #endif
 
+#define USE_VK_LIGHTGRID
 #define USE_VBO					// store static world geometry in VBO
 #ifdef USE_VBO
 	#define MAX_VBOS      4096
@@ -2101,6 +2102,9 @@ extern cvar_t	*r_genNormalMaps;
 #endif
 #endif
 
+#ifdef USE_VK_LIGHTGRID
+extern cvar_t	*r_showLightgrid;
+#endif
 /*
 Ghoul2 Insert Start
 */
@@ -2918,6 +2922,11 @@ void		vk_dispatch_compute_normalmaps( void );
 void		vk_add_compute_normalmap( shaderStage_t *stage, image_t *albedo, imgFlags_t flags );
 #endif
 
+#ifdef USE_VK_LIGHTGRID
+void		vk_build_gpu_lightgrid( const world_t &worldData, int index );
+void		vk_render_lightgrid( void );
+void		vk_clean_lightgrid( void );
+#endif
 #ifdef USE_VBO
 // VBO functions
 extern void R_BuildWorldVBO( msurface_t *surf, int surfCount );
