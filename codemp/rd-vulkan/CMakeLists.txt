@@ -87,6 +87,7 @@ set(MPVulkanRendererFiles
 	"${MPDir}/rd-vulkan/vk_init.cpp"
 	"${MPDir}/rd-vulkan/vk_instance.cpp"
 	"${MPDir}/rd-vulkan/vk_local.h"
+	"${MPDir}/rd-vulkan/vk_lightgrid.cpp"
 	"${MPDir}/rd-vulkan/vk_pipelines.cpp"
 	"${MPDir}/rd-vulkan/vk_mikktspace.cpp"
 	"${MPDir}/rd-vulkan/vk_normalmap.cpp"

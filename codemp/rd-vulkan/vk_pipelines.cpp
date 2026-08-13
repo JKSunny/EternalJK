@@ -112,6 +112,9 @@ void vk_create_descriptor_layout( void )
 #ifdef USE_VBO_SS
         pool_size[2].descriptorCount += (MAX_SUB_BSP + 1);
 #endif
+#ifdef USE_VK_LIGHTGRID
+        pool_size[2].descriptorCount += 1;
+#endif
 
         for (i = 0, maxSets = 0; i < ARRAY_LEN(pool_size); i++) {
             maxSets += pool_size[i].descriptorCount;
@@ -132,6 +135,7 @@ void vk_create_descriptor_layout( void )
         vk_create_layout_binding( 0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, &vk.set_layout_sampler, qfalse );
         vk_create_layout_binding( 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT, &vk.set_layout_uniform, qtrue );
         vk_create_layout_binding( 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT, &vk.set_layout_storage, qfalse );
+        vk_create_layout_binding( 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT, &vk.set_layout_storage2, qfalse );
     }
 }
 
@@ -176,6 +180,12 @@ void vk_create_pipeline_layout( void )
     VK_SET_OBJECT_NAME(vk.pipeline_layout_surface_sprite, "pipeline layout - surface sprites", VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT);
 #endif
 
+#ifdef USE_VK_LIGHTGRID
+    set_layouts[1] = vk.set_layout_storage2;
+    VK_CHECK(qvkCreatePipelineLayout(vk.device, &desc, NULL, &vk.lightgrid.pipeline_layout));
+    VK_SET_OBJECT_NAME(vk.lightgrid.pipeline_layout, "pipeline layout - lightgrid graphics", VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT);
+
+#endif
     // flare test pipeline
     set_layouts[0] = vk.set_layout_storage; // dynamic storage buffer
 
@@ -315,6 +325,10 @@ static void vk_push_vertex_input_binding_attribute( const Vk_Pipeline_Def *def )
             vk_push_attr( 0, 0, VK_FORMAT_R32G32B32A32_SFLOAT );
             break;
 
+#ifdef USE_VK_LIGHTGRID
+        case TYPE_LIGHTGRID_DEBUG:
+            break;
+#endif
         case TYPE_REFRACTION:
             vk_push_bind( 0, sizeof( vec4_t ) );					// xyz array
             vk_push_bind( 1, sizeof( color4ub_t ) );				// color array
@@ -885,6 +899,12 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
             fs_module = &vk.shaders.dot_fs;
             break;
 
+#ifdef USE_VK_LIGHTGRID
+        case TYPE_LIGHTGRID_DEBUG:
+            vs_module = &vk.lightgrid.shader_vs;
+            fs_module = &vk.lightgrid.shader_fs;
+            break;
+#endif
         default:
             ri.Error(ERR_DROP, "create_pipeline: unknown shader type %i\n", def->shader_type);
             return 0;
@@ -908,6 +928,9 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
             case TYPE_COLOR_GREEN:
             case TYPE_COLOR_RED:
             case TYPE_COLOR_ORANGE:
+#ifdef USE_VK_LIGHTGRID
+            case TYPE_LIGHTGRID_DEBUG:
+#endif
             case TYPE_REFRACTION:
                 break;
             default:
@@ -1382,6 +1405,10 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
 
 	if ( def->shader_type == TYPE_DOT )
 		create_info.layout = vk.pipeline_layout_storage;
+#ifdef USE_VK_LIGHTGRID
+    else if ( def->shader_type == TYPE_LIGHTGRID_DEBUG )
+        create_info.layout = vk.lightgrid.pipeline_layout;
+#endif
 #ifdef USE_VBO_SS
 	else if ( def->surface_sprite_flags )
 		create_info.layout = vk.pipeline_layout_surface_sprite;
@@ -2246,6 +2273,16 @@ void vk_alloc_persistent_pipelines( void )
         def.primitives = TRIANGLE_STRIP;
         vk.std_pipeline.images_debug_pipeline = vk_find_pipeline_ext(0, &def, qfalse);
     }
+#ifdef USE_VK_LIGHTGRID
+    vk_debug("Create lightgrid debug pipeline \n");
+    {
+        Com_Memset(&def, 0, sizeof(def));
+        def.state_bits = GLS_DEPTHMASK_TRUE | GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE;
+        def.shader_type = TYPE_LIGHTGRID_DEBUG;
+        def.face_culling = CT_FRONT_SIDED;
+        vk.lightgrid.pipeline = vk_find_pipeline_ext(0, &def, qfalse);
+    }
+#endif
 
 #ifdef USE_VK_IMGUI
     vk_debug("Create inspector object debug pipeline \n");

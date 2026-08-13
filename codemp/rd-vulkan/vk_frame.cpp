@@ -1678,6 +1678,9 @@ void vk_release_resources( void ) {
 #ifdef USE_VBO_SS
     vk_clean_surface_sprites();
 #endif
+#ifdef USE_VK_LIGHTGRID
+	vk_clean_lightgrid();
+#endif
 #ifdef USE_VBO
 	vk_release_vbo();
 	vk_release_model_vbo();

@@ -3301,6 +3301,9 @@ void RE_LoadWorldMap_Actual( const char *name, world_t &worldData, int index )
 	R_BuildSurfaceSpritesVBO( worldData, index );
 #endif
 
+#ifdef USE_VK_LIGHTGRID
+	vk_build_gpu_lightgrid( worldData, index );
+#endif
 #ifdef USE_RTX
 	R_PreparePT( worldData );
 #endif

@@ -235,6 +235,9 @@ cvar_t	*r_genNormalMaps;
 #endif
 #endif
 
+#ifdef USE_VK_LIGHTGRID
+cvar_t	*r_showLightgrid;
+#endif
 
 #ifdef USE_VK_IMGUI
 cvar_t	*in_imgui;
@@ -1044,6 +1047,9 @@ void R_Register( void )
 #endif
 #endif
 
+#ifdef USE_VK_LIGHTGRID
+	r_showLightgrid						= ri.Cvar_Get("r_showLightgrid",					"0",						CVAR_ARCHIVE, "Visualize the lightgrid" );
+#endif
 
 	r_renderWidth						= ri.Cvar_Get("r_renderWidth",						"800",						CVAR_ARCHIVE_ND | CVAR_LATCH, "");
 	r_renderHeight						= ri.Cvar_Get("r_renderHeight",						"600",						CVAR_ARCHIVE_ND | CVAR_LATCH, "");

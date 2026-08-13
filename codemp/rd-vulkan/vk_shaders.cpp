@@ -60,6 +60,12 @@ void vk_create_shader_modules( void )
     vk.shaders.normalmap = SHADER_MODULE(normalmap_comp_spv);
 #endif
 
+#ifdef USE_VK_LIGHTGRID
+    vk.lightgrid.shader_fs = SHADER_MODULE(lightgrid_frag_spv);
+    vk.lightgrid.shader_vs = SHADER_MODULE(lightgrid_vert_spv);
+    VK_SET_OBJECT_NAME(vk.lightgrid.shader_fs, "debug lightgrid vertex module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
+    VK_SET_OBJECT_NAME(vk.lightgrid.shader_vs, "debug lightgrid fragment module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
+#endif
 #ifdef USE_VBO_SS
     vk.shaders.surface_sprite_fs[0] = SHADER_MODULE(frag_surface_sprites);
     vk.shaders.surface_sprite_fs[1] = SHADER_MODULE(frag_surface_sprites_fog);
@@ -246,4 +252,9 @@ void vk_destroy_shader_modules( void )
         qvkDestroyShaderModule(vk.device, vk.shaders.surface_sprite_vs[i], NULL);
     }
  #endif
+
+#ifdef USE_VK_LIGHTGRID
+    qvkDestroyShaderModule(vk.device, vk.lightgrid.shader_fs, NULL);
+    qvkDestroyShaderModule(vk.device, vk.lightgrid.shader_vs, NULL);
+#endif
 }

@@ -250,6 +250,9 @@ typedef enum {
 	TYPE_COLOR_GREEN,
 	TYPE_COLOR_RED,
 	TYPE_COLOR_ORANGE,
+#ifdef USE_VK_LIGHTGRID
+	TYPE_LIGHTGRID_DEBUG,
+#endif
 	TYPE_FOG_ONLY,
 	TYPE_DOT,
 	TYPE_REFRACTION,
@@ -481,6 +484,7 @@ extern PFN_vkFlushMappedMemoryRanges					qvkFlushMappedMemoryRanges;
 extern PFN_vkResetCommandPool							qvkResetCommandPool;
 #endif
 
+extern PFN_vkCmdDrawIndirect						qvkCmdDrawIndirect;
 extern PFN_vkCmdDrawIndexedIndirect						qvkCmdDrawIndexedIndirect;
 extern PFN_vkCmdDispatch								qvkCmdDispatch;
 extern PFN_vkCreateComputePipelines						qvkCreateComputePipelines;
@@ -1055,6 +1059,22 @@ typedef struct {
 	uint32_t ghoul2_vbo_stride;
 	uint32_t mdv_vbo_stride;
 
+#ifdef USE_VK_LIGHTGRID
+	struct {
+		vec3_t					origin;
+		vec3_t					size;
+		int						bounds[3];
+		uint32_t				numSamples;
+
+		vk_storage_buffer_t		ssbo;
+		VkShaderModule			shader_fs;
+		VkShaderModule			shader_vs;
+		uint32_t				pipeline;
+		VkPipelineLayout		pipeline_layout;
+		VkDescriptorSet			ssbo_descriptor;
+	} lightgrid;
+#endif
+
 	struct {
 		VkBuffer		vertex_buffer;
 		VkDeviceMemory	buffer_memory;
@@ -1086,6 +1106,7 @@ typedef struct {
 	VkDescriptorSetLayout	set_layout_sampler;		// combined image sampler
 	VkDescriptorSetLayout	set_layout_uniform;		// dynamic uniform buffer
 	VkDescriptorSetLayout	set_layout_storage;		// feedback buffer
+	VkDescriptorSetLayout	set_layout_storage2;	// feedback buffer
 
 #ifdef VK_COMPUTE_NORMALMAP
 	VkDescriptorSetLayout	set_layout_compute_normalmap;
@@ -1438,6 +1459,7 @@ void		vk_bind_lighting( int stage, int bundle );
 void		vk_reset_descriptor( int index);
 void		vk_update_uniform_descriptor( VkDescriptorSet descriptor, VkBuffer buffer );
 void		vk_create_storage_buffer( vk_storage_buffer_t *out, uint32_t size, const char *name );
+void		vk_create_storage_buffer( vk_storage_buffer_t *out, uint32_t size, const void *data, const char *name );
 void		vk_update_descriptor_offset( int index, uint32_t offset );
 void		vk_init_descriptors( void );
 void		vk_create_vertex_buffer( VkDeviceSize size );
@@ -1451,6 +1473,9 @@ void		vk_begin_main_render_pass( void );
 void		vk_get_pipeline_def( uint32_t pipeline, Vk_Pipeline_Def *def );
 void		*vk_reserve_uniform( size_t size, uint32_t *offset );
 uint32_t	vk_append_uniform( const void *uniform, size_t size, uint32_t min_offset );
+uint32_t	vk_push_uniform( const vkUniform_t *uniform );
+VkDrawIndirectCommand			*vk_reserve_draw_indirect( uint32_t count, uint32_t *offset );
+VkDrawIndexedIndirectCommand	*vk_reserve_draw_indexed_indirect( uint32_t count, uint32_t *offset );
 
 // image process
 void		R_SetColorMappings( void );

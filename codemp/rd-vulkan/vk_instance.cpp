@@ -160,6 +160,7 @@ PFN_vkResetCommandPool							qvkResetCommandPool;
 #endif
 
 PFN_vkCmdDrawIndexedIndirect					qvkCmdDrawIndexedIndirect;
+PFN_vkCmdDrawIndirect							qvkCmdDrawIndirect;
 PFN_vkCmdDispatch								qvkCmdDispatch;
 PFN_vkCreateComputePipelines					qvkCreateComputePipelines;
 
@@ -1454,6 +1455,7 @@ __initStart:
 
 	INIT_DEVICE_FUNCTION_EXT(vkCmdClearColorImage)
 
+	INIT_DEVICE_FUNCTION(vkCmdDrawIndirect)
 	INIT_DEVICE_FUNCTION(vkCmdDrawIndexedIndirect)
 	INIT_DEVICE_FUNCTION(vkCmdDispatch)
 	INIT_DEVICE_FUNCTION(vkCreateComputePipelines)
@@ -1618,6 +1620,7 @@ void vk_deinit_library( void )
 	qvkResetCommandPool = NULL;
 #endif
 
+	qvkCmdDrawIndirect = NULL;
 	qvkCmdDrawIndexedIndirect = NULL;
 	qvkCmdDispatch = NULL;
 	qvkCreateComputePipelines = NULL;
