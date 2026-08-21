@@ -2649,7 +2649,9 @@ static IHeapAllocator *GetG2VertSpaceServer( void ) {
 	return G2VertSpaceServer;
 }
 
-#define DEFAULT_RENDER_LIBRARY "rd-eternaljk"
+//#define DEFAULT_RENDER_LIBRARY "rd-eternaljk"
+// use vulkan as default for inspector
+#define DEFAULT_RENDER_LIBRARY "rd-vulkan"
 
 void CL_InitRef( void ) {
 	static refimport_t ri;
