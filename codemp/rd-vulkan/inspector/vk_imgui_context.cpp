@@ -268,8 +268,8 @@ void vk_imgui_shutdown( void )
 {
 	ImGui_ImplVulkan_RemoveTexture( inspector.render_mode.image );
 
-	qvkDestroyDescriptorPool( vk.device, imguiPool, nullptr );
 	ImGui_ImplVulkan_Shutdown();
+	qvkDestroyDescriptorPool( vk.device, imguiPool, nullptr );
     ImGui_ImplSDL2_Shutdown();
     ImGui::DestroyContext( ImContext );
 
