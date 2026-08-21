@@ -3265,16 +3265,19 @@ void RE_LoadWorldMap_Actual( const char *name, world_t &worldData, int index )
 		}
 	#endif
 #endif	
-
-		// only set tr.world now that we know the entire level has loaded properly
-		tr.world = &worldData;
-
-		tr.mapLoading = qfalse;
 	}
 
 #ifdef USE_VBO
 	R_BuildWorldVBO(s_worldData.surfaces, s_worldData.numsurfaces);
 #endif
+
+	if (!index)
+	{
+		// only set tr.world now that we know the entire level has loaded properly
+		tr.world = &worldData;
+
+		tr.mapLoading = qfalse;
+	}
 
 #ifdef USE_VBO_SS
 	R_BuildSurfaceSpritesVBO( worldData, index );
