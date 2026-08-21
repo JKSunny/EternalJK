@@ -816,10 +816,10 @@ void vk_generate_image_upload_data(image_t* image, byte* data, Image_Upload_Data
 	else {
 		mip_buffer = R_ImageScratchAlloc(
 			&s_imageScratch.mip,
-			scaled_width * scaled_height * 4
+			scaled_width * scaled_height * bytesPerPixel
 		);
 
-		Com_Memcpy(mip_buffer, data, scaled_width * scaled_height * 4);
+		Com_Memcpy(mip_buffer, data, scaled_width * scaled_height * bytesPerPixel);
 	}
 
 	width = scaled_width;
