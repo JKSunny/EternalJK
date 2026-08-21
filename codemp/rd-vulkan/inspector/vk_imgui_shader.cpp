@@ -49,6 +49,123 @@ using namespace ImFlow;
 TextEditor text_editor;
 ImNodeFlow node_editor;
 
+void vk_imgui_shader_reset_tab_text( shader_t *shader )
+{
+	for ( uint32_t i = 0; i < ARRAY_LEN( windows.shader.open_shaders ); i++ ) {
+		if ( windows.shader.open_shaders[i].index != shader->index )
+			continue;
+
+		if ( windows.shader.open_shaders[i].text ) {
+			free( windows.shader.open_shaders[i].text );
+			windows.shader.open_shaders[i].text = NULL;
+		}
+	}
+}
+
+void vk_imgui_shader_save_tab_text( shader_t *shader )
+{
+	if ( !shader )
+		return;
+
+	// only save when modified (does not store invalid shaders)
+	//if ( !node_editor.hasFlag(SHADER_NODES_MODIFIED) || !text_editor.hasFlag(SHADER_TEXT_MODIFIED) )
+	//	return;
+
+	for ( uint32_t i = 0; i < ARRAY_LEN( windows.shader.open_shaders ); i++ ) {
+		vk_imgui_shader_tab_t *tab = &windows.shader.open_shaders[i];
+
+		if ( tab->index != shader->index )
+			continue;
+
+		// replace previous cached text
+		if ( tab->text ) {
+			free( tab->text );
+			tab->text = NULL;
+		}
+
+		// convert nodes to text because we need to store the current state
+		if ( !windows.shader.text_mode && node_editor.hasFlag(SHADER_NODES_MODIFIED) ) {
+			vk_imgui_parse_shader_nodes_to_text();	
+			text_editor.setTextChanged( false );
+		}
+
+		std::string text = text_editor.GetText();
+		vk_imgui_shader_set_tab_text( text.c_str(), tab);
+
+		return;
+	}
+}
+
+static qboolean vk_imgui_shader_is_shader_in_tabs( int index )
+{
+	uint32_t i;
+
+	for ( i = 0; i < ARRAY_LEN(windows.shader.open_shaders); i++ ) {
+		if ( windows.shader.open_shaders[i].index == index )
+			return qtrue;
+	}
+
+	return qfalse;
+}
+
+void vk_imgui_close_shader_in_editor( shader_t *shader ) 
+{
+	uint32_t i;
+
+	// remove from list
+	for ( i = 0; i < ARRAY_LEN(windows.shader.open_shaders); i++ )
+	{
+		if ( windows.shader.open_shaders[i].index == shader->index) {
+			windows.shader.open_shaders[i].index = 0;
+			free( windows.shader.open_shaders[i].text );
+			windows.shader.open_shaders[i].text = NULL;
+		}
+	}
+
+	windows.shader.index = 0;
+
+	// do not close editor of there are any tabs open
+	for ( i = 0; i < ARRAY_LEN(windows.shader.open_shaders); i++ ) {
+		if ( windows.shader.open_shaders[i].index )
+			return;
+	}
+
+	if ( windows.shader.p_open )
+		windows.shader.p_open = false;
+}
+
+void vk_imgui_open_shader_in_editor( shader_t *shader )
+{
+	// store current
+	if ( windows.shader.prev && windows.shader.prev == windows.shader.index ) {
+		shader_t *prev_sh = tr.shaders[windows.shader.prev];
+		if ( prev_sh )
+			vk_imgui_shader_save_tab_text( prev_sh );
+	}
+
+	// open if tab is already open
+	for ( uint32_t i = 0; i < ARRAY_LEN(windows.shader.open_shaders); i++ ) {
+		if ( windows.shader.open_shaders[i].index == shader->index ) {
+			windows.shader.p_open = true;
+			windows.shader.select_index = shader->index;
+			return;
+		}
+	}
+
+	// open in first free slot 
+	// ~sunny, need to collapse array when tab closes.
+	for ( uint32_t i = 0; i < ARRAY_LEN(windows.shader.open_shaders); i++ ) {
+		if ( windows.shader.open_shaders[i].index )
+			continue;
+
+		windows.shader.p_open = true;
+		windows.shader.open_shaders[i].index = shader->index;
+		windows.shader.select_index = shader->index;
+		windows.shader.select_index = shader->index;
+		return;
+	}
+}
+
 void vk_imgui_reload_shader_editor( qboolean close ) 
 {
 	windows.shader.prev = NULL;	// force reload
@@ -93,6 +210,8 @@ static void vk_imgui_draw_shader_editor_apply( shader_t *sh )
 	}
 		
 	R_UpdateShader( sh->index, text_editor.GetText().c_str(), (qboolean)inspector.merge_shaders );
+	vk_imgui_shader_reset_tab_text( sh );
+	
 	text_editor.unsetFlag( SHADER_TEXT_MODIFIED );
 	node_editor.unsetFlag();
 }
@@ -116,6 +235,7 @@ static void vk_imgui_draw_shader_editor_reset( shader_t *sh,  shader_t *sh_remap
 	R_UpdateShader( sh->index, revert, (qboolean)inspector.merge_shaders );
 
 	windows.shader.prev = NULL;
+	vk_imgui_shader_reset_tab_text( sh );
 }
 
 static void vk_imgui_draw_shader_editor_toolbar( shader_t *sh, shader_t *sh_remap, shader_t *sh_updated )
@@ -190,16 +310,64 @@ static void vk_imgui_draw_shader_editor_toolbar( shader_t *sh, shader_t *sh_rema
 
 void vk_imgui_draw_shader_editor( void ) 
 {
-	if ( !windows.shader.p_open || !windows.shader.index )
+	if ( !windows.shader.p_open )
 		return;
+
+	uint32_t selected_tab_index = 0;
+	shader_t *sh;
+	ImGuiTabItemFlags flags = 0;
+
+	ImGui::Begin( "Shader", &windows.shader.p_open );
 	
+	if ( ImGui::BeginTabBar( "ShaderTabs" ) ) {
+		for ( int i = 0; i < ARRAY_LEN( windows.shader.open_shaders ); i++ ) {
+			int index = windows.shader.open_shaders[i].index;
+			if ( !index )
+				continue;
+
+			sh = tr.shaders[index];
+			if ( !sh )
+				continue;
+
+			flags = 0;
+
+			if ( sh->index == windows.shader.select_index )
+				flags |= ImGuiTabItemFlags_SetSelected;
+
+			bool open = true;
+			if ( ImGui::BeginTabItem( va("%s##tab-%d", sh->name, sh->index), &open, flags ) ) {
+				selected_tab_index = i;
+
+				if ( windows.shader.index != sh->index ) {
+					vk_imgui_open_shader_in_editor( sh );
+					windows.shader.index = sh->index;
+				}
+
+				ImGui::EndTabItem();
+			}
+
+			if ( !open )
+				vk_imgui_close_shader_in_editor( sh );
+		}
+		ImGui::EndTabBar();
+
+		windows.shader.select_index = 0;
+	}
+
+	if ( !windows.shader.index ) {
+		ImGui::End();
+		return;
+	}
+
 	// always initililze text editor, formats are shared with node editor
 	vk_imgui_shader_text_editor_initialize();
 
-	shader_t *sh = tr.shaders[ windows.shader.index ];
+	sh = tr.shaders[ windows.shader.index ];
 
-	if ( !sh )
+	if ( !sh ) {
+		ImGui::End();
 		return;
+	}
 
 	shader_t *sh_remap = sh->remappedShader;
 	shader_t *sh_updated = sh->updatedShader;
@@ -210,23 +378,43 @@ void vk_imgui_draw_shader_editor( void )
 		node_editor.unsetFlag();
 		text_editor.unsetFlag();
 
+		vk_imgui_shader_tab_t *open_tab = &windows.shader.open_shaders[selected_tab_index];
+
+		char *shaderText;
+
 		// decide which shader text to display
 		if ( sh_updated && sh_updated->shaderText )
-			vk_imgui_shader_text_editor_set_text( sh_updated->shaderText );	
-		
+			shaderText = sh_updated->shaderText;
+
 		else if ( sh_remap && sh_remap->shaderText )
-			vk_imgui_shader_text_editor_set_text( sh_remap->shaderText );	
-		
+			shaderText = sh_remap->shaderText;
+
 		else if ( sh->shaderText != NULL )
-			vk_imgui_shader_text_editor_set_text( sh->shaderText );	
+			shaderText = sh->shaderText;
 
 		else {
-			windows.shader.p_open = false;
-			windows.shader.index = 0;
+			vk_imgui_close_shader_in_editor( NULL );
+			ImGui::End();
 			return;
 		}
 
+		vk_imgui_shader_text_editor_set_text( shaderText );	
 		text_editor.setTextChanged( false );
+
+		// restore tab state when available
+		if ( open_tab && open_tab->index && open_tab->text ) 
+		{
+			if ( !vk_imgui_shader_text_editor_compare_stored_tab_text( open_tab )  )
+			{
+				vk_imgui_shader_text_editor_set_text( open_tab->text );
+				text_editor.setTextChanged( true );
+
+				if ( windows.shader.text_mode )
+					text_editor.setTextChanged( true );
+				else
+					node_editor.setFlag( SHADER_NODES_MODIFIED );
+			}	
+		}
 
 		// trigger text/node update
 		if ( windows.shader.text_mode )
@@ -240,8 +428,6 @@ void vk_imgui_draw_shader_editor( void )
 			
 		windows.shader.prev = windows.shader.index;
 	}
-
-	ImGui::Begin( "Shader", &windows.shader.p_open );
 
 	vk_imgui_draw_shader_editor_toolbar( sh, sh_remap, sh_updated );
 
@@ -781,10 +967,7 @@ void vk_imgui_draw_inspector_shader( void ) {
 		return;
 
 	if ( imgui_draw_text_with_button( "Name", sh->name, ICON_FA_EDIT, 50.0f ) ) {
-		if ( !windows.shader.p_open )
-			windows.shader.p_open = true;
-
-		windows.shader.index = sh->index;
+		vk_imgui_open_shader_in_editor( sh );
 	}
 
 	if ( sh->remappedShader ) {

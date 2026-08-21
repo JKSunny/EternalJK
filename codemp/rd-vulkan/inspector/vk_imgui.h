@@ -114,6 +114,11 @@ typedef struct {
 } vk_imgui_inspector_t;
 
 typedef struct {
+	int		index;
+	char	*text;
+} vk_imgui_shader_tab_t;
+
+typedef struct {
 	struct {
 		bool	p_open;
 		ImVec2	size;
@@ -121,8 +126,10 @@ typedef struct {
 
 	struct {
 		bool	p_open;
+		vk_imgui_shader_tab_t open_shaders[10];
 		bool	text_mode;
 		int		index;
+		int		select_index;
 		int		prev;
 	} shader;
 
@@ -253,6 +260,8 @@ void		vk_imgui_draw_objects_flares( void );
 void		vk_imgui_draw_profiler( void );
 
 // shader
+void		vk_imgui_open_shader_in_editor( shader_t *shader );
+void		vk_imgui_close_shader_in_editor( shader_t *shader );
 void		vk_imgui_draw_objects_shaders();
 void		vk_imgui_draw_inspector_shader( void );
 void		vk_imgui_draw_shader_editor( void );
@@ -263,6 +272,8 @@ void		vk_imgui_reload_shader_editor( qboolean close );
 void		vk_imgui_shader_text_editor_initialize( void );
 void		vk_imgui_draw_shader_editor_text( void );
 void		vk_imgui_shader_text_editor_set_text( const char *str );
+qboolean	vk_imgui_shader_text_editor_compare_stored_tab_text( vk_imgui_shader_tab_t *tab );
+void		vk_imgui_shader_set_tab_text( const char *str , vk_imgui_shader_tab_t *tab );
 
 // shader node editor
 void		vk_imgui_draw_shader_editor_node( void );

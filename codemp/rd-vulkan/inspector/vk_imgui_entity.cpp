@@ -371,10 +371,7 @@ void vk_imgui_draw_inspector_entity( void )
 	shader_t *sh = tr.shaders[ent->e.customShader];
 	if ( sh && sh->index > 0 ) {
 		if ( imgui_draw_text_with_button( "Shader", sh->name, ICON_FA_DOT_CIRCLE, 50.0f ) ) {
-			if ( !windows.shader.p_open )
-				windows.shader.p_open = true;
-
-			windows.shader.index = sh->index;
+			vk_imgui_open_shader_in_editor( sh );
 		}
 	}
 
