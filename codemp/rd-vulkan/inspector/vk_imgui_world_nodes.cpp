@@ -53,10 +53,7 @@ void vk_imgui_draw_inspector_world_node_surface( void ) {
 	shader_t *sh = surf->shader;
 
 	if ( imgui_draw_text_with_button( "Shader", sh->name, ICON_FA_EDIT, 50.0f ) ) {
-		if ( !windows.shader.p_open )
-			windows.shader.p_open = true;
-
-		windows.shader.index = sh->index;
+		vk_imgui_open_shader_in_editor( sh );
 	}
 
 	if ( *surf->data == SF_GRID ) {

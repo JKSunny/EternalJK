@@ -54,7 +54,7 @@ void vk_imgui_draw_shader_editor_text( void )
 }
 
 #define INDENT_SIZE 4;
-static std::string auto_indentation( const std::string& str ) 
+std::string auto_indentation( const std::string& str ) 
 {
     uint32_t depth = 0;
     size_t pos = 0;
@@ -108,4 +108,22 @@ static std::string auto_indentation( const std::string& str )
 void vk_imgui_shader_text_editor_set_text( const char *str ) 
 {
 	text_editor.SetText( auto_indentation( str ) );
+}
+
+qboolean vk_imgui_shader_text_editor_compare_stored_tab_text( vk_imgui_shader_tab_t *tab )
+{
+	std::string shaderText = text_editor.GetText();
+	return shaderText == tab->text ? qtrue : qfalse;
+}
+
+void vk_imgui_shader_set_tab_text( const char *str , vk_imgui_shader_tab_t *tab )
+{
+    // keep trailing new lines consistent
+	std::string text = auto_indentation( str );
+	while ( text.size() > 1 && ( text.back() == ' ' || text.back() == '\t' || text.back() == '\r' || text.back() == '\n' ) )
+		text.pop_back();
+	text += '\n';
+	text += '\n';
+
+	tab->text = strdup( text.c_str() );
 }
