@@ -1903,6 +1903,16 @@ const void	*RB_SwapBuffers( const void *data ) {
 		RB_EndSurface();
 	}
 
+#ifdef USE_IMGUI_PLACEHOLDER
+	static qboolean show_notice = qfalse;
+
+	if ( !show_notice ) 
+	{
+		show_notice = qtrue;
+		Com_Error( ERR_DROP, "The Inspector is only supported by the Vulkan renderer. Set /cl_renderer rd-vulkan; vid_restart" );
+	}
+#endif
+
 	if ( glConfigExt.doGammaCorrectionWithShaders )
 	{
 		RB_GammaCorrectRender();

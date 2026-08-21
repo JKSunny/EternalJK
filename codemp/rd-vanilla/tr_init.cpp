@@ -2007,6 +2007,19 @@ extern qboolean R_InitializeWireframeAutomap( void ); //tr_world.cpp
 
 extern qhandle_t RE_RegisterServerSkin( const char *name );
 
+
+#ifdef USE_IMGUI_PLACEHOLDER
+	void R_GetImGuiContext( void **context  )
+	{
+		*context = NULL;
+	}
+
+	uint64_t R_GetImGuiTexture( qhandle_t hShader )
+	{
+		return NULL;
+	}
+#endif
+
 /*
 @@@@@@@@@@@@@@@@@@@@@
 GetRefAPI
@@ -2045,6 +2058,10 @@ Q_EXPORT refexport_t* QDECL GetRefAPI( int apiVersion, refimport_t *rimp ) {
 	re.EndFrame								= RE_EndFrame;
 	re.MarkFragments						= R_MarkFragments;
 	re.LerpTag								= R_LerpTag;
+#ifdef USE_IMGUI_PLACEHOLDER
+	re.R_GetImGuiContext					= R_GetImGuiContext;
+	re.R_GetImGuiTexture					= R_GetImGuiTexture;
+#endif
 	re.ModelBounds							= R_ModelBounds;
 	re.DrawRotatePic						= RE_RotatePic;
 	re.DrawRotatePic2						= RE_RotatePic2;
