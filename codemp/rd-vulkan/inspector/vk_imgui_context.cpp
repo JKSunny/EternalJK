@@ -303,8 +303,8 @@ void vk_imgui_shutdown( void )
 		inspector.render_mode.rtx_image = VK_NULL_HANDLE;
 #endif
 
-	qvkDestroyDescriptorPool( vk.device, imguiPool, nullptr );
 	ImGui_ImplVulkan_Shutdown();
+	qvkDestroyDescriptorPool( vk.device, imguiPool, nullptr );
     ImGui_ImplSDL2_Shutdown();
     ImGui::DestroyContext( ImContext );
 
