@@ -2776,6 +2776,7 @@ void CL_InitRef( void ) {
 	ri.VK_createSurfaceImpl = WIN_VK_createSurfaceImpl;
 	ri.VK_destroyWindow = WIN_VK_destroyWindow;
 
+	ri.FS_FileIsInPAK_ext = FS_FileIsInPAK_ext;
 
 	ret = GetRefAPI( REF_API_VERSION, &ri );
 

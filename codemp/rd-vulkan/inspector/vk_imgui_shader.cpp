@@ -724,6 +724,15 @@ static void vk_imgui_draw_inspector_shader_visualize( int index ) {
 	ImGuiIO& io = ImGui::GetIO();
 	drawList = ImGui::GetWindowDrawList(); 
 
+	if ( !sh->isUpdatedShader ) {
+		imgui_draw_text_column( "PK3", va("%s", sh->source.pak), 100.0f );
+		imgui_draw_text_column( "Source", va("%s:%d", sh->source.file, sh->source.line), 100.0f );
+	}
+	else {
+		imgui_draw_text_column( "PK3", "<memory>", 100.0f );
+		imgui_draw_text_column( "Source", "<memory>", 100.0f );
+	}
+
 	imgui_draw_text_column( "Name", va("%s", sh->name), 100.0f );
 	imgui_draw_text_column( "Index", va("%d", sh->index), 100.0f );
 	imgui_draw_text_column( "Sort", vk_sort_string[ (int)sh->sort ], 100.0f );

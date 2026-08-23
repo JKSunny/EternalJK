@@ -2999,6 +2999,35 @@ static qboolean ParseShader( const char **text )
 			ParseSort(text);
 			continue;
 		}
+#ifdef USE_VK_IMGUI
+		else if (!Q_stricmp(token, "$$source"))
+		{
+			// olnly set during first parse 
+			if ( shader.source.file[0] )
+				continue;
+
+			token = COM_ParseExt(text, qfalse);
+			if (token[0]) {
+				Q_strncpyz(shader.source.pak, token, sizeof(shader.source.pak));
+			} else {
+				Q_strncpyz(shader.source.pak, "undefined", sizeof(shader.source.pak));
+			}
+
+			token = COM_ParseExt(text, qfalse);
+			if (token[0]) {
+				Q_strncpyz(shader.source.file, token, sizeof(shader.source.file));
+			} else {
+				Q_strncpyz(shader.source.file, "undefined", sizeof(shader.source.file));
+			}
+
+			token = COM_ParseExt(text, qfalse);
+			if (token[0]) {
+				shader.source.line = atoi(token);
+			}
+
+			continue;
+		}
+#endif
 		else
 		{
 			vk_debug("WARNING: unknown general shader parameter '%s' in '%s'\n", token, shader.name);
@@ -3048,11 +3077,77 @@ static qboolean ParseShader( const char **text )
 
 	// store shader text
 	int length = (*text + 1) - begin;	// +1 for trailing '}'
+#ifdef USE_VK_IMGUI
+	// remove source keyword from shaderText now
+	const char *source = strstr(begin, "\n$$source ");
+
+	if ( source )
+		length -= *text - source;
+
+	shader.shaderText = (char*)malloc(length);
+
+	if ( source ) {
+		int prefix = source - begin;
+		Com_Memcpy( shader.shaderText, begin, prefix + 1 );
+		shader.shaderText[prefix + 1] = '}';
+		shader.shaderText[prefix + 2] = '\0';
+		return qtrue;
+	}
+#endif
 	shader.shaderText = (char*)malloc(length);
 	Q_strncpyz( shader.shaderText, begin, length );
 
 	return qtrue;
 }
+
+#ifdef USE_VK_IMGUI
+static void AppendShaderSourceMeta(char **textEnd, char *buffer, const sourceMeta_t *meta ) 
+{
+	const char	*token;
+	int			shaderLine;
+
+	const char *p = buffer;
+	COM_BeginParseSession(meta->file);
+
+	while (1)
+	{
+		const char *shaderStart = p;
+		token = COM_ParseExt(&p, qtrue);
+
+		if (!*token)
+			break;
+
+		shaderLine = COM_GetCurrentParseLine();
+
+		if (token[0] == '#')
+		{
+			SkipRestOfLine(&p);
+			continue;
+		}
+
+		token = COM_ParseExt(&p, qtrue);
+		if (token[0] != '{' || token[1] != '\0')
+			break;
+
+		if (!SkipBracedSection(&p, 1))
+			break;
+
+		int len = (p - shaderStart) - 1;
+		memcpy(*textEnd, shaderStart, len);
+		*textEnd += len;
+
+		// append pakname + filename + 32 for (keyword + linenumber)
+		*textEnd += Com_sprintf(*textEnd, strlen(meta->pak) + strlen(meta->file) + 32,
+			"\n$$source \"%s\" \"%s\" %d\n", meta->pak, meta->file, shaderLine);
+
+		*(*textEnd)++ = '}';
+		**textEnd = '\0';
+	}
+
+	*(*textEnd)++ = '\n';
+	**textEnd = '\0';
+}
+#endif
 
 /*
 ====================
@@ -3252,6 +3347,9 @@ static void ScanAndLoadShaderFiles( void )
 		numShaderFiles = MAX_SHADER_FILES;
 	}
 
+	sourceMeta_t source_meta[MAX_SHADER_FILES];
+	Com_Memset( &source_meta, 0, sizeof(sourceMeta_t) * MAX_SHADER_FILES );
+
 	// load and parse shader files
 	for (i = 0; i < numShaderFiles; i++)
 	{
@@ -3276,6 +3374,17 @@ static void ScanAndLoadShaderFiles( void )
 		Com_sprintf(filename, sizeof(filename), "shaders/%s", shaderFiles[i]);
 #endif
 		
+#ifdef USE_VK_IMGUI
+		// store filename and pak per shader file.
+		Q_strncpyz( source_meta[i].file, filename, sizeof(source_meta[i].file));
+
+		const char *pakname = "<unpacked>";
+		if ( ri.FS_FileIsInPAK_ext(filename, &pakname) == 1 )
+			Com_sprintf( source_meta[i].pak, sizeof(source_meta[i].pak), "%s.pk3", pakname );
+		else
+			Q_strncpyz( source_meta[i].pak, pakname, sizeof(source_meta[i].pak) );
+#endif
+	
 		vk_debug("...loading '%s'\n", filename);
 		ri.Printf( PRINT_DEVELOPER, "...loading '%s'\n", filename );
 		summand = ri.FS_ReadFile(filename, (void**)&buffers[i]);
@@ -3328,6 +3437,10 @@ static void ScanAndLoadShaderFiles( void )
 				buffers[i] = NULL;
 				break;
 			}
+#ifdef USE_VK_IMGUI
+			// reserve pakname + filename + 32 for (keyword + linenumber)
+			sum += strlen(filename) + strlen(pakname) + 32;
+#endif
 		}
 
 
@@ -3346,6 +3459,11 @@ static void ScanAndLoadShaderFiles( void )
 		if (!buffers[i])
 			continue;
 
+#ifdef USE_VK_IMGUI
+		AppendShaderSourceMeta( &textEnd, buffers[i], &source_meta[i] );
+		ri.FS_FreeFile(buffers[i]);
+		continue;
+#endif
 		strcat(textEnd, buffers[i]);
 		strcat(textEnd, "\n");
 		textEnd += strlen(textEnd);
@@ -3458,6 +3576,7 @@ static void InitShader( const char *name, const int *lightmapIndex, const byte *
 #ifdef USE_VK_IMGUI
 	// preserve for updatedShader
 	Com_Memcpy(shader.stylesPreserved, shader.styles, sizeof(shader.stylesPreserved));
+	Com_Memset(&shader.source, 0, sizeof(shader.source));
 #endif
 	
 

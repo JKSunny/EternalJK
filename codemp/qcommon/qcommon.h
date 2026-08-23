@@ -628,6 +628,7 @@ long		FS_FOpenFileRead( const char *qpath, fileHandle_t *file, qboolean uniqueFI
 // file IO goes through FS_ReadFile, which Does The Right Thing already.
 
 int		FS_FileIsInPAK(const char *filename, int *pChecksum );
+int		FS_FileIsInPAK_ext(const char *filename, const char **pakname );
 // returns 1 if a file is in the PAK file, otherwise -1
 long	FS_ReadDLLInPAK(const char *filename, void **buffer);
 
