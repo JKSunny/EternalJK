@@ -973,6 +973,187 @@ void vk_imgui_draw_inspector_shader( void ) {
 //
 // object
 //
+#define MAX_SHADER_TREE_NODES 8192
+struct shaderTreeNode_t {
+	char name[MAX_QPATH];
+	shaderTreeNode_t *parent, *firstChild, *nextSibling;
+	shader_t *shader;
+};
+static shaderTreeNode_t shader_tree[MAX_SHADER_TREE_NODES];
+static int num_shader_tree_nodes;
+
+static shaderTreeNode_t *vk_imgui_draw_objects_shader_node_find_child( shaderTreeNode_t *parent, const char *name )
+{
+	if (!parent)
+		return NULL;
+
+	for ( shaderTreeNode_t *node = parent->firstChild; node; node = node->nextSibling )
+		if ( !Q_stricmp(node->name, name) )
+			return node;
+
+	return NULL;
+}
+
+static shaderTreeNode_t *vk_imgui_draw_objects_shader_node_add_child( shaderTreeNode_t *parent, const char *name )
+{
+	shaderTreeNode_t *node = vk_imgui_draw_objects_shader_node_find_child(parent, name );
+	
+	if ( node )
+		return node;
+
+	if ( num_shader_tree_nodes >= MAX_SHADER_TREE_NODES )
+		return NULL;
+
+	node = &shader_tree[num_shader_tree_nodes++];
+	Com_Memset( node, 0, sizeof(*node) );
+	Q_strncpyz( node->name, name, sizeof(node->name) );
+	node->parent = parent;
+
+	if (parent)
+	{
+		shaderTreeNode_t **link = &parent->firstChild;
+
+		while ( *link && Q_stricmp((*link)->name, name) < 0 )
+			link = &(*link)->nextSibling;
+
+		node->nextSibling = *link;
+		*link = node;
+	}
+
+	return node;
+}
+
+static qboolean vk_imgui_draw_objects_shader_node_search_match( shaderTreeNode_t *node, const char *search )
+{
+	if ( !search || !search[0] )
+		return qtrue;
+
+	if ( node->shader && Q_stristr( node->shader->name, search ) )
+		return qtrue;
+
+	for ( shaderTreeNode_t *child = node->firstChild; child; child = child->nextSibling )
+		if ( vk_imgui_draw_objects_shader_node_search_match( child, search ) )
+			return qtrue;
+
+	return qfalse;
+}
+
+static shaderTreeNode_t *vk_imgui_draw_objects_shaders_build_node_tree( shader_t **shaders, int numShaders )
+{
+	num_shader_tree_nodes = 0;
+
+	shaderTreeNode_t *root = vk_imgui_draw_objects_shader_node_add_child( NULL, "Shaders" );
+	if (!root)
+		return NULL;
+
+	for ( int i = 0; i < numShaders; i++ ) 
+	{
+		shader_t *sh = shaders[i];
+		if ( !sh || !sh->shaderText || sh->isUpdatedShader )
+			continue;
+
+		char path[MAX_QPATH];
+		Q_strncpyz(path, sh->name, sizeof(path));
+
+		char *p = path;
+		while ( *p == '/' )
+			p++;
+
+		shaderTreeNode_t *node = root;
+
+		while ( *p ) 
+		{
+			char component[MAX_QPATH];
+			char *slash = strchr(p, '/');
+
+			if ( slash ) {
+				int len = slash - p;
+				if (len >= (int)sizeof(component))
+					len = sizeof(component) - 1;
+				memcpy(component, p, len);
+				component[len] = '\0';
+				p = slash + 1;
+			} else {
+				Q_strncpyz(component, p, sizeof(component));
+				p += strlen(p);
+			}
+
+			if ( !component[0] )
+				continue;
+
+			shaderTreeNode_t *child = vk_imgui_draw_objects_shader_node_add_child( node, component );
+			if (!child)
+				break;
+
+			node = child;
+		}
+
+		node->shader = sh;
+	}
+
+	return root;
+}
+
+static void vk_imgui_draw_objects_shader_node( shaderTreeNode_t *node )
+{
+	for ( shaderTreeNode_t *child = node->firstChild; child; child = child->nextSibling )
+	{
+		if ( !vk_imgui_draw_objects_shader_node_search_match( child, inspector.search_keyword ) )
+			continue;
+
+		shader_t *sh = child->shader;
+
+		if ( !sh )
+		{
+			bool opened = ImGui::TreeNodeEx(child, ImGuiTreeNodeFlags_SpanAvailWidth, "%s", child->name);
+			if (opened)
+			{
+				vk_imgui_draw_objects_shader_node(child);
+				ImGui::TreePop();
+			}
+			continue;
+		}
+
+		ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanAvailWidth;
+		bool selected = inspector.selected.ptr == sh;
+
+		if ( selected )
+		{
+			flags |= ImGuiTreeNodeFlags_Selected;
+			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.99f, 0.42f, 0.01f, 1.0f));
+		}
+
+		ImGui::TreeNodeEx(sh, flags, "%s", child->name);
+
+		if ( ImGui::IsItemClicked() )
+		{
+			inspector.selected.type = OT_SHADER;
+			inspector.selected.ptr = sh;
+		}
+
+		if ( sh->remappedShader )
+		{
+			ImGui::SameLine();
+			ImGui::PushStyleColor( ImGuiCol_Text, RGBA_LE(0xa2708affu) );
+			ImGui::Text("r");
+			ImGui::PopStyleColor();
+		}
+
+		if ( sh->updatedShader )
+		{
+			ImGui::SameLine();
+			ImGui::PushStyleColor( ImGuiCol_Text, RGBA_LE(0xfc6b03ffu) );
+			ImGui::Text("*");
+			ImGui::PopStyleColor();
+		}
+
+		if ( selected )
+			ImGui::PopStyleColor();
+
+		ImGui::TreePop();
+	}
+}
+
 static qboolean create_merge_shader_list( void )
 {
 	int i, j, hash;
@@ -1022,8 +1203,19 @@ void vk_imgui_draw_objects_shaders( void )
 	shader_t *sh;
 	shader_t **shaders = tr.shaders;
 
+	static shaderTreeNode_t *node_root;
+	static int last_num_shaders;
+	static bool last_merge_state;
+
 	if ( create_merge_shader_list() )
 		shaders = merge_shader_list;
+
+	if ( !node_root || last_num_shaders != tr.numShaders || last_merge_state != inspector.merge_shaders ) 
+	{
+		node_root = vk_imgui_draw_objects_shaders_build_node_tree( shaders, tr.numShaders );
+		last_merge_state = inspector.merge_shaders;
+		last_num_shaders = tr.numShaders;
+	}
 
 	flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap;
 
@@ -1038,62 +1230,9 @@ void vk_imgui_draw_objects_shaders( void )
 
 	if ( !parentNode ) 
 		return;
-	
-	bool opened, selected;
 
-	for ( i = 0; i < tr.numShaders; i++ ) 
-	{
-		selected = false;
-		sh = shaders[i];
-
-		if ( !sh )
-			break;
-
-		if ( sh->shaderText == NULL || sh->isUpdatedShader )
-			continue;
-
-		if ( inspector.search_keyword != NULL ) {
-			if ( !strstr( sh->name, inspector.search_keyword ) )
-				continue;
-		}
-
-		flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanAvailWidth;
-				
-		if ( inspector.selected.ptr == sh )
-			selected = true;
-
-		if ( selected ) {
-			flags |= ImGuiTreeNodeFlags_Selected ;
-			ImGui::PushStyleColor( ImGuiCol_Text, ImVec4(0.99f, 0.42f, 0.01f, 1.0f) );
-		}
-
-		opened = ImGui::TreeNodeEx( (void*)sh, flags, sh->name );
-		
-		if ( ImGui::IsItemClicked() ) {
-			inspector.selected.type = OT_SHADER;
-			inspector.selected.ptr = sh;
-		}
-
-		if ( sh->remappedShader ) {
-			ImGui::SameLine( 14.0f );
-			ImGui::PushStyleColor( ImGuiCol_Text, RGBA_LE(0xa2708affu) );
-			ImGui::Text( "r" );
-			ImGui::PopStyleColor();	
-		}	
-
-		if ( sh->updatedShader ) {
-			ImGui::SameLine( 1.0f );
-			ImGui::PushStyleColor( ImGuiCol_Text, RGBA_LE(0xfc6b03ffu) );
-			ImGui::Text("*");
-			ImGui::PopStyleColor();	
-		}
-		
-		if ( opened )
-			ImGui::TreePop();
-
-		if ( selected )
-			ImGui::PopStyleColor();	
-	}
+	if ( node_root )
+		vk_imgui_draw_objects_shader_node( node_root );
 
 	ImGui::TreePop();
 }
