@@ -3081,14 +3081,16 @@ static qboolean ParseShader( const char **text )
 	// remove source keyword from shaderText now
 	const char *source = strstr(begin, "\n$$source ");
 
-	if ( source )
-		length -= *text - source;
-
-	shader.shaderText = (char*)malloc(length);
-
-	if ( source ) {
+	if ( source ) 
+	{
 		int prefix = source - begin;
-		Com_Memcpy( shader.shaderText, begin, prefix + 1 );
+		length = prefix + 3;
+
+		shader.shaderText = (char *)malloc(length);
+		if (!shader.shaderText)
+			return qfalse;
+
+		Com_Memcpy(shader.shaderText, begin, prefix + 1);
 		shader.shaderText[prefix + 1] = '}';
 		shader.shaderText[prefix + 2] = '\0';
 		return qtrue;
@@ -3136,8 +3138,8 @@ static void AppendShaderSourceMeta(char **textEnd, char *buffer, const sourceMet
 		memcpy(*textEnd, shaderStart, len);
 		*textEnd += len;
 
-		// append pakname + filename + 32 for (keyword + linenumber)
-		*textEnd += Com_sprintf(*textEnd, strlen(meta->pak) + strlen(meta->file) + 32,
+		// append pakname + filename + 128 for (keyword + linenumber)
+		*textEnd += Com_sprintf(*textEnd, strlen(meta->pak) + strlen(meta->file) + 128,
 			"\n$$source \"%s\" \"%s\" %d\n", meta->pak, meta->file, shaderLine);
 
 		*(*textEnd)++ = '}';
@@ -3378,11 +3380,11 @@ static void ScanAndLoadShaderFiles( void )
 		// store filename and pak per shader file.
 		Q_strncpyz( source_meta[i].file, filename, sizeof(source_meta[i].file));
 
-		const char *pakname = "<unpacked>";
-		if ( ri.FS_FileIsInPAK_ext(filename, &pakname) == 1 )
-			Com_sprintf( source_meta[i].pak, sizeof(source_meta[i].pak), "%s.pk3", pakname );
+		const char *pak = NULL;
+		if ( ri.FS_FileIsInPAK_ext(filename, &pak) == 1 )
+			Com_sprintf( source_meta[i].pak, sizeof(source_meta[i].pak), "%s.pk3", pak );
 		else
-			Q_strncpyz( source_meta[i].pak, pakname, sizeof(source_meta[i].pak) );
+			Com_sprintf( source_meta[i].pak, sizeof(source_meta[i].pak), "<unpacked>" );
 #endif
 	
 		vk_debug("...loading '%s'\n", filename);
@@ -3438,8 +3440,8 @@ static void ScanAndLoadShaderFiles( void )
 				break;
 			}
 #ifdef USE_VK_IMGUI
-			// reserve pakname + filename + 32 for (keyword + linenumber)
-			sum += strlen(filename) + strlen(pakname) + 32;
+			// reserve pakname + filename + 128 for (keyword + linenumber)
+			sum += strlen(source_meta[i].file) + strlen(source_meta[i].pak) + 128;
 #endif
 		}
 
