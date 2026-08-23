@@ -357,6 +357,7 @@ typedef struct refimport_s {
 	void			*(*VK_GetInstanceProcAddress)		(void);
 	qboolean		(*VK_createSurfaceImpl)				(VkInstance instance, VkSurfaceKHR *surface);
 	void			(*VK_destroyWindow)					(void);
+	int				(*FS_FileIsInPAK_ext)				( const char *filename, const char **pakname );
 } refimport_t;
 
 // this is the only function actually exported at the linker level

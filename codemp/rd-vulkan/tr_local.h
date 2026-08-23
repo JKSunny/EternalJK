@@ -408,6 +408,14 @@ typedef struct IBO_s
 
 #ifdef USE_VK_IMGUI
 
+#ifdef USE_VK_IMGUI
+typedef struct {
+	char	pak[MAX_QPATH];
+	char	file[MAX_QPATH];
+	int		line;
+} sourceMeta_t;
+#endif
+
 #define GEN_FUNC_LIST \
 	ENUM_DO( GF_NONE,					none				 ) \
 	\
@@ -910,6 +918,7 @@ typedef struct shader_s {
 	byte		styles[MAXLIGHTMAPS];
 #ifdef USE_VK_IMGUI
 	byte		stylesPreserved[MAXLIGHTMAPS];		// use original state for updatedShader
+	sourceMeta_t source;
 #endif
 
 	int			index;								// this shader == tr.shaders[index]

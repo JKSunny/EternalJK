@@ -2057,6 +2057,64 @@ int	FS_FileIsInPAK(const char *filename, int *pChecksum ) {
 	return -1;
 }
 
+int	FS_FileIsInPAK_ext(const char *filename, const char **pakname ) {
+	searchpath_t	*search;
+	pack_t			*pak;
+	fileInPack_t	*pakFile;
+	long			hash = 0;
+
+	FS_AssertInitialised();
+
+	if ( !filename ) {
+		Com_Error( ERR_FATAL, "FS_FOpenFileRead: NULL 'filename' parameter passed\n" );
+	}
+
+	// qpaths are not supposed to have a leading slash
+	if ( filename[0] == '/' || filename[0] == '\\' ) {
+		filename++;
+	}
+
+	// make absolutely sure that it can't back up the path.
+	// The searchpaths do guarantee that something will always
+	// be prepended, so we don't need to worry about "c:" or "//limbo"
+	if ( strstr( filename, ".." ) || strstr( filename, "::" ) ) {
+		return -1;
+	}
+
+	//
+	// search through the path, one element at a time
+	//
+
+	for ( search = fs_searchpaths ; search ; search = search->next ) {
+		//
+		if (search->pack) {
+			hash = FS_HashFileName(filename, search->pack->hashSize);
+		}
+		// is the element a pak file?
+		if ( search->pack && search->pack->hashTable[hash] ) {
+			// disregard if it doesn't match one of the allowed pure pak files
+			if ( !FS_PakIsPure(search->pack) ) {
+				continue;
+			}
+
+			// look through all the pak file elements
+			pak = search->pack;
+			pakFile = pak->hashTable[hash];
+			do {
+				// case and separator insensitive comparisons
+				if ( !FS_FilenameCompare( pakFile->name, filename ) ) {
+					if (pakname) {
+						*pakname = pak->pakBasename;
+					}
+					return 1;
+				}
+				pakFile = pakFile->next;
+			} while(pakFile != NULL);
+		}
+	}
+	return -1;
+}
+
 long FS_ReadDLLInPAK(const char *filename, void **buffer) {
 	searchpath_t	*search;
 	pack_t			*pak;
