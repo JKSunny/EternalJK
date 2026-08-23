@@ -1070,6 +1070,10 @@ void vk_imgui_draw_objects_shaders( void )
 	shader_t *sh;
 	shader_t **shaders = tr.shaders;
 
+	static shaderTreeNode_t *node_root;
+	static int last_num_shaders;
+	static bool last_merge_state;
+
 	if ( create_merge_shader_list() )
 		shaders = merge_shader_list;
 
@@ -1086,62 +1090,9 @@ void vk_imgui_draw_objects_shaders( void )
 
 	if ( !parentNode ) 
 		return;
-	
-	bool opened, selected;
 
-	for ( i = 0; i < tr.numShaders; i++ ) 
-	{
-		selected = false;
-		sh = shaders[i];
-
-		if ( !sh )
-			break;
-
-		if ( sh->shaderText == NULL || sh->isUpdatedShader )
-			continue;
-
-		if ( inspector.search_keyword != NULL ) {
-			if ( !strstr( sh->name, inspector.search_keyword ) )
-				continue;
-		}
-
-		flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanAvailWidth;
-				
-		if ( inspector.selected.ptr == sh )
-			selected = true;
-
-		if ( selected ) {
-			flags |= ImGuiTreeNodeFlags_Selected ;
-			ImGui::PushStyleColor( ImGuiCol_Text, ImVec4(0.99f, 0.42f, 0.01f, 1.0f) );
-		}
-
-		opened = ImGui::TreeNodeEx( (void*)sh, flags, sh->name );
-		
-		if ( ImGui::IsItemClicked() ) {
-			inspector.selected.type = OT_SHADER;
-			inspector.selected.ptr = sh;
-		}
-
-		if ( sh->remappedShader ) {
-			ImGui::SameLine( 14.0f );
-			ImGui::PushStyleColor( ImGuiCol_Text, RGBA_LE(0xa2708affu) );
-			ImGui::Text( "r" );
-			ImGui::PopStyleColor();	
-		}	
-
-		if ( sh->updatedShader ) {
-			ImGui::SameLine( 1.0f );
-			ImGui::PushStyleColor( ImGuiCol_Text, RGBA_LE(0xfc6b03ffu) );
-			ImGui::Text("*");
-			ImGui::PopStyleColor();	
-		}
-		
-		if ( opened )
-			ImGui::TreePop();
-
-		if ( selected )
-			ImGui::PopStyleColor();	
-	}
+	if ( node_root )
+		vk_imgui_draw_objects_shader_node( node_root );
 
 	ImGui::TreePop();
 }
