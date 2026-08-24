@@ -242,6 +242,7 @@ qboolean	vk_imgui_shader_text_editor_compare_stored_tab_text( vk_imgui_shader_ta
 void		vk_imgui_shader_set_tab_text( const char *str , vk_imgui_shader_tab_t *tab );
 
 // shader node editor
+void		vk_imgui_shader_node_editor_destroy( void );
 void		vk_imgui_draw_shader_editor_node( void );
 void		vk_imgui_parse_shader_nodes_to_text( void );
 

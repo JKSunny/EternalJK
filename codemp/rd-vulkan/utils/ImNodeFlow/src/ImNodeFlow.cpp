@@ -25,7 +25,8 @@ namespace ImFlow {
         if (m_selected)
             smart_bezier(start, end, m_left->getStyle()->extra.outline_color,
                          thickness + m_left->getStyle()->extra.link_selected_outline_thickness);
-            
+        smart_bezier(start, end, m_left->getStyle()->color, thickness);
+
 #ifdef USE_ID3_NODE_EDITOR
         ImU32 color = ( m_left->isDisabled() || m_right->isDisabled() ) 
             ? m_left->getStyle()->extra.disabled_color : m_left->getStyle()->color;
@@ -43,6 +44,7 @@ namespace ImFlow {
     }
 
     Link::~Link() {
+        if (!m_left) return;
 #ifdef USE_ID3_NODE_EDITOR
         m_left->getParent()->setLinkChanged();
 #endif
@@ -80,24 +82,28 @@ namespace ImFlow {
         float headerH = ImGui::GetItemRectSize().y;
         float titleW = ImGui::GetItemRectSize().x;
 
+#ifdef USE_ID3_NODE_EDITOR
         // patch for: https://github.com/ocornut/imgui/issues/7543#issuecomment-2285935567
         ImGui::Dummy( ImVec2( 0.0, 0.0 ) );
+#endif
 
         // Inputs
-        ImGui::BeginGroup();
-        for (auto &p: m_ins) {
-            p->setPos(ImGui::GetCursorPos());
-            p->update();
-        }
-        for (auto &p: m_dynamicIns) {
-            if (p.first == 1) {
-                p.second->setPos(ImGui::GetCursorPos());
-                p.second->update();
-                p.first = 0;
+        if (!m_ins.empty() || !m_dynamicIns.empty()) {
+            ImGui::BeginGroup();
+            for (auto &p: m_ins) {
+                p->setPos(ImGui::GetCursorPos());
+                p->update();
             }
+            for (auto &p: m_dynamicIns) {
+                if (p.first == 1) {
+                    p.second->setPos(ImGui::GetCursorPos());
+                    p.second->update();
+                    p.first = 0;
+                }
+            }
+            ImGui::EndGroup();
+            ImGui::SameLine();
         }
-        ImGui::EndGroup();
-        ImGui::SameLine();
 
         // Content
         ImGui::BeginGroup();
@@ -170,6 +176,7 @@ namespace ImFlow {
         draw_list->AddRectFilled(offset + m_pos - paddingTL, offset + m_pos + headerSize, m_style->header_bg,
                                  m_style->radius, ImDrawFlags_RoundCornersTop);
 #endif
+        m_fullSize = m_size + paddingTL + paddingBR;
         ImU32 col = m_style->border_color;
         float thickness = m_style->border_thickness;
         ImVec2 ptl = paddingTL;
@@ -215,7 +222,7 @@ namespace ImFlow {
         }
         if (m_dragged || (m_selected && m_inf->isNodeDragged())) {
             float step = m_inf->getStyle().grid_size / m_inf->getStyle().grid_subdivisions;
-            m_posTarget += ImGui::GetIO().MouseDelta;
+            m_posTarget += m_inf->getScreenSpaceDelta();
             // "Slam" The position
             m_pos.x = round(m_posTarget.x / step) * step;
             m_pos.y = round(m_posTarget.y / step) * step;
@@ -263,18 +270,18 @@ namespace ImFlow {
                               [](const std::weak_ptr<Link>& l) { return !l.lock()->isHovered(); });
     }
 
-    ImVec2 ImNodeFlow::screen2grid(const ImVec2 &p) {
-        if (ImGui::GetCurrentContext() == m_context.getRawContext())
+    ImVec2 ImNodeFlow::screen2grid( const ImVec2 & p )
+    {
+        if ( ImGui::GetCurrentContext() == m_context.getRawContext() )
             return p - m_context.scroll();
-        else
-            return p - m_context.origin() - m_context.scroll() * m_context.scale();
+        return ( p - m_context.origin() ) / m_context.scale() - m_context.scroll();
     }
 
-    ImVec2 ImNodeFlow::grid2screen(const ImVec2 &p) {
-        if (ImGui::GetCurrentContext() == m_context.getRawContext())
+    ImVec2 ImNodeFlow::grid2screen( const ImVec2 & p )
+    {
+        if ( ImGui::GetCurrentContext() == m_context.getRawContext() )
             return p + m_context.scroll();
-        else
-            return p + m_context.origin() + m_context.scroll() * m_context.scale();
+        return ( p + m_context.scroll() ) * m_context.scale() + m_context.origin();
     }
 
     void ImNodeFlow::addLink(std::shared_ptr<Link> &link) {

@@ -89,6 +89,14 @@ static void UI_igExecuteCommand( const char *text ) {
 	trap->Cmd_ExecuteText( EXEC_APPEND, va( "%s\n", text ) );	
 }
 
+static ImTextureRef ImGuiTexture(ImTextureID id)
+{
+	ImTextureRef ref;
+	ref._TexData = NULL;
+	ref._TexID = id;
+	return ref;
+}
+
 static void igTestImages( void ) {
     float my_tex_w = 32.0f;
     float my_tex_h = 32.0f;
@@ -100,39 +108,39 @@ static void igTestImages( void ) {
 	ImVec4 tint_col = (ImVec4){1.0f, 1.0f, 1.0f, 1.0f};       // No tint
 
 	float x_offset = 0;
-	if (igImageButton( "tex_needPass", cachedIgAssets.needPass, size, uv0, uv1, bg_col, tint_col))
+	if (igImageButton( "tex_needPass", ImGuiTexture(cachedIgAssets.needPass), size, uv0, uv1, bg_col, tint_col))
 		Com_Printf("hello\n");
 
 	x_offset += 35.0f; igSameLine( x_offset, 0.0f);
-	if (igImageButton( "tex_noForce", cachedIgAssets.noForce, size, uv0, uv1, bg_col, tint_col))
+	if (igImageButton( "tex_noForce", ImGuiTexture(cachedIgAssets.noForce), size, uv0, uv1, bg_col, tint_col))
 		Com_Printf("hello\n");
 
 	x_offset += 35.0f; igSameLine( x_offset, 0.0f);
-	if (igImageButton( "tex_forceRestrict", cachedIgAssets.forceRestrict, size, uv0, uv1, bg_col, tint_col))
+	if (igImageButton( "tex_forceRestrict", ImGuiTexture(cachedIgAssets.forceRestrict), size, uv0, uv1, bg_col, tint_col))
 		Com_Printf("hello\n");
 
 	x_offset += 35.0f; igSameLine( x_offset, 0.0f);
-	if (igImageButton( "tex_saberOnly", cachedIgAssets.saberOnly, size, uv0, uv1, bg_col, tint_col))
+	if (igImageButton( "tex_saberOnly", ImGuiTexture(cachedIgAssets.saberOnly), size, uv0, uv1, bg_col, tint_col))
 		Com_Printf("hello\n");
 
 	x_offset += 35.0f; igSameLine( x_offset, 0.0f);
-	if (igImageButton( "tex_trueJedi", cachedIgAssets.trueJedi, size, uv0, uv1, bg_col, tint_col))
+	if (igImageButton( "tex_trueJedi", ImGuiTexture(cachedIgAssets.trueJedi), size, uv0, uv1, bg_col, tint_col))
 		Com_Printf("hello\n");
 
 	x_offset += 35.0f; igSameLine( x_offset, 0.0f);
-	if (igImageButton( "tex_defaultIcon", cachedIgAssets.defaultIcon, size, uv0, uv1, bg_col, tint_col))
+	if (igImageButton( "tex_defaultIcon", ImGuiTexture(cachedIgAssets.defaultIcon), size, uv0, uv1, bg_col, tint_col))
 		Com_Printf("hello\n");
 
 	x_offset += 35.0f; igSameLine( x_offset, 0.0f);
-	if (igImageButton( "tex_defaultIconRed", cachedIgAssets.defaultIconRed, size, uv0, uv1, bg_col, tint_col))
+	if (igImageButton( "tex_defaultIconRed", ImGuiTexture(cachedIgAssets.defaultIconRed), size, uv0, uv1, bg_col, tint_col))
 		Com_Printf("hello\n");
 
 	x_offset += 35.0f; igSameLine( x_offset, 0.0f);
-	if (igImageButton( "tex_defaultIconBlue", cachedIgAssets.defaultIconBlue, size, uv0, uv1, bg_col, tint_col))
+	if (igImageButton( "tex_defaultIconBlue", ImGuiTexture(cachedIgAssets.defaultIconBlue), size, uv0, uv1, bg_col, tint_col))
 		Com_Printf("hello\n");
 
 	x_offset += 35.0f; igSameLine( x_offset, 0.0f);
-	if (igImageButton( "tex_defaultIconRGB", cachedIgAssets.defaultIconRGB, size, uv0, uv1, bg_col, tint_col))
+	if (igImageButton( "tex_defaultIconRGB", ImGuiTexture(cachedIgAssets.defaultIconRGB), size, uv0, uv1, bg_col, tint_col))
 		Com_Printf("hello\n");
 }
 

@@ -1508,6 +1508,9 @@ void vk_delete_textures( void ) {
 		image_t *img = tr.images.items[i];
 		vk_destroy_image_resources( &img->handle, &img->view );
 
+#ifdef USE_VK_IMGUI
+		vk_imgui_destroy_texture_resource( img );
+#endif
 		// img->descriptor will be released with pool reset
 	}
 

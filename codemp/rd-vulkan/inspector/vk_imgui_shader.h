@@ -589,6 +589,6 @@ static const std::vector<TextEditor::Format> g_shaderStageFormats
 	{ "specularscale %f %f %f %f",		"key float1 float2 float3 float4" },
 #endif
 };
-#undef TYPEDO
+#undef TYPE_DO
 
 #endif // VK_IMGUI_SHADER_H

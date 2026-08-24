@@ -258,3 +258,5 @@ STRUCT (
     VEC4	( lightDir )
 , vkLightGridSample_t )
 #endif
+
+#undef STRUCT

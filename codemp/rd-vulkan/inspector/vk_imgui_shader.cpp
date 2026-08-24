@@ -281,7 +281,7 @@ static void vk_imgui_draw_shader_editor_toolbar( shader_t *sh, shader_t *sh_rema
 	ImDrawList* drawList = ImGui::GetWindowDrawList(); 
 	const ImVec2 region = ImGui::GetContentRegionAvail();
 	const ImVec2 pos = ImGui::GetCursorScreenPos(); 
-	float height = (GImGui->Font->FontSize + GImGui->Style.FramePadding.y * 2.0f) + 15.0f;
+	float height = (ImGui::GetFontSize() + ImGui::GetStyle().FramePadding.y * 2.0f) + 15.0f;
 
 	if ( region.x > 350.0f )
 	{
@@ -442,11 +442,13 @@ void vk_imgui_draw_shader_editor( void )
 //
 //	inspector
 //
-static void vk_imgui_draw_inspector_shader_visualize_texture( const image_t *image, const char *type ) 
+static void vk_imgui_draw_inspector_shader_visualize_texture( image_t *image, const char *type ) 
 {
-	if ( image->descriptor_set != VK_NULL_HANDLE ) 
+
+	if ( image->view != VK_NULL_HANDLE ) 
 	{		
-		ImGui::Image( (uint64_t)image->descriptor_set, ImVec2( 40.0, 40.0 ) );
+		VkDescriptorSet set = vk_imgui_get_texture_resource( image );
+		ImGui::Image( (uint64_t)set, ImVec2( 40.0, 40.0 ) );
 
 		ImVec2 padding = ImVec2{0.0f, 0.0f};
 		ImVec2 p0 = ImGui::GetItemRectMin();
@@ -460,7 +462,7 @@ static void vk_imgui_draw_inspector_shader_visualize_texture( const image_t *ima
 			ImGui::Begin( "##image_inspector", NULL, ImGuiWindowFlags_Tooltip | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize );
 			
 			ImGui::SameLine(0.0f, 5.0f);
-			ImGui::Image( (uint64_t)image->descriptor_set, ImVec2( 100.0, 100.0 ) );
+			ImGui::Image( (uint64_t)set, ImVec2( 100.0, 100.0 ) );
 
 			ImGui::SameLine(110.0f, 0.0f);
 			ImGui::BeginGroup();
@@ -546,7 +548,7 @@ static void vk_imgui_draw_inspector_shader_visualize_surface_params( const char 
 		ImGui::PushStyleVar( ImGuiStyleVar_ItemSpacing, ImVec2{ 0, 0 } );
 	}
 
-	textHeight = (GImGui->Font->FontSize + GImGui->Style.FramePadding.y * 2.0f) + 2.0f;
+	textHeight = (ImGui::GetFontSize() + ImGui::GetStyle().FramePadding.y * 2.0f) + 2.0f;
 	pos = tag_pos = ImGui::GetCursorScreenPos(); 
 	region = ImGui::GetContentRegionAvail();
 
@@ -606,7 +608,7 @@ static void vk_imgui_draw_inspector_shader_visualize_deforms( const char *label,
 		ImGui::PushStyleVar( ImGuiStyleVar_ItemSpacing, ImVec2{ 0, 0 } );
 	}
 
-	textHeight = (GImGui->Font->FontSize + GImGui->Style.FramePadding.y * 2.0f) + 2.0f;
+	textHeight = (ImGui::GetFontSize() + ImGui::GetStyle().FramePadding.y * 2.0f) + 2.0f;
 	pos = tag_pos = ImGui::GetCursorScreenPos(); 
 	region = ImGui::GetContentRegionAvail();
 
@@ -664,7 +666,7 @@ static void vk_imgui_draw_inspector_shader_visualize_tcmod( const char *label, c
 		ImGui::PushStyleVar( ImGuiStyleVar_ItemSpacing, ImVec2{ 0, 0 } );
 	}
 
-	textHeight = (GImGui->Font->FontSize + GImGui->Style.FramePadding.y * 2.0f) + 2.0f;
+	textHeight = (ImGui::GetFontSize() + ImGui::GetStyle().FramePadding.y * 2.0f) + 2.0f;
 	pos = tag_pos = ImGui::GetCursorScreenPos(); 
 	region = ImGui::GetContentRegionAvail();
 
@@ -921,7 +923,7 @@ void vk_imgui_draw_inspector_shader( void ) {
 
 	qboolean updated = sh->updatedShader ? qtrue : qfalse;
 
-	ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
+	ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_FramePadding;
 	bool opened = ImGui::TreeNodeEx((void*)typeid(inspector.shader).hash_code(), flags, ICON_FA_FILL_DRIP " Shader");
 
 	if ( !opened )
@@ -1105,7 +1107,7 @@ static void vk_imgui_draw_objects_shader_node( shaderTreeNode_t *node )
 
 		if ( !sh )
 		{
-			bool opened = ImGui::TreeNodeEx(child, ImGuiTreeNodeFlags_SpanAvailWidth, "%s", child->name);
+			bool opened = ImGui::TreeNodeEx(child, ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_DrawLinesFull, "%s", child->name);
 			if (opened)
 			{
 				vk_imgui_draw_objects_shader_node(child);
@@ -1198,9 +1200,7 @@ static qboolean create_merge_shader_list( void )
 
 void vk_imgui_draw_objects_shaders( void )
 {
-	uint32_t i;
 	ImGuiTreeNodeFlags flags;
-	shader_t *sh;
 	shader_t **shaders = tr.shaders;
 
 	static shaderTreeNode_t *node_root;
@@ -1217,7 +1217,7 @@ void vk_imgui_draw_objects_shaders( void )
 		last_num_shaders = tr.numShaders;
 	}
 
-	flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap;
+	flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_DrawLinesFull;
 
 	bool parentNode = ImGui::TreeNodeEx( "Shaders", flags );
 

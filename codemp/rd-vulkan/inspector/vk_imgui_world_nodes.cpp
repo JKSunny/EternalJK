@@ -42,7 +42,7 @@ void vk_imgui_draw_inspector_world_node_surface( void ) {
 	if( !surf )
 		return;
 
-	ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
+	ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_FramePadding;
 	bool opened = ImGui::TreeNodeEx((void*)typeid(inspector.surface).hash_code(), flags, ICON_FA_MOUNTAIN " Surface");
 
 	if ( !opened )
@@ -86,7 +86,7 @@ void vk_imgui_draw_inspector_world_node( void ) {
 	if( !node )
 		return;
 
-	ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
+	ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_FramePadding;
 	bool opened = ImGui::TreeNodeEx((void*)typeid(inspector.node).hash_code(), flags, ICON_FA_FILL_DRIP " Node");
 
 	if ( !opened )

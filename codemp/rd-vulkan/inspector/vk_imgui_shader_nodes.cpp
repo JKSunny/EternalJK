@@ -140,6 +140,16 @@ static void vk_imgui_shader_node_editor_initialize( void )
 	initialized = qtrue;
 }
 
+void vk_imgui_shader_node_editor_destroy( void ) 
+{
+	if ( !initialized )
+		return;
+
+	node_editor.getGrid().destroyContext();
+
+	initialized = qfalse;
+}
+
 static void parse_text_to_nodes( void ) {
 	TextToNodesParser().parse();
 }

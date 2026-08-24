@@ -299,6 +299,9 @@ typedef struct image_s {
 	VkImage					handle;
 	VkImageView				view;
 	VkDescriptorSet			descriptor_set;
+#ifdef USE_VK_IMGUI
+	VkDescriptorSet			descriptor_set_imgui;
+#endif
 	qboolean				isLightmap;
 	uint32_t				mipLevels;		// gl texture binding
 	VkSamplerAddressMode	wrapClampMode;	
@@ -3178,10 +3181,12 @@ VBO_t *R_CreateVBO( const char *name, const byte *vbo_data, int vbo_size );
 #endif
 
 #ifdef USE_VK_IMGUI
-void		*vk_imgui_get_selected_surface( void );
-shader_t	*vk_imgui_get_selected_shader( void );
-qboolean	vk_imgui_merge_shaders( void );
-qboolean	vk_imgui_outline_selected( void );
-qboolean	vk_imgui_visualize_lightgrid( void );
+VkDescriptorSet vk_imgui_get_texture_resource( image_t *image );
+void			vk_imgui_destroy_texture_resource( image_t *image );
+void			*vk_imgui_get_selected_surface( void );
+shader_t		*vk_imgui_get_selected_shader( void );
+qboolean		vk_imgui_merge_shaders( void );
+qboolean		vk_imgui_outline_selected( void );
+qboolean		vk_imgui_visualize_lightgrid( void );
 #endif
 #endif
