@@ -3051,6 +3051,27 @@ static qboolean ParseShader( const char **text )
 
 	shader.explicitlyDefined = qtrue;
 
+	// store shader text
+#ifdef USE_VK_IMGUI
+	// ~sunny, ignore source keyword from shaderText now the source meta is parsed
+	const char *source = strstr(begin, "\n$$source ");
+	if ( source ) 
+	{
+		int prefix = source - begin;
+		int length = prefix + 3;
+
+		shader.shaderText = (char *)malloc(length);
+		Com_Memcpy(shader.shaderText, begin, prefix + 1);
+		shader.shaderText[prefix + 1] = '}';
+		shader.shaderText[prefix + 2] = '\0';
+	} else
+#endif
+	{
+		int length = (*text + 1) - begin;	// +1 for trailing '}'
+		shader.shaderText = (char*)malloc(length);
+		Q_strncpyz( shader.shaderText, begin, length );
+	}
+
 	// The basejka rocket lock wedge shader uses the incorrect blending mode.
 	// It only worked because the shader state was not being set, and relied
 	// on previous state to be multiplied by alpha. Since fixing RB_RotatePic,
@@ -3059,7 +3080,13 @@ static qboolean ParseShader( const char **text )
 	// We match against the retail version of gfx/2d/wedge by calculating the
 	// hash value of the shader text, and comparing it against a precalculated
 	// value.
+
+#ifdef USE_VK_IMGUI
+	uint32_t shaderHash = generateHashValueForText(shader.shaderText, strlen(shader.shaderText));
+#else
 	uint32_t shaderHash = generateHashValueForText(begin, *text - begin);
+#endif
+
 	if (shaderHash == RETAIL_ROCKET_WEDGE_SHADER_HASH &&
 		Q_stricmp(shader.name, "gfx/2d/wedge") == 0)
 	{
@@ -3081,30 +3108,6 @@ static qboolean ParseShader( const char **text )
 		stages[0].bundle[0].rgbGen = CGEN_VERTEX;
 		stages[0].bundle[0].alphaGen = AGEN_VERTEX;
 	}
-
-	// store shader text
-	int length = (*text + 1) - begin;	// +1 for trailing '}'
-#ifdef USE_VK_IMGUI
-	// remove source keyword from shaderText now
-	const char *source = strstr(begin, "\n$$source ");
-
-	if ( source ) 
-	{
-		int prefix = source - begin;
-		length = prefix + 3;
-
-		shader.shaderText = (char *)malloc(length);
-		if (!shader.shaderText)
-			return qfalse;
-
-		Com_Memcpy(shader.shaderText, begin, prefix + 1);
-		shader.shaderText[prefix + 1] = '}';
-		shader.shaderText[prefix + 2] = '\0';
-		return qtrue;
-	}
-#endif
-	shader.shaderText = (char*)malloc(length);
-	Q_strncpyz( shader.shaderText, begin, length );
 
 	return qtrue;
 }
