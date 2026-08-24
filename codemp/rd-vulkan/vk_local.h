@@ -1071,7 +1071,6 @@ typedef struct {
 		VkShaderModule			shader_vs;
 		uint32_t				pipeline;
 		VkPipelineLayout		pipeline_layout;
-		VkDescriptorSet			ssbo_descriptor;
 	} lightgrid;
 #endif
 
