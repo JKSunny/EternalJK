@@ -64,7 +64,7 @@ static uint32_t vk_add_lightgrid_indirect_cmd( void )
 
 void vk_render_lightgrid( void )
 {
-    if ( !tr.world || !vk.lightgrid.numSamples )
+    if ( !tr.world || !vk.lightgrid.numSamples || vk.renderPassIndex )
         return;
 
     uint32_t i, indirect_offset;
