@@ -242,6 +242,14 @@ static uint32_t igChatColorPopup( char *buf, const ImVec2 pos ) {
 	return color_index;
 }
 
+static ImTextureRef ImGuiTexture(ImTextureID id)
+{
+	ImTextureRef ref;
+	ref._TexData = NULL;
+	ref._TexID = id;
+	return ref;
+}
+
 static uint32_t igChatEmojiPopup( char *buf, const ImVec2 pos ) {
 	uint32_t emoji_index = -1;
 
@@ -278,7 +286,7 @@ static uint32_t igChatEmojiPopup( char *buf, const ImVec2 pos ) {
 						row_count = x_offset = 0;
 				} 
 
-				if ( igImageButton( va( "##emoji%d", i ), (ImTextureID)emojis[i].emoji_ig, size, uv0, uv1, bg_col, tint_col ) )
+				if ( igImageButton( va( "##emoji%d", i ), ImGuiTexture(emojis[i].emoji_ig), size, uv0, uv1, bg_col, tint_col ) )
 					emoji_index = i;
 			}
 		}
@@ -321,7 +329,7 @@ static void CG_igShowChatInput( void ) {
 	if( !cg.igShowMessagemode )
 		return;
 	
-	ImGuiIO *io = igGetIO();
+	ImGuiIO *io = igGetIO_Nil();
 
 	if( io->DisplaySize.x < 1.0f && io->DisplaySize.y < 1.0f )
 		return;
@@ -341,9 +349,7 @@ static void CG_igShowChatInput( void ) {
 	
 	// replace this with a seperate font with larger scale later..
 	ImFont *font = igGetDefaultFont();
-	float currentFontScale = font->Scale;
-	font->Scale = 1.2f;
-	igPushFont( font );
+	igPushFont( font, 1.2f );
 
 
 	// emoji and color button
@@ -383,8 +389,8 @@ static void CG_igShowChatInput( void ) {
 	
 	// return to previous font scale
 	igPopFont();
-	font->Scale = currentFontScale;
-	igPushFont( font );
+
+	igPushFont( font, 1.0f );
 	igPopFont();
 
 	

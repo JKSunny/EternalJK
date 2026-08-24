@@ -172,6 +172,7 @@ namespace ImFlow
             if (p.second->getUid() == h)
             {
                 p.first = 2;
+                static_cast<OutPin<T>*>(m_dynamicOuts.back().second.get())->behaviour(std::move(behaviour));
                 return;
             }
         }
@@ -302,7 +303,11 @@ namespace ImFlow
     template<class T>
     const T& InPin<T>::val()
     {
+#ifdef USE_ID3_NODE_EDITOR
         if ( !m_link || m_disabled )
+#else
+        if(!m_link)
+#endif
             return m_emptyVal;
 
         return reinterpret_cast<OutPin<T>*>(m_link->left())->val();

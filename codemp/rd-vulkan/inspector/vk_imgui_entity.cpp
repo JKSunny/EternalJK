@@ -362,7 +362,7 @@ void vk_imgui_draw_inspector_entity( void )
 	if( !ent )
 		return;
 
-	ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
+	ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_FramePadding;
 	bool opened = ImGui::TreeNodeEx((void*)typeid(inspector.entity).hash_code(), flags, ICON_FA_FILL_DRIP " Entity");
 
 	if ( !opened )

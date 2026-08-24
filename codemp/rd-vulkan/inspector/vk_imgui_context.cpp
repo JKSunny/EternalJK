@@ -61,6 +61,24 @@ uint64_t R_GetImGuiTexture( qhandle_t hShader )
 	return NULL;
 }
 
+void vk_imgui_destroy_texture_resource( image_t *image ) 
+{
+	if ( !image->descriptor_set_imgui )
+		return;
+
+	ImGui_ImplVulkan_RemoveTexture( image->descriptor_set_imgui );
+}
+
+VkDescriptorSet vk_imgui_get_texture_resource( image_t *image ) 
+{
+	if ( image->descriptor_set_imgui )
+		return image->descriptor_set_imgui;
+
+	image->descriptor_set_imgui = ImGui_ImplVulkan_AddTexture( image->view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL );
+
+	return image->descriptor_set_imgui;
+}
+
 void vk_imgui_bind_game_color_image( void ) 
 {
 	Vk_Sampler_Def sd;
@@ -74,7 +92,7 @@ void vk_imgui_bind_game_color_image( void )
 
 	sampler = vk_find_sampler(&sd);
 
-	inspector.render_mode.image = ImGui_ImplVulkan_AddTexture( sampler, vk.gamma_image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL );
+	inspector.render_mode.image = ImGui_ImplVulkan_AddTexture( vk.gamma_image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL );
 }
 
 #ifdef USE_RTX
@@ -197,15 +215,14 @@ static void vk_imgui_dark_theme( void )
 
 	// merge in icons from Font Awesome
 	static const ImWchar icons_ranges[] = { ICON_MIN_FA, ICON_MAX_16_FA, 0 };
-	ImFontConfig icons_config; icons_config.MergeMode = true; icons_config.PixelSnapH = true;
-	io.Fonts->AddFontFromMemoryCompressedTTF( FA5SOLID900_compressed_data, FA5SOLID900_compressed_size, 12.0f, &icons_config, icons_ranges );	
+	ImFontConfig icons_config;
+	icons_config.MergeMode = true;
+	icons_config.PixelSnapH = true;
+	io.Fonts->AddFontFromMemoryCompressedTTF( FA5SOLID900_compressed_data, FA5SOLID900_compressed_size, 0.0f, &icons_config, icons_ranges );	
 }
 
 void vk_imgui_initialize( void )
 {
-	VkSubmitInfo end_info;
-	VkCommandBuffer command_buffer;
-	VkCommandBufferBeginInfo begin_info;
 	ImGui_ImplVulkan_InitInfo init_info;
 	VkDescriptorPoolCreateInfo pool_info;
 	VkDescriptorPoolSize pool_sizes[] =
@@ -255,12 +272,14 @@ void vk_imgui_initialize( void )
 	init_info.Device = vk.device;
 	init_info.Queue = vk.queue;
 	init_info.DescriptorPool = imguiPool;
-	init_info.MinImageCount = 2;
+	init_info.MinImageCount = NUM_COMMAND_BUFFERS;
 	init_info.ImageCount = vk.swapchain_image_count;
-	init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
-	init_info.RenderPass = vk.render_pass.inspector;
+    init_info.PipelineInfoMain.RenderPass = vk.render_pass.inspector;
+    init_info.PipelineInfoMain.Subpass = 0;
+    init_info.PipelineInfoMain.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
 
-	ImGui_ImplVulkan_LoadFunctions( []( const char* func, void *instance ) 
+
+	ImGui_ImplVulkan_LoadFunctions( VK_API_VERSION_1_0, [](const char* func, void *instance )
 	{
 		Vk_Instance* vk_instance = reinterpret_cast<Vk_Instance*>(instance);
 		PFN_vkVoidFunction instanceAddr = qvkGetInstanceProcAddr( vk_instance->instance, func );
@@ -269,34 +288,14 @@ void vk_imgui_initialize( void )
 	}, &vk );
 
 	ImGui_ImplVulkan_Init( &init_info );
-
-	{
-		command_buffer = vk.cmd->command_buffer;
-
-		Com_Memset( &begin_info, 0, sizeof(begin_info) );
-		begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		begin_info.pNext = NULL;
-		begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-		begin_info.pInheritanceInfo = NULL;
-		VK_CHECK( qvkBeginCommandBuffer( command_buffer, &begin_info ) );
-
-		ImGui_ImplVulkan_CreateFontsTexture();
-
-		VK_CHECK(qvkEndCommandBuffer(command_buffer));
-
-        end_info = {};
-        end_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        end_info.commandBufferCount = 1;
-        end_info.pCommandBuffers = &command_buffer;
-		VK_CHECK( qvkQueueSubmit( vk.queue, 1, &end_info, VK_NULL_HANDLE ) );
-
-		vk_wait_idle();
-	}
 }
 
 void vk_imgui_shutdown( void )
 {
+	vk_imgui_shader_node_editor_destroy();
+
 	ImGui_ImplVulkan_RemoveTexture( inspector.render_mode.image );
+	// other texture resources handled in vk_delete_textures()
 
 #ifdef USE_RTX
 	if ( vk.rtxActive )

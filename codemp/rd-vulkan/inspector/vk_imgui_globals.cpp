@@ -165,7 +165,7 @@ qboolean imgui_draw_vec3_control( const char *label, vec3_t &values, float reset
 	ImGui::PushMultiItemsWidths( 3, ImGui::CalcItemWidth() );
 	ImGui::PushStyleVar( ImGuiStyleVar_ItemSpacing, ImVec2{ 0, 0 } );
 
-	float lineHeight = GImGui->Font->FontSize + GImGui->Style.FramePadding.y * 2.0f;
+	float lineHeight = ImGui::GetFontSize() + ImGui::GetStyle().FramePadding.y * 2.0f;
 	ImVec2 buttonSize = { lineHeight + 3.0f, lineHeight };
 
 	{
@@ -295,7 +295,7 @@ qboolean imgui_draw_text_with_button( const char *label, const char *value, cons
 	ImDrawList* drawList = ImGui::GetWindowDrawList(); 
 	const ImVec2 region = ImGui::GetContentRegionAvail();
 	const ImVec2 pos = ImGui::GetCursorScreenPos(); 
-	float height = (GImGui->Font->FontSize + GImGui->Style.FramePadding.y * 2.0f) + 5.0f;
+	float height = (ImGui::GetFontSize() + ImGui::GetStyle().FramePadding.y * 2.0f) + 5.0f;;
 
 	drawList->AddRect(
 		ImVec2(pos.x, pos.y), 
