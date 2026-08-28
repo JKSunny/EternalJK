@@ -2098,7 +2098,10 @@ typedef struct trGlobals_s {
 	shader_t				*flareShader;
 	shader_t				*sunShader;
 
+#ifdef USE_VK_IMGUI
 	shader_t				*outlineShader;
+	shader_t				*outlineHoverShader;
+#endif
 
 	int						numLightmaps;
 	image_t					**lightmaps;
@@ -3104,6 +3107,9 @@ struct DrawCommand
 struct DrawItem 
 {
 	float				mvp[16];
+#ifdef USE_VK_IMGUI
+	shader_t			*shader;
+#endif
 
 	int					vbo_world_index;	// world vbo/ibo
 	IBO_t				*ibo;				// model vbo/ibo
@@ -3345,10 +3351,22 @@ VBO_t *R_CreateVBO( const char *name, const byte *vbo_data, int vbo_size );
 #endif
 
 #ifdef USE_VK_IMGUI
+// readback
+void				vk_reset_readback_cmd( uint32_t cmd_index );
+vkReadbackEntry_t	*vk_get_readback_front( void );
+void				vk_imgui_process_readback( void );
+void				vk_init_readback_descriptor( void );
+void				vk_init_readback_storage_buffer (void );
+void				vk_destroy_readback_storage_buffer( void );
+void				vk_imgui_draw_readback( void );
+
+void			vk_update_mvp( const float *m, const DrawItem *draw = NULL );
+
 VkDescriptorSet vk_imgui_get_texture_resource( image_t *image );
 void			vk_imgui_destroy_texture_resource( image_t *image );
 void			*vk_imgui_get_selected_surface( void );
 shader_t		*vk_imgui_get_selected_shader( void );
+shader_t		*vk_imgui_get_hovered_shader( void );
 qboolean		vk_imgui_merge_shaders( void );
 qboolean		vk_imgui_outline_selected( void );
 qboolean		vk_imgui_visualize_lightgrid( void );

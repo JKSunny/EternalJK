@@ -99,7 +99,7 @@ const char *vk_shadertype_string( Vk_Shader_Type code ) {
         CASE_STR(TYPE_COLOR_WHITE);
         CASE_STR(TYPE_COLOR_GREEN);
         CASE_STR(TYPE_COLOR_RED);
-        CASE_STR(TYPE_COLOR_ORANGE);
+        CASE_STR(TYPE_COLOR_CUSTOM);
 #ifdef USE_VK_LIGHTGRID
 	    CASE_STR(TYPE_LIGHTGRID_DEBUG);
 #endif
@@ -470,7 +470,6 @@ void vk_info_f( void ) {
     ri.Printf(PRINT_ALL, "vk_info statistics are not enabled in this build.\n");
 #endif
 #ifdef USE_RTX
-    const char *yesno[] = {"no ", "yes"};
     ri.Printf( PRINT_ALL, "RTX Support: %s RTX Enabled: %s", yesno[vk.rtxSupport], yesno[vk.rtxActive] );
 #endif
 }

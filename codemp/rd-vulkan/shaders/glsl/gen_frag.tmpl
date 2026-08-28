@@ -44,6 +44,10 @@
 	};	
 #endif
 
+layout(set = VK_DESC_READBACK, binding = 0) buffer Readback {
+	vkReadback_t readback;
+};
+
 layout(set = VK_DESC_TEXTURE0, binding = 0) uniform sampler2D texture0;
 #ifdef USE_TX1
 layout(set = VK_DESC_TEXTURE1, binding = 0) uniform sampler2D texture1;
@@ -120,7 +124,7 @@ layout (constant_id = 9) const float identity_color = 1.0;
 	layout (location = 10) in vec4 var_Normal;
 	layout (location = 11) in vec4 var_LightDir;
 	layout (location = 12) in vec4 var_ViewDir;
-	layout (location = 13) in flat int Var_RenderMode;
+	layout (location = 13) in flat uint var_RenderMode;
 	layout (location = 14) in vec4 var_Tangent;
 
 	layout (set = VK_DESC_PBR_BRDFLUT,	binding = 0) uniform sampler2D brdflut_texture;
@@ -132,6 +136,9 @@ layout (constant_id = 9) const float identity_color = 1.0;
 	//layout(set = 10, binding = 0) uniform samplerCube irradiance_texture;
 	#include "common/pbr.glsl"
 #endif
+
+	layout (location = 15) flat in ivec2 in_viewport_mouse;
+	layout (location = 16) flat in uint in_shader_index;
 
 void main() {
 	vec4 diffuse;
@@ -484,8 +491,8 @@ void main() {
 
 		out_color.a = diffuse.a;
 
-		if(  Var_RenderMode > 0 ) {
-			switch( Var_RenderMode ) {
+		if(  var_RenderMode > 0 ) {
+			switch( var_RenderMode ) {
 				case 1 : out_color.rgb = diffuse.rgb; break;
 				case 2 : out_color.rgb = specular.rgb; break;		
 				case 3 : out_color.rgb = vec3(roughness); break;
@@ -525,5 +532,17 @@ void main() {
 			out_color = mix( out_color, fog * fogColor, fog.a );
 		}
 	#endif
+
+	// store surface data for mouse pixel
+	ivec2 mouse_pixel = ivec2(floor(in_viewport_mouse.x), floor(in_viewport_mouse.y));
+	ivec2 pixel = ivec2(gl_FragCoord.xy);
+
+	if ( pixel == mouse_pixel ) {
+		uint index = atomicAdd(readback.count, 1);
+		if ( index < MAX_READBACK_COUNT ) {
+			readback.entry[index].depth = gl_FragCoord.z;
+			readback.entry[index].shaderIndex = in_shader_index;
+		}
+	}
 #endif
 }

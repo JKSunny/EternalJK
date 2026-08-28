@@ -613,6 +613,11 @@ void vk_initialize( void )
 	vk_create_vertex_buffer( vk.geometry_buffer_size_new );
 	vk_create_indirect_buffer( vk.indirect_buffer_size_new );
 	vk_create_storage_buffer( &vk.storage, MAX_FLARES * vk.storage_alignment, "storage (flares)" );
+
+#ifdef USE_VK_IMGUI
+	vk_init_readback_storage_buffer();
+#endif
+
 	vk_create_shader_modules();
 
 	{
@@ -722,6 +727,10 @@ void vk_shutdown( void )
 	// storage buffer
 	VK_DESTROY_BUFFER(vk.device, vk.storage.buffer);
 	VK_FREE_MEMORY(vk.device, vk.storage.memory);
+
+#ifdef USE_VK_IMGUI
+	vk_destroy_readback_storage_buffer();
+#endif
 
 #ifdef USE_VBO_SS
 	vk_clean_surface_sprites();

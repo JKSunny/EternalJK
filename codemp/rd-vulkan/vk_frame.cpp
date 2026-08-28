@@ -1513,6 +1513,10 @@ void vk_begin_frame( void )
 		VK_CHECK( qvkResetFences( vk.device, 1, &vk.cmd->rendering_finished_fence ) );
     }
 
+#ifdef USE_VK_IMGUI
+    vk_reset_readback_cmd( vk.cmd_index );
+#endif
+
 	if ( !ri.VK_IsMinimized() && !vk.cmd->swapchain_image_acquired && backEnd.viewParms.targetCube == NULL ) {
 		qboolean retry = qfalse;
 _retry:

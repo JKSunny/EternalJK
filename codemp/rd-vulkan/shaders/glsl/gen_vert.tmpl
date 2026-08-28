@@ -6,8 +6,10 @@
 
 // 64 bytes
 layout(push_constant) uniform Transform {
-	mat4 mvp;
-	float renderMode;
+	mat4	mvp;
+	uint	renderMode;
+	uint	shaderIndex;
+	ivec2	viewportMouse;
 };
 
 #if defined(USE_FOG) || defined(USE_ENV)
@@ -46,9 +48,12 @@ layout(set = VK_DESC_UNIFORM, binding = VK_DESC_UNIFORM_MAIN_BINDING) uniform UB
 	layout(location = 10) out vec4 var_Normal;
 	layout(location = 11) out vec4 var_LightDir;
 	layout(location = 12) out vec4 var_ViewDir;
-	layout(location = 13) out flat int Var_RenderMode;
+	layout(location = 13) out flat uint var_RenderMode;
 	layout(location = 14) out vec4 var_Tangent;
 #endif
+
+layout (location = 15) flat out ivec2 out_viewport_mouse;
+layout (location = 16) flat out uint out_shader_index;
 
 #if defined(USE_VBO_GHOUL2)
 	layout(set = 0, binding = 4) uniform Bones {
@@ -331,6 +336,10 @@ void main() {
 	var_ViewDir		= vec4(viewDir, 0.0);
 	var_Tangent		= vec4(tangent, in_tangent.w);
 	
-	Var_RenderMode = int(renderMode);
+	// inspector
+	var_RenderMode = renderMode;
 #endif
+
+	out_viewport_mouse = viewportMouse;
+	out_shader_index = shaderIndex;
 }

@@ -290,6 +290,9 @@ static void vk_imgui_draw_bar_filemenu( ImGuiIO &io, ImGuiViewportP *viewport )
 				if ( ImGui::MenuItem( " Viewport" ) ) 
 					windows.viewport.p_open = true;
 
+				if ( ImGui::MenuItem( " Readback" ) ) 
+					windows.readback.p_open = true;
+
 				ImGui::EndMenu();
 			}
 
@@ -328,6 +331,21 @@ static void vk_imgui_draw_bar_status( ImGuiIO &io, ImGuiViewportP *viewport )
 			ImGui::Text( va("[F1] Input %s", ( imguiGlobal.input_state ? "enabled" : "disabled" ) ) );
 			ImGui::SameLine( 225 );
 			ImGui::Text( "Mouse x:%d y:%d", (int)io.MousePos.x, (int)io.MousePos.y );
+			ImGui::SameLine( 500 );
+
+			shader_t *hovered_shader = vk_imgui_get_hovered_shader();
+			if ( hovered_shader ) 
+			{
+				ImGui::Text( "Shader: %s", hovered_shader->name );
+
+				if ( !hovered_shader->shaderText ) {
+					ImGui::SameLine();
+					ImGui::TextColored( ImVec4( 1.0f, 0.65f, 0.25f, 1.0f ), " <no entry>" );
+				}
+			}
+			else
+				ImGui::Text( "Shader: %s", "undefined" );
+
 			ImGui::EndMenuBar();
 		}
 		ImGui::End();
@@ -342,6 +360,12 @@ static inline void vk_imgui_draw_bars( void )
 	vk_imgui_draw_bar_filemenu( io, viewport );
 	//vk_imgui_draw_bar_tools( io, viewport );
 	vk_imgui_draw_bar_status( io, viewport );
+}
+
+void vk_imgui_get_viewport_mouse( int *position )
+{
+	 position[0] = windows.viewport.mouse.x;
+	 position[1] = windows.viewport.mouse.y;
 }
 
 static void vk_imgui_draw_viewport( void ) 
@@ -407,6 +431,22 @@ static void vk_imgui_draw_viewport( void )
 		vk_imgui_draw_render_mode( render_modes, IM_ARRAYSIZE( render_modes ) );
 
 		ImGui::Image( (ImU64)inspector.render_mode.image, { (float)gls.windowWidth, (float)gls.windowHeight } );
+
+		if ( imguiGlobal.input_state ) 
+		{
+			const ImVec2 mouse = ImGui::GetIO().MousePos;
+			windows.viewport.mouse.x = ( mouse.x - pos.x );
+			windows.viewport.mouse.y = ( mouse.y - (pos.y + 30) );
+		}
+		else 
+		{
+			// crosshair
+			//windows.viewport.mouse.x = glConfig.vidWidth / 2;
+			//windows.viewport.mouse.y = glConfig.vidHeight / 2;
+
+			// clear
+			windows.viewport.mouse.x = windows.viewport.mouse.y = -1.0f;
+		}
 	}
 
 	ImGui::End();
@@ -474,6 +514,9 @@ void vk_imgui_create_gui( void )
 		inspector.init = qtrue;
 	}
 
+	// process mouse readback from prev frame
+	vk_imgui_process_readback();
+
 	vk_imgui_draw_bars();
 	vk_imgui_draw_objects();
 
@@ -483,6 +526,8 @@ void vk_imgui_create_gui( void )
 	vk_imgui_draw_shader_editor();
 	vk_imgui_draw_profiler();
 	vk_imgui_draw_viewport();
+	vk_imgui_draw_readback();
+
 #ifdef USE_RTX
 	vk_imgui_draw_rtx();
 #endif

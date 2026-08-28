@@ -83,7 +83,7 @@ pushConst *vk_get_push_constant() {
 	return &push_constants;
 }
 
-void vk_update_mvp( const float *m ) {
+void vk_update_mvp( const float *m, const DrawItem *draw ) {
 	//pushConst push_constants;
 
 	// Specify push constants.
@@ -92,7 +92,15 @@ void vk_update_mvp( const float *m ) {
 	else
 		get_mvp_transform(push_constants.mvp);
 
-	push_constants.renderMode = (float)vk_imgui_get_render_mode();
+#ifdef USE_VK_IMGUI
+	if ( draw ) 
+	{
+		vk_imgui_get_viewport_mouse( push_constants.viewport_mouse );
+		push_constants.shaderIndex = draw->shader ? draw->shader->index : 0U;
+	}
+
+	push_constants.renderMode = (uint32_t)vk_imgui_get_render_mode();
+#endif
 
 	qvkCmdPushConstants(vk.cmd->command_buffer, vk.pipeline_layout, 
 		VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(pushConst), &push_constants);
@@ -775,6 +783,10 @@ void vk_init_descriptors( void ) {
 		VK_CHECK( qvkAllocateDescriptorSets( vk.device, &alloc, &vk.cubeMap.color_descriptor ) );
 
 		vk_update_attachment_descriptors();
+
+#ifdef USE_VK_IMGUI
+		vk_init_readback_descriptor();
+#endif
 	}
 }
 
@@ -2489,7 +2501,21 @@ void RB_AddDrawItemUniformBinding( DrawItem &item, const trRefEntity_t *refEntit
 			vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_BONES_BINDING] = vk.cmd->bones_ubo_offset;
 		}
 	}
-		
+
+#ifdef USE_VK_IMGUI
+	{
+		Vk_Pipeline_Def def;
+		Com_Memset( &def, 0, sizeof(Vk_Pipeline_Def) );
+		vk_get_pipeline_def( item.pipeline, &def);
+
+		item.shader = tess.shader;
+
+		vk_reset_descriptor( VK_DESC_READBACK ); // force vk.cmd->descriptor_set.end write
+		if ( def.shader_type >= TYPE_SINGLE_TEXTURE_DF && def.shader_type <= TYPE_GENERIC_END  )
+			vk_update_descriptor(  VK_DESC_READBACK, vk.readback[vk.cmd_index].descriptor );
+	}
+#endif
+
 	{
 		// fill NULL descriptor gaps
 		if ( vk.cmd->descriptor_set.start != ~0U )
@@ -2898,7 +2924,11 @@ void RB_StageIteratorGeneric( void )
 #ifdef USE_VK_IMGUI
 		// ImGui outline surface/shader 
 		if ( tess.shader == tr.outlineShader ) {
-			pipeline = vk.std_pipeline.inspector_object_debug_pipeline[ is_ghoul2_vbo ? 1 : 0 ];
+			pipeline = vk.std_pipeline.inspector_object_debug_pipeline[0][ is_ghoul2_vbo ? 1 : 0 ];
+			depthRange = DEPTH_RANGE_ZERO;
+		}
+		else if ( tess.shader == tr.outlineHoverShader ) {
+			pipeline = vk.std_pipeline.inspector_object_debug_pipeline[1][ is_ghoul2_vbo ? 1 : 0 ];
 			depthRange = DEPTH_RANGE_ZERO;
 		}
 #endif

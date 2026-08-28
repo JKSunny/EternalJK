@@ -169,7 +169,7 @@ void vk_create_pipeline_layout( void )
     set_layouts[8] = vk.set_layout_sampler; // prefiltered envmap
     set_layouts[9] = vk.set_layout_sampler; // deluxeMap
     //set_layouts[10] = vk.set_layout_sampler; // irradiance envmap
-
+    set_layouts[10] = vk.set_layout_storage_static; // readback
 
     desc.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     desc.pNext = NULL;
@@ -328,7 +328,7 @@ static void vk_push_vertex_input_binding_attribute( const Vk_Pipeline_Def *def )
         case TYPE_COLOR_WHITE:
         case TYPE_COLOR_GREEN:
         case TYPE_COLOR_RED:
-        case TYPE_COLOR_ORANGE:
+        case TYPE_COLOR_CUSTOM:
             vk_push_bind( 0, sizeof( vec4_t ) );					// xyz array
             vk_push_attr( 0, 0, VK_FORMAT_R32G32B32A32_SFLOAT );
             break;
@@ -554,7 +554,7 @@ static void vk_push_vertex_input_binding_attribute( const Vk_Pipeline_Def *def )
 #endif
 
     if ( ( def->shader_type == TYPE_FOG_ONLY || def->shader_type == TYPE_REFRACTION ) || 
-            ( def->shader_type >= TYPE_COLOR_WHITE && def->shader_type <= TYPE_COLOR_ORANGE ) ||
+            ( def->shader_type >= TYPE_COLOR_WHITE && def->shader_type <= TYPE_COLOR_CUSTOM ) ||
             ( def->shader_type >= TYPE_GENERIC_BEGIN && def->shader_type <= TYPE_GENERIC_END ) )
     {
         // bind attributes for fog and generic gpu shading shaders
@@ -564,7 +564,7 @@ static void vk_push_vertex_input_binding_attribute( const Vk_Pipeline_Def *def )
             case TYPE_COLOR_WHITE:
             case TYPE_COLOR_GREEN:
             case TYPE_COLOR_RED:
-            case TYPE_COLOR_ORANGE:
+            case TYPE_COLOR_CUSTOM:
             case TYPE_SINGLE_TEXTURE_ENV:
             case TYPE_MULTI_TEXTURE_MUL2_ENV:
             case TYPE_MULTI_TEXTURE_ADD2_IDENTITY_ENV:
@@ -736,7 +736,7 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
         float   alpha_test_value;
         float   depth_fragment;
         int32_t alpha_to_coverage;
-        int32_t color_mode;
+        uint32_t color_mode;
         int32_t hw_fog;
         int32_t abs_light; 
         int32_t tex_mode;
@@ -892,7 +892,7 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
         case TYPE_COLOR_WHITE:
         case TYPE_COLOR_GREEN:
         case TYPE_COLOR_RED:
-        case TYPE_COLOR_ORANGE:
+        case TYPE_COLOR_CUSTOM:
             vs_module = &vk.shaders.color_vs[def->vbo_ghoul2 ? 1 : 0];
             fs_module = &vk.shaders.color_fs;
             break;
@@ -935,7 +935,7 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
             case TYPE_COLOR_WHITE:
             case TYPE_COLOR_GREEN:
             case TYPE_COLOR_RED:
-            case TYPE_COLOR_ORANGE:
+            case TYPE_COLOR_CUSTOM:
 #ifdef USE_VK_LIGHTGRID
             case TYPE_LIGHTGRID_DEBUG:
 #endif
@@ -993,10 +993,10 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
 
     // constant color
     switch ( def->shader_type ) {
-        default: frag_spec_data.color_mode = 0; break;
-        case TYPE_COLOR_GREEN: frag_spec_data.color_mode = 1; break;
-        case TYPE_COLOR_RED:   frag_spec_data.color_mode = 2; break;
-        case TYPE_COLOR_ORANGE:   frag_spec_data.color_mode = 3; break;
+        default:                frag_spec_data.color_mode = 0U; break;
+        case TYPE_COLOR_GREEN:  frag_spec_data.color_mode = 1U; break;
+        case TYPE_COLOR_RED:    frag_spec_data.color_mode = 2U; break;
+        case TYPE_COLOR_CUSTOM: frag_spec_data.color_mode = def->custom_color; break;
     }
 
     // abs lighting
@@ -2297,12 +2297,18 @@ void vk_alloc_persistent_pipelines( void )
     {
         Com_Memset(&def, 0, sizeof(def));
         def.state_bits = state_bits;
-        def.shader_type = TYPE_COLOR_ORANGE;
+        def.shader_type = TYPE_COLOR_CUSTOM;
         def.face_culling = CT_TWO_SIDED;
-        vk.std_pipeline.inspector_object_debug_pipeline[0] = vk_find_pipeline_ext(0, &def, qfalse);
-        
-        def.vbo_ghoul2 = qtrue;
-        vk.std_pipeline.inspector_object_debug_pipeline[1] = vk_find_pipeline_ext(0, &def, qfalse);
+
+        #define CREATE_INSPECTOR_DEBUG_PIPELINE( index, color ) \
+            def.custom_color = color; \
+            def.vbo_ghoul2 = qfalse; \
+            vk.std_pipeline.inspector_object_debug_pipeline[index][0] = vk_find_pipeline_ext( 0, &def, qfalse ); \
+            def.vbo_ghoul2 = qtrue; \
+            vk.std_pipeline.inspector_object_debug_pipeline[index][1] = vk_find_pipeline_ext( 0, &def, qfalse );
+
+        CREATE_INSPECTOR_DEBUG_PIPELINE( 0, 0xFF8000FF ); // selected
+        CREATE_INSPECTOR_DEBUG_PIPELINE( 1, 0x90CAF9FF ); // hover
     }
 #endif
 }

@@ -3386,7 +3386,7 @@ static void ScanAndLoadShaderFiles( void )
 		Com_sprintf(filename, sizeof(filename), "shaders/%s", shaderFiles[i]);
 #endif
 		
-#ifdef USE_VK_IMGUI
+#ifndef USE_VK_IMGUI
 		// store filename and pak per shader file.
 		Q_strncpyz( source_meta[i].file, filename, sizeof(source_meta[i].file));
 
@@ -3449,7 +3449,7 @@ static void ScanAndLoadShaderFiles( void )
 				buffers[i] = NULL;
 				break;
 			}
-#ifdef USE_VK_IMGUI
+#ifndef USE_VK_IMGUI
 			// reserve pakname + filename + 128 for (keyword + linenumber)
 			sum += strlen(source_meta[i].file) + strlen(source_meta[i].pak) + 128;
 #endif
@@ -3471,7 +3471,7 @@ static void ScanAndLoadShaderFiles( void )
 		if (!buffers[i])
 			continue;
 
-#ifdef USE_VK_IMGUI
+#ifndef USE_VK_IMGUI
 		AppendShaderSourceMeta( &textEnd, buffers[i], &source_meta[i] );
 		ri.FS_FreeFile(buffers[i]);
 		continue;
@@ -5656,6 +5656,13 @@ static void CreateInternalShaders( void )
 	stages[0].active = qtrue;
 	stages[0].stateBits = GLS_DEFAULT;
 	tr.outlineShader = FinishShader();
+
+	InitShader("<outline_hover>", lightmapsNone, stylesDefault);
+	stages[0].bundle[0].image[0] = tr.defaultImage;
+	stages[0].bundle[0].rgbGen = CGEN_EXACT_VERTEX;
+	stages[0].active = qtrue;
+	stages[0].stateBits = GLS_DEFAULT;
+	tr.outlineHoverShader = FinishShader();
 #endif
 }
 

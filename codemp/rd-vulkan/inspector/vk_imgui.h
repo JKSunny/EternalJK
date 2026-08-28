@@ -87,7 +87,7 @@ typedef struct {
 	struct {
 		qboolean	active;
 		int			index;
-
+		int			hovered_index;
 	} shader;
 
 	struct {
@@ -122,6 +122,7 @@ typedef struct {
 	struct {
 		bool	p_open;
 		ImVec2	size;
+		ImVec2	mouse;
 	} viewport;
 
 	struct {
@@ -136,6 +137,10 @@ typedef struct {
 	struct {
 		bool	p_open;
 	} profiler;
+
+	struct {
+		bool	p_open;
+	} readback;
 } vk_imgui_window_t;
 
 extern vk_imgui_inspector_t inspector;
@@ -260,6 +265,7 @@ void		vk_imgui_draw_objects_flares( void );
 void		vk_imgui_draw_profiler( void );
 
 // shader
+void		vk_imgui_draw_inspector_shader_visualize_texture( image_t *image, const char *type );
 void		vk_imgui_open_shader_in_editor( shader_t *shader );
 void		vk_imgui_close_shader_in_editor( shader_t *shader );
 void		vk_imgui_draw_objects_shaders();

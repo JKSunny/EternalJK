@@ -198,6 +198,7 @@ set(MPVulkanRendererInspector
 	"${MPDir}/rd-vulkan/inspector/vk_imgui_shader_nodes_parse.cpp"
 	"${MPDir}/rd-vulkan/inspector/vk_imgui_shader_text.cpp"
 	"${MPDir}/rd-vulkan/inspector/vk_imgui_world_nodes.cpp"
+	"${MPDir}/rd-vulkan/inspector/vk_imgui_readback.cpp"
 	"${MPDir}/rd-vulkan/inspector/vk_imgui_rtx.cpp"
 	"${MPDir}/rd-vulkan/inspector/vk_imgui.cpp")
 source_group("renderer\\inspector" FILES ${MPVulkanRendererInspector})
