@@ -249,7 +249,7 @@ typedef enum {
 	TYPE_COLOR_WHITE,
 	TYPE_COLOR_GREEN,
 	TYPE_COLOR_RED,
-	TYPE_COLOR_ORANGE,
+	TYPE_COLOR_CUSTOM,
 #ifdef USE_VK_LIGHTGRID
 	TYPE_LIGHTGRID_DEBUG,
 #endif
@@ -519,6 +519,9 @@ typedef struct {
 #ifdef USE_VK_PBR
 	uint32_t				vk_pbr_flags;
 #endif
+#ifdef USE_VK_IMGUI
+	uint32_t				custom_color; // for TYPE_COLOR_CUSTOM
+#endif
 } Vk_Pipeline_Def;
 
 typedef struct VK_Pipeline {
@@ -528,8 +531,10 @@ typedef struct VK_Pipeline {
 
 // this structure must be in sync with shader uniforms!
 typedef struct {
-	float	mvp[16];
-	float	renderMode;
+	float		mvp[16];
+	uint32_t	renderMode;
+	uint32_t	shaderIndex;
+	int			viewport_mouse[2];
 } pushConst;
 
 typedef struct vkUniform_s {
@@ -843,6 +848,10 @@ typedef struct {
 	uint32_t ghoul2_vbo_stride;
 	uint32_t mdv_vbo_stride;
 
+#ifdef USE_VK_IMGUI
+	vk_storage_buffer_t readback[NUM_COMMAND_BUFFERS];
+#endif
+
 #ifdef USE_VK_LIGHTGRID
 	struct {
 		vec3_t					origin;
@@ -960,7 +969,7 @@ typedef struct {
 		uint32_t dot_pipeline;
 
 #ifdef USE_VK_IMGUI
-		uint32_t inspector_object_debug_pipeline[2];
+		uint32_t inspector_object_debug_pipeline[2][2];
 #endif
 	} std_pipeline;
 
@@ -1221,7 +1230,9 @@ void		vk_set_depthrange( const Vk_Depth_Range depthRange );
 
 pushConst	*vk_get_push_constant();
 
+#ifndef USE_VK_IMGUI
 void		vk_update_mvp( const float *m );
+#endif
 
 void		vk_create_render_passes( void );
 void		vk_destroy_render_passes( void );
@@ -1344,6 +1355,7 @@ void		vk_imgui_shutdown( void );
 void		vk_imgui_begin_frame( void );
 void		vk_imgui_draw( void );
 int			vk_imgui_get_render_mode( void );
+void		vk_imgui_get_viewport_mouse( int *position );
 
 void		vk_imgui_clear_inspector( qboolean reset );
 void		vk_imgui_swapchain_restarted();

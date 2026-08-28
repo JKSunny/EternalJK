@@ -99,7 +99,7 @@ const char *vk_shadertype_string( Vk_Shader_Type code ) {
         CASE_STR(TYPE_COLOR_WHITE);
         CASE_STR(TYPE_COLOR_GREEN);
         CASE_STR(TYPE_COLOR_RED);
-        CASE_STR(TYPE_COLOR_ORANGE);
+        CASE_STR(TYPE_COLOR_CUSTOM);
 #ifdef USE_VK_LIGHTGRID
 	    CASE_STR(TYPE_LIGHTGRID_DEBUG);
 #endif

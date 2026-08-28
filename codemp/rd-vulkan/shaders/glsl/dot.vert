@@ -5,8 +5,10 @@
 
 // 128 bytes
 layout(push_constant) uniform Transform {
-	mat4 mvp;
-	float renderMode;
+	mat4	mvp;
+	uint	renderMode;
+	uint	shaderIndex;
+	ivec2	viewportMouse;
 };
 
 layout(set = VK_DESC_STORAGE, binding = VK_DESC_STORAGE) buffer SSBO {

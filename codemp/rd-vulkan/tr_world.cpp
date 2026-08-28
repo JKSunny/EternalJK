@@ -398,6 +398,11 @@ static void R_AddWorldSurface( msurface_t *surf, const trRefEntity_t *entity,
 				R_AddDrawSurf( surf->data, entityNum, tr.outlineShader, surf->fogIndex, 0 );
 			}
 		}
+
+		shader_t *hovered_shader = vk_imgui_get_hovered_shader();
+		if ( hovered_shader != tr.defaultShader && !strcmp( hovered_shader->name, surf->shader->name ) ) {
+			R_AddDrawSurf( surf->data, entityNum, tr.outlineHoverShader, surf->fogIndex, 0 );
+		}
 #endif
 		return;
 	}

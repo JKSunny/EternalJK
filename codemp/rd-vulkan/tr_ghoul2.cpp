@@ -2547,6 +2547,11 @@ void RenderSurfaces( CRenderSurface &RS, const trRefEntity_t *ent, int entityNum
 					R_AddDrawSurf( (surfaceType_t *)newSurf, entityNum, tr.outlineShader, RS.fogNum, qfalse );
 				}
 			}
+
+			shader_t *hovered_shader = vk_imgui_get_hovered_shader();
+			if ( hovered_shader != tr.defaultShader && !strcmp( hovered_shader->name, shader->name ) ) {
+				R_AddDrawSurf( (surfaceType_t *)newSurf, entityNum, tr.outlineHoverShader, RS.fogNum, qfalse );
+			}
 #endif
 
 #ifdef _G2_GORE

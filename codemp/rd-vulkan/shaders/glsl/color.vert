@@ -2,8 +2,10 @@
 
 // 64 bytes
 layout(push_constant) uniform Transform {
-	mat4 mvp;
-	float renderMode;
+	mat4	mvp;
+	uint	renderMode;
+	uint	shaderIndex;
+	ivec2	viewportMouse;
 };
 
 layout(location = 0) in vec3 in_position;

@@ -442,7 +442,7 @@ void vk_imgui_draw_shader_editor( void )
 //
 //	inspector
 //
-static void vk_imgui_draw_inspector_shader_visualize_texture( image_t *image, const char *type ) 
+void vk_imgui_draw_inspector_shader_visualize_texture( image_t *image, const char *type ) 
 {
 
 	if ( image->view != VK_NULL_HANDLE ) 

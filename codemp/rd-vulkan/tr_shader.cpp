@@ -5628,6 +5628,13 @@ static void CreateInternalShaders( void )
 	stages[0].active = qtrue;
 	stages[0].stateBits = GLS_DEFAULT;
 	tr.outlineShader = FinishShader();
+
+	InitShader("<outline_hover>", lightmapsNone, stylesDefault);
+	stages[0].bundle[0].image[0] = tr.defaultImage;
+	stages[0].bundle[0].rgbGen = CGEN_EXACT_VERTEX;
+	stages[0].active = qtrue;
+	stages[0].stateBits = GLS_DEFAULT;
+	tr.outlineHoverShader = FinishShader();
 #endif
 }
 

@@ -54,6 +54,11 @@ shader_t *vk_imgui_get_selected_shader( void )
 	return tr.shaders[inspector.shader.index];
 }
 
+shader_t *vk_imgui_get_hovered_shader( void ) 
+{
+	return tr.shaders[inspector.shader.hovered_index];
+}
+
 static void vk_imgui_execute_cmd( const char *text )
 {
 	ri.Cbuf_ExecuteText( EXEC_APPEND, va( "%s\n", text ) );	

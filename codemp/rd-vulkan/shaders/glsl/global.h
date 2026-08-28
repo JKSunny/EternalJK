@@ -37,8 +37,9 @@
 #define VK_DESC_PBR_PHYSICAL			7
 #define VK_DESC_PBR_CUBEMAP				8
 #define VK_DESC_PBR_DELUXE				9
+#define VK_DESC_READBACK				10
 //#define VK_DESC_PBR_IRRADIANCE		10
-#define VK_DESC_COUNT					10	// use 11 for irradiance testing
+#define VK_DESC_COUNT					11	// use 11 for irradiance testing
 #else
 #define VK_DESC_COUNT					5
 #endif
@@ -103,6 +104,20 @@
     #define PAD2(n)     vec2_t n;
     #define PAD3(n)     vec3_t n;
 #endif
+
+// readback
+#define MAX_READBACK_COUNT 128
+
+#define READBACK_ENTRY_T(n) vkReadbackEntry_t n;
+STRUCT (  
+    FLOAT	( depth )
+    UINT	( shaderIndex )
+, vkReadbackEntry_t )
+
+STRUCT (  
+    UINT	            ( count )
+    READBACK_ENTRY_T	( entry[MAX_READBACK_COUNT] )
+, vkReadback_t )
 
 // entity
 STRUCT (  

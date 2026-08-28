@@ -629,7 +629,7 @@ static void RB_DrawItems( int numDrawItems, const DrawItem *drawItems )
 
 		// push constants
 		// use push constants for materials as well?
-		vk_update_mvp( drawItem.mvp );
+		vk_update_mvp( drawItem.mvp, &drawItems[i] );
 		
 		// model vbo
 		if ( drawItem.ibo != nullptr ) 

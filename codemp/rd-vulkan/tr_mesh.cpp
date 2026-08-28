@@ -432,6 +432,11 @@ void R_AddMD3Surfaces( trRefEntity_t *ent, int entityNum ) {
 					R_AddDrawSurf( (surfaceType_t *)surface, entityNum, tr.outlineShader, fogNum, 0 );
 				}
 			}
+
+			shader_t *hovered_shader = vk_imgui_get_hovered_shader();
+			if ( hovered_shader != tr.defaultShader && !strcmp( hovered_shader->name, shader->name ) ) {
+				R_AddDrawSurf( (surfaceType_t *)surface, entityNum, tr.outlineHoverShader, fogNum, 0 );
+			}
 #endif
 
 			tr.needScreenMap |= shader->hasScreenMap;
