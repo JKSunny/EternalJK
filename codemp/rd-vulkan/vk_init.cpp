@@ -658,6 +658,7 @@ void vk_shutdown( void )
 	qvkDestroyDescriptorSetLayout(vk.device, vk.set_layout_sampler, NULL);
 	qvkDestroyDescriptorSetLayout(vk.device, vk.set_layout_uniform, NULL);
 	qvkDestroyDescriptorSetLayout(vk.device, vk.set_layout_storage, NULL);
+	qvkDestroyDescriptorSetLayout(vk.device, vk.set_layout_storage_static, NULL);
 
 	qvkDestroyPipelineLayout(vk.device, vk.pipeline_layout, NULL);
 	qvkDestroyPipelineLayout(vk.device, vk.pipeline_layout_storage, NULL);
