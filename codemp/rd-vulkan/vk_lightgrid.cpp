@@ -29,7 +29,7 @@ void vk_create_lightgrid_ssbo_descriptor( vk_storage_buffer_t *buffer )
 	alloc.pNext                 = NULL;
 	alloc.descriptorPool        = vk.descriptor_pool;
 	alloc.descriptorSetCount    = 1;
-	alloc.pSetLayouts           = &vk.set_layout_storage2;
+	alloc.pSetLayouts           = &vk.set_layout_storage_static;
 	VK_CHECK( qvkAllocateDescriptorSets( vk.device, &alloc, &buffer->descriptor ) );
 
 	info.buffer = vk.lightgrid.ssbo.buffer;
@@ -115,15 +115,10 @@ void vk_render_lightgrid( void )
 		// restore last pipeline
 		qvkCmdBindPipeline( vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.cmd->last_pipeline );
 
-		vk_update_mvp( NULL );
-
-		// force depth range and viewport/scissor updates
-		vk.cmd->depth_range = DEPTH_RANGE_COUNT;
-
 		uint32_t offsets[VK_DESC_UNIFORM_COUNT], offset_count;
 
 		// restore clobbered descriptor sets
-		for ( i = 0; i < VK_NUM_BLUR_PASSES; i++ ) {
+		for ( i = 0; i < 2; i++ ) {
 			if ( vk.cmd->descriptor_set.current[i] != VK_NULL_HANDLE ) {
 				if ( /*i == VK_DESC_STORAGE ||*/ i == VK_DESC_UNIFORM ) {
 					offset_count = 0;
