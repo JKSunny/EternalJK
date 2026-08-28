@@ -1250,8 +1250,13 @@ void vk_begin_bloom_extract_render_pass( void )
 
     //vk.renderPassIndex = RENDER_PASS_BLOOM_EXTRACT; // doesn't matter, we will use dedicated pipelines
 
+#ifdef USE_VK_IMGUI
+    vk.renderWidth = glConfig.vidWidth;
+    vk.renderHeight = glConfig.vidHeight;
+#else
     vk.renderWidth = gls.captureWidth;
     vk.renderHeight = gls.captureHeight;
+#endif
     vk.renderScaleX = vk.renderScaleY = 1.0f;
 
     vk_begin_render_pass(vk.render_pass.bloom.extract, frameBuffer, qfalse, vk.renderWidth, vk.renderHeight);
@@ -1285,8 +1290,14 @@ void vk_begin_dglow_extract_render_pass( void )
 
     vk.renderPassIndex = RENDER_PASS_DGLOW;
 
+#ifdef USE_VK_IMGUI
+    vk.renderWidth = glConfig.vidWidth;
+    vk.renderHeight = glConfig.vidHeight;
+#else
     vk.renderWidth = gls.captureWidth;
     vk.renderHeight = gls.captureHeight;
+#endif
+
     vk.renderScaleX = vk.renderScaleY = 1.0f;
 
     vk_begin_render_pass( vk.render_pass.dglow.extract, frameBuffer, qtrue, vk.renderWidth, vk.renderHeight );
@@ -1476,7 +1487,9 @@ void vk_begin_frame( void )
 #endif
 	vk.cmd = &vk.tess[ vk.cmd_index ];
 
+#ifdef USE_VK_IMGUI
     vk_imgui_profiler_begin_frame();
+#endif
 
 	if ( vk.cmd->waitForFence ) {
         size_t wait_for_fence_task = vk_imgui_profiler_start_task( "WaitForFence", RGBA_LE(0x2980b9ffu) );

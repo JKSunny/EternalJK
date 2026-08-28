@@ -1105,7 +1105,7 @@ typedef struct {
 	VkDescriptorSetLayout	set_layout_sampler;		// combined image sampler
 	VkDescriptorSetLayout	set_layout_uniform;		// dynamic uniform buffer
 	VkDescriptorSetLayout	set_layout_storage;		// feedback buffer
-	VkDescriptorSetLayout	set_layout_storage2;	// feedback buffer
+	VkDescriptorSetLayout	set_layout_storage_static;
 
 #ifdef VK_COMPUTE_NORMALMAP
 	VkDescriptorSetLayout	set_layout_compute_normalmap;

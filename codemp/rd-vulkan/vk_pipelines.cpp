@@ -94,7 +94,7 @@ void vk_create_descriptor_layout( void )
     // Like command buffers, descriptor sets are allocated from a pool. 
     // So we must first create the Descriptor pool.
     {
-        VkDescriptorPoolSize pool_size[3];
+        VkDescriptorPoolSize pool_size[4];
         VkDescriptorPoolCreateInfo desc;
         uint32_t i, maxSets;
 
@@ -112,10 +112,17 @@ void vk_create_descriptor_layout( void )
 #ifdef USE_VBO_SS
         pool_size[2].descriptorCount += (MAX_SUB_BSP + 1);
 #endif
-#ifdef USE_VK_LIGHTGRID
-        pool_size[2].descriptorCount += 1;
+        pool_size[3].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        pool_size[3].descriptorCount = 1;
+#ifdef USE_VK_IMGUI
+        pool_size[3].descriptorCount += 1;
 #endif
-
+#ifdef USE_VK_LIGHTGRID
+        pool_size[3].descriptorCount += 1;
+#endif
+        for (i = 0, maxSets = 0; i < ARRAY_LEN(pool_size); i++) {
+            maxSets += pool_size[i].descriptorCount;
+        }
         for (i = 0, maxSets = 0; i < ARRAY_LEN(pool_size); i++) {
             maxSets += pool_size[i].descriptorCount;
         }
@@ -135,7 +142,7 @@ void vk_create_descriptor_layout( void )
         vk_create_layout_binding( 0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, &vk.set_layout_sampler, qfalse );
         vk_create_layout_binding( 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT, &vk.set_layout_uniform, qtrue );
         vk_create_layout_binding( 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT, &vk.set_layout_storage, qfalse );
-        vk_create_layout_binding( 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT, &vk.set_layout_storage2, qfalse );
+        vk_create_layout_binding( 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT, &vk.set_layout_storage_static, qfalse );
     }
 }
 
@@ -163,6 +170,7 @@ void vk_create_pipeline_layout( void )
     set_layouts[9] = vk.set_layout_sampler; // deluxeMap
     //set_layouts[10] = vk.set_layout_sampler; // irradiance envmap
 
+
     desc.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     desc.pNext = NULL;
     desc.flags = 0;
@@ -181,7 +189,7 @@ void vk_create_pipeline_layout( void )
 #endif
 
 #ifdef USE_VK_LIGHTGRID
-    set_layouts[1] = vk.set_layout_storage2;
+    set_layouts[1] = vk.set_layout_storage_static;
     VK_CHECK(qvkCreatePipelineLayout(vk.device, &desc, NULL, &vk.lightgrid.pipeline_layout));
     VK_SET_OBJECT_NAME(vk.lightgrid.pipeline_layout, "pipeline layout - lightgrid graphics", VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT);
 
