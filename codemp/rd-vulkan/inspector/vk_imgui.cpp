@@ -409,8 +409,27 @@ static void vk_imgui_draw_viewport( void )
 
 	if ( tr.world )
 	{
-		ImGui::SetCursorScreenPos( ImVec2( pos.x + 175.0f, pos.y + 6.0f ) );
-		ImGui::Checkbox("visualize lightgrid", &inspector.visualize_lightgrid );
+		const char *current_lightgrid_mode = lightgrid_modes[CLAMP( r_showLightgrid->integer, LIGHTGRID_DEBUG_MODE_DISABLED, (LIGHTGRID_DEBUG_MODE_COUNT-1) )];
+		
+		ImGui::SameLine();
+		ImGui::Dummy(ImVec2(10.0f, 10.0f));
+		ImGui::SameLine();
+
+		ImGui::SetNextItemWidth( 150.0f );
+		if ( ImGui::BeginCombo( "##VisualizeLightgrid", current_lightgrid_mode, ImGuiComboFlags_HeightLarge ) )
+		{
+			for ( uint32_t n = 0; n < ARRAY_LEN( lightgrid_modes ); n++ )
+			{
+				bool is_selected = ( current_lightgrid_mode == lightgrid_modes[n] );
+
+				if ( ImGui::Selectable( lightgrid_modes[n], is_selected ) )
+					ri.Cvar_Set( "r_showLightgrid", va( "%d", n ) );
+
+				if ( is_selected )
+					ImGui::SetItemDefaultFocus();
+			}
+			ImGui::EndCombo();
+		}
 	}
 
 	ImGui::PopStyleVar();

@@ -72,6 +72,10 @@ typedef unsigned int uvec4_t[4];
 #define MIN(x,y) ((x)<(y)?(x):(y))
 #endif
 
+#ifndef CLAMP
+#define CLAMP(a,b,c) MIN(MAX((a),(b)),(c))
+#endif
+
 //#define USE_REVERSED_DEPTH
 #define USE_UPLOAD_QUEUE
 
@@ -1078,7 +1082,7 @@ typedef struct {
 		vk_storage_buffer_t		ssbo;
 		VkShaderModule			shader_fs;
 		VkShaderModule			shader_vs;
-		uint32_t				pipeline;
+		uint32_t				pipeline[LIGHTGRID_DEBUG_MODE_COUNT]; // index 0 is unused
 		VkPipelineLayout		pipeline_layout;
 	} lightgrid;
 #endif

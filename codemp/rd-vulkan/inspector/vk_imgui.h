@@ -61,7 +61,6 @@ typedef struct {
 	bool		merge_shaders;	// merge shaders with same name and update in bulk
 	int			num_shaders;
 	bool		outline_selected;
-	bool		visualize_lightgrid;
 
 	struct {
 		int				index;
@@ -232,6 +231,13 @@ static const char *rtx_render_modes[] = {
 	"SHADOW MAP"
 };
 #endif
+
+static const char *lightgrid_modes[LIGHTGRID_DEBUG_MODE_COUNT] = {
+	"Lightgrid Disabled",
+	"Lightgrid Ambient",
+	"Lightgrid Directed",
+	"Lightgrid Direction",
+};
 
 // main
 void		vk_imgui_create_gui( void );

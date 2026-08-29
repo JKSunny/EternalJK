@@ -1269,11 +1269,7 @@ const void	*RB_DrawSurfs( const void *data ) {
 #endif
 
 #ifdef USE_VK_LIGHTGRID
-#ifdef USE_VK_IMGUI
-	if ( vk_imgui_visualize_lightgrid() || r_showLightgrid->integer )
-#else
 	if ( r_showLightgrid->integer )
-#endif
 		vk_render_lightgrid();
 #endif
 
