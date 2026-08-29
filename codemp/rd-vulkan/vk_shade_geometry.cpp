@@ -984,7 +984,7 @@ void vk_bind_pipeline( uint32_t pipeline ) {
 	vk_world.dirty_depth_attachment |= (vk.pipelines[pipeline].def.state_bits & GLS_DEPTHMASK_TRUE);
 }
 
-static void vk_update_depth_range( Vk_Depth_Range depth_range )
+void vk_update_depth_range( Vk_Depth_Range depth_range )
 {
 	if ( vk.cmd->depth_range == depth_range )
 		return;

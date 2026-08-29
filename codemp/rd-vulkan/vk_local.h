@@ -1461,6 +1461,7 @@ void		vk_bind_index_buffer( VkBuffer buffer, uint32_t offset, VkIndexType type =
 void		vk_bind_index( void );
 void		vk_bind_index_ext( const int numIndexes, const uint32_t *indexes );
 void		vk_bind_pipeline( uint32_t pipeline );
+void		vk_update_depth_range( Vk_Depth_Range depth_range );
 void		vk_draw_geometry( Vk_Depth_Range depth_range, qboolean indexed );
 void		vk_draw_dot( uint32_t storage_offset );
 void		vk_bind_geometry( uint32_t flags );
