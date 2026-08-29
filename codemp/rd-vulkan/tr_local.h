@@ -3205,6 +3205,5 @@ shader_t		*vk_imgui_get_selected_shader( void );
 shader_t		*vk_imgui_get_hovered_shader( void );
 qboolean		vk_imgui_merge_shaders( void );
 qboolean		vk_imgui_outline_selected( void );
-qboolean		vk_imgui_visualize_lightgrid( void );
 #endif
 #endif

@@ -85,11 +85,6 @@ qboolean vk_imgui_outline_selected( void )
 	return (qboolean)inspector.outline_selected;
 }
 
-qboolean vk_imgui_visualize_lightgrid( void ) 
-{
-	return (qboolean)inspector.visualize_lightgrid;
-}
-
 void HelpMarker( const char* desc )
 {
     ImGui::TextDisabled( "(?)" );

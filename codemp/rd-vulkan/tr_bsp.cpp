@@ -179,10 +179,6 @@ R_ColorShiftLightingFloats
 ===============
 */
 #ifdef HDR_DELUXE_LIGHTMAP
-#ifndef CLAMP
-#define CLAMP(a,b,c) MIN(MAX((a),(b)),(c))
-#endif
-
 unsigned short FloatToHalf(float in)
 {
 	unsigned short out;

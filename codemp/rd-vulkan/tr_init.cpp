@@ -1007,7 +1007,8 @@ void R_Register( void )
 #endif
 
 #ifdef USE_VK_LIGHTGRID
-	r_showLightgrid						= ri.Cvar_Get("r_showLightgrid",					"0",						CVAR_ARCHIVE, "Visualize the lightgrid" );
+	r_showLightgrid						= ri.Cvar_Get("r_showLightgrid",					"0",						CVAR_ARCHIVE, "Visualize lightgrid mode:\n 0: off\n 1: ambient\n 2: directed\n 3: direction" );
+	ri.Cvar_CheckRange(r_showLightgrid, LIGHTGRID_DEBUG_MODE_DISABLED, (LIGHTGRID_DEBUG_MODE_COUNT-1), qtrue);
 #endif
 
 	r_renderWidth						= ri.Cvar_Get("r_renderWidth",						"800",						CVAR_ARCHIVE_ND | CVAR_LATCH, "");
