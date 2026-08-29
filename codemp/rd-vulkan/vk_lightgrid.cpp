@@ -104,6 +104,8 @@ void vk_render_lightgrid( void )
 		vk.lightgrid.ssbo.descriptor
 	};
 
+	vk_update_depth_range( DEPTH_RANGE_NORMAL );
+
     qvkCmdBindDescriptorSets( vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.lightgrid.pipeline_layout, 0, ARRAY_LEN(sets), sets, offset_count, offsets );
 	qvkCmdDrawIndirect( vk.cmd->command_buffer, vk.cmd->indirect_buffer, indirect_offset, 1, sizeof(VkDrawIndirectCommand) );
 
@@ -115,10 +117,13 @@ void vk_render_lightgrid( void )
 		// restore last pipeline
 		qvkCmdBindPipeline( vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.cmd->last_pipeline );
 
+		// force depth range and viewport/scissor updates
+		vk.cmd->depth_range = DEPTH_RANGE_COUNT;
+
 		uint32_t offsets[VK_DESC_UNIFORM_COUNT], offset_count;
 
 		// restore clobbered descriptor sets
-		for ( i = 0; i < 2; i++ ) {
+		for ( i = 0; i < ( ( vk.maxBoundDescriptorSets >= VK_DESC_COUNT ) ? VK_DESC_COUNT : 4 ); i++ ) {
 			if ( vk.cmd->descriptor_set.current[i] != VK_NULL_HANDLE ) {
 				if ( /*i == VK_DESC_STORAGE ||*/ i == VK_DESC_UNIFORM ) {
 					offset_count = 0;
