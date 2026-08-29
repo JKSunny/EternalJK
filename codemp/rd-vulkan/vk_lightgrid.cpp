@@ -64,7 +64,7 @@ static uint32_t vk_add_lightgrid_indirect_cmd( void )
 
 void vk_render_lightgrid( void )
 {
-    if ( !tr.world || !vk.lightgrid.numSamples || vk.renderPassIndex )
+    if ( !r_showLightgrid->integer || !tr.world || !vk.lightgrid.numSamples || vk.renderPassIndex )
         return;
 
     uint32_t i, indirect_offset;
@@ -81,9 +81,10 @@ void vk_render_lightgrid( void )
 
 	float tmp[16];
 
-	VkPipeline vkpipe;
-	vkpipe = vk_gen_pipeline(vk.lightgrid.pipeline);
-    qvkCmdBindPipeline( vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vkpipe );
+	VkPipeline pipeline;
+	const uint32_t mode = CLAMP( r_showLightgrid->integer, LIGHTGRID_DEBUG_MODE_AMBIENT, (LIGHTGRID_DEBUG_MODE_COUNT-1) );
+	pipeline = vk_gen_pipeline(vk.lightgrid.pipeline[mode]);
+    qvkCmdBindPipeline( vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline );
 
 	Com_Memcpy(tmp, vk_world.modelview_transform, 64);
 	Com_Memcpy(vk_world.modelview_transform, backEnd.viewParms.world.modelViewMatrix, 64);

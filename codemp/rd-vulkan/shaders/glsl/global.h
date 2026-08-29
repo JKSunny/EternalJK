@@ -252,6 +252,12 @@ STRUCT (
 #endif
 
 // lightgrid
+#define LIGHTGRID_DEBUG_MODE_DISABLED   0
+#define LIGHTGRID_DEBUG_MODE_AMBIENT    1
+#define LIGHTGRID_DEBUG_MODE_DIRECTED   2
+#define LIGHTGRID_DEBUG_MODE_DIRECTION  3
+#define LIGHTGRID_DEBUG_MODE_COUNT      4
+
 STRUCT (  
     VEC4	( ambientLight )
     VEC4	( directedLight )

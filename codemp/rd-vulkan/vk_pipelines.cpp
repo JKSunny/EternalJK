@@ -1074,6 +1074,11 @@ VkPipeline vk_create_pipeline( const Vk_Pipeline_Def *def, renderPass_t renderPa
 	//
     INIT_SPEC_ENTRY_VERT( 0, hw_fog )
 
+#ifdef USE_VK_LIGHTGRID
+    if ( def->shader_type == TYPE_LIGHTGRID_DEBUG ) 
+        vert_spec_data.hw_fog = def->fog_stage; // reuse fog member as debug mode
+#endif
+
     vert_spec_info.mapEntryCount = ARRAY_LEN( vert_spec_entries );
     vert_spec_info.pMapEntries = vert_spec_entries;
     vert_spec_info.dataSize = sizeof( vert_spec_data );
@@ -2266,7 +2271,16 @@ void vk_alloc_persistent_pipelines( void )
         def.state_bits = GLS_DEPTHMASK_TRUE | GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE;
         def.shader_type = TYPE_LIGHTGRID_DEBUG;
         def.face_culling = CT_FRONT_SIDED;
-        vk.lightgrid.pipeline = vk_find_pipeline_ext(0, &def, qfalse);
+
+        // reuse fog member as debug mode
+        def.fog_stage = LIGHTGRID_DEBUG_MODE_AMBIENT;         
+        vk.lightgrid.pipeline[LIGHTGRID_DEBUG_MODE_AMBIENT] = vk_find_pipeline_ext(0, &def, qfalse);
+        
+        def.fog_stage = LIGHTGRID_DEBUG_MODE_DIRECTED;
+        vk.lightgrid.pipeline[LIGHTGRID_DEBUG_MODE_DIRECTED] = vk_find_pipeline_ext(0, &def, qfalse);
+        
+        def.fog_stage = LIGHTGRID_DEBUG_MODE_DIRECTION;
+        vk.lightgrid.pipeline[LIGHTGRID_DEBUG_MODE_DIRECTION] = vk_find_pipeline_ext(0, &def, qfalse);
     }
 #endif
 }
