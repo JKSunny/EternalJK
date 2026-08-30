@@ -329,7 +329,8 @@ void vk_imgui_begin_frame( void )
 {
 	vk_imgui_get_input_state();
 	
-	if ( imguiGlobal.input_state ){
+	if ( imguiGlobal.input_state )
+	{
 		SDL_Event e;
 
 		while ( SDL_PollEvent( &e ) )
@@ -339,8 +340,21 @@ void vk_imgui_begin_frame( void )
 			// disable input state
 			if ( e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_F1 )
 				ri.Cvar_Set( "in_imgui", "0" );
+
+			if ( e.type == SDL_WINDOWEVENT ) {
+				switch( e.window.event )
+				{
+					case SDL_WINDOWEVENT_MINIMIZED: ri.Cvar_SetValue( "com_minimized", 1 ); break;
+					case SDL_WINDOWEVENT_RESTORED:
+					case SDL_WINDOWEVENT_MAXIMIZED: ri.Cvar_SetValue( "com_minimized", 0 ); break;
+					default: break;
+				}
+			}
 		}
 	}
+
+	if ( ri.VK_IsMinimized() )
+		return;
 
 	ImGui_ImplVulkan_NewFrame();
 	ImGui_ImplSDL2_NewFrame();
