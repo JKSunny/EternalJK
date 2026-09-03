@@ -90,6 +90,7 @@ set(MPVulkanRendererFiles
 	"${MPDir}/rd-vulkan/vk_local.h"
 	"${MPDir}/rd-vulkan/vk_lightgrid.cpp"
 	"${MPDir}/rd-vulkan/vk_pipelines.cpp"
+	"${MPDir}/rd-vulkan/vk_renderpass.cpp"
 	"${MPDir}/rd-vulkan/vk_mikktspace.cpp"
 	"${MPDir}/rd-vulkan/vk_normalmap.cpp"
 	"${MPDir}/rd-vulkan/vk_shaders.cpp"
