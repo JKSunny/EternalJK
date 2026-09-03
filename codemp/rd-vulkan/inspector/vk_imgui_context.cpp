@@ -244,7 +244,7 @@ void vk_imgui_initialize( void )
 	init_info.DescriptorPool = imguiPool;
 	init_info.MinImageCount = NUM_COMMAND_BUFFERS;
 	init_info.ImageCount = vk.swapchain_image_count;
-    init_info.PipelineInfoMain.RenderPass = vk.render_pass.inspector;
+    init_info.PipelineInfoMain.RenderPass = vk.render_pass.inspector.handle;
     init_info.PipelineInfoMain.Subpass = 0;
     init_info.PipelineInfoMain.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
 

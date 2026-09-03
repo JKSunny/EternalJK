@@ -541,6 +541,26 @@ typedef struct {
 	int			viewport_mouse[2];
 } pushConst;
 
+struct vkRenderPassDef_t {
+	VkAttachmentDescription attachments[3];
+	struct {
+		VkAttachmentReference	color;
+		VkAttachmentReference	depth;
+		VkAttachmentReference	resolve;
+	} attachment_ref;
+	VkSubpassDescription	subpass;
+	uint32_t				subpass_count;
+	VkSubpassDependency		dependencies[2];
+	uint32_t				attachmentCount;
+	uint32_t				dependencyCount;
+};
+
+struct vkRenderPass_t {
+	const char			*name;
+	vkRenderPassDef_t	def;
+	VkRenderPass		handle;
+};
+
 typedef struct vkUniform_s {
 	// light/env/material parameters:
 	vec4_t eyePos;
@@ -763,34 +783,41 @@ typedef struct {
 		VkImageView		color_image_view[7];
 	} cubeMap;
 
-
 	// render passes
 	struct {
-		VkRenderPass main;
-		VkRenderPass gamma;
-		VkRenderPass inspector;
-		VkRenderPass screenmap;
-		VkRenderPass capture;
+		struct {
+			VkSubpassDependency shader_to_color;
+			VkSubpassDependency color_to_shader; 
+			VkSubpassDependency present_final; 
+			VkSubpassDependency external_to_color;
+			VkSubpassDependency color_to_external;
+		} subpass_deps;
+
+		vkRenderPass_t main;
+		vkRenderPass_t gamma;
+		vkRenderPass_t inspector;
+		vkRenderPass_t screenmap;
+		vkRenderPass_t capture;
 #ifdef VK_PBR_BRDFLUT
-		VkRenderPass brdflut;
+		vkRenderPass_t brdflut;
 #endif
 		
-		VkRenderPass cubemap;
+		vkRenderPass_t cubemap;
 
 		struct {
-			VkRenderPass extract;
+			vkRenderPass_t extract;
 		} refraction;
 
 		struct {
-			VkRenderPass blur[VK_NUM_BLUR_PASSES * 2];
-			VkRenderPass extract;
-			VkRenderPass blend;
+			vkRenderPass_t blur[VK_NUM_BLUR_PASSES * 2];
+			vkRenderPass_t extract;
+			vkRenderPass_t blend;
 		} bloom;
 
 		struct {
-			VkRenderPass blur[VK_NUM_BLUR_PASSES * 2];
-			VkRenderPass extract;
-			VkRenderPass blend;
+			vkRenderPass_t blur[VK_NUM_BLUR_PASSES * 2];
+			vkRenderPass_t extract;
+			vkRenderPass_t blend;
 		} dglow;
 	} render_pass;
 
@@ -1267,7 +1294,9 @@ VkBuffer	vk_get_vertex_buffer( void );
 void		vk_update_descriptor( int tmu, VkDescriptorSet curDesSet );
 uint32_t	vk_find_pipeline_ext( uint32_t base, const Vk_Pipeline_Def *def, qboolean use );
 VkPipeline	vk_gen_pipeline( uint32_t index );
+void		vk_begin_render_pass( VkRenderPass renderPass, VkFramebuffer frameBuffer, qboolean clearValues, uint32_t width, uint32_t height );
 void		vk_end_render_pass( void );
+void		vk_begin_screenmap_render_pass( void );
 void		vk_begin_main_render_pass( void );
 void		vk_get_pipeline_def( uint32_t pipeline, Vk_Pipeline_Def *def );
 void		*vk_reserve_uniform( size_t size, uint32_t *offset );
