@@ -186,7 +186,7 @@ void vk_create_framebuffers()
 
 #ifdef USE_RTX
     // rtx final blit lancoz
-    desc.renderPass = vk.render_pass.rtx_final_blit.blit;
+    desc.renderPass = vk.render_pass.rtx_final_blit.blit.handle;
     desc.attachmentCount = 1;
     desc.width = glConfig.vidWidth;
     desc.height = glConfig.vidHeight;

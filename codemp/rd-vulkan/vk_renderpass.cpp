@@ -767,6 +767,95 @@ static void vk_create_brdf_renderpass(void)
     vk_create_render_pass( rp );
 }
 
+#ifdef USE_RTX
+static void vk_create_rtx_final_blit_lancoz_renderpass( void )
+{
+    vkRenderPass_t *rp = &vk.render_pass.rtx_final_blit.blend;
+    Com_Memset( rp, 0, sizeof(vkRenderPass_t) );
+    Com_Memcpy( &rp->def, &vk.render_pass.main.def, sizeof(vkRenderPassDef_t) );
+
+    rp->name = "rtx final blit lancoz";
+    vkRenderPassDef_t *def = &rp->def;
+
+    // color buffer
+    def->attachments[0].loadOp           = VK_ATTACHMENT_LOAD_OP_LOAD;
+
+    // depth buffer
+    def->attachments[1].loadOp           = VK_ATTACHMENT_LOAD_OP_LOAD;
+    def->attachments[1].storeOp          = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    def->attachments[1].stencilLoadOp    = VK_ATTACHMENT_LOAD_OP_LOAD;
+    def->attachments[1].stencilStoreOp   = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+
+    if ( vk.msaaActive ) {
+        def->attachments[2].loadOp       = VK_ATTACHMENT_LOAD_OP_LOAD;
+        def->attachments[2].storeOp      = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    }
+
+    vk_create_render_pass( rp );
+}
+
+static void vk_create_rtx_blit_renderpass( void )
+{
+    vkRenderPass_t *rp = &vk.render_pass.rtx_final_blit.blit;
+    Com_Memset( rp, 0, sizeof(vkRenderPass_t) );
+
+    rp->name = "gamma";
+    vkRenderPassDef_t *def = &rp->def;
+
+    // attachment ref
+    def->attachment_ref.color.attachment = 0;
+    def->attachment_ref.color.layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    // subpass
+    Com_Memset( &def->subpass, 0, sizeof(VkSubpassDescription) );
+    def->subpass.pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    def->subpass.colorAttachmentCount    = 1;
+    def->subpass.pColorAttachments       = &def->attachment_ref.color;
+
+    // color buffer
+    def->attachments[0].flags           = 0;
+    def->attachments[0].format          = vk.color_format;
+    def->attachments[0].samples         = VK_SAMPLE_COUNT_1_BIT;
+    def->attachments[0].loadOp          = VK_ATTACHMENT_LOAD_OP_LOAD;
+    def->attachments[0].storeOp         = VK_ATTACHMENT_STORE_OP_STORE; // needed for presentation
+    def->attachments[0].stencilLoadOp   = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    def->attachments[0].stencilStoreOp  = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    def->attachments[0].initialLayout   = VK_IMAGE_LAYOUT_UNDEFINED;
+    def->attachments[0].finalLayout     = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+    def->dependencyCount = 2;
+    def->dependencies[0] = vk.render_pass.subpass_deps.shader_to_color;
+    def->dependencies[1] = vk.render_pass.subpass_deps.color_to_shader;
+    def->attachmentCount = 1;
+    def->subpass_count   = 1;
+
+    vk_create_render_pass( rp );
+}
+
+VkResult vkpt_final_blit_filtered( VkCommandBuffer cmd_buf )
+{
+	VkDescriptorSet desc_sets[] = {
+		vk.rt_descriptor_set[vk.current_frame_index].set,
+        vk_rtx_get_current_desc_set_textures(),
+		vk.imageDescriptor.set,
+        vk.desc_set_ubo
+	};
+
+	vk_begin_render_pass( vk.render_pass.rtx_final_blit.blit.handle, vk.framebuffers.rtx_final_blit,
+    qfalse, vk.extent_unscaled.width, vk.extent_unscaled.height );
+
+	qvkCmdBindDescriptorSets( cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS,
+		vk.rt_pipeline_layout, 0, ARRAY_LEN(desc_sets), desc_sets, 0, 0 );
+
+
+	qvkCmdBindPipeline( cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_final_blit );
+	qvkCmdDraw( cmd_buf, 4, 1, 0, 0 );
+	qvkCmdEndRenderPass( cmd_buf );
+
+	return VK_SUCCESS;
+}
+#endif
+
 void vk_create_render_passes()
 {
     vk_create_subpass_depenencies();
@@ -799,6 +888,13 @@ void vk_create_render_passes()
     if ( vk.cubemapActive ) {
         vk_create_cubemap_renderpass();
         vk_create_brdf_renderpass();
+    }
+#endif
+
+#ifdef USE_RTX
+    if ( vk.rtxActive ) {
+        vk_create_rtx_blit_renderpass();
+        vk_create_rtx_final_blit_lancoz_renderpass();
     }
 #endif
 }
@@ -886,6 +982,18 @@ void vk_destroy_render_passes( void )
     if ( vk.render_pass.cubemap.handle != VK_NULL_HANDLE ) {
         qvkDestroyRenderPass( vk.device, vk.render_pass.cubemap.handle, NULL );
         vk.render_pass.cubemap.handle = VK_NULL_HANDLE;
+    }
+#endif
+
+#ifdef USE_RTX
+    if ( vk.render_pass.rtx_final_blit.blend.handle != VK_NULL_HANDLE ) {
+        qvkDestroyRenderPass( vk.device, vk.render_pass.rtx_final_blit.blend.handle, NULL );
+        vk.render_pass.rtx_final_blit.blend.handle = VK_NULL_HANDLE;
+    }
+
+    if ( vk.render_pass.rtx_final_blit.blit.handle != VK_NULL_HANDLE ) {
+        qvkDestroyRenderPass( vk.device, vk.render_pass.rtx_final_blit.blit.handle, NULL );
+        vk.render_pass.rtx_final_blit.blit.handle = VK_NULL_HANDLE;
     }
 #endif
 }

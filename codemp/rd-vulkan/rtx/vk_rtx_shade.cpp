@@ -2127,5 +2127,5 @@ void vk_rtx_begin_blit( void )
 
 	frame_ready = qfalse;
 
-	vk_begin_post_blend_render_pass( vk.render_pass.rtx_final_blit.blend, qfalse );
+	vk_begin_post_blend_render_pass( vk.render_pass.rtx_final_blit.blend.handle, qfalse );
 }

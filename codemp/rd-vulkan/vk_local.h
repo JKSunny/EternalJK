@@ -1027,8 +1027,8 @@ typedef struct {
 		} dglow;
 #ifdef USE_RTX
 		struct {
-			VkRenderPass blit;
-			VkRenderPass blend;
+			vkRenderPass_t blit;
+			vkRenderPass_t blend;
 		} rtx_final_blit;
 #endif
 	} render_pass;

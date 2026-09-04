@@ -1538,7 +1538,7 @@ static void vk_create_post_process_pipeline( int program_index, uint32_t width, 
         case 6: // rtx final blit lancoz
             pipeline = &vk.pipeline_final_blit;
             fs_module = vk.final_blit_shader_frag->modules[0];
-            renderpass = vk.render_pass.rtx_final_blit.blit;
+            renderpass = vk.render_pass.rtx_final_blit.blit.handle;
             layout = vk.rt_pipeline_layout;
             samples = VK_SAMPLE_COUNT_1_BIT;
             pipeline_name = "rtx final blit lancoz";
