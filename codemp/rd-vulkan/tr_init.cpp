@@ -130,6 +130,11 @@ cvar_t	*r_distanceCull;
 cvar_t	*r_vertexLight;
 cvar_t	*r_uiFullScreen;
 cvar_t	*r_shadows;
+#ifdef _DEBUG
+cvar_t	*r_g2_shadowdebug;	// 1 = traces, 2 = parity map
+cvar_t	*r_g2_shadowedges;	// emission filter: bit 0 = the sides, bit 1 = the caps
+cvar_t	*r_g2_shadowsurf;	// -1 = every shadow surface, >= 0 = only that surface index
+#endif
 cvar_t	*r_shadowRange;
 
 
@@ -184,7 +189,7 @@ cvar_t	*r_patchStitching;
 // Vulkan
 cvar_t	*r_defaultImage;
 cvar_t	*r_device;
-//cvar_t	*r_stencilbits;
+cvar_t	*r_stencilbits;
 cvar_t	*r_ext_multisample;
 cvar_t	*r_ext_supersample;
 cvar_t	*r_ext_alpha_to_coverage;
@@ -898,6 +903,11 @@ void R_Register( void )
 	r_lockpvs							= ri.Cvar_Get( "r_lockpvs",							"0",						CVAR_CHEAT, "" );
 	r_noportals							= ri.Cvar_Get( "r_noportals",						"0",						CVAR_NONE, "" );
 	r_shadows							= ri.Cvar_Get( "cg_shadows",						"1",						CVAR_NONE, "" );
+#ifdef _DEBUG
+	r_g2_shadowdebug					= ri.Cvar_Get( "r_g2_shadowdebug",				"0",						CVAR_TEMP, "" );
+	r_g2_shadowedges					= ri.Cvar_Get( "r_g2_shadowedges",				"3",						CVAR_TEMP, "" );
+	r_g2_shadowsurf						= ri.Cvar_Get( "r_g2_shadowsurf",				"-1",						CVAR_TEMP, "" );
+#endif
 	r_shadowRange						= ri.Cvar_Get( "r_shadowRange",						"1000",						CVAR_NONE, "" );
 	r_marksOnTriangleMeshes				= ri.Cvar_Get( "r_marksOnTriangleMeshes",			"0",						CVAR_ARCHIVE_ND, "" );
 	r_aspectCorrectFonts				= ri.Cvar_Get( "r_aspectCorrectFonts",				"0",						CVAR_ARCHIVE, "" );
@@ -915,7 +925,7 @@ void R_Register( void )
 	ri.Cvar_CheckRange(r_device, -2, 8, qtrue);
 	r_device->modified					= qfalse;
 
-	//r_stencilbits						= ri.Cvar_Get("r_stencilbits",						"8",						CVAR_ARCHIVE_ND | CVAR_LATCH, "");
+	r_stencilbits						= ri.Cvar_Get("r_stencilbits",						"8",						CVAR_ARCHIVE_ND | CVAR_LATCH, "");
 	r_ext_multisample					= ri.Cvar_Get("r_ext_multisample",					"0",						CVAR_ARCHIVE_ND | CVAR_LATCH, "");
 	ri.Cvar_CheckRange(r_ext_multisample, 0, 64, qtrue);
 	r_ext_supersample					= ri.Cvar_Get("r_ext_supersample",					"0",						CVAR_ARCHIVE_ND | CVAR_LATCH, "");

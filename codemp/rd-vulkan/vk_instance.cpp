@@ -377,6 +377,10 @@ static VkFormat get_depth_format( VkPhysicalDevice physical_device ) {
     VkFormat formats[2];
     uint32_t i;
 
+    // r_stencilbits' Cvar_Get was commented out in tr_init.cpp, so this stayed 0
+    // and every stencil feature silently no-op'd.
+    glConfig.stencilBits = r_stencilbits->integer;
+
     if ( glConfig.stencilBits > 0 ) {
         formats[0] = glConfig.depthBits == 16 ? VK_FORMAT_D16_UNORM_S8_UINT : VK_FORMAT_D24_UNORM_S8_UINT;
         formats[1] = VK_FORMAT_D32_SFLOAT_S8_UINT;
@@ -752,6 +756,11 @@ static qboolean vk_create_device( VkPhysicalDevice physical_device, int device_i
 		if (r_ext_texture_filter_anisotropic->integer && device_features.samplerAnisotropy) {
 			features.samplerAnisotropy = VK_TRUE;
 			vk.samplerAnisotropy = qtrue;
+		}
+
+		if (device_features.geometryShader) {
+			features.geometryShader = VK_TRUE;
+			vk.geometryShader = qtrue;
 		}
 
 		device_desc.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;

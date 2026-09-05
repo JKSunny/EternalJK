@@ -2626,10 +2626,6 @@ void RenderSurfaces(CRenderSurface &RS) //also ended up just ripping right from 
 #endif
 		}
 
-#ifdef USE_VBO_GHOUL2
-		// stencil/projection shadows are not supported with ghoul2 vbo enabled, yet
-		if( !vk.vboGhoul2Active ) {
-#endif
 		//rww - catch surfaces with bad shaders
 		//assert(shader != tr.defaultShader);
 		//Alright, this is starting to annoy me because of the state of the assets. Disabling for now.
@@ -2637,23 +2633,31 @@ void RenderSurfaces(CRenderSurface &RS) //also ended up just ripping right from 
 		// stencil shadows can't do personal models unless I polyhedron clip
 		//using z-fail now so can do personal models -rww
 		if ( /*!RS.personalModel
-			&& */r_shadows->integer == 2
+			&& */R_STENCIL_SHADOWS()
 //			&& RS.fogNum == 0
+			// r_g2_shadowsurf gates both paths, otherwise the CPU/GPU comparison is
+			// not on the same geometry.
+			&& ( R_SHADOW_DEBUG_SURF < 0 || surface->thisSurfaceIndex == R_SHADOW_DEBUG_SURF )
 			&& (RS.renderfx & RF_SHADOW_PLANE )
 			&& !(RS.renderfx & ( RF_NOSHADOW | RF_DEPTHHACK ) )
 			&& shader->sort == SS_OPAQUE )
 		{		// set the surface info to point at the where the transformed bone list is going to be for when the surface gets rendered out
 			CRenderableSurface *newSurf = AllocGhoul2RenderableSurface();
-			if (surface->numVerts >= SHADER_MAX_VERTEXES/2)
+			// the GPU volume reads the ghoul2 VBO, so r_vbo_models selects it;
+			// without it vboMesh stays null and the CPU branches below run.
+			if ( vk.vboGhoul2Active && vk.geometryShader )
+			{
+				newSurf->surfaceData = surface;
+				vk_set_ghoul2_vbo_mesh( RS, newSurf, RS.lod, surface->thisSurfaceIndex );
+			}
+			else if (surface->numVerts >= SHADER_MAX_VERTEXES/2)
 			{ //we need numVerts*2 xyz slots free in tess to do shadow, if this surf is going to exceed that then let's try the lowest lod -rww
 				mdxmSurface_t *lowsurface = (mdxmSurface_t *)G2_FindSurface(RS.currentModel, RS.surfaceNum, RS.currentModel->numLods-1);
 				newSurf->surfaceData = lowsurface;
-				//vk_set_ghoul2_vbo_mesh( RS, newSurf, RS.currentModel->numLods-1, lowsurface->thisSurfaceIndex );
 			}
 			else
 			{
 				newSurf->surfaceData = surface;
-				//vk_set_ghoul2_vbo_mesh( RS, newSurf, RS.lod, surface->thisSurfaceIndex );
 			}
 			newSurf->boneCache = RS.boneCache;
 			R_AddDrawSurf( (surfaceType_t *)newSurf, tr.shadowShader, 0, qfalse );
@@ -2671,9 +2675,6 @@ void RenderSurfaces(CRenderSurface &RS) //also ended up just ripping right from 
 			newSurf->boneCache = RS.boneCache;
 			R_AddDrawSurf( (surfaceType_t *)newSurf, tr.projectionShadowShader, 0, qfalse );
 		}
-#ifdef USE_VBO_GHOUL2
-		}
-#endif
 	}
 
 	// if we are turning off all descendants, then stop this recursion now
@@ -3664,12 +3665,152 @@ int RB_GetBoneUboOffset( CRenderableSurface *surf )
 
 //This is a slightly mangled version of the same function from the sof2sp base.
 //It provides a pretty significant performance increase over the existing one.
+#ifdef USE_VBO_GHOUL2
+/*
+==============
+RB_DrawShadowVolumeGPU
+
+GPU replacement for the CPU volume build in RB_ShadowTessEnd (tr_shadows.cpp),
+emitting the same sides and caps from shadow_volume.geom. Binds the model's
+ordinary index buffer and issues the two z-fail draws.
+==============
+*/
+static void RB_DrawShadowVolumeGPU( CRenderableSurface *surf )
+{
+	mdxmVBOMesh_t *vboMesh = surf->vboMesh;
+	const mdxmSurface_t *surfData = (const mdxmSurface_t *)surf->surfaceData;
+	const int surfaceIndex = surfData ? surfData->thisSurfaceIndex : -1;
+
+	if ( R_SHADOW_DEBUG_SURF >= 0 && surfaceIndex != R_SHADOW_DEBUG_SURF )
+		return;
+
+	if ( R_SHADOW_DEBUG )
+		ri.Printf( PRINT_ALL, "G2SHADOWDEBUG: shadow surface #%d, ibo=%p numIdx=%d\n", surfaceIndex, vboMesh->ibo, vboMesh->numIndexes );
+
+	if ( !vboMesh->ibo || !vboMesh->numIndexes )
+		return;
+
+	struct {
+		float mvp[16];
+		float lightDir[3];
+		float groundOffset;
+		int32_t edgeMask;
+	} pushData;
+
+	vk_get_mvp_transform( pushData.mvp );
+
+	vec3_t entLight;
+	// same light source selection RB_ShadowTessEnd uses - r_dlightMode defaults
+	// to 2, so on a stock config this picks shadowLightDir, not modelLightDir.
+#ifdef USE_PMLIGHT
+	if ( r_dlightMode->integer == 2 && R_STENCIL_SHADOWS() )
+		VectorCopy( backEnd.currentEntity->shadowLightDir, entLight );
+	else
+#endif
+		VectorCopy( backEnd.currentEntity->modelLightDir, entLight );
+	entLight[2] = 0.0f;
+	VectorNormalize( entLight );
+	pushData.lightDir[0] = entLight[0] * 0.3f;
+	pushData.lightDir[1] = entLight[1] * 0.3f;
+	pushData.lightDir[2] = 1.0f;
+
+	// matches RB_ShadowTessEnd's per-vertex "worldxyz.z - shadowPlane + 16"
+	// folded into a single per-draw constant, since shadow_volume.geom adds
+	// each (already local-space) vertex's own .z on top of this.
+	pushData.groundOffset = backEnd.ori.origin[2] - backEnd.currentEntity->e.shadowPlane + 16.0f;
+	pushData.edgeMask = R_SHADOW_DEBUG_EDGES;
+
+	if ( R_SHADOW_DEBUG )
+		ri.Printf( PRINT_ALL, "G2SHADOWDEBUG: draw call, numIdx=%d lightDir=(%.2f %.2f %.2f) groundOffset=%.2f mvp[12..15]=(%.2f %.2f %.2f %.2f)\n",
+			vboMesh->numIndexes, pushData.lightDir[0], pushData.lightDir[1], pushData.lightDir[2], pushData.groundOffset,
+			pushData.mvp[12], pushData.mvp[13], pushData.mvp[14], pushData.mvp[15] );
+
+	// position (0), bones (8), weights (9) - the pipeline only references those
+	// three; the rest vk_bind_geometry binds along the way are unused.
+	tess.vbo_model = vboMesh->vbo;
+	tess.surfType = SF_MDX;
+	vk_bind_geometry( TESS_XYZ );
+	// Cleared right away: we bind the index buffer ourselves below, so leaving this
+	// set would send the next surface down vk_bind_index()'s vbo_model branch.
+	tess.vbo_model = NULL;
+
+	qvkCmdBindIndexBuffer( vk.cmd->command_buffer, vboMesh->ibo->buffer,
+		vboMesh->indexOffset * sizeof( uint32_t ), VK_INDEX_TYPE_UINT32 );
+
+	// descriptor_set.offset[BONES/ENTITY] is only written by the stage iterator,
+	// which never runs for tr.shadowShader (zero stages), so those slots hold a
+	// different entity's bones by now. RB_RenderDrawSurfList primes
+	// vk.cmd->bones_ubo_offset per surface - read that instead.
+	{
+		uint32_t entityOffset;
+		if ( !backEnd.currentEntity || backEnd.currentEntity == &backEnd.entity2D || backEnd.currentEntity == &tr.worldEntity )
+			entityOffset = vk.cmd->entity_ubo_offset[REFENTITYNUM_WORLD];
+		else
+			entityOffset = vk.cmd->entity_ubo_offset[backEnd.currentEntity - backEnd.refdef.entities];
+
+		uint32_t offsets[VK_DESC_UNIFORM_COUNT];
+		offsets[0] = vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_MAIN_BINDING];
+		offsets[1] = vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_CAMERA_BINDING];
+		offsets[2] = entityOffset;
+		offsets[3] = vk.cmd->bones_ubo_offset;
+		offsets[4] = vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_FOGS_BINDING];
+		offsets[5] = vk.cmd->descriptor_set.offset[VK_DESC_UNIFORM_GLOBAL_BINDING];
+
+		qvkCmdBindDescriptorSets( vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+			vk.pipeline_layout_shadow_volume, VK_DESC_UNIFORM, 1,
+			&vk.cmd->uniform_descriptor, VK_DESC_UNIFORM_COUNT, offsets );
+	}
+
+	qboolean mirror = ( backEnd.viewParms.portalView == PV_MIRROR ) ? qtrue : qfalse;
+
+	for ( int cullIndex = 0; cullIndex < 2; cullIndex++ )
+	{
+#ifdef _DEBUG
+		VkPipeline pipeline = ( R_SHADOW_DEBUG >= 2 )
+			? vk_get_shadow_volume_debug_pipeline( cullIndex )
+			: vk_get_shadow_volume_adjacency_pipeline( cullIndex, mirror );
+#else
+		VkPipeline pipeline = vk_get_shadow_volume_adjacency_pipeline( cullIndex, mirror );
+#endif
+
+		if ( pipeline == VK_NULL_HANDLE )
+			return;
+
+		if ( pipeline != vk.cmd->last_pipeline ) {
+			qvkCmdBindPipeline( vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline );
+			vk.cmd->last_pipeline = pipeline;
+		}
+
+		qvkCmdPushConstants( vk.cmd->command_buffer, vk.pipeline_layout_shadow_volume,
+			VK_SHADER_STAGE_GEOMETRY_BIT, 0, sizeof( pushData ), &pushData );
+
+		qvkCmdDrawIndexed( vk.cmd->command_buffer, vboMesh->numIndexes, 1, 0, 0, 0 );
+	}
+
+	// Our raw vkCmdBindDescriptorSets above used an incompatible pipeline layout,
+	// so Vulkan unbound every set from index 0 on. The deferred tracker does not
+	// know that, so mark them all stale or the next standard-layout draw skips
+	// the rebind and trips "descriptor set N not bound".
+	for ( int i = 0; i < VK_DESC_COUNT; i++ )
+		vk_reset_descriptor( i );
+	vk.cmd->last_pipeline = VK_NULL_HANDLE;
+
+	backEnd.doneShadows = qtrue;
+}
+#endif
+
 void RB_SurfaceGhoul(CRenderableSurface* surf)
 {	
 #ifdef USE_VBO_GHOUL2
 	if ( surf->vboMesh != NULL  )
 	{
 		mdxmVBOMesh_t *surface = surf->vboMesh;
+
+		if ( tess.shader == tr.shadowShader && vk.geometryShader )
+		{
+			RB_DrawShadowVolumeGPU( surf );
+			return;
+		}
 
 		if ( surface->vbo != NULL || surface->ibo != NULL ) {
 

@@ -1906,7 +1906,28 @@ extern	cvar_t	*r_showsky;				// forces sky in front of all surfaces
 extern	cvar_t	*r_shownormals;			// draws wireframe normals
 extern	cvar_t	*r_clear;				// force screen clear every frame
 
-extern	cvar_t	*r_shadows;				// controls shadows: 0 = none, 1 = blur, 2 = stencil, 3 = black planar projection
+extern	cvar_t	*r_shadows;				// 0 = none, 1 = blur, 2 = stencil, 3 = black planar projection, 4 = stencil on the GPU
+
+// Ghoul2 shadow volume debug aids, Debug builds only. In release these fold to
+// constants and the call sites compile away.
+#ifdef _DEBUG
+extern	cvar_t	*r_g2_shadowdebug;		// 1 = traces, 2 = parity map (front pass tints red, back blue, so balanced reads purple)
+extern	cvar_t	*r_g2_shadowedges;		// emission filter: bit 0 = the sides, bit 1 = the caps
+extern	cvar_t	*r_g2_shadowsurf;		// -1 = every shadow surface, >= 0 = only that surface index
+
+#define R_SHADOW_DEBUG			( r_g2_shadowdebug->integer )
+#define R_SHADOW_DEBUG_EDGES	( r_g2_shadowedges->integer )
+#define R_SHADOW_DEBUG_SURF		( r_g2_shadowsurf->integer )
+#else
+#define R_SHADOW_DEBUG			0
+#define R_SHADOW_DEBUG_EDGES	3
+#define R_SHADOW_DEBUG_SURF		-1
+#endif
+
+// cg_shadows 2 is the one stencil mode; r_vbo_models picks how the volume is
+// built, on the GPU when the ghoul2 VBO is up, on the CPU otherwise.
+#define R_STENCIL_SHADOWS()	( r_shadows->integer == 2 )
+
 extern	cvar_t	*r_flares;				// light flares
 //extern	cvar_t	*r_flareSize;			// light flare size
 //extern cvar_t	*r_flareFade;

@@ -211,11 +211,11 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 	CBoneCache		*oldBoneCache = nullptr;
 
 #ifdef USE_VANILLA_SHADOWFINISH
-	qboolean		didShadowPass;
+	qboolean		didShadowPass = qfalse;
 
 	if ( backEnd.isGlowPass )
 	{ //only shadow on initial passes
-		didShadowPass = true;
+		didShadowPass = qtrue;
 	}
 #endif
 
@@ -232,9 +232,6 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 	oldDlighted				= qfalse;
 	oldReType				= -1;
 	qboolean				push_constant;
-#ifdef USE_VANILLA_SHADOWFINISH
-	didShadowPass			= qfalse;
-#endif
 
 	backEnd.pc.c_surfaces	+= numDrawSurfs;
 

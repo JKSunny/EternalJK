@@ -76,6 +76,10 @@ static void get_mvp_transform( float *mvp )
 	}
 }
 
+void vk_get_mvp_transform( float *out ) {
+	get_mvp_transform( out );
+}
+
 void vk_update_mvp( const float *m ) {
 	float push_constants[16]; // mvp transform
 

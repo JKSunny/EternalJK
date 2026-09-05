@@ -53,65 +53,113 @@ static void R_AddEdgeDef(int i1, int i2, int facing) {
 
 	numEdgeDefs[i1]++;
 }
+// One increment pass then one decrement pass over whatever is currently in
+// tess.indexes. Emission is chunked because a capped, all-edges volume needs 24
+// indices per facing triangle and overruns SHADER_MAX_INDEXES on any real
+// surface; vanilla is in immediate mode and has no such limit. Chunking is safe
+// only because the stencil ops wrap - modular arithmetic does not care how the
+// draws are split.
+static void R_FlushShadowVolume( const uint32_t *pipeline )
+{
+	if ( !tess.numIndexes )
+		return;
 
-static void R_CalcShadowEdges(void) {
-	qboolean	sil_edge;
-	int			i;
-	int			c, c2;
-	int			j, k;
-	int			i2;
-	color4ub_t *colors;
+	vk_bind_pipeline( pipeline[0] );
+	vk_bind_index();
+	vk_bind_geometry( TESS_XYZ | TESS_RGBA0 );
+	vk_draw_geometry( DEPTH_RANGE_NORMAL, qtrue );
+	vk_bind_pipeline( pipeline[1] );
+	vk_draw_geometry( DEPTH_RANGE_NORMAL, qtrue );
 
 	tess.numIndexes = 0;
+}
 
-	// an edge is NOT a silhouette edge if its face doesn't face the light,
-	// or if it has a reverse paired edge that also faces the light.
-	// A well behaved polyhedron would have exactly two faces for each edge,
-	// but lots of models have dangling edges or overfanned edges
-	for (i = 0; i < tess.numVertexes; i++) {
-		c = numEdgeDefs[i];
-		for (j = 0; j < c; j++) {
-			if (!edgeDefs[i][j].facing) {
+/*
+=================
+R_BuildShadowVolume
+
+Builds and draws the shadow volume the way rd-vanilla's R_RenderShadowEdges
+does, which is NOT the Quake 3 silhouette algorithm this file used to carry.
+
+Two deliberate differences, both from rww's JKA version:
+
+Every edge of every light-facing triangle is emitted, not just silhouette
+edges. On a clean mesh the interior edges produce pairs of opposite winding
+that cancel, so the result is identical - but it is immune to edges shared by
+more than two triangles, which the silhouette test mishandles and which real
+.glm assets have. rww's own comment: "we are going to render all edges even
+though it is a tiny bit slower".
+
+The volume is capped, near and far, because Carmack's Reverse needs it.
+=================
+*/
+static void R_BuildShadowVolume( const uint32_t *pipeline )
+{
+	const int numTris = tess.numIndexes / 3;
+	const int numVerts = tess.numVertexes;
+	int i, j;
+
+	// facing[] and edgeDefs[] were filled against the original index list; the
+	// volume is emitted into the same array, so read the triangle list out first.
+	static uint32_t sourceIndexes[SHADER_MAX_INDEXES];
+	Com_Memcpy( sourceIndexes, tess.indexes, tess.numIndexes * sizeof( tess.indexes[0] ) );
+
+	tess.numIndexes = 0;
+	tess.numVertexes = numVerts * 2;
+
+	color4ub_t *colors = &tess.svars.colors[0][0]; // needs 2x SHADER_MAX_VERTEXES
+	for ( i = 0; i < tess.numVertexes; i++ )
+		Vector4Set( colors[i], 50, 50, 50, 255 );
+
+	// sides: one extruded quad per edge of every facing triangle
+	for ( i = 0; i < numVerts; i++ )
+	{
+		const int c = numEdgeDefs[i];
+
+		for ( j = 0; j < c; j++ )
+		{
+			if ( !edgeDefs[i][j].facing )
 				continue;
-			}
 
-			sil_edge = qtrue;
-			i2 = edgeDefs[i][j].i2;
-			c2 = numEdgeDefs[i2];
-			for (k = 0; k < c2; k++) {
-				if (edgeDefs[i2][k].i2 == i && edgeDefs[i2][k].facing) {
-					sil_edge = qfalse;
-					break;
-				}
-			}
+			if ( tess.numIndexes > (int)ARRAY_LEN( tess.indexes ) - 6 )
+				R_FlushShadowVolume( pipeline );
 
-			// if it doesn't share the edge with another front facing
-			// triangle, it is a sil edge
-			if (sil_edge) {
-				if (tess.numIndexes > ARRAY_LEN(tess.indexes) - 6) {
-					i = tess.numVertexes;
-					break;
-				}
+			const int i2 = edgeDefs[i][j].i2;
 
-				tess.indexes[tess.numIndexes + 0] = i;
-				tess.indexes[tess.numIndexes + 1] = i2;
-				tess.indexes[tess.numIndexes + 2] = i + tess.numVertexes;
-				tess.indexes[tess.numIndexes + 3] = i2;
-				tess.indexes[tess.numIndexes + 4] = i2 + tess.numVertexes;
-				tess.indexes[tess.numIndexes + 5] = i + tess.numVertexes;
-
-				tess.numIndexes += 6;
-			}
+			tess.indexes[tess.numIndexes + 0] = i;
+			tess.indexes[tess.numIndexes + 1] = i + numVerts;
+			tess.indexes[tess.numIndexes + 2] = i2;
+			tess.indexes[tess.numIndexes + 3] = i2;
+			tess.indexes[tess.numIndexes + 4] = i + numVerts;
+			tess.indexes[tess.numIndexes + 5] = i2 + numVerts;
+			tess.numIndexes += 6;
 		}
 	}
 
-	tess.numVertexes *= 2;
+	// caps: the facing triangle itself, and its extruded copy wound backwards
+	for ( i = 0; i < numTris; i++ )
+	{
+		if ( !facing[i] )
+			continue;
 
-	colors = &tess.svars.colors[0][0]; // we need at least 2x SHADER_MAX_VERTEXES there
+		if ( tess.numIndexes > (int)ARRAY_LEN( tess.indexes ) - 6 )
+			R_FlushShadowVolume( pipeline );
 
-	for (i = 0; i < tess.numVertexes; i++) {
-		Vector4Set(colors[i], 50, 50, 50, 255);
+		const int o1 = sourceIndexes[i * 3 + 0];
+		const int o2 = sourceIndexes[i * 3 + 1];
+		const int o3 = sourceIndexes[i * 3 + 2];
+
+		tess.indexes[tess.numIndexes + 0] = o1;
+		tess.indexes[tess.numIndexes + 1] = o2;
+		tess.indexes[tess.numIndexes + 2] = o3;
+		tess.indexes[tess.numIndexes + 3] = o3 + numVerts;
+		tess.indexes[tess.numIndexes + 4] = o2 + numVerts;
+		tess.indexes[tess.numIndexes + 5] = o1 + numVerts;
+		tess.numIndexes += 6;
 	}
+
+	R_FlushShadowVolume( pipeline );
+	tess.numVertexes = numVerts;
 }
 
 /*
@@ -140,7 +188,7 @@ void RB_ShadowTessEnd(void) {
 	float	groundDist;
 
 #ifdef USE_PMLIGHT
-	if (r_dlightMode->integer == 2 && r_shadows->integer == 2)
+	if (r_dlightMode->integer == 2 && R_STENCIL_SHADOWS())
 		VectorCopy(backEnd.currentEntity->shadowLightDir, entLight);
 	else
 #endif
@@ -165,7 +213,7 @@ void RB_ShadowTessEnd(void) {
 	}
 #else
 #ifdef USE_PMLIGHT
-	if (r_dlightMode->integer == 2 && r_shadows->integer == 2)
+	if (r_dlightMode->integer == 2 && R_STENCIL_SHADOWS())
 		VectorCopy(backEnd.currentEntity->shadowLightDir, lightDir);
 	else
 #endif
@@ -219,14 +267,11 @@ void RB_ShadowTessEnd(void) {
 		R_AddEdgeDef( i2, i3, facing[i] );
 		R_AddEdgeDef( i3, i1, facing[i] );
 	}
-	
-	R_CalcShadowEdges();
 
-	// draw the silhouette edges
-	vk_bind(tr.whiteImage);
+	vk_bind( tr.whiteImage );
 
 	// mirrors have the culling order reversed
-	if (backEnd.viewParms.portalView == PV_MIRROR) {
+	if ( backEnd.viewParms.portalView == PV_MIRROR ) {
 		pipeline[0] = vk.std_pipeline.shadow_volume_pipelines[0][1];
 		pipeline[1] = vk.std_pipeline.shadow_volume_pipelines[1][1];
 	}
@@ -235,14 +280,10 @@ void RB_ShadowTessEnd(void) {
 		pipeline[1] = vk.std_pipeline.shadow_volume_pipelines[1][0];
 	}
 
-	vk_bind_pipeline(pipeline[0]); // back-sided
-	vk_bind_index();
-	vk_bind_geometry(TESS_XYZ | TESS_RGBA0);
-	vk_draw_geometry(DEPTH_RANGE_NORMAL, qtrue);
-	vk_bind_pipeline(pipeline[1]); // front-sided
-	vk_draw_geometry(DEPTH_RANGE_NORMAL, qtrue);
+	R_BuildShadowVolume( pipeline );
 
-	tess.numVertexes /= 2;
+	if ( R_SHADOW_DEBUG )
+		ri.Printf( PRINT_ALL, "G2SHADOWDEBUG: CPU shadow volume: %d triangles in\n", numTris );
 
 	backEnd.doneShadows = qtrue;
 	tess.numIndexes = 0;
@@ -264,16 +305,23 @@ void RB_ShadowFinish(void)
 	float tmp[16];
 	int i;
 
+	if ( R_SHADOW_DEBUG )
+		ri.Printf( PRINT_ALL, "G2SHADOWDEBUG: RB_ShadowFinish called, doneShadows=%d r_shadows=%d stencilBits=%d\n",
+			backEnd.doneShadows, r_shadows->integer, glConfig.stencilBits );
+
 	if (!backEnd.doneShadows)
 		return;
 
 	backEnd.doneShadows = qfalse;
 
-	if (r_shadows->integer != 2)
+	if (!R_STENCIL_SHADOWS())
 		return;
-	
+
 	if (glConfig.stencilBits < 4)
 		return;
+
+	if ( R_SHADOW_DEBUG )
+		ri.Printf( PRINT_ALL, "G2SHADOWDEBUG: RB_ShadowFinish drawing darkening quad\n" );
 
 	static const vec3_t verts[4] = {
 		{ -100, 100, -10 },
@@ -287,7 +335,8 @@ void RB_ShadowFinish(void)
 	for (i = 0; i < 4; i++)
 	{
 		VectorCopy(verts[i], tess.xyz[i]);
-		Vector4Set(tess.svars.colors[0][i], 153, 153, 153, 255);
+		// black at 50% alpha, as rd-vanilla does
+		Vector4Set(tess.svars.colors[0][i], 0, 0, 0, 128);
 	}
 	tess.numVertexes = 4;
 
@@ -335,7 +384,7 @@ void RB_ProjectionShadowDeform(void)
 	groundDist = backEnd.ori.origin[2] - backEnd.currentEntity->e.shadowPlane;
 
 #ifdef USE_PMLIGHT
-	if (r_dlightMode->integer == 2 && r_shadows->integer == 2)
+	if (r_dlightMode->integer == 2 && R_STENCIL_SHADOWS())
 		VectorCopy(backEnd.currentEntity->shadowLightDir, lightDir);
 	else
 #endif
