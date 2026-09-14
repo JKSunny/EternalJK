@@ -98,7 +98,7 @@ typedef unsigned int uvec4_t[4];
 #define USE_DEDICATED_ALLOCATION
 #endif
 // depth + msaa + msaa-resolve + screenmap.msaa + screenmap.resolve + screenmap.depth + (bloom_extract + blur pairs + dglow_extract + blur pairs) + dglow-msaa + gamma
-#define MAX_ATTACHMENTS_IN_POOL			( 9 + ( ( 1 + VK_NUM_BLUR_PASSES * 2 ) * 2 ) + 1 + 1 + 1 ) // (6+3=9: cubemap.msaa + cubemap.resolve + cubemap.depth) + gamma + refraction_extract
+#define MAX_ATTACHMENTS_IN_POOL			( 9 + ( ( 1 + VK_NUM_BLUR_PASSES * 2 ) * 2 ) + 1 + 1 + 1 ) + ( 3 ) // (6+3=9: cubemap.msaa + cubemap.resolve + cubemap.depth) + gamma + refraction_extract + (depth_extract + ssao_extract + ssao_blur)
 
 #define GLOBAL_SHADER_C
 #include "shaders/glsl/global.h"
@@ -729,8 +729,29 @@ typedef struct {
 	VkDescriptorSet bloom_image_descriptor[1 + VK_NUM_BLUR_PASSES * 2];
 	VkDescriptorSet dglow_image_descriptor[1 + VK_NUM_BLUR_PASSES * 2];
 	
-	VkImage			depth_image;
-	VkImageView		depth_image_view;
+	struct {
+		VkImage				image;
+		VkImageView			image_view;
+
+#ifdef USE_VK_PBR
+		VkImageView			sampler_view;
+		VkDescriptorSet		sampler_descriptor;
+
+		struct {
+			qboolean			enabled;
+
+			VkImage				image;
+			VkImageView			image_view;
+			VkDescriptorSet		descriptor;
+			VkPipeline			pipeline;
+			VkPipelineLayout	pipeline_layout;
+			vkRenderPass_t		render_pass;
+			VkFramebuffer		framebuffer;
+			VkShaderModule		depth_extract_fs[2];
+		} extract;
+#endif
+	} depth;
+
 
 	VkImage			msaa_image;
 	VkImageView		msaa_image_view;
@@ -783,6 +804,36 @@ typedef struct {
 		VkImageView		color_image_view[7];
 	} cubeMap;
 
+#ifdef USE_VK_SSAO
+	struct {
+		struct {
+			VkImage			image;
+			VkImageView		image_view;
+			VkDescriptorSet descriptor;
+			VkPipeline		pipeline;
+			VkPipelineLayout pipeline_layout;
+		} extract;
+
+		struct {
+			VkImage			image;
+			VkImageView		image_view;
+			VkDescriptorSet descriptor;
+			VkPipeline		pipeline;
+			VkPipelineLayout pipeline_layout;
+		} blur;
+
+		struct {
+			VkPipeline		pipeline;
+		} blend;
+
+#ifdef USE_VK_IMGUI
+		struct {
+			VkPipeline		pipeline;
+		} debug ;
+#endif
+	} ssao;
+#endif
+
 	// render passes
 	struct {
 		struct {
@@ -805,6 +856,10 @@ typedef struct {
 		vkRenderPass_t cubemap;
 
 		struct {
+			vkRenderPass_t blend;
+		} postfx;
+
+		struct {
 			vkRenderPass_t extract;
 		} refraction;
 
@@ -819,6 +874,13 @@ typedef struct {
 			vkRenderPass_t extract;
 			vkRenderPass_t blend;
 		} dglow;
+
+#ifdef USE_VK_SSAO
+		struct {
+			vkRenderPass_t blur;
+			vkRenderPass_t extract;
+		} ssao;
+#endif
 	} render_pass;
 
 	struct {
@@ -853,6 +915,13 @@ typedef struct {
 			VkFramebuffer blur[VK_NUM_BLUR_PASSES * 2];
 			VkFramebuffer extract;
 		} dglow;
+
+#ifdef USE_VK_SSAO
+		struct {
+			VkFramebuffer blur;
+			VkFramebuffer extract;
+		} ssao;
+#endif
 	} framebuffers;
 
 #ifdef USE_UPLOAD_QUEUE
@@ -1057,6 +1126,13 @@ typedef struct {
 		VkShaderModule refraction_fs;
 
 		VkShaderModule normalmap;
+
+#ifdef USE_VK_SSAO
+		VkShaderModule ssao_fs;
+		VkShaderModule ssao_blur_fs;
+		VkShaderModule ssao_blend_fs;
+		VkShaderModule ssao_debug_fs;
+#endif
 	} shaders;
 
 	uint32_t frame_count;
@@ -1090,6 +1166,7 @@ typedef struct {
 	VkFormat bloom_format;
 	VkFormat capture_format;
 	VkFormat compressed_format;
+	VkFormat ssao_format;
 
 	VkImageLayout initSwapchainLayout;
 
@@ -1101,6 +1178,7 @@ typedef struct {
 	qboolean cubemapActive;
 #endif
 	qboolean refractionActive;
+	qboolean ssaoActive;
 
 	qboolean	offscreenRender;
 	qboolean	windowAdjusted;
@@ -1276,6 +1354,7 @@ void		vk_bind_index_buffer( VkBuffer buffer, uint32_t offset, VkIndexType type =
 void		vk_bind_index( void );
 void		vk_bind_index_ext( const int numIndexes, const uint32_t *indexes );
 void		vk_bind_pipeline( uint32_t pipeline );
+void		vk_set_viewport_scissor( uint32_t width, uint32_t height );
 void		vk_update_depth_range( Vk_Depth_Range depth_range );
 void		vk_draw_geometry( Vk_Depth_Range depth_range, qboolean indexed );
 void		vk_draw_dot( uint32_t storage_offset );
@@ -1324,6 +1403,10 @@ void		vk_record_buffer_memory_barrier( VkCommandBuffer cb, VkBuffer buffer,
 	VkDeviceSize size, VkDeviceSize offset, VkPipelineStageFlags src_stages, VkPipelineStageFlags dst_stages, 
 	VkAccessFlags src_access, VkAccessFlags dst_access );
 #endif
+
+// depth
+void		vk_depth_extract( uint32_t width, uint32_t height );
+
 // post-processing
 void		vk_begin_post_blend_render_pass( VkRenderPass renderpass, qboolean clearValues );
 
@@ -1360,6 +1443,12 @@ const char	*renderer_name( const VkPhysicalDeviceProperties *props );
 void		vk_get_vulkan_properties( VkPhysicalDeviceProperties *props );
 void		vk_info_f( void );
 void		GfxInfo_f( void );
+
+#ifdef USE_VK_SSAO
+// SSAO
+void		vk_ssao_extract_blur( void );
+void		vk_ssao_blend( void );
+#endif
 
 // debug
 void		vk_set_object_name( uint64_t obj, const char *objName, VkDebugReportObjectTypeEXT objType );

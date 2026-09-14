@@ -46,9 +46,31 @@ static void vk_clear_attachment_pool( void )
     num_attachments = 0;
 }
 
+static void vk_create_attachment_image_view(VkImage image, VkImageView* image_view, VkImageViewType viewType, VkFormat format, VkImageAspectFlags aspect_flags, int layer )
+{
+    VkImageViewCreateInfo desc;
+
+    desc.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    desc.pNext = NULL;
+    desc.flags = 0;
+    desc.image = image;
+    desc.viewType = viewType;
+    desc.format = format;
+    desc.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+    desc.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+    desc.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+    desc.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+    desc.subresourceRange.aspectMask = aspect_flags;
+    desc.subresourceRange.baseMipLevel = 0;
+    desc.subresourceRange.levelCount = 1;
+    desc.subresourceRange.baseArrayLayer = MAX( ( layer - 1 ), 0 );
+    desc.subresourceRange.layerCount = ( viewType == VK_IMAGE_VIEW_TYPE_CUBE ) ? 6 : 1;
+
+    VK_CHECK(qvkCreateImageView(vk.device, &desc, NULL, image_view));
+}
+
 static void vk_alloc_attachment_memory( void )
 {
-    VkImageViewCreateInfo view_desc;
     VkMemoryDedicatedAllocateInfoKHR alloc_info2;
     VkMemoryAllocateInfo alloc_info;
     VkCommandBuffer command_buffer;
@@ -132,23 +154,9 @@ static void vk_alloc_attachment_memory( void )
         layer = 0;
         while ( qtrue ) {
             // create color image view
-            view_desc.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-            view_desc.pNext = NULL;
-            view_desc.flags = 0;
-            view_desc.image = attachments[i].descriptor;
-            view_desc.viewType = viewType;
-            view_desc.format = attachments[i].image_format;
-            view_desc.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-            view_desc.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-            view_desc.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-            view_desc.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-            view_desc.subresourceRange.aspectMask = attachments[i].aspect_flags;
-            view_desc.subresourceRange.baseMipLevel = 0;
-            view_desc.subresourceRange.levelCount = 1;
-            view_desc.subresourceRange.baseArrayLayer = MAX( ( layer - 1 ), 0 );
-            view_desc.subresourceRange.layerCount = ( viewType == VK_IMAGE_VIEW_TYPE_CUBE ) ? 6 : 1;
-
-            VK_CHECK(qvkCreateImageView(vk.device, &view_desc, NULL, attachments[i].image_view + layer));
+            vk_create_attachment_image_view(attachments[i].descriptor, attachments[i].image_view + layer,
+                viewType, attachments[i].image_format, attachments[i].aspect_flags, layer
+            );
         
             // discard if not a cube or the 6th face/layer view has been created
             if ( attachments[i].viewType != VK_IMAGE_VIEW_TYPE_CUBE || layer == 6 )
@@ -264,7 +272,7 @@ static void create_color_attachment( uint32_t width, uint32_t height, VkSampleCo
 }
 
 static void create_depth_attachment( uint32_t width, uint32_t height, VkSampleCountFlagBits samples, 
-    VkImage *image, VkImageView *image_view, qboolean allowTransient )
+    VkImage *image, VkImageView *image_view, qboolean allowTransient, qboolean allowSampled )
 {
     VkImageCreateInfo desc;
     VkMemoryRequirements memory_requirements;
@@ -285,7 +293,10 @@ static void create_depth_attachment( uint32_t width, uint32_t height, VkSampleCo
     desc.samples = samples;
     desc.tiling = VK_IMAGE_TILING_OPTIMAL;
 	desc.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-	if ( allowTransient ) {
+    if ( allowSampled ) {
+        desc.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+    }
+	if ( allowTransient && !allowSampled ) {
 		desc.usage |= VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT;
 	}
     desc.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
@@ -339,7 +350,7 @@ void vk_create_attachments( void )
             usage, &vk.cubeMap.color_image, &vk.cubeMap.color_image_view[0], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, qfalse, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT );
 
         create_depth_attachment( REF_CUBEMAP_SIZE, REF_CUBEMAP_SIZE, VK_SAMPLE_COUNT_1_BIT,
-                &vk.cubeMap.depth_image, &vk.cubeMap.depth_image_view, qtrue );
+                &vk.cubeMap.depth_image, &vk.cubeMap.depth_image_view, qtrue, qfalse );
         
         usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
     }
@@ -389,7 +400,7 @@ void vk_create_attachments( void )
 
         // screenmap depth
         create_depth_attachment( vk.screenMapWidth, vk.screenMapHeight, (VkSampleCountFlagBits)vk.screenMapSamples,
-            &vk.screenMap.depth_image, &vk.screenMap.depth_image_view, qtrue );
+            &vk.screenMap.depth_image, &vk.screenMap.depth_image_view, qtrue, qfalse );
         
         // refraction
         if ( vk.refractionActive )
@@ -416,21 +427,47 @@ void vk_create_attachments( void )
         create_color_attachment( gls.captureWidth, gls.captureHeight, VK_SAMPLE_COUNT_1_BIT, vk.capture_format,
             usage, &vk.capture.image, &vk.capture.image_view , VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, qfalse, 0 );
     }
-#ifdef VK_PBR_BRDFLUT
-    // BRDF LUT
-    if( vk.cubemapActive ) {
-        uint32_t size = 512;
-        usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-            
-        create_color_attachment( size, size, VK_SAMPLE_COUNT_1_BIT, VK_FORMAT_R16G16_SFLOAT,
-            usage, &vk.brdflut_image, &vk.brdflut_image_view , VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, qfalse, 0 );
-    }
-#endif
 
     // depth
-    create_depth_attachment( glConfig.vidWidth, glConfig.vidHeight, (VkSampleCountFlagBits)vkSamples,
-        &vk.depth_image, &vk.depth_image_view, 
-        ( vk.fboActive && ( vk.bloomActive || vk.dglowActive ) ) ? qfalse : qtrue );
+    {
+	    const qboolean allowSampled = (vk.ssaoActive) ? qtrue : qfalse;
+	    const qboolean allowTransient = (vk.fboActive && ( vk.bloomActive || vk.dglowActive || vk.ssaoActive)) ? qfalse : qtrue;
+
+        create_depth_attachment( glConfig.vidWidth, glConfig.vidHeight, (VkSampleCountFlagBits)vkSamples,
+            &vk.depth.image, &vk.depth.image_view, allowTransient, allowSampled );
+    }
+
+#ifdef USE_VK_PBR
+    // depth extract
+    if ( vk.depth.extract.enabled )
+    {
+        create_color_attachment( glConfig.vidWidth, glConfig.vidHeight, VK_SAMPLE_COUNT_1_BIT, VK_FORMAT_R32_SFLOAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 
+            &vk.depth.extract.image, &vk.depth.extract.image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, qfalse, 0 );
+    }
+
+    #ifdef VK_PBR_BRDFLUT
+        // BRDF LUT
+        if( vk.cubemapActive ) {
+            uint32_t size = 512;
+            create_color_attachment( size, size, VK_SAMPLE_COUNT_1_BIT, VK_FORMAT_R16G16_SFLOAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                &vk.brdflut_image, &vk.brdflut_image_view , VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, qfalse, 0 );
+        }
+    #endif
+    #ifdef USE_VK_SSAO
+        // SSAO
+        if ( vk.ssaoActive ) 
+        {
+            uint32_t width = glConfig.vidWidth;
+            uint32_t height = glConfig.vidHeight;
+
+            create_color_attachment( width, height, VK_SAMPLE_COUNT_1_BIT, vk.ssao_format, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 
+                &vk.ssao.extract.image, &vk.ssao.extract.image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, qfalse, 0 );
+
+            create_color_attachment( width, height, VK_SAMPLE_COUNT_1_BIT, vk.ssao_format, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                &vk.ssao.blur.image, &vk.ssao.blur.image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, qfalse, 0 );
+        }
+    #endif
+#endif
 
     vk_alloc_attachment_memory();
 
@@ -439,8 +476,16 @@ void vk_create_attachments( void )
         VK_SET_OBJECT_NAME( vk.image_memory[i], va("framebuffer memory chunk %i", i), VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT );
     }
 
-    VK_SET_OBJECT_NAME( vk.depth_image, "depth attachment", VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT );
-    VK_SET_OBJECT_NAME( vk.depth_image_view, "depth attachment", VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT );
+    VK_SET_OBJECT_NAME( vk.depth.image, "depth attachment", VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT );
+    VK_SET_OBJECT_NAME( vk.depth.image_view, "depth attachment", VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT );
+#ifdef USE_VK_PBR
+    if ( vk.depth.image && vk.depth.extract.enabled ) {
+        vk_create_attachment_image_view(vk.depth.image, &vk.depth.sampler_view, VK_IMAGE_VIEW_TYPE_2D, vk.depth_format, VK_IMAGE_ASPECT_DEPTH_BIT, 0);
+        VK_SET_OBJECT_NAME( vk.depth.sampler_view, "depth sampler view", VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT );
+    }
+    VK_SET_OBJECT_NAME( vk.depth.extract.image, "depth extract image", VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT );
+    VK_SET_OBJECT_NAME( vk.depth.extract.image_view, "depth extract image view", VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT );
+#endif
 
     VK_SET_OBJECT_NAME( vk.color_image, "color image", VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT );
     VK_SET_OBJECT_NAME( vk.color_image_view, "color image view", VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT );
@@ -484,6 +529,17 @@ void vk_create_attachments( void )
 
     VK_SET_OBJECT_NAME( vk.cubeMap.depth_image, "cubemap depth image", VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT );
     VK_SET_OBJECT_NAME( vk.cubeMap.depth_image_view, "cubemap depth image view", VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT );
+
+#ifdef USE_VK_SSAO
+    // SSAO
+    if ( vk.ssaoActive ) 
+    {
+        VK_SET_OBJECT_NAME(vk.ssao.extract.image, "ssao image", VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT);
+        VK_SET_OBJECT_NAME(vk.ssao.extract.image_view, "ssao image view", VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT);
+        VK_SET_OBJECT_NAME(vk.ssao.blur.image, "ssao blur image", VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT);
+        VK_SET_OBJECT_NAME(vk.ssao.blur.image_view, "ssao blur image view", VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT);
+    }
+#endif
 }
 
 void vk_clear_depthstencil_attachments( qboolean clear_stencil ) {
@@ -545,11 +601,17 @@ void vk_destroy_attachments( void )
     uint32_t i;
 
     // depth
-    if (vk.depth_image) {
-        qvkDestroyImage(vk.device, vk.depth_image, NULL);
-        qvkDestroyImageView(vk.device, vk.depth_image_view, NULL);
-        vk.depth_image = VK_NULL_HANDLE;
-        vk.depth_image_view = VK_NULL_HANDLE;
+    if ( vk.depth.image ) {
+        qvkDestroyImage(vk.device, vk.depth.image, NULL);
+        qvkDestroyImageView(vk.device, vk.depth.image_view, NULL);
+        vk.depth.image      = VK_NULL_HANDLE;
+        vk.depth.image_view = VK_NULL_HANDLE;
+    }
+
+    // depth sampler
+    if ( vk.depth.sampler_view ) {
+        qvkDestroyImageView(vk.device, vk.depth.sampler_view, NULL);
+        vk.depth.sampler_view = VK_NULL_HANDLE;
     }
 
     // MSAA
@@ -640,6 +702,15 @@ void vk_destroy_attachments( void )
         vk.dglow_msaa_image_view = VK_NULL_HANDLE;
     }
 
+#ifdef USE_VK_PBR
+    // depth extract
+    if ( vk.depth.extract.image ) {
+        qvkDestroyImage(vk.device, vk.depth.extract.image, NULL);
+        qvkDestroyImageView(vk.device, vk.depth.extract.image_view, NULL);
+        vk.depth.extract.image      = VK_NULL_HANDLE;
+        vk.depth.extract.image_view = VK_NULL_HANDLE;
+    }
+
 #ifdef VK_PBR_BRDFLUT
     if ( vk.brdflut_image_view ) {
         qvkDestroyImage(vk.device, vk.brdflut_image, NULL);
@@ -662,11 +733,32 @@ void vk_destroy_attachments( void )
 
     if ( vk.cubeMap.depth_image ) {
         qvkDestroyImage(vk.device, vk.cubeMap.depth_image, NULL);
-        qvkDestroyImageView(vk.device, vk.depth_image_view, NULL);
+        qvkDestroyImageView(vk.device, vk.cubeMap.depth_image_view, NULL);
         vk.cubeMap.depth_image = VK_NULL_HANDLE;
         vk.cubeMap.depth_image_view = VK_NULL_HANDLE;
     }
 	
+#ifdef USE_VK_SSAO
+    // SSAO
+    if (vk.ssaoActive)
+    {
+        if ( vk.ssao.extract.image ) {
+            qvkDestroyImage( vk.device, vk.ssao.extract.image, NULL );
+            qvkDestroyImageView( vk.device, vk.ssao.extract.image_view, NULL );
+            vk.ssao.extract.image = VK_NULL_HANDLE;
+            vk.ssao.extract.image_view = VK_NULL_HANDLE;
+        }
+
+        if ( vk.ssao.blur.image ) {
+            qvkDestroyImage( vk.device, vk.ssao.blur.image, NULL );
+            qvkDestroyImageView( vk.device, vk.ssao.blur.image_view, NULL );
+            vk.ssao.blur.image = VK_NULL_HANDLE;
+            vk.ssao.blur.image_view = VK_NULL_HANDLE;
+        }
+    }
+#endif
+#endif
+
     // image memory
     for (i = 0; i < vk.image_memory_count; i++) {
         VK_FREE_MEMORY(vk.device, vk.image_memory[i]);

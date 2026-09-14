@@ -522,11 +522,6 @@ void vk_initialize( void )
 		vk.useGPUDLight = qtrue;
 #endif
 
-#ifdef VK_CUBEMAP
-	if ( r_cubeMapping->integer )
-		vk.cubemapActive = qtrue;
-#endif
-
 	//if (r_ext_multisample->integer && !r_ext_supersample->integer)
 	if ( r_ext_multisample->integer )
 		vk.msaaActive = qtrue;
@@ -556,6 +551,26 @@ void vk_initialize( void )
 	// Dynamic glow
 	if ( glConfig.maxActiveTextures >= 4 && r_DynamicGlow->integer )
 		vk.dglowActive = qtrue;
+
+	// depth
+#ifdef USE_VK_PBR
+#ifdef USE_VK_SSAO
+	// SSAO
+	if ( r_ssao->integer )
+		vk.ssaoActive = qtrue;
+#endif
+#ifdef VK_CUBEMAP
+	if ( r_cubeMapping->integer )
+		vk.cubemapActive = qtrue;
+#endif
+
+	// enable/disable depth extraction for optional postfx
+	// ~sunny, replace with z-prepass later
+	if (vk.ssaoActive)
+	{
+		vk.depth.extract.enabled = qtrue;
+	}
+#endif
 
 	// "Hardware" fog mode
 	vk.hw_fog = r_drawfog->integer == 2 ? 1 : 0;
@@ -673,7 +688,17 @@ void vk_shutdown( void )
 	qvkDestroyPipelineLayout(vk.device, vk.pipeline_layout_post_process, NULL);
 	qvkDestroyPipelineLayout(vk.device, vk.pipeline_layout_blend, NULL);
 #ifdef USE_VK_PBR
-	qvkDestroyPipelineLayout(vk.device, vk.pipeline_layout_brdflut, NULL);
+	qvkDestroyPipelineLayout(vk.device, vk.depth.extract.pipeline_layout, NULL);
+#ifdef VK_PBR_BRDFLUT
+	if ( vk.cubemapActive )
+		qvkDestroyPipelineLayout(vk.device, vk.pipeline_layout_brdflut, NULL);
+#endif
+#ifdef USE_VK_SSAO
+	if ( vk.ssaoActive ) {
+		qvkDestroyPipelineLayout(vk.device, vk.ssao.extract.pipeline_layout, NULL);
+		qvkDestroyPipelineLayout(vk.device, vk.ssao.blur.pipeline_layout, NULL);
+	}
+#endif
 #endif
 
 #ifdef USE_VBO	

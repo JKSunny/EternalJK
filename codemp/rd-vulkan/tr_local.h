@@ -32,6 +32,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 	#define VK_PBR_BRDFLUT		// for inspecting codebase, does not toggle brdflut. 
 	#define VK_CUBEMAP	
 	#define VK_COMPUTE_NORMALMAP	
+	#define USE_VK_SSAO
 
 	#ifdef VK_CUBEMAP
 		#define REF_CUBEMAP_IRRADIANCE_SIZE 64
@@ -1893,6 +1894,10 @@ typedef struct backEndState_s {
 	qboolean screenMapDone;
 	qboolean doneBloom;
 
+#ifdef USE_VK_SSAO
+	qboolean doneSSAO;
+#endif
+
 	qboolean hasGlowSurfaces;					// renderdoc shows empty dglow pass, or passes with 2 or 3 surfaces. maybe use a min surf count instead?
 	qboolean isGlowPass;
 
@@ -2330,6 +2335,15 @@ extern cvar_t	*cl_paused;
 extern cvar_t	*sv_paused;
 extern cvar_t	*com_sv_running;
 extern cvar_t	*com_cl_running;
+#endif
+#ifdef USE_VK_SSAO
+extern cvar_t	*r_ssao;
+extern cvar_t	*r_ssao_samples;
+extern cvar_t	*r_ssao_radius;
+extern cvar_t	*r_ssao_intensity;
+extern cvar_t	*r_ssao_power;
+extern cvar_t	*r_ssao_bias;
+extern cvar_t	*r_ssao_falloff;
 #endif
 
 /*

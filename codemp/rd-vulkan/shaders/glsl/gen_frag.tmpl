@@ -497,25 +497,26 @@ void main() {
 				case 1 : out_color.rgb = diffuse.rgb; break;
 				case 2 : out_color.rgb = specular.rgb; break;		
 				case 3 : out_color.rgb = vec3(roughness); break;
-				case 4 : out_color.rgb = vec3(AO); break;			// Ambient Occlusion		
-				case 5 : out_color.rgb = ( var_Normal.rgb * 0.5 + 0.5 ); break;		// Normals
-				case 6 : out_color.rgb = ( N * 0.5 + 0.5 ); break;					// Normals + Normalmap
-				case 7 : out_color.rgb = L; break;					// Lightdir
-				case 8 : out_color.rgb = E; break;					// ViewDir
-				case 9 : out_color.rgb = var_Tangent.rgb; break;		// Tagnent
-				case 10 : out_color.rgb = lightColor; break;
-				case 11 : out_color.rgb = ambientColor; break;
-				case 12 : out_color.rgb = reflectance; break;
-				case 13 : out_color.rgb = vec3(attenuation); break;
-				case 14 : out_color.rgb = H; break;
-				case 15 : out_color.rgb = Fd; break;
-				case 16 : out_color.rgb = Fs; break;				
-				case 17 : out_color.rgb = vec3(NE); break;
-				case 18 : out_color.rgb = vec3(NL); break;
-				case 19 : out_color.rgb = vec3(LH); break;
-				case 20 : out_color.rgb = vec3(NH); break;
-				case 21 : out_color.rgb = vec3(VH); break;
-				case 22 : out_color.rgb = CalcIBLContribution( roughness, N, E, NE, specular.rgb * AO ); break;
+				case 4 : break; // SSAO
+				case 5 : out_color.rgb = vec3(AO); break;			// SSAO + Ambient Occlusion		
+				case 6 : out_color.rgb = ( var_Normal.rgb * 0.5 + 0.5 ); break;		// Normals
+				case 7 : out_color.rgb = ( N * 0.5 + 0.5 ); break;					// Normals + Normalmap
+				case 8 : out_color.rgb = L; break;					// Lightdir
+				case 9 : out_color.rgb = E; break;					// ViewDir
+				case 10 : out_color.rgb = var_Tangent.rgb; break;		// Tagnent
+				case 11 : out_color.rgb = lightColor; break;
+				case 12 : out_color.rgb = ambientColor; break;
+				case 13 : out_color.rgb = reflectance; break;
+				case 14 : out_color.rgb = vec3(attenuation); break;
+				case 15 : out_color.rgb = H; break;
+				case 16 : out_color.rgb = Fd; break;
+				case 17 : out_color.rgb = Fs; break;				
+				case 18 : out_color.rgb = vec3(NE); break;
+				case 19 : out_color.rgb = vec3(NL); break;
+				case 20 : out_color.rgb = vec3(LH); break;
+				case 21 : out_color.rgb = vec3(NH); break;
+				case 22 : out_color.rgb = vec3(VH); break;
+				case 23 : out_color.rgb = CalcIBLContribution( roughness, N, E, NE, specular.rgb * AO ); break;
 			}
 		}	
 	#else

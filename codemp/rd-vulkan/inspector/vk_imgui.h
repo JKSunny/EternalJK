@@ -172,12 +172,13 @@ static const char *vk_surfacetype_string[11] = {
 	"vbo-mdv"
 };
 
-static const char *render_modes[23] = { 
+static const char *render_modes[24] = { 
 	"Final Image", 
 	"Diffuse", 
 	"Specular", 
 	"Roughness", 
-	"Ambient Occlusion", 
+	"SSAO", 
+	"SSAO + Ambient Occlusion", 
 	"Normals", 
 	"Normals + Normalmap",  
 	"Light direction",
