@@ -1182,6 +1182,43 @@ static void RB_LightingPass( void )
 }
 #endif
 
+#ifdef USE_VK_PBR
+static void vk_postfx_pass(void)
+{
+	if ( !vk.depth.extract.enabled )
+		return;
+
+	if ( !tr.world )
+		return;
+
+	// skip non-world, skyportals and mirrors etc
+	if ( ( backEnd.refdef.rdflags & RDF_NOWORLDMODEL ) || 
+		 ( backEnd.refdef.rdflags & RDF_SKYBOXPORTAL ) || 
+		 backEnd.viewParms.portalView != PV_NONE )
+		return;
+
+	vk_end_render_pass();
+
+	// ~sunny, transition to z-prepass later
+	vk_depth_extract( glConfig.vidWidth, glConfig.vidHeight );
+
+	// extract
+#ifdef USE_VK_SSAO
+	vk_ssao_extract_blur();
+#endif
+
+	// blend
+	vk_begin_post_blend_render_pass( vk.render_pass.postfx.blend.handle, qfalse );
+#ifdef USE_VK_SSAO
+	vk_ssao_blend();
+#endif
+
+#ifdef USE_VK_IMGUI
+	vk_set_viewport_scissor( glConfig.vidWidth, glConfig.vidHeight );
+#endif
+}
+#endif
+
 /*
 =============
 RB_DrawSurfs
@@ -1257,6 +1294,10 @@ const void	*RB_DrawSurfs( const void *data ) {
 		vk_begin_main_render_pass();
 		backEnd.screenMapDone = qtrue;
 	}
+
+#ifdef USE_VK_PBR
+	vk_postfx_pass();
+#endif
 
 	// refraction / distortion pass
 	if ( backEnd.hasRefractionSurfaces ) {

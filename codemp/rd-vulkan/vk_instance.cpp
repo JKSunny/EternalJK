@@ -520,6 +520,7 @@ qboolean vk_select_surface_format( VkPhysicalDevice physical_device, VkSurfaceKH
     vk.color_format		= get_hdr_format(vk.base_format.format);
     vk.depth_format		= get_depth_format(physical_device);
     vk.bloom_format		= vk.base_format.format;
+    vk.ssao_format		= VK_FORMAT_R8_UNORM;
     vk.capture_format	= VK_FORMAT_R8G8B8A8_UNORM;
     vk.blitEnabled		= vk_blit_enabled(physical_device, vk.color_format, vk.capture_format);
 

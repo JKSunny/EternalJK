@@ -4,12 +4,14 @@
 #ifndef GLOBAL_SHADER_C
 	#define GLSL
     #define USE_VK_PBR
+    //#define USE_VK_IMGUI
 #endif
 
 #ifdef GLSL
     #define VK_DLIGHT_GPU
 
     #define M_PI 3.1415926535897932384626433832795
+    #define M_HALF_PI 1.57079632679
 
     #if defined(USE_LIGHTMAP) || defined(USE_LIGHT_VECTOR) || defined(USE_LIGHT_VERTEX)
 	    #define USE_LIGHT
@@ -250,6 +252,49 @@ STRUCT (
 	    VEC4				( item )
     , vkUniformLight_t )
 #endif
+
+
+// depth extract
+// ~sunny, implement z-prepass later. see issue: #68
+STRUCT (
+	VEC4	( projection )
+    VEC2    ( inv_size )
+    VEC2    ( pad0 )
+, vkExtractDepth_t )
+
+// SSAO
+STRUCT (
+	VEC4	( projection )
+
+    VEC2    ( texture_scale )   // aka pad0
+    FLOAT   ( frame_noise )
+	FLOAT	( radius )
+
+	FLOAT	( bias )
+	FLOAT	( intensity )
+	FLOAT	( power )
+	FLOAT	( samples )
+
+	FLOAT	( reverse_depth )
+	FLOAT	( inv_width )
+	FLOAT	( inv_height )
+	FLOAT	( depth_falloff )
+
+	UINT	( mode )
+	UINT	( slices )
+	UINT	( steps )
+, vkExtractSSAO_t )
+
+STRUCT (  
+    VEC4	( projection )
+
+    VEC2    ( texture_scale )   // aka pad0
+    FLOAT	( depth_radius )
+    FLOAT	( depth_sharpness )
+
+    FLOAT	( inv_width )
+    FLOAT	( inv_height )
+, vkBlurSSAO_t )
 
 // lightgrid
 #define LIGHTGRID_DEBUG_MODE_DISABLED   0

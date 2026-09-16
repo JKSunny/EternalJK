@@ -230,6 +230,15 @@ cvar_t  *r_baseSpecular;
 #ifdef VK_CUBEMAP
 cvar_t	*r_cubeMapping;
 #endif
+#ifdef USE_VK_SSAO
+cvar_t	*r_ssao;
+cvar_t	*r_ssao_samples;
+cvar_t	*r_ssao_radius;
+cvar_t	*r_ssao_intensity;
+cvar_t	*r_ssao_power;
+cvar_t	*r_ssao_bias;
+cvar_t	*r_ssao_falloff;
+#endif
 #ifdef VK_COMPUTE_NORMALMAP
 cvar_t	*r_genNormalMaps;
 #endif
@@ -1002,7 +1011,19 @@ void R_Register( void )
 	r_showLightgrid						= ri.Cvar_Get("r_showLightgrid",					"0",						CVAR_ARCHIVE, "Visualize lightgrid mode:\n 0: off\n 1: ambient\n 2: directed\n 3: direction" );
 	ri.Cvar_CheckRange(r_showLightgrid, LIGHTGRID_DEBUG_MODE_DISABLED, (LIGHTGRID_DEBUG_MODE_COUNT-1), qtrue);
 #endif
-
+#ifdef USE_VK_SSAO
+	r_ssao								= ri.Cvar_Get("r_ssao",								 "0",						CVAR_ARCHIVE | CVAR_LATCH, "Set Ambient Occlusion mode:\n"
+		"0 - disabled\n"
+		"1 - SSAO\n"
+		"2 - GTAO\n"
+		"WIP feature");
+	r_ssao_samples						= ri.Cvar_Get("r_ssao_samples",						 "6",						CVAR_ARCHIVE, "" );
+	r_ssao_radius						= ri.Cvar_Get("r_ssao_radius",						 "6.0",						CVAR_ARCHIVE, "" );
+	r_ssao_intensity					= ri.Cvar_Get("r_ssao_intensity",					 "1.0",						CVAR_ARCHIVE, "" );
+	r_ssao_power						= ri.Cvar_Get("r_ssao_power",						 "1.5",						CVAR_ARCHIVE, "" );
+	r_ssao_bias							= ri.Cvar_Get("r_ssao_bias",						 "0.15",					CVAR_ARCHIVE, "" );
+	r_ssao_falloff						= ri.Cvar_Get("r_ssao_falloff",						 "0.08",					CVAR_ARCHIVE, "" );
+#endif
 	r_renderWidth						= ri.Cvar_Get("r_renderWidth",						"800",						CVAR_ARCHIVE_ND | CVAR_LATCH, "");
 	r_renderHeight						= ri.Cvar_Get("r_renderHeight",						"600",						CVAR_ARCHIVE_ND | CVAR_LATCH, "");
 	r_renderScale						= ri.Cvar_Get("r_renderScale",						"0",						CVAR_ARCHIVE_ND | CVAR_LATCH, "Scaling mode to be used with custom render resolution:\n"

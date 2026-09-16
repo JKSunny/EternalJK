@@ -251,6 +251,10 @@ static void compile_and_convert_template_shaders( void )
     create_shader_task( "surface_sprite_frag.tmpl", "frag", "frag_surface_sprites", NULL, "-DUSE_ATEST");
     create_shader_task( "surface_sprite_frag.tmpl", "frag", "frag_surface_sprites_fog", NULL, "-DUSE_ATEST -DUSE_FOG");
 
+    // depth extract
+    create_shader_task( "depth_extract.tmpl", "frag", "frag_depth_extract", NULL, "");
+    create_shader_task( "depth_extract.tmpl", "frag", "frag_depth_extract_msaa", NULL, "-DUSE_MSAA");
+
     std::string underscore = "";
 
     for ( i = 0; i < ARRAY_LEN(vbo_flags); ++i ) { // vbo

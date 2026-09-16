@@ -675,6 +675,30 @@ void vk_update_attachment_descriptors( void ) {
 			}
 		}
 
+#ifdef USE_VK_PBR
+		// depth extract
+		if ( vk.depth.image_view )
+		{
+			// sampler
+			sd.gl_mag_filter	= sd.gl_min_filter = GL_NEAREST;
+			sd.max_lod_1_0		= qtrue;
+			sd.noAnisotropy		= qtrue;
+			info.sampler		= vk_find_sampler( &sd );
+			info.imageView		= vk.depth.sampler_view;
+			info.imageLayout	= VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+			desc.dstSet			= vk.depth.sampler_descriptor;
+			qvkUpdateDescriptorSets( vk.device, 1, &desc, 0, NULL );
+
+			// extract
+			sd.gl_mag_filter	= sd.gl_min_filter = GL_NEAREST;
+			sd.max_lod_1_0		= qtrue;
+			sd.noAnisotropy		= qtrue;
+			info.sampler		= vk_find_sampler( &sd );
+			info.imageView		= vk.depth.extract.image_view;
+			info.imageLayout	= VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			desc.dstSet			= vk.depth.extract.descriptor;
+			qvkUpdateDescriptorSets( vk.device, 1, &desc, 0, NULL );
+		}
 #ifdef VK_PBR_BRDFLUT
 		if( vk.cubemapActive )
 		{
@@ -689,6 +713,27 @@ void vk_update_attachment_descriptors( void ) {
 			desc.dstSet = vk.cubeMap.color_descriptor;
 			qvkUpdateDescriptorSets( vk.device, 1, &desc, 0, NULL );	
 		}
+#endif
+#ifdef USE_VK_SSAO
+		// SSAO
+		if ( vk.ssaoActive ) 
+		{
+			// extract
+			sd.gl_mag_filter = sd.gl_min_filter = GL_LINEAR;
+			sd.max_lod_1_0 = qtrue;
+			sd.noAnisotropy = qtrue;
+			info.sampler = vk_find_sampler( &sd );
+			info.imageView = vk.ssao.extract.image_view;
+			info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			desc.dstSet = vk.ssao.extract.descriptor;
+			qvkUpdateDescriptorSets( vk.device, 1, &desc, 0, NULL );
+
+			//  blur
+			info.imageView = vk.ssao.blur.image_view;
+			desc.dstSet = vk.ssao.blur.descriptor;
+			qvkUpdateDescriptorSets( vk.device, 1, &desc, 0, NULL );
+		}
+#endif
 #endif
 	}
 }
@@ -764,13 +809,29 @@ void vk_init_descriptors( void ) {
 		alloc.descriptorSetCount = 1;
 		VK_CHECK( qvkAllocateDescriptorSets( vk.device, &alloc, &vk.screenMap.color_descriptor ) ); // screenmap
 
-#ifdef VK_PBR_BRDFLUT
-		if( vk.cubemapActive )
-			VK_CHECK( qvkAllocateDescriptorSets( vk.device, &alloc, &vk.brdflut_image_descriptor ) );
-#endif
+#ifdef USE_VK_PBR
+		// depth extract
+		VK_CHECK( qvkAllocateDescriptorSets( vk.device, &alloc, &vk.depth.sampler_descriptor ) );
+		VK_CHECK( qvkAllocateDescriptorSets( vk.device, &alloc, &vk.depth.extract.descriptor ) );
 
-		// cubemap
-		VK_CHECK( qvkAllocateDescriptorSets( vk.device, &alloc, &vk.cubeMap.color_descriptor ) );
+#ifdef VK_PBR_BRDFLUT
+		if ( vk.cubemapActive )
+		{
+			// brdf lut
+			VK_CHECK( qvkAllocateDescriptorSets( vk.device, &alloc, &vk.brdflut_image_descriptor ) );
+			
+			// cubemap
+			VK_CHECK( qvkAllocateDescriptorSets( vk.device, &alloc, &vk.cubeMap.color_descriptor ) );
+		}
+#endif
+#ifdef USE_VK_SSAO
+		// SSAO
+		if ( vk.ssaoActive ) {
+			VK_CHECK( qvkAllocateDescriptorSets( vk.device, &alloc, &vk.ssao.extract.descriptor ) );
+			VK_CHECK( qvkAllocateDescriptorSets( vk.device, &alloc, &vk.ssao.blur.descriptor ) );
+		}
+#endif
+#endif
 
 		vk_update_attachment_descriptors();
 	}
@@ -968,6 +1029,27 @@ void vk_bind_pipeline( uint32_t pipeline ) {
 	}
 
 	vk_world.dirty_depth_attachment |= (vk.pipelines[pipeline].def.state_bits & GLS_DEPTHMASK_TRUE);
+}
+
+void vk_set_viewport_scissor( uint32_t width, uint32_t height )
+{
+	VkViewport viewport;
+	VkRect2D scissor;
+
+	viewport.x = 0.0f;
+	viewport.y = 0.0f;
+	viewport.width = (float)width;
+	viewport.height = (float)height;
+	viewport.minDepth = 0.0f;
+	viewport.maxDepth = 1.0f;
+
+	scissor.offset.x = 0;
+	scissor.offset.y = 0;
+	scissor.extent.width = width;
+	scissor.extent.height = height;
+
+	qvkCmdSetViewport( vk.cmd->command_buffer, 0, 1, &viewport );
+	qvkCmdSetScissor( vk.cmd->command_buffer, 0, 1, &scissor );
 }
 
 void vk_update_depth_range( Vk_Depth_Range depth_range )

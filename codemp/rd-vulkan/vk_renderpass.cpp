@@ -229,6 +229,46 @@ static void vk_create_main_renderpass( void )
     vk_create_render_pass( rp );
 }
 
+static void vk_create_depth_extract_renderpass( void )
+{
+	vkRenderPass_t *rp = &vk.depth.extract.render_pass;
+
+	Com_Memset( rp, 0, sizeof(vkRenderPass_t) );
+
+	rp->name = "depth extract";
+	vkRenderPassDef_t *def = &rp->def;
+
+	// color attachment
+	def->attachment_ref.color.attachment = 0;
+	def->attachment_ref.color.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	// subpass
+	Com_Memset( &def->subpass, 0, sizeof(VkSubpassDescription) );
+	def->subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+	def->subpass.colorAttachmentCount = 1;
+	def->subpass.pColorAttachments = &def->attachment_ref.color;
+
+	// depth output
+	def->attachments[0].flags = 0;
+	def->attachments[0].format = VK_FORMAT_R32_SFLOAT;
+	def->attachments[0].samples = VK_SAMPLE_COUNT_1_BIT;
+	def->attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	def->attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	def->attachments[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	def->attachments[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	def->attachments[0].initialLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	def->attachments[0].finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+	def->dependencyCount = 2;
+	def->dependencies[0] = vk.render_pass.subpass_deps.shader_to_color;
+	def->dependencies[1] = vk.render_pass.subpass_deps.color_to_shader;
+
+	def->attachmentCount = 1;
+	def->subpass_count = 1;
+
+	vk_create_render_pass( rp );
+}
+
 static void vk_create_refraction_extract_renderpass( void )
 {
     vkRenderPass_t *rp = &vk.render_pass.refraction.extract;
@@ -712,6 +752,91 @@ static void vk_create_brdf_renderpass(void)
     vk_create_render_pass( rp );
 }
 
+static void vk_create_postfx_renderpass( void )
+
+{
+    vkRenderPass_t *rp = &vk.render_pass.postfx.blend;
+    Com_Memset( rp, 0, sizeof(vkRenderPass_t) );
+    Com_Memcpy( &rp->def, &vk.render_pass.main.def, sizeof(vkRenderPassDef_t) );
+
+    rp->name = "ssao blend";
+    vkRenderPassDef_t *def = &rp->def;
+
+    // color buffer
+    def->attachments[0].loadOp           = VK_ATTACHMENT_LOAD_OP_LOAD;
+
+    // depth buffer
+    def->attachments[1].loadOp           = VK_ATTACHMENT_LOAD_OP_LOAD;
+    def->attachments[1].storeOp          = VK_ATTACHMENT_STORE_OP_STORE;
+    def->attachments[1].stencilLoadOp    = VK_ATTACHMENT_LOAD_OP_LOAD;
+    def->attachments[1].stencilStoreOp   = VK_ATTACHMENT_STORE_OP_STORE;
+
+    if ( vk.msaaActive ) {
+        def->attachments[2].loadOp       = VK_ATTACHMENT_LOAD_OP_LOAD;
+        def->attachments[2].storeOp      = VK_ATTACHMENT_STORE_OP_STORE;
+    }
+
+    vk_create_render_pass( rp );
+}
+
+#ifdef USE_VK_SSAO
+static void vk_create_ssao_renderpasses(void)
+{
+    if ( !vk.ssaoActive )
+        return;
+
+    vkRenderPass_t *rp;
+
+    {
+        rp = &vk.render_pass.ssao.extract;
+        Com_Memset( rp, 0, sizeof(vkRenderPass_t) );
+
+        rp->name = "ssao extract";
+        vkRenderPassDef_t *def = &rp->def;
+
+        // attachment ref
+        def->attachment_ref.color.attachment = 0;
+        def->attachment_ref.color.layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+        // subpass
+        Com_Memset( &def->subpass, 0, sizeof(VkSubpassDescription) );
+        def->subpass.pipelineBindPoint      = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        def->subpass.colorAttachmentCount   = 1;
+        def->subpass.pColorAttachments      = &def->attachment_ref.color;
+
+	    def->attachments[0].flags           = 0;
+	    def->attachments[0].format          = vk.ssao_format;
+	    def->attachments[0].samples         = VK_SAMPLE_COUNT_1_BIT;
+	    def->attachments[0].loadOp          = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	    def->attachments[0].storeOp         = VK_ATTACHMENT_STORE_OP_STORE;
+	    def->attachments[0].stencilLoadOp   = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	    def->attachments[0].stencilStoreOp  = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	    def->attachments[0].initialLayout   = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	    def->attachments[0].finalLayout     = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+        def->dependencyCount = 2;
+        def->dependencies[0] = vk.render_pass.subpass_deps.shader_to_color;
+        def->dependencies[1] = vk.render_pass.subpass_deps.color_to_shader;
+        def->attachmentCount = 1;
+        def->subpass_count   = 1;
+
+        vk_create_render_pass( rp );
+    }
+
+    // blur 
+    {
+        rp = &vk.render_pass.ssao.blur;
+        Com_Memset( rp, 0, sizeof(vkRenderPass_t) );
+        Com_Memcpy( &rp->def, &vk.render_pass.ssao.extract.def, sizeof(vkRenderPassDef_t) );
+
+        rp->name = "ssao blur";
+        vkRenderPassDef_t *def = &rp->def;
+
+        vk_create_render_pass( rp );
+    }
+}
+#endif
+
 void vk_create_render_passes()
 {
     vk_create_subpass_depenencies();
@@ -737,10 +862,17 @@ void vk_create_render_passes()
         vk_create_capture_renderpass();
 
 #ifdef USE_VK_PBR
+    vk_create_postfx_renderpass();
+    vk_create_depth_extract_renderpass();
+
     if ( vk.cubemapActive ) {
         vk_create_cubemap_renderpass();
         vk_create_brdf_renderpass();
     }
+#ifdef USE_VK_SSAO
+    if ( vk.ssaoActive )
+        vk_create_ssao_renderpasses();
+#endif
 #endif
 }
 
@@ -809,6 +941,15 @@ void vk_destroy_render_passes( void )
         vk.render_pass.dglow.blend.handle = VK_NULL_HANDLE;
     }
 
+    if ( vk.render_pass.postfx.blend.handle != VK_NULL_HANDLE ) {
+        qvkDestroyRenderPass( vk.device, vk.render_pass.postfx.blend.handle, NULL );
+        vk.render_pass.postfx.blend.handle = VK_NULL_HANDLE;
+    }
+
+    if ( vk.depth.extract.render_pass.handle != VK_NULL_HANDLE ) {
+        qvkDestroyRenderPass( vk.device, vk.depth.extract.render_pass.handle, NULL );
+        vk.depth.extract.render_pass.handle = VK_NULL_HANDLE;
+    }
 #ifdef VK_PBR_BRDFLUT
     if ( vk.render_pass.brdflut.handle != VK_NULL_HANDLE ) {
         qvkDestroyRenderPass( vk.device, vk.render_pass.brdflut.handle, NULL );
@@ -820,6 +961,18 @@ void vk_destroy_render_passes( void )
     if ( vk.render_pass.cubemap.handle != VK_NULL_HANDLE ) {
         qvkDestroyRenderPass( vk.device, vk.render_pass.cubemap.handle, NULL );
         vk.render_pass.cubemap.handle = VK_NULL_HANDLE;
+    }
+#endif
+
+#ifdef USE_VK_SSAO
+    if ( vk.render_pass.ssao.extract.handle != VK_NULL_HANDLE ) {
+        qvkDestroyRenderPass( vk.device, vk.render_pass.ssao.extract.handle, NULL );
+        vk.render_pass.ssao.extract.handle = VK_NULL_HANDLE;
+    }
+
+    if ( vk.render_pass.ssao.blur.handle != VK_NULL_HANDLE ) {
+        qvkDestroyRenderPass( vk.device, vk.render_pass.ssao.blur.handle, NULL );
+        vk.render_pass.ssao.blur.handle = VK_NULL_HANDLE;
     }
 #endif
 }

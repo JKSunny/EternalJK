@@ -132,7 +132,7 @@ void vk_create_framebuffers()
             desc.width = glConfig.vidWidth;
             desc.height = glConfig.vidHeight;
             attachments[0] = vk.color_image_view;
-            attachments[1] = vk.depth_image_view;
+            attachments[1] = vk.depth.image_view;
 
             if (vk.msaaActive) {
                 desc.attachmentCount = 3;
@@ -159,6 +159,8 @@ void vk_create_framebuffers()
     vk_debug("Created vk.framebuffers with fbo off\n");
 
     // refraction
+    // ~sunny, isnt this same as vk.framebuffers.main with compatible renderpass (just diff load/store ops)?
+    // so we can use vk_begin_post_blend_render_pass instead ?
     {
         desc.renderPass = vk.render_pass.refraction.extract.handle;
         desc.attachmentCount = 2;
@@ -167,7 +169,7 @@ void vk_create_framebuffers()
 
         // set color and depth attachment
         attachments[0] = vk.color_image_view;
-        attachments[1] = vk.depth_image_view;
+        attachments[1] = vk.depth.image_view;
 
         if ( vk.msaaActive )
         {
@@ -197,6 +199,20 @@ void vk_create_framebuffers()
 
     VK_CHECK(qvkCreateFramebuffer(vk.device, &desc, NULL, &vk.framebuffers.screenmap));
     VK_SET_OBJECT_NAME(vk.framebuffers.screenmap, "framebuffer - screenmap", VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT);
+
+    // depth extract
+    if ( vk.depth.extract.enabled )
+    {
+		// depth extract
+		desc.renderPass = vk.depth.extract.render_pass.handle;
+		desc.attachmentCount = 1;
+		desc.width = glConfig.vidWidth;
+		desc.height = glConfig.vidHeight;
+		attachments[0] = vk.depth.extract.image_view;
+
+	    VK_CHECK( qvkCreateFramebuffer( vk.device, &desc, NULL, &vk.depth.extract.framebuffer ) );
+	    VK_SET_OBJECT_NAME( vk.depth.extract.framebuffer, "framebuffer - depth extract", VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT );
+    }
 
 #ifdef VK_CUBEMAP
     if ( vk.cubemapActive )
@@ -245,7 +261,7 @@ void vk_create_framebuffers()
 
         desc.attachmentCount = 2;
         attachments[0] = vk.dglow_image_view[0];
-        attachments[1] = vk.depth_image_view;
+        attachments[1] = vk.depth.image_view;
 
         if ( vk.msaaActive ) {
             desc.attachmentCount = 3;
@@ -327,6 +343,28 @@ void vk_create_framebuffers()
         VK_SET_OBJECT_NAME( vk.framebuffers.brdflut, va( "framebuffer - brdf LUT" ), VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT );
     }
 #endif
+
+#ifdef USE_VK_SSAO
+    // SSAO
+    if ( vk.ssaoActive ) 
+    {
+        // extract
+		desc.renderPass = vk.render_pass.ssao.extract.handle;
+		desc.attachmentCount = 1;
+        desc.width = gls.captureWidth;
+        desc.height = gls.captureHeight;   
+		attachments[0] = vk.ssao.extract.image_view;
+		VK_CHECK( qvkCreateFramebuffer( vk.device, &desc, NULL, &vk.framebuffers.ssao.extract ) );
+		VK_SET_OBJECT_NAME( vk.framebuffers.ssao.extract, "framebuffer - ssao", VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT );
+
+        // blur
+		desc.renderPass = vk.render_pass.ssao.blur.handle;
+		attachments[0] = vk.ssao.blur.image_view;
+		VK_CHECK( qvkCreateFramebuffer( vk.device, &desc, NULL, &vk.framebuffers.ssao.blur ) );
+		VK_SET_OBJECT_NAME( vk.framebuffers.ssao.blur, "framebuffer - ssao blur", VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT );
+    }
+#endif
+
 }
 
 void vk_destroy_framebuffers( void )
@@ -383,6 +421,10 @@ void vk_destroy_framebuffers( void )
         }
     }
 
+    if ( vk.depth.extract.framebuffer != VK_NULL_HANDLE ) {
+        qvkDestroyFramebuffer( vk.device, vk.depth.extract.framebuffer, NULL );
+        vk.depth.extract.framebuffer = VK_NULL_HANDLE;
+    }
 #ifdef VK_PBR_BRDFLUT
     if ( vk.framebuffers.brdflut != VK_NULL_HANDLE ) {
         qvkDestroyFramebuffer( vk.device, vk.framebuffers.brdflut, NULL );
@@ -395,6 +437,21 @@ void vk_destroy_framebuffers( void )
         if ( vk.framebuffers.cubemap[i] != VK_NULL_HANDLE ) {
             qvkDestroyFramebuffer( vk.device, vk.framebuffers.cubemap[i], NULL );
             vk.framebuffers.cubemap[i] = VK_NULL_HANDLE;
+        }
+    }
+#endif
+#ifdef USE_VK_SSAO
+    // SSAO
+    if (vk.ssaoActive)
+    {
+        if (vk.framebuffers.ssao.extract != VK_NULL_HANDLE) {
+            qvkDestroyFramebuffer(vk.device, vk.framebuffers.ssao.extract, NULL);
+            vk.framebuffers.ssao.extract = VK_NULL_HANDLE;
+        }
+
+        if (vk.framebuffers.ssao.blur != VK_NULL_HANDLE) {
+            qvkDestroyFramebuffer(vk.device, vk.framebuffers.ssao.blur, NULL);
+            vk.framebuffers.ssao.blur = VK_NULL_HANDLE;
         }
     }
 #endif

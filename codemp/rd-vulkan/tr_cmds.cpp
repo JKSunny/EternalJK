@@ -384,6 +384,10 @@ void RE_BeginFrame( stereoFrame_t stereoFrame ) {
 
 	backEnd.doneBloom = qfalse;
 
+#ifdef USE_VK_SSAO
+	backEnd.doneSSAO = qfalse;
+#endif
+
 	tr.frameCount++;
 	tr.frameSceneNum = 0;
 

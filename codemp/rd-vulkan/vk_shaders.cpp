@@ -168,6 +168,12 @@ void vk_create_shader_modules( void )
     VK_SET_OBJECT_NAME(vk.shaders.gamma_fs, "gamma post-processing fragment module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
     VK_SET_OBJECT_NAME(vk.shaders.gamma_vs, "gamma post-processing vertex module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
 
+    // depth extract
+    vk.depth.extract.depth_extract_fs[0] = SHADER_MODULE(frag_depth_extract); 
+    vk.depth.extract.depth_extract_fs[1] = SHADER_MODULE(frag_depth_extract_msaa); 
+    VK_SET_OBJECT_NAME( vk.depth.extract.depth_extract_fs[0], "depth extract fragment module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
+    VK_SET_OBJECT_NAME( vk.depth.extract.depth_extract_fs[1], "depth extract fragment msaa module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
+
 #ifdef VK_PBR_BRDFLUT
     vk.shaders.brdflut_fs = SHADER_MODULE(brdflut_frag_spv);
     VK_SET_OBJECT_NAME(vk.shaders.brdflut_fs, "brdf LUT fragment module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
@@ -184,6 +190,19 @@ void vk_create_shader_modules( void )
 
     vk.shaders.filtercube_gm = SHADER_MODULE(filtercube_geom_spv);
     VK_SET_OBJECT_NAME(vk.shaders.filtercube_gm, "filter cube geometry shader", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
+
+#ifdef USE_VK_SSAO
+    // SSAO
+    if ( vk.ssaoActive )
+    {
+        vk.shaders.ssao_fs = SHADER_MODULE(ssao_frag_spv);
+        vk.shaders.ssao_blur_fs = SHADER_MODULE(ssao_blur_frag_spv);
+        vk.shaders.ssao_blend_fs = SHADER_MODULE(ssao_blend_frag_spv);
+        VK_SET_OBJECT_NAME(vk.shaders.ssao_fs, "ssao post-processing fragment module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
+        VK_SET_OBJECT_NAME(vk.shaders.ssao_blur_fs, "ssao blur post-processing fragment module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
+        VK_SET_OBJECT_NAME(vk.shaders.ssao_blend_fs, "ssao blend post-processing fragment module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT);
+    }
+#endif
 }
 
 void vk_destroy_shader_modules( void )
@@ -275,6 +294,10 @@ void vk_destroy_shader_modules( void )
     qvkDestroyShaderModule(vk.device, vk.shaders.gamma_vs, NULL);
     qvkDestroyShaderModule(vk.device, vk.shaders.gamma_fs, NULL);
 
+    // depth extract
+    qvkDestroyShaderModule(vk.device, vk.depth.extract.depth_extract_fs[0], NULL);
+    qvkDestroyShaderModule(vk.device, vk.depth.extract.depth_extract_fs[1], NULL);
+
 #ifdef VK_PBR_BRDFLUT
     qvkDestroyShaderModule(vk.device, vk.shaders.brdflut_fs, NULL);
 #endif
@@ -294,5 +317,15 @@ void vk_destroy_shader_modules( void )
 #ifdef USE_VK_LIGHTGRID
     qvkDestroyShaderModule(vk.device, vk.lightgrid.shader_fs, NULL);
     qvkDestroyShaderModule(vk.device, vk.lightgrid.shader_vs, NULL);
+#endif
+
+#ifdef USE_VK_SSAO
+    // SSAO
+    if ( vk.ssaoActive )
+    {
+        qvkDestroyShaderModule(vk.device, vk.shaders.ssao_fs, NULL);
+        qvkDestroyShaderModule(vk.device, vk.shaders.ssao_blur_fs, NULL);
+        qvkDestroyShaderModule(vk.device, vk.shaders.ssao_blend_fs, NULL);
+    }
 #endif
 }
