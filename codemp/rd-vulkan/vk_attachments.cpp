@@ -382,9 +382,11 @@ void vk_create_attachments( void )
         create_color_attachment( glConfig.vidWidth, glConfig.vidHeight, VK_SAMPLE_COUNT_1_BIT, vk.color_format,
            usage | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, &vk.color_image, &vk.color_image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, qfalse, 0 );
 
+#ifdef USE_VK_IMGUI
     // gamma image
     create_color_attachment( glConfig.vidWidth, glConfig.vidHeight, VK_SAMPLE_COUNT_1_BIT, vk.color_format,
         usage, &vk.gamma_image, &vk.gamma_image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, qfalse, 0 );
+#endif
 
     // screenmap  usage 20
     usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
@@ -596,173 +598,69 @@ void vk_clear_color_attachments( const vec4_t color )
     qvkCmdClearAttachments( vk.cmd->command_buffer, 1, &attachment, 1, &clear_rect );
 }
 
+static void vk_destroy_image( VkImage *image, VkImageView *image_view )
+{
+    if ( image && *image != VK_NULL_HANDLE ) {
+        qvkDestroyImage( vk.device, *image, NULL );
+        *image = VK_NULL_HANDLE;
+    }
+
+    if ( image_view && *image_view != VK_NULL_HANDLE ) {
+        qvkDestroyImageView( vk.device, *image_view, NULL );
+        *image_view = VK_NULL_HANDLE;
+    }
+}
+
 void vk_destroy_attachments( void )
 {
     uint32_t i;
 
-    // depth
-    if ( vk.depth.image ) {
-        qvkDestroyImage(vk.device, vk.depth.image, NULL);
-        qvkDestroyImageView(vk.device, vk.depth.image_view, NULL);
-        vk.depth.image      = VK_NULL_HANDLE;
-        vk.depth.image_view = VK_NULL_HANDLE;
-    }
+    vk_destroy_image( &vk.depth.image, &vk.depth.image_view );
+    vk_destroy_image( &vk.msaa_image, &vk.msaa_image_view );
+    vk_destroy_image( &vk.color_image, &vk.color_image_view );
+    vk_destroy_image( &vk.refraction_extract_image, &vk.refraction_extract_image_view );
+    vk_destroy_image( &vk.capture.image, &vk.capture.image_view );
 
-    // depth sampler
-    if ( vk.depth.sampler_view ) {
-        qvkDestroyImageView(vk.device, vk.depth.sampler_view, NULL);
-        vk.depth.sampler_view = VK_NULL_HANDLE;
-    }
+    vk_destroy_image( &vk.screenMap.color_image, &vk.screenMap.color_image_view );
+    vk_destroy_image( &vk.screenMap.color_image_msaa, &vk.screenMap.color_image_view_msaa );
+    vk_destroy_image( &vk.screenMap.depth_image, &vk.screenMap.depth_image_view );
 
-    // MSAA
-    if (vk.msaa_image) {
-        qvkDestroyImage(vk.device, vk.msaa_image, NULL);
-        qvkDestroyImageView(vk.device, vk.msaa_image_view, NULL);
-        vk.msaa_image = VK_NULL_HANDLE;
-        vk.msaa_image_view = VK_NULL_HANDLE;
-    }
+    for ( i = 0; i < ARRAY_LEN( vk.bloom_image ); i++ )
+        vk_destroy_image( &vk.bloom_image[i], &vk.bloom_image_view[i] );
 
-    // color
-    if (vk.color_image) {
-        qvkDestroyImage(vk.device, vk.color_image, NULL);
-        qvkDestroyImageView(vk.device, vk.color_image_view, NULL);
-        vk.color_image = VK_NULL_HANDLE;
-        vk.color_image_view = VK_NULL_HANDLE;
-    }
+    for ( i = 0; i < ARRAY_LEN( vk.dglow_image ); i++ )
+        vk_destroy_image( &vk.dglow_image[i], &vk.dglow_image_view[i] );
 
-    // gamma
-    if (vk.gamma_image) {
-        qvkDestroyImage(vk.device, vk.gamma_image, NULL);
-        qvkDestroyImageView(vk.device, vk.gamma_image_view, NULL);
-        vk.gamma_image = VK_NULL_HANDLE;
-        vk.gamma_image_view = VK_NULL_HANDLE;
-    }
-
-    // color copy
-    if (vk.refraction_extract_image) {
-        qvkDestroyImage(vk.device, vk.refraction_extract_image, NULL);
-        qvkDestroyImageView(vk.device, vk.refraction_extract_image_view, NULL);
-        vk.refraction_extract_image = VK_NULL_HANDLE;
-        vk.refraction_extract_image_view = VK_NULL_HANDLE;
-    }
-
-    // bloom
-    if (vk.bloom_image[0]) {
-        for (i = 0; i < ARRAY_LEN(vk.bloom_image); i++) {
-            qvkDestroyImage(vk.device, vk.bloom_image[i], NULL);
-            qvkDestroyImageView(vk.device, vk.bloom_image_view[i], NULL);
-            vk.bloom_image[i] = VK_NULL_HANDLE;
-            vk.bloom_image_view[i] = VK_NULL_HANDLE;
-        }
-    }
-
-    // screenmap
-    if (vk.screenMap.color_image) {
-        qvkDestroyImage(vk.device, vk.screenMap.color_image, NULL);
-        qvkDestroyImageView(vk.device, vk.screenMap.color_image_view, NULL);
-        vk.screenMap.color_image = VK_NULL_HANDLE;
-        vk.screenMap.color_image_view = VK_NULL_HANDLE;
-    }
-
-    if (vk.screenMap.color_image_msaa) {
-        qvkDestroyImage(vk.device, vk.screenMap.color_image_msaa, NULL);
-        qvkDestroyImageView(vk.device, vk.screenMap.color_image_view_msaa, NULL);
-        vk.screenMap.color_image_msaa = VK_NULL_HANDLE;
-        vk.screenMap.color_image_view_msaa = VK_NULL_HANDLE;
-    }
-
-    if (vk.screenMap.depth_image) {
-        qvkDestroyImage(vk.device, vk.screenMap.depth_image, NULL);
-        qvkDestroyImageView(vk.device, vk.screenMap.depth_image_view, NULL);
-        vk.screenMap.depth_image = VK_NULL_HANDLE;
-        vk.screenMap.depth_image_view = VK_NULL_HANDLE;
-    }
-
-    if (vk.capture.image) {
-        qvkDestroyImage(vk.device, vk.capture.image, NULL);
-        qvkDestroyImageView(vk.device, vk.capture.image_view, NULL);
-        vk.capture.image = VK_NULL_HANDLE;
-        vk.capture.image_view = VK_NULL_HANDLE;
-    }
-
-    // dynamic glow
-    if ( vk.dglow_image[0] ) {
-        for ( i = 0; i < ARRAY_LEN(vk.dglow_image); i++ ) {
-            qvkDestroyImage( vk.device, vk.dglow_image[i], NULL );
-            qvkDestroyImageView( vk.device, vk.dglow_image_view[i], NULL );
-            vk.dglow_image[i] = VK_NULL_HANDLE;
-            vk.dglow_image_view[i] = VK_NULL_HANDLE;
-        }
-    }
-
-    if ( vk.dglow_msaa_image_view ) {
-        qvkDestroyImage(vk.device, vk.dglow_msaa_image, NULL);
-        qvkDestroyImageView(vk.device, vk.dglow_msaa_image_view, NULL);
-        vk.dglow_msaa_image = VK_NULL_HANDLE;
-        vk.dglow_msaa_image_view = VK_NULL_HANDLE;
-    }
+     vk_destroy_image( &vk.dglow_msaa_image, &vk.dglow_msaa_image_view );
 
 #ifdef USE_VK_PBR
-    // depth extract
-    if ( vk.depth.extract.image ) {
-        qvkDestroyImage(vk.device, vk.depth.extract.image, NULL);
-        qvkDestroyImageView(vk.device, vk.depth.extract.image_view, NULL);
-        vk.depth.extract.image      = VK_NULL_HANDLE;
-        vk.depth.extract.image_view = VK_NULL_HANDLE;
-    }
+    vk_destroy_image( &vk.depth.extract.image, &vk.depth.extract.image_view );
 
 #ifdef VK_PBR_BRDFLUT
-    if ( vk.brdflut_image_view ) {
-        qvkDestroyImage(vk.device, vk.brdflut_image, NULL);
-        qvkDestroyImageView(vk.device, vk.brdflut_image_view, NULL);
-        vk.brdflut_image = VK_NULL_HANDLE;
-        vk.brdflut_image_view = VK_NULL_HANDLE;
-    }
+    vk_destroy_image( &vk.brdflut_image, &vk.brdflut_image_view );
 #endif
 
-    // render world to cubemap
-    if ( vk.cubeMap.color_image ) {
-        qvkDestroyImage(vk.device, vk.cubeMap.color_image, NULL);
-        vk.cubeMap.color_image = VK_NULL_HANDLE;
-    }
-    
-    for ( i = 0; i < ARRAY_LEN(vk.cubeMap.color_image_view); i++) {      
-        qvkDestroyImageView(vk.device, vk.cubeMap.color_image_view[i], NULL);
-        vk.cubeMap.color_image_view[i] = VK_NULL_HANDLE;
-    }
+    vk_destroy_image( &vk.cubeMap.color_image, NULL );
 
-    if ( vk.cubeMap.depth_image ) {
-        qvkDestroyImage(vk.device, vk.cubeMap.depth_image, NULL);
-        qvkDestroyImageView(vk.device, vk.cubeMap.depth_image_view, NULL);
-        vk.cubeMap.depth_image = VK_NULL_HANDLE;
-        vk.cubeMap.depth_image_view = VK_NULL_HANDLE;
-    }
-	
+    for ( i = 0; i < ARRAY_LEN( vk.cubeMap.color_image_view ); i++ )
+        vk_destroy_image( NULL, &vk.cubeMap.color_image_view[i] );
+
+    vk_destroy_image( &vk.cubeMap.depth_image, &vk.cubeMap.depth_image_view );
+
 #ifdef USE_VK_SSAO
-    // SSAO
-    if (vk.ssaoActive)
-    {
-        if ( vk.ssao.extract.image ) {
-            qvkDestroyImage( vk.device, vk.ssao.extract.image, NULL );
-            qvkDestroyImageView( vk.device, vk.ssao.extract.image_view, NULL );
-            vk.ssao.extract.image = VK_NULL_HANDLE;
-            vk.ssao.extract.image_view = VK_NULL_HANDLE;
-        }
-
-        if ( vk.ssao.blur.image ) {
-            qvkDestroyImage( vk.device, vk.ssao.blur.image, NULL );
-            qvkDestroyImageView( vk.device, vk.ssao.blur.image_view, NULL );
-            vk.ssao.blur.image = VK_NULL_HANDLE;
-            vk.ssao.blur.image_view = VK_NULL_HANDLE;
-        }
+    if ( vk.ssaoActive ) {
+        vk_destroy_image( &vk.ssao.extract.image, &vk.ssao.extract.image_view );
+        vk_destroy_image( &vk.ssao.blur.image, &vk.ssao.blur.image_view );
     }
 #endif
 #endif
 
-    // image memory
-    for (i = 0; i < vk.image_memory_count; i++) {
-        VK_FREE_MEMORY(vk.device, vk.image_memory[i]);
-    }
+#ifdef USE_VK_IMGUI
+   vk_destroy_image( &vk.gamma_image, &vk.gamma_image_view );
+#endif
+
+    for ( i = 0; i < vk.image_memory_count; i++ )
+        VK_FREE_MEMORY( vk.device, vk.image_memory[i] );
 
     vk.image_memory_count = 0;
 }
