@@ -2544,20 +2544,26 @@ void vk_update_post_process_pipelines( void )
 #endif
 }
 
+static void vk_destroy_pipeline( VkPipeline *pipeline )
+{
+    if ( pipeline && *pipeline != VK_NULL_HANDLE ) 
+    {
+        qvkDestroyPipeline( vk.device, *pipeline, NULL );
+        *pipeline = VK_NULL_HANDLE;
+    }
+}
+
 void vk_destroy_pipelines( qboolean reset )
 {
     uint32_t i, j;
 
-    // Destroy pipelines
     for ( i = 0; i < vk.pipelines_count; i++ ) {
         for ( j = 0; j < RENDER_PASS_COUNT; j++ ) {
             if ( vk.pipelines[i].handle[j] != VK_NULL_HANDLE ) {
-                qvkDestroyPipeline( vk.device, vk.pipelines[i].handle[j], NULL );
-                vk.pipelines[i].handle[j] = VK_NULL_HANDLE;
+                vk_destroy_pipeline( &vk.pipelines[i].handle[j] );
                 vk.pipeline_create_count--;
             }
         }
-
     }
 
     if ( reset ) {
@@ -2565,75 +2571,29 @@ void vk_destroy_pipelines( qboolean reset )
         vk.pipelines_count = 0;
     }
 
-    if ( vk.gamma_pipeline ) {
-        qvkDestroyPipeline( vk.device, vk.gamma_pipeline, NULL );
-        vk.gamma_pipeline = VK_NULL_HANDLE;
-    }
+    vk_destroy_pipeline( &vk.gamma_pipeline );
+    vk_destroy_pipeline( &vk.bloom_extract_pipeline );
+    vk_destroy_pipeline( &vk.bloom_blend_pipeline );
+    vk_destroy_pipeline( &vk.dglow_blend_pipeline );
+    vk_destroy_pipeline( &vk.capture_pipeline );
 
-    if ( vk.bloom_extract_pipeline != VK_NULL_HANDLE ) {
-        qvkDestroyPipeline( vk.device, vk.bloom_extract_pipeline, NULL );
-        vk.bloom_extract_pipeline = VK_NULL_HANDLE;
-    }
+    for ( i = 0; i < ARRAY_LEN( vk.bloom_blur_pipeline ); i++ )
+        vk_destroy_pipeline( &vk.bloom_blur_pipeline[i] );
 
-    if ( vk.bloom_blend_pipeline != VK_NULL_HANDLE ) {
-        qvkDestroyPipeline( vk.device, vk.bloom_blend_pipeline, NULL );
-        vk.bloom_blend_pipeline = VK_NULL_HANDLE;
-    }
-
-    if ( vk.capture_pipeline ) {
-        qvkDestroyPipeline( vk.device, vk.capture_pipeline, NULL );
-        vk.capture_pipeline = VK_NULL_HANDLE;
-    }
-
-    for ( i = 0; i < ARRAY_LEN( vk.bloom_blur_pipeline ); i++ ) {
-        if ( vk.bloom_blur_pipeline[i] != VK_NULL_HANDLE ) {
-            qvkDestroyPipeline( vk.device, vk.bloom_blur_pipeline[i], NULL );
-            vk.bloom_blur_pipeline[i] = VK_NULL_HANDLE;
-        }
-    }
-
-    for ( i = 0; i < ARRAY_LEN( vk.dglow_blur_pipeline ); i++ ) {
-        if ( vk.dglow_blur_pipeline[i] != VK_NULL_HANDLE ) {
-            qvkDestroyPipeline( vk.device, vk.dglow_blur_pipeline[i], NULL );
-            vk.dglow_blur_pipeline[i] = VK_NULL_HANDLE;
-        }
-    }
-
-    if ( vk.dglow_blend_pipeline != VK_NULL_HANDLE ) {
-        qvkDestroyPipeline( vk.device, vk.dglow_blend_pipeline, NULL );
-        vk.dglow_blend_pipeline = VK_NULL_HANDLE;
-    }
+    for ( i = 0; i < ARRAY_LEN( vk.dglow_blur_pipeline ); i++ )
+        vk_destroy_pipeline( &vk.dglow_blur_pipeline[i] );
 
 #ifdef USE_VK_PBR
-    if ( vk.depth.extract.pipeline != VK_NULL_HANDLE ) {
-        qvkDestroyPipeline( vk.device, vk.depth.extract.pipeline, NULL );
-        vk.depth.extract.pipeline = VK_NULL_HANDLE;
-    }
+    vk_destroy_pipeline( &vk.depth.extract.pipeline );
 #ifdef VK_PBR_BRDFLUT
-    if ( vk.brdflut_pipeline != VK_NULL_HANDLE ) {
-        qvkDestroyPipeline( vk.device, vk.brdflut_pipeline, NULL );
-        vk.brdflut_pipeline = VK_NULL_HANDLE;
-    }
+    vk_destroy_pipeline( &vk.brdflut_pipeline );
 #endif
 #ifdef USE_VK_SSAO
-    if ( vk.ssao.extract.pipeline != VK_NULL_HANDLE ) {
-        qvkDestroyPipeline( vk.device, vk.ssao.extract.pipeline, NULL );
-        vk.ssao.extract.pipeline = VK_NULL_HANDLE;
-    }
-    if ( vk.ssao.blur.pipeline != VK_NULL_HANDLE ) {
-        qvkDestroyPipeline( vk.device, vk.ssao.blur.pipeline, NULL );
-        vk.ssao.blur.pipeline = VK_NULL_HANDLE;
-    }
-    if ( vk.ssao.blend.pipeline != VK_NULL_HANDLE ) {
-        qvkDestroyPipeline( vk.device, vk.ssao.blend.pipeline, NULL );
-        vk.ssao.blend.pipeline = VK_NULL_HANDLE;
-    }
-    #ifdef USE_VK_IMGUI
-        if ( vk.ssao.debug.pipeline != VK_NULL_HANDLE ) {
-            qvkDestroyPipeline( vk.device, vk.ssao.debug.pipeline, NULL );
-            vk.ssao.debug.pipeline = VK_NULL_HANDLE;
-        }
-    #endif
+    vk_destroy_pipeline( &vk.ssao.extract.pipeline );
+    vk_destroy_pipeline( &vk.ssao.blur.pipeline );
+    vk_destroy_pipeline( &vk.ssao.blend.pipeline );
+    vk_destroy_pipeline( &vk.ssao.debug.pipeline );
+#endif
 #endif
 #endif
 
