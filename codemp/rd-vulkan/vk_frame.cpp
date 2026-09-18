@@ -200,6 +200,7 @@ void vk_create_framebuffers()
     VK_CHECK(qvkCreateFramebuffer(vk.device, &desc, NULL, &vk.framebuffers.screenmap));
     VK_SET_OBJECT_NAME(vk.framebuffers.screenmap, "framebuffer - screenmap", VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT);
 
+#ifdef USE_VK_PBR
     // depth extract
     if ( vk.depth.extract.enabled )
     {
@@ -213,6 +214,7 @@ void vk_create_framebuffers()
 	    VK_CHECK( qvkCreateFramebuffer( vk.device, &desc, NULL, &vk.depth.extract.framebuffer ) );
 	    VK_SET_OBJECT_NAME( vk.depth.extract.framebuffer, "framebuffer - depth extract", VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT );
     }
+#endif
 
 #ifdef VK_CUBEMAP
     if ( vk.cubemapActive )
@@ -364,7 +366,14 @@ void vk_create_framebuffers()
 		VK_SET_OBJECT_NAME( vk.framebuffers.ssao.blur, "framebuffer - ssao blur", VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT );
     }
 #endif
+}
 
+static void vk_destroy_framebuffer( VkFramebuffer *framebuffer )
+{
+    if ( framebuffer && *framebuffer != VK_NULL_HANDLE ) {
+        qvkDestroyFramebuffer( vk.device, *framebuffer, NULL );
+        *framebuffer = VK_NULL_HANDLE;
+    }
 }
 
 void vk_destroy_framebuffers( void )
@@ -373,87 +382,46 @@ void vk_destroy_framebuffers( void )
 
     vk_debug("Destroy vk.framebuffers\n");
 
-    for ( i = 0; i < vk.swapchain_image_count; i++ )
-    {
+    for ( i = 0; i < vk.swapchain_image_count; i++ ) {
         if ( vk.framebuffers.main[i] != VK_NULL_HANDLE ) {
-            if ( i == 0 ) {
-                qvkDestroyFramebuffer( vk.device, vk.framebuffers.main[i], NULL );
-            }
-            vk.framebuffers.main[i] = VK_NULL_HANDLE;
+            if ( !vk.fboActive || i == 0 )
+                vk_destroy_framebuffer( &vk.framebuffers.main[i] );
+            else
+                vk.framebuffers.main[i] = VK_NULL_HANDLE;
         }
-        if ( vk.framebuffers.gamma[i] != VK_NULL_HANDLE ) {
-            qvkDestroyFramebuffer( vk.device, vk.framebuffers.gamma[i], NULL );
-            vk.framebuffers.gamma[i] = VK_NULL_HANDLE;
-        }
+
+        vk_destroy_framebuffer( &vk.framebuffers.gamma[i] );
     }
 
-    if ( vk.framebuffers.bloom.extract != VK_NULL_HANDLE ) {
-        qvkDestroyFramebuffer( vk.device, vk.framebuffers.bloom.extract, NULL );
-        vk.framebuffers.bloom.extract = VK_NULL_HANDLE;
-    }
+    vk_destroy_framebuffer( &vk.framebuffers.screenmap );
+    vk_destroy_framebuffer( &vk.framebuffers.capture );
+    vk_destroy_framebuffer( &vk.framebuffers.bloom.extract );
+    vk_destroy_framebuffer( &vk.framebuffers.dglow.extract );
 
-    if ( vk.framebuffers.screenmap != VK_NULL_HANDLE ) {
-        qvkDestroyFramebuffer(vk.device, vk.framebuffers.screenmap, NULL);
-        vk.framebuffers.screenmap = VK_NULL_HANDLE;
-    }
+    for ( i = 0; i < ARRAY_LEN( vk.framebuffers.bloom.blur ); i++ )
+        vk_destroy_framebuffer( &vk.framebuffers.bloom.blur[i] );
 
-    if ( vk.framebuffers.capture != VK_NULL_HANDLE ) {
-        qvkDestroyFramebuffer( vk.device, vk.framebuffers.capture, NULL );
-        vk.framebuffers.capture = VK_NULL_HANDLE;
-    }
+    for ( i = 0; i < ARRAY_LEN( vk.framebuffers.dglow.blur ); i++ )
+        vk_destroy_framebuffer( &vk.framebuffers.dglow.blur[i] );
 
-    for ( i = 0; i < ARRAY_LEN( vk.framebuffers.bloom.blur ); i++ ) {
-        if ( vk.framebuffers.bloom.blur[i] != VK_NULL_HANDLE ) {
-            qvkDestroyFramebuffer( vk.device, vk.framebuffers.bloom.blur[i], NULL );
-            vk.framebuffers.bloom.blur[i] = VK_NULL_HANDLE;
-        }
-    }
+#ifdef USE_VK_PBR
+    vk_destroy_framebuffer( &vk.depth.extract.framebuffer );
 
-    if ( vk.framebuffers.dglow.extract != VK_NULL_HANDLE ) {
-        qvkDestroyFramebuffer( vk.device, vk.framebuffers.dglow.extract, NULL );
-        vk.framebuffers.dglow.extract = VK_NULL_HANDLE;
-    }
-
-    for ( i = 0; i < ARRAY_LEN( vk.framebuffers.dglow.blur ); i++ ) {
-        if ( vk.framebuffers.dglow.blur[i] != VK_NULL_HANDLE ) {
-            qvkDestroyFramebuffer( vk.device, vk.framebuffers.dglow.blur[i], NULL );
-            vk.framebuffers.dglow.blur[i] = VK_NULL_HANDLE;
-        }
-    }
-
-    if ( vk.depth.extract.framebuffer != VK_NULL_HANDLE ) {
-        qvkDestroyFramebuffer( vk.device, vk.depth.extract.framebuffer, NULL );
-        vk.depth.extract.framebuffer = VK_NULL_HANDLE;
-    }
 #ifdef VK_PBR_BRDFLUT
-    if ( vk.framebuffers.brdflut != VK_NULL_HANDLE ) {
-        qvkDestroyFramebuffer( vk.device, vk.framebuffers.brdflut, NULL );
-        vk.framebuffers.brdflut = VK_NULL_HANDLE;
-    }
+    vk_destroy_framebuffer( &vk.framebuffers.brdflut );
 #endif
 
 #ifdef VK_CUBEMAP
-    for ( i = 0; i < ARRAY_LEN( vk.framebuffers.cubemap ); i++ ) {
-        if ( vk.framebuffers.cubemap[i] != VK_NULL_HANDLE ) {
-            qvkDestroyFramebuffer( vk.device, vk.framebuffers.cubemap[i], NULL );
-            vk.framebuffers.cubemap[i] = VK_NULL_HANDLE;
-        }
+    for ( i = 0; i < ARRAY_LEN( vk.framebuffers.cubemap ); i++ )
+        vk_destroy_framebuffer( &vk.framebuffers.cubemap[i] );
+#endif
+
+#ifdef USE_VK_SSAO
+    if ( vk.ssaoActive ) {
+        vk_destroy_framebuffer( &vk.framebuffers.ssao.extract );
+        vk_destroy_framebuffer( &vk.framebuffers.ssao.blur );
     }
 #endif
-#ifdef USE_VK_SSAO
-    // SSAO
-    if (vk.ssaoActive)
-    {
-        if (vk.framebuffers.ssao.extract != VK_NULL_HANDLE) {
-            qvkDestroyFramebuffer(vk.device, vk.framebuffers.ssao.extract, NULL);
-            vk.framebuffers.ssao.extract = VK_NULL_HANDLE;
-        }
-
-        if (vk.framebuffers.ssao.blur != VK_NULL_HANDLE) {
-            qvkDestroyFramebuffer(vk.device, vk.framebuffers.ssao.blur, NULL);
-            vk.framebuffers.ssao.blur = VK_NULL_HANDLE;
-        }
-    }
 #endif
 }
 
