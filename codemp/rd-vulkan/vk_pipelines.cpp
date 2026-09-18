@@ -23,6 +23,17 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include "tr_local.h"
 
+#define VK_POSTFX_PIPELINE_GAMMA			0
+#define VK_POSTFX_PIPELINE_BLOOM_EXTRACT	1
+#define VK_POSTFX_PIPELINE_BLOOM_BLEND		2
+#define VK_POSTFX_PIPELINE_CAPTURE			3
+#define VK_POSTFX_PIPELINE_DGLOW_BLEND		4
+#define VK_POSTFX_PIPELINE_BRDF_LUT			5
+#define VK_POSTFX_PIPELINE_DEPTH_EXTRACT	6
+#define VK_POSTFX_PIPELINE_SSAO_EXTRACT		7
+#define VK_POSTFX_PIPELINE_SSAO_BLUR		8
+#define VK_POSTFX_PIPELINE_SSAO_BLEND		9
+
 #define ALLOC_SPEC_ENTRY( arr, index, struct_type, struct_data, member ) \
     arr[index].constantID = (index); \
     arr[index].offset = offsetof(struct_type, member); \
@@ -1524,54 +1535,55 @@ static void vk_create_post_process_pipeline( int program_index, uint32_t width, 
 	uint32_t dynamic_state_count = 0;
 
     switch ( program_index ) {
-        case 1: // bloom extraction
-            pipeline = &vk.bloom_extract_pipeline;
-            fs_module = vk.shaders.bloom_fs;
-            renderpass = vk.render_pass.bloom.extract.handle;
-            layout = vk.pipeline_layout_post_process;
-            samples = VK_SAMPLE_COUNT_1_BIT;
-            pipeline_name = "bloom extraction pipeline";
-            blend = qfalse;
+        case VK_POSTFX_PIPELINE_BLOOM_EXTRACT:
+            pipeline            = &vk.bloom_extract_pipeline;
+            fs_module           = vk.shaders.bloom_fs;
+            renderpass          = vk.render_pass.bloom.extract.handle;
+            layout              = vk.pipeline_layout_post_process;
+            samples             = VK_SAMPLE_COUNT_1_BIT;
+            pipeline_name       = "bloom extraction pipeline";
+            blend               = qfalse;
             break;
-        case 2: // final bloom blend
-            pipeline = &vk.bloom_blend_pipeline;
-            fs_module = vk.shaders.blend_fs;
-            renderpass = vk.render_pass.bloom.blend.handle;
-            layout = vk.pipeline_layout_blend;
-            samples = (VkSampleCountFlagBits)vkSamples;
-            pipeline_name = "bloom blend pipeline";
-            blend = qtrue;
+        case VK_POSTFX_PIPELINE_BLOOM_BLEND:
+            pipeline            = &vk.bloom_blend_pipeline;
+            fs_module           = vk.shaders.blend_fs;
+            renderpass          = vk.render_pass.bloom.blend.handle;
+            layout              = vk.pipeline_layout_blend;
+            samples             = (VkSampleCountFlagBits)vkSamples;
+            pipeline_name       = "bloom blend pipeline";
+            blend               = qtrue;
             break;
-        case 3: // capture buffer extraction
-            pipeline = &vk.capture_pipeline;
-            fs_module = vk.shaders.gamma_fs;
-            renderpass = vk.render_pass.capture.handle;
-            layout = vk.pipeline_layout_post_process;
-            samples = VK_SAMPLE_COUNT_1_BIT;
-            pipeline_name = "capture buffer pipeline";
-            blend = qfalse;
+        case VK_POSTFX_PIPELINE_CAPTURE:
+            pipeline            = &vk.capture_pipeline;
+            fs_module           = vk.shaders.gamma_fs;
+            renderpass          = vk.render_pass.capture.handle;
+            layout              = vk.pipeline_layout_post_process;
+            samples             = VK_SAMPLE_COUNT_1_BIT;
+            pipeline_name       = "capture buffer pipeline";
+            blend               = qfalse;
             break;
-        case 4: // final dglow blend
-            pipeline = &vk.dglow_blend_pipeline;
-            fs_module = vk.shaders.blend_fs;
-            renderpass = vk.render_pass.dglow.blend.handle;
-            layout = vk.pipeline_layout_blend;
-            samples = (VkSampleCountFlagBits)vkSamples;
-            pipeline_name = "dglow blend pipeline";
-            blend = qtrue;
+        case VK_POSTFX_PIPELINE_DGLOW_BLEND:
+            pipeline            = &vk.dglow_blend_pipeline;
+            fs_module           = vk.shaders.blend_fs;
+            renderpass          = vk.render_pass.dglow.blend.handle;
+            layout              = vk.pipeline_layout_blend;
+            samples             = (VkSampleCountFlagBits)vkSamples;
+            pipeline_name       = "dglow blend pipeline";
+            blend               = qtrue;
             break;
+#ifdef USE_VK_PBR
 #ifdef VK_PBR_BRDFLUT
-        case 5: // generate brdf LUT
-            pipeline = &vk.brdflut_pipeline;
-            fs_module = vk.shaders.brdflut_fs;
-            renderpass = vk.render_pass.brdflut.handle;
-            layout = vk.pipeline_layout_brdflut;
-            samples = VK_SAMPLE_COUNT_1_BIT;
-            pipeline_name = "brdf LUT pipeline";
-            blend = qfalse;
+        case VK_POSTFX_PIPELINE_BRDF_LUT:
+            pipeline            = &vk.brdflut_pipeline;
+            fs_module           = vk.shaders.brdflut_fs;
+            renderpass          = vk.render_pass.brdflut.handle;
+            layout              = vk.pipeline_layout_brdflut;
+            samples             = VK_SAMPLE_COUNT_1_BIT;
+            pipeline_name       = "brdf LUT pipeline";
+            blend               = qfalse;
             break;
 #endif
-        case 6:
+        case VK_POSTFX_PIPELINE_DEPTH_EXTRACT:
             pipeline            = &vk.depth.extract.pipeline;
             fs_module           = vk.depth.extract.depth_extract_fs[(vk.msaaActive ? 1: 0)];
             renderpass          = vk.depth.extract.render_pass.handle;
@@ -1581,7 +1593,7 @@ static void vk_create_post_process_pipeline( int program_index, uint32_t width, 
             blend               = qfalse;
             break;
 #ifdef USE_VK_SSAO
-		case 7:
+		case VK_POSTFX_PIPELINE_SSAO_EXTRACT:
 			pipeline            = &vk.ssao.extract.pipeline;
 			fs_module           = vk.shaders.ssao_fs;
 			renderpass          = vk.render_pass.ssao.extract.handle;
@@ -1591,7 +1603,7 @@ static void vk_create_post_process_pipeline( int program_index, uint32_t width, 
 			blend               = qfalse;
             dynamic_state_count = 2;
 			break;
-		case 8:
+		case VK_POSTFX_PIPELINE_SSAO_BLUR:
 			pipeline            = &vk.ssao.blur.pipeline;
 			fs_module           = vk.shaders.ssao_blur_fs;
 			renderpass          = vk.render_pass.ssao.blur.handle;
@@ -1601,7 +1613,7 @@ static void vk_create_post_process_pipeline( int program_index, uint32_t width, 
 			blend               = qfalse;
             dynamic_state_count = 2;
 			break;
-		case 9:
+		case VK_POSTFX_PIPELINE_SSAO_BLEND:
 			pipeline            = &vk.ssao.blend.pipeline;
 			fs_module           = vk.shaders.ssao_blend_fs;
 			renderpass          = vk.render_pass.postfx.blend.handle;
@@ -1611,14 +1623,15 @@ static void vk_create_post_process_pipeline( int program_index, uint32_t width, 
 			blend               = qfalse; // used specialized blend case below
 			break;
 #endif
-        default: // gamma correction
-            pipeline = &vk.gamma_pipeline;
-            fs_module = vk.shaders.gamma_fs;
-            renderpass = vk.render_pass.gamma.handle;
-            layout = vk.pipeline_layout_post_process;
-            samples = VK_SAMPLE_COUNT_1_BIT;
-            pipeline_name = "gamma-correction pipeline";
-            blend = qfalse;
+#endif
+        default: // VK_POSTFX_PIPELINE_GAMMA
+            pipeline            = &vk.gamma_pipeline;
+            fs_module           = vk.shaders.gamma_fs;
+            renderpass          = vk.render_pass.gamma.handle;
+            layout              = vk.pipeline_layout_post_process;
+            samples             = VK_SAMPLE_COUNT_1_BIT;
+            pipeline_name       = "gamma-correction pipeline";
+            blend               = qfalse;
             break;
     }
 
@@ -1662,7 +1675,7 @@ static void vk_create_post_process_pipeline( int program_index, uint32_t width, 
     frag_spec_data.bloom_modulate = r_bloom_modulate->integer;
     frag_spec_data.dither = r_dither->integer;
 
-    if ( program_index == 4 ) 
+    if ( program_index == VK_POSTFX_PIPELINE_DGLOW_BLEND ) 
     {
         // adjust for legacy bias: r_DynamicGlowIntensity default ~1.13, subtract 1.0 to align with old bloom intensity defaults
         frag_spec_data.bloom_intensity = MAX( 0.01f, MIN( (r_DynamicGlowIntensity->value - 1.0f), 4.0f ) );
@@ -1702,7 +1715,7 @@ static void vk_create_post_process_pipeline( int program_index, uint32_t width, 
     //
     // Viewport.
     //
-    if ( program_index == 0 ) {
+    if ( program_index == VK_POSTFX_PIPELINE_GAMMA ) {
         // gamma correction
         viewport.x = 0.0 + vk.blitX0;
         viewport.y = 0.0 + vk.blitY0;
@@ -1775,7 +1788,7 @@ static void vk_create_post_process_pipeline( int program_index, uint32_t width, 
         attachment_blend_state.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
     }
 #ifdef USE_VK_SSAO
-    else if ( program_index == 9 ) {
+    else if ( program_index == VK_POSTFX_PIPELINE_SSAO_BLEND ) {
         attachment_blend_state.blendEnable = VK_TRUE;
         attachment_blend_state.srcColorBlendFactor = VK_BLEND_FACTOR_DST_COLOR;
         attachment_blend_state.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
@@ -1821,7 +1834,7 @@ static void vk_create_post_process_pipeline( int program_index, uint32_t width, 
     create_info.pViewportState = &viewport_state;
     create_info.pRasterizationState = &rasterization_state;
     create_info.pMultisampleState = &multisample_state;
-    create_info.pDepthStencilState = (program_index == 2) ? &depth_stencil_state : NULL;
+    create_info.pDepthStencilState = (program_index == VK_POSTFX_PIPELINE_BLOOM_BLEND) ? &depth_stencil_state : NULL;
     create_info.pDepthStencilState = &depth_stencil_state;
     create_info.pColorBlendState = &blend_state;
     create_info.pDynamicState = &dynamic_state;
@@ -2403,7 +2416,7 @@ static void vk_create_brdflut_pipeline( void )
 
     uint32_t size = 512;
 
-    vk_create_post_process_pipeline( 5, size, size );
+    vk_create_post_process_pipeline( VK_POSTFX_PIPELINE_BRDF_LUT, size, size );
 }
 #endif
 
@@ -2416,7 +2429,7 @@ static void vk_create_bloom_pipelines( void )
     uint32_t height = gls.captureHeight;
     uint32_t i;
 
-    vk_create_post_process_pipeline( 1, width, height ); // bloom extraction
+    vk_create_post_process_pipeline( VK_POSTFX_PIPELINE_BLOOM_EXTRACT, width, height );
 
     for ( i = 0; i < ARRAY_LEN( vk.bloom_blur_pipeline ); i += 2 ) {
         width /= 2;
@@ -2444,25 +2457,24 @@ static void vk_create_dglow_pipelines( void )
         vk_create_blur_pipeline( "dglow", 2, i + 1, width, height, qfalse); // vertical
     }
 
-    vk_create_post_process_pipeline( 4, glConfig.vidWidth, glConfig.vidHeight ); // post process blending
+    vk_create_post_process_pipeline( VK_POSTFX_PIPELINE_DGLOW_BLEND, glConfig.vidWidth, glConfig.vidHeight ); // post process blending
 }
 
 void vk_update_post_process_pipelines( void )
 {
     // update gamma shader
-    vk_create_post_process_pipeline(0, 0, 0);
+    vk_create_post_process_pipeline( VK_POSTFX_PIPELINE_GAMMA, 0, 0 );
 
     if ( vk.capture.image ) {
         // update capture pipeline
-        vk_create_post_process_pipeline( 3, gls.captureWidth, gls.captureHeight );
+        vk_create_post_process_pipeline( VK_POSTFX_PIPELINE_CAPTURE, gls.captureWidth, gls.captureHeight );
     }
 
     vk_create_bloom_pipelines();
     vk_create_dglow_pipelines();
 
 #ifdef USE_VK_PBR
-    // depth extraction
-    vk_create_post_process_pipeline( 6, glConfig.vidWidth, glConfig.vidHeight );
+    vk_create_post_process_pipeline( VK_POSTFX_PIPELINE_DEPTH_EXTRACT, glConfig.vidWidth, glConfig.vidHeight );
 #ifdef VK_PBR_BRDFLUT
     vk_create_brdflut_pipeline();
 #endif
@@ -2472,9 +2484,9 @@ void vk_update_post_process_pipelines( void )
         const uint32_t width = gls.captureWidth;
         const uint32_t height = gls.captureHeight;
 
-        vk_create_post_process_pipeline( 7, width, height );
-        vk_create_post_process_pipeline( 8, width, height );
-        vk_create_post_process_pipeline( 9, width, height );
+        vk_create_post_process_pipeline( VK_POSTFX_PIPELINE_SSAO_EXTRACT, width, height );
+        vk_create_post_process_pipeline( VK_POSTFX_PIPELINE_SSAO_BLUR, width, height );
+        vk_create_post_process_pipeline( VK_POSTFX_PIPELINE_SSAO_BLEND, width, height );
     }
 #endif
 #endif
