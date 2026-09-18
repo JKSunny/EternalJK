@@ -2595,6 +2595,5 @@ void vk_destroy_pipelines( qboolean reset )
     vk_destroy_pipeline( &vk.ssao.debug.pipeline );
 #endif
 #endif
-#endif
 
 }
