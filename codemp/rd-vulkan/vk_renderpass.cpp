@@ -876,104 +876,53 @@ void vk_create_render_passes()
 #endif
 }
 
+static void vk_destroy_render_pass( vkRenderPass_t *render_pass )
+{
+    if ( render_pass && render_pass->handle != VK_NULL_HANDLE ) {
+        qvkDestroyRenderPass( vk.device, render_pass->handle, NULL );
+        render_pass->handle = VK_NULL_HANDLE;
+    }
+}
+
 void vk_destroy_render_passes( void )
 {
     uint32_t i;
 
     vk_debug("Destroy vk.render_pass\n");
 
-    if ( vk.render_pass.main.handle != VK_NULL_HANDLE ) {
-        qvkDestroyRenderPass( vk.device, vk.render_pass.main.handle, NULL );
-        vk.render_pass.main.handle = VK_NULL_HANDLE;
-    }
+    vk_destroy_render_pass( &vk.render_pass.main );
+    vk_destroy_render_pass( &vk.render_pass.bloom.extract );
+    vk_destroy_render_pass( &vk.render_pass.bloom.blend );
+    vk_destroy_render_pass( &vk.render_pass.screenmap );
+    vk_destroy_render_pass( &vk.render_pass.gamma );
+    vk_destroy_render_pass( &vk.render_pass.refraction.extract );
+    vk_destroy_render_pass( &vk.render_pass.capture );
+    vk_destroy_render_pass( &vk.render_pass.dglow.extract );
+    vk_destroy_render_pass( &vk.render_pass.dglow.blend );
 
-    if ( vk.render_pass.bloom.extract.handle != VK_NULL_HANDLE ) {
-        qvkDestroyRenderPass( vk.device, vk.render_pass.bloom.extract.handle, NULL );
-        vk.render_pass.bloom.extract.handle = VK_NULL_HANDLE;
-    }
+    for ( i = 0; i < ARRAY_LEN( vk.render_pass.bloom.blur ); i++ )
+        vk_destroy_render_pass( &vk.render_pass.bloom.blur[i] );
 
-    for ( i = 0; i < ARRAY_LEN( vk.render_pass.bloom.blur ); i++) {
-        if ( vk.render_pass.bloom.blur[i].handle != VK_NULL_HANDLE ) {
-            qvkDestroyRenderPass( vk.device, vk.render_pass.bloom.blur[i].handle, NULL );
-            vk.render_pass.bloom.blur[i].handle = VK_NULL_HANDLE;
-        }
-    }
+    for ( i = 0; i < ARRAY_LEN( vk.render_pass.dglow.blur ); i++ )
+        vk_destroy_render_pass( &vk.render_pass.dglow.blur[i] );
 
-    if ( vk.render_pass.bloom.blend.handle != VK_NULL_HANDLE ) {
-        qvkDestroyRenderPass( vk.device, vk.render_pass.bloom.blend.handle, NULL );
-        vk.render_pass.bloom.blend.handle = VK_NULL_HANDLE;
-    }
 
-    if ( vk.render_pass.screenmap.handle != VK_NULL_HANDLE ) {
-        qvkDestroyRenderPass( vk.device, vk.render_pass.screenmap.handle, NULL );
-        vk.render_pass.screenmap.handle = VK_NULL_HANDLE;
-    }
+#ifdef USE_VK_PBR
+    vk_destroy_render_pass( &vk.render_pass.postfx.blend );
+    vk_destroy_render_pass( &vk.depth.extract.render_pass );
 
-    if ( vk.render_pass.gamma.handle != VK_NULL_HANDLE ) {
-        qvkDestroyRenderPass( vk.device, vk.render_pass.gamma.handle, NULL );
-        vk.render_pass.gamma.handle = VK_NULL_HANDLE;
-    }
-
-    if ( vk.render_pass.refraction.extract.handle != VK_NULL_HANDLE ) {
-        qvkDestroyRenderPass( vk.device, vk.render_pass.refraction.extract.handle, NULL );
-        vk.render_pass.refraction.extract.handle = VK_NULL_HANDLE;
-    }
-
-    if ( vk.render_pass.capture.handle != VK_NULL_HANDLE ) {
-        qvkDestroyRenderPass( vk.device, vk.render_pass.capture.handle, NULL );
-        vk.render_pass.capture.handle = VK_NULL_HANDLE;
-    }
-
-    if ( vk.render_pass.dglow.extract.handle != VK_NULL_HANDLE ) {
-        qvkDestroyRenderPass( vk.device, vk.render_pass.dglow.extract.handle, NULL );
-        vk.render_pass.dglow.extract.handle = VK_NULL_HANDLE;
-    }
-
-    for ( i = 0; i < ARRAY_LEN( vk.render_pass.dglow.blur ); i++ ) {
-        if ( vk.render_pass.dglow.blur[i].handle != VK_NULL_HANDLE ) {
-            qvkDestroyRenderPass( vk.device, vk.render_pass.dglow.blur[i].handle, NULL );
-            vk.render_pass.dglow.blur[i].handle = VK_NULL_HANDLE;
-        }
-    }
-
-    if ( vk.render_pass.dglow.blend.handle != VK_NULL_HANDLE ) {
-        qvkDestroyRenderPass( vk.device, vk.render_pass.dglow.blend.handle, NULL );
-        vk.render_pass.dglow.blend.handle = VK_NULL_HANDLE;
-    }
-
-    if ( vk.render_pass.postfx.blend.handle != VK_NULL_HANDLE ) {
-        qvkDestroyRenderPass( vk.device, vk.render_pass.postfx.blend.handle, NULL );
-        vk.render_pass.postfx.blend.handle = VK_NULL_HANDLE;
-    }
-
-    if ( vk.depth.extract.render_pass.handle != VK_NULL_HANDLE ) {
-        qvkDestroyRenderPass( vk.device, vk.depth.extract.render_pass.handle, NULL );
-        vk.depth.extract.render_pass.handle = VK_NULL_HANDLE;
-    }
 #ifdef VK_PBR_BRDFLUT
-    if ( vk.render_pass.brdflut.handle != VK_NULL_HANDLE ) {
-        qvkDestroyRenderPass( vk.device, vk.render_pass.brdflut.handle, NULL );
-        vk.render_pass.brdflut.handle = VK_NULL_HANDLE;
-    }
+    vk_destroy_render_pass( &vk.render_pass.brdflut );
 #endif
 
 #ifdef VK_CUBEMAP
-    if ( vk.render_pass.cubemap.handle != VK_NULL_HANDLE ) {
-        qvkDestroyRenderPass( vk.device, vk.render_pass.cubemap.handle, NULL );
-        vk.render_pass.cubemap.handle = VK_NULL_HANDLE;
-    }
+    vk_destroy_render_pass( &vk.render_pass.cubemap );
 #endif
 
 #ifdef USE_VK_SSAO
-    if ( vk.render_pass.ssao.extract.handle != VK_NULL_HANDLE ) {
-        qvkDestroyRenderPass( vk.device, vk.render_pass.ssao.extract.handle, NULL );
-        vk.render_pass.ssao.extract.handle = VK_NULL_HANDLE;
-    }
-
-    if ( vk.render_pass.ssao.blur.handle != VK_NULL_HANDLE ) {
-        qvkDestroyRenderPass( vk.device, vk.render_pass.ssao.blur.handle, NULL );
-        vk.render_pass.ssao.blur.handle = VK_NULL_HANDLE;
-    }
+    vk_destroy_render_pass( &vk.render_pass.ssao.extract );
+    vk_destroy_render_pass( &vk.render_pass.ssao.blur );
+#endif
 #endif
 }
 
