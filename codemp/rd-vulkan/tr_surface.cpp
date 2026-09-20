@@ -2324,6 +2324,7 @@ void RB_SurfaceVBOMDVMesh( srfVBOMDVMesh_t *surf )
 	mergeBack = -1;
 	firstIndexOffset = BUFFER_OFFSET( surf->indexOffset );
 	lastIndexOffset = BUFFER_OFFSET( surf->numIndexes );
+	//lastIndexOffset = BUFFER_OFFSET( surf->indexOffset + surf->numIndexes );
 
 	//if (r_mergeMultidraws->integer)
 	{
