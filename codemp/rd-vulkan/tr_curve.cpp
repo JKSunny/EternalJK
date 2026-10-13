@@ -112,7 +112,6 @@ static void Transpose( int width, int height, drawVert_t ctrl[MAX_GRID_SIZE][MAX
 
 }
 
-
 /*
 =================
 MakeMeshNormals
@@ -133,9 +132,7 @@ static void MakeMeshNormals( int width, int height, drawVert_t ctrl[MAX_GRID_SIZ
 	qboolean	good[8];
 	qboolean	wrapWidth, wrapHeight;
 	float		len;
-static	int	neighbors[8][2] = {
-	{0,1}, {1,1}, {1,0}, {1,-1}, {0,-1}, {-1,-1}, {-1,0}, {-1,1}
-	};
+	static const int neighbors[8][2] = { {0,1}, {1,1}, {1,0}, {1,-1}, {0,-1}, {-1,-1}, {-1,0}, {-1,1} };
 
 	wrapWidth = qfalse;
 	for ( i = 0 ; i < height ; i++ ) {
@@ -220,6 +217,9 @@ static	int	neighbors[8][2] = {
 				count = 1;
 			}
 			VectorNormalize2( sum, dv->normal );
+			for ( k = 0; k < 3; k++ ) {
+				dv->normal[k] = R_ClampDenorm( dv->normal[k] );
+			}
 		}
 	}
 }
@@ -296,7 +296,7 @@ static void PutPointsOnCurve( drawVert_t	ctrl[MAX_GRID_SIZE][MAX_GRID_SIZE],
 R_CreateSurfaceGridMesh
 =================
 */
-srfGridMesh_t *R_CreateSurfaceGridMesh(int width, int height,
+static srfGridMesh_t *R_CreateSurfaceGridMesh( int width, int height,
 								drawVert_t ctrl[MAX_GRID_SIZE][MAX_GRID_SIZE], float errorTable[2][MAX_GRID_SIZE] ) {
 	int i, j, size;
 	drawVert_t	*vert;
@@ -306,7 +306,6 @@ srfGridMesh_t *R_CreateSurfaceGridMesh(int width, int height,
 	// copy the results out to a grid
 	size = (width * height - 1) * sizeof( drawVert_t ) + sizeof( *grid );
 
-#ifdef PATCH_STITCHING
 	grid = (struct srfGridMesh_s *)/*Hunk_Alloc*/ Z_Malloc( size, TAG_GRIDMESH, qfalse );
 	memset(grid, 0, size);
 
@@ -315,16 +314,6 @@ srfGridMesh_t *R_CreateSurfaceGridMesh(int width, int height,
 
 	grid->heightLodError = (float *)/*Hunk_Alloc*/ Z_Malloc( height * 4, TAG_GRIDMESH, qfalse );
 	memcpy( grid->heightLodError, errorTable[1], height * 4 );
-#else
-	grid = Hunk_Alloc( size );
-	memset(grid, 0, size);
-
-	grid->widthLodError = Hunk_Alloc( width * 4 );
-	memcpy( grid->widthLodError, errorTable[0], width * 4 );
-
-	grid->heightLodError = Hunk_Alloc( height * 4 );
-	memcpy( grid->heightLodError, errorTable[1], height * 4 );
-#endif
 
 	grid->width = width;
 	grid->height = height;
