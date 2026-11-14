@@ -225,7 +225,8 @@ jobs:
         working-directory: ${{ github.workspace }}/install/JediAcademy
         shell: bash
         run: |
-          chmod +x EternalJK.x86_64.app/Contents/MacOS/EternalJK.x86_64
+          chmod +x EternalJK.${{ matrix.arch }}.app/Contents/MacOS/EternalJK.${{ matrix.arch }}
+          codesign --force --deep --sign - EternalJK.${{ matrix.arch }}.app
           tar -czvf EternalJK-macos-${{ matrix.arch }}-${{ matrix.build_type }}-${{ matrix.portable }}.tar.gz *
 
       - uses: actions/upload-artifact@v4
@@ -235,9 +236,9 @@ jobs:
           path: ${{ github.workspace }}/install/JediAcademy/EternalJK-macos-${{ matrix.arch }}-${{ matrix.build_type }}-${{ matrix.portable }}.tar.gz
           if-no-files-found: error
 
-  macos-m1:
+  macos-arm64:
     name: macOS ${{ matrix.arch }} ${{ matrix.build_type }} (${{ matrix.portable}})
-    runs-on: macos-14
+    runs-on: macos-15
     strategy:
       fail-fast: false
       matrix:
@@ -268,7 +269,7 @@ jobs:
         shell: bash
         working-directory: ${{ github.workspace }}/build
         run: |
-          OPTIONS="-DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_SYSTEM_PROCESSOR=arm64 -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/install"
+          OPTIONS="-DCMAKE_OSX_ARCHITECTURES=${{ matrix.arch }} -DCMAKE_SYSTEM_PROCESSOR=${{ matrix.arch }} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/install"
           if [ "${{ matrix.portable }}" == "Portable" ]; then
             OPTIONS+=" -DUseInternalLibs=ON -DBuildPortableVersion=ON"
           else
@@ -292,7 +293,8 @@ jobs:
         working-directory: ${{ github.workspace }}/install/JediAcademy
         shell: bash
         run: |
-          chmod +x EternalJK.arm64.app/Contents/MacOS/EternalJK.arm64
+          chmod +x EternalJK.${{ matrix.arch }}.app/Contents/MacOS/EternalJK.${{ matrix.arch }}
+          codesign --force --deep --sign - EternalJK.${{ matrix.arch }}.app
           tar -czvf EternalJK-macos-${{ matrix.arch }}-${{ matrix.build_type }}-${{ matrix.portable }}.tar.gz *
 
       - uses: actions/upload-artifact@v4
@@ -304,7 +306,7 @@ jobs:
 
   create-latest:
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-    needs: [msvc, ubuntu, macos, macos-m1]
+    needs: [msvc, ubuntu, macos, macos-arm64]
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
@@ -340,7 +342,7 @@ jobs:
       (github.ref == 'refs/heads/beta' ||
        github.ref == 'refs/heads/pbr' ||
        github.ref == 'refs/heads/pbr-inspector')
-    needs: [msvc, ubuntu, macos, macos-m1]
+    needs: [msvc, ubuntu, macos, macos-arm64]
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
