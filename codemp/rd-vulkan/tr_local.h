@@ -50,6 +50,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define MAX_TEXTURE_UNITS		8
 
 #define USE_BUFFER_CLEAR		/* clear attachments on render pass begin */
+#define USE_PIPELINE_HASH		/* optimize entity pipeline definition lookups */
 
 #define VK_G2_POINTER_FRAMECACHE
 #define VK_G2_POINTER_INVALIDATE_BITS 4
