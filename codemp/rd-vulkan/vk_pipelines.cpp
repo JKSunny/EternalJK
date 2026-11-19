@@ -2072,18 +2072,81 @@ VkPipeline vk_gen_pipeline( uint32_t index ) {
     }
 }
 
+#ifdef USE_PIPELINE_HASH
+// pipeline def -> index hash, open addressing. A slot holds index + 1, 0 is empty.
+#define PIPELINE_HASH_SIZE	4096
+static uint32_t	pipeline_hash[PIPELINE_HASH_SIZE];
+static uint32_t	pipeline_hash_count;	// number of vk.pipelines entries in the table
+
+static uint32_t vk_pipeline_def_hash( const Vk_Pipeline_Def *def ) {
+	const byte *p = (const byte *)def;
+	uint32_t h = 2166136261u;
+	size_t i;
+
+	for ( i = 0; i < sizeof(*def); i++ )
+		h = ( h ^ p[i] ) * 16777619u;
+
+	return h;
+}
+
+static void vk_pipeline_hash_insert( uint32_t index ) {
+	uint32_t slot = vk_pipeline_def_hash( &vk.pipelines[index].def ) & ( PIPELINE_HASH_SIZE - 1 );
+
+	while ( pipeline_hash[slot] )
+		slot = ( slot + 1 ) & ( PIPELINE_HASH_SIZE - 1 );
+
+	pipeline_hash[slot] = index + 1;
+}
+
+static void vk_pipeline_hash_sync( void ) {
+    // the pipeline list is cut back on a map change or a vk restart: then rebuild the table.
+	if ( pipeline_hash_count > vk.pipelines_count ) {
+		Com_Memset( pipeline_hash, 0, sizeof(pipeline_hash) );
+		pipeline_hash_count = 0;
+	}
+
+	while ( pipeline_hash_count < vk.pipelines_count )
+		vk_pipeline_hash_insert( pipeline_hash_count++ );
+}
+#endif
+
 uint32_t vk_find_pipeline_ext( uint32_t base, const Vk_Pipeline_Def *def, qboolean use ) {
     const Vk_Pipeline_Def *cur_def;
     uint32_t index;
 
-    for (index = base; index < vk.pipelines_count; index++) {
-        cur_def = &vk.pipelines[index].def;
-        if (memcmp(cur_def, def, sizeof(*def)) == 0) {
-            goto found;
-        }
-    }
+#ifdef USE_PIPELINE_HASH
+	if ( base == 0 ) {
+		uint32_t slot;
+
+		vk_pipeline_hash_sync();
+
+		slot = vk_pipeline_def_hash( def ) & ( PIPELINE_HASH_SIZE - 1 );
+		while ( pipeline_hash[slot] ) {
+			index = pipeline_hash[slot] - 1;
+			if ( memcmp( &vk.pipelines[index].def, def, sizeof(*def) ) == 0 )
+				goto found;
+			slot = ( slot + 1 ) & ( PIPELINE_HASH_SIZE - 1 );
+		}
+	}
+	else
+#endif
+    {
+		for ( index = base; index < vk.pipelines_count; index++ ) {
+			cur_def = &vk.pipelines[index].def;
+			if ( memcmp(cur_def, def, sizeof(*def)) == 0 ) {
+				goto found;
+			}
+		}
+	}
 
     index = vk_alloc_pipeline(def);
+
+#ifdef USE_PIPELINE_HASH
+	if ( base == 0 && pipeline_hash_count == index ) {
+		vk_pipeline_hash_insert( index );
+		pipeline_hash_count++;
+    }
+#endif
 
 found:
     if (use)
