@@ -2869,7 +2869,11 @@ void RB_StageIteratorGeneric( void )
 			if ( backEnd.currentEntity != &tr.worldEntity && !tess.vbo_model )
 				def.vk_light_flags = 0;
 		
-			pipeline = vk_find_pipeline_ext( 0, &def, qfalse );
+#ifdef USE_PIPELINE_HASH
+			// Most draws do not change the stage def: keep the stage pipeline then.
+			if ( pipeline >= vk.pipelines_count || memcmp( &def, &vk.pipelines[pipeline].def, sizeof(def) ) != 0 )
+#endif
+				pipeline = vk_find_pipeline_ext( 0, &def, qfalse );
 		}
 
 		if ( is_refraction ) 
