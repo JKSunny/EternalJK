@@ -653,7 +653,7 @@ void vk_generate_image_upload_data(image_t* image, byte* data, Image_Upload_Data
 			VK_FORMAT_B4G4R4A4_UNORM_PACK16 :
 			VK_FORMAT_A1R5G5B5_UNORM_PACK16;
 
-		bytesPerPixel = 2;
+		//bytesPerPixel = 2;
 	}
 
 	upload_data->buffer_size = R_CalcUploadSize(
